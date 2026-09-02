@@ -2,16 +2,11 @@
 
 ## Current phase
 
-**Phase A: complete as of 2026-09-01.**
+**Phase B: complete as of 2026-09-02.**
 
-Unmodified LPServe completed the smallest useful end-to-end GPU smoke run on
-the Unity HPC cluster. The repository state, Unity allocation, software
-environment, dependency versions, compatibility settings, command, and output
-evidence have been recorded.
+Phase B reproduced the controlled baseline workload twice each for the existing `sarathi`, `slai_scheduler`, and `vllm` scheduler providers at repository commit `6f285d184546a87a0c57ab89581bf7e14a5d413f` (`Document Unity Phase A baseline`). The `vllm` provider in these records is the vLLM-style policy implemented inside LPServe/SLAI, not current upstream vLLM.
 
-No LP scheduler implementation, scheduler-algorithm modification, architecture
-audit, performance comparison, benchmark sweep, solver integration, or utility
-and memory-coefficient design was performed in Phase A.
+Phase C is the next phase.
 
 ## Repository baseline
 
@@ -20,195 +15,91 @@ and memory-coefficient design was performed in Phase A.
 | Unity path | `/home/atjoshi_umass_edu/LPServe` |
 | Origin | `https://github.com/AtivJoshi/LPServe.git` |
 | Branch | `main` |
-| Commit | `5098a7aba05e3edbcfa3a509d6cc9cd248fc4380` |
-| Working tree after smoke run | Clean |
-| Tracking state | `main...origin/main` |
-| Upstream comparison | Identical to `agrimUT/SLAI:main` at this commit |
-
-Only the `origin` remote was configured in the Unity checkout. No upstream
-remote was added during Phase A.
+| Phase A smoke-test revision | `5098a7aba05e3edbcfa3a509d6cc9cd248fc4380` |
+| Repository revision used for Phase B | `6f285d184546a87a0c57ab89581bf7e14a5d413f` |
+| Revision subject | `Document Unity Phase A baseline` |
 
 ## Validated Unity environment
 
-The successful run used Slurm job `63889100` on `gpu048`. The hostname records
-the observed allocation only; it is not a fixed deployment target.
+Phase B used one NVIDIA A16 GPU with the following verified identity:
 
-| Component | Known-good value |
+| Component | Recorded value |
 |---|---|
-| Partition | `gpu-preempt` |
-| GPU request | `--gres=gpu:a16:1` |
-| CPUs and memory | 8 CPUs, 16 GiB RAM |
-| OS | Ubuntu 24.04.4 LTS |
-| Kernel | 6.8.0-136-generic |
-| CPU | AMD EPYC 9354; AVX-512 present |
-| GPU | NVIDIA A16, 15,356 MiB |
-| Compute capability | 8.6 |
-| Driver | 595.71.05 |
-| Driver-advertised CUDA compatibility | 13.2 |
-| Loaded CUDA toolkit | 12.1.1 |
-| `nvcc` | 12.1.105 |
-| GCC | 12.2.0 |
-| Python | 3.10.8 |
-| Environment | `/home/atjoshi_umass_edu/LPServe/env` |
+| GPU | NVIDIA A16 |
+| GPU UUID | `GPU-8e5fef81-4f36-8118-7fbf-54a5847c5ad7` |
+| GPU memory | 15,356 MiB |
+| NVIDIA driver | 595.71.05 |
 
-The driver compatibility level and the loaded toolkit must not be conflated.
-LPServe and PyTorch used CUDA 12.1.
+The Phase A dependency snapshot, excluding the editable LPServe entry, remained
+unchanged. The full `pip freeze` hash is not claimed unchanged because the
+editable repository entry changed with the commit.
 
-## Key dependency versions
+## Phase B run record
 
-| Distribution | Version |
-|---|---:|
-| pip | 26.2.1 |
-| setuptools | 84.0.0 |
-| sarathi | 0.1.7 |
-| torch | 2.3.0+cu121 |
-| transformers | 4.57.6 |
-| flashinfer | 0.2.0.post1+cu121torch2.3 |
-| vllm-flash-attn | 2.5.9 |
-| ray | 2.58.0 |
-| numpy | 2.2.6 |
-| nvidia-ml-py | 13.595.45 |
-| plotly | 7.0.0 |
-| kaleido | 1.4.0 |
-| choreographer | 1.3.0 |
-| ninja | 1.13.2 |
-| Chrome for Testing | 142.0.7444.175 |
+Phase B artifacts are recorded in `docs/experiment_reference.md`. The six run
+directories were:
 
-`python -m pip check` reported no broken requirements. The full known-good
-snapshot contained 172 distributions and had SHA-256:
+- `benchmark_output/phase_b/sarathi_r1/2026-09-02_08-00-13-580183`
+- `benchmark_output/phase_b/sarathi_r2/2026-09-02_08-24-19-684337`
+- `benchmark_output/phase_b/slai_r1/2026-09-02_08-09-31-346862`
+- `benchmark_output/phase_b/slai_r2/2026-09-02_08-33-45-436111`
+- `benchmark_output/phase_b/vllm_r1/2026-09-02_08-17-18-214863`
+- `benchmark_output/phase_b/vllm_r2/2026-09-02_08-39-01-733205`
 
-```text
-7fd7969c61eaa1699f279b00b50ad567136fee29d626fa5af263dac2a2b5df1a
-```
+Each repetition parent directory contains `console.log`. Its timestamped run directory contains `benchmark_config.yml`, `requests.json`, `replica_0/sequence_metrics.csv`, and `replica_0/batch_metrics.csv`.
 
-Snapshot location on Unity:
+## What Phase B verified
 
-```text
-benchmark_output/phase_a_smoke_known_good/pip-freeze.txt
-```
+Phase B verified scheduler selection, the benchmark harness, metric generation,
+and deterministic discrete behavior for a deliberately tiny homogeneous
+synthetic workload. Each provider completed two successful runs with seed 42,
+TinyLlama/TinyLlama-1.1B-Chat-v1.0, dummy model loading, one replica, tensor and
+pipeline parallel degree 1, maximum model length 32, six synthetic requests,
+fixed 16-token prefill and 4-token decode lengths, Poisson QPS 1,000,000,
+maximum batch size 2, and GPU memory utilization 0.5.
 
-## Successful smoke-test configuration
+All six `requests.json` files had SHA-256
+`c9e4fe8f1ad7e64e3697a3ba9640fd60d476c1f4668ee0ba020ec6fa8d03de7d`.
+Every run completed six requests in 15 iterations. The generated sequence
+metrics recorded 16 prefill and 4 decode tokens per request, zero ignored
+requests, zero restarts, and five request pauses per request. Those recorded
+pauses must not be described as memory preemptions: batch-level scheduler
+preemption counters were zero for both prefill and decode in every run.
 
-| Setting | Value |
+The discrete batch structure was identical for both repetitions of every
+provider: 15 total batches, consisting of three 32-token two-sequence prefill
+batches and four 2-token two-sequence decode batches after each admitted pair.
+
+Expected non-blocking console messages were observed in every run:
+
+- the `torch_dtype` deprecation notice; and
+- the bfloat16-to-float16 casting warning.
+
+## Policy-specific Phase B settings
+
+| Provider | Recorded limit settings |
 |---|---|
-| Existing entry point | `python -m sarathi.benchmark.main` |
-| Model configuration | `TinyLlama/TinyLlama-1.1B-Chat-v1.0` |
-| Weight format | `dummy` |
-| Tensor parallel degree | 1 |
-| Pipeline parallel degree | 1 |
-| Maximum model length | 64 |
-| Attention backend | `flash_attention` |
-| Scheduler | Existing `sarathi` scheduler |
-| Scheduler chunk size | 16 |
-| Maximum batch size | 1 |
-| Request generator | Synthetic, fixed length, static arrival |
-| Number of requests | 1 |
-| Prefill tokens | 16 |
-| Decode tokens | 4 |
-| GPU-memory utilization limit | 0.5 |
-| Metrics | Enabled |
-| Request-output JSON | Disabled because of an upstream field-name defect |
+| `sarathi` | chunk size 32, FCFS enabled, dynamic chunking disabled |
+| `slai_scheduler` | token budget 32, FCFS disabled, fixed offset disabled, below-memory-limit offset 5, above-memory-limit offset 10, memory limit 0.96, user priority disabled, time between tokens 0.2, total decode limit 128 |
+| `vllm` | vLLM-style maximum tokens per batch 32 |
 
-The command is recorded in `docs/unity_setup.md`.
+These are existing policies running inside the same LPServe framework.
 
-## Success evidence
+## Limitations and risks
 
-The known-good run produced the following evidence:
+The Phase B workload is intentionally tiny and homogeneous. Identical schedules
+in this controlled workload do not establish policy equivalence, and the
+recorded smoke-run execution times are not throughput, latency, or comparative
+performance results.
 
-- LPServe selected worker 0 on `cuda:0`.
-- The TinyLlama model initialized successfully.
-- LPServe created 15,615 GPU KV-cache blocks.
-- The existing Sarathi scheduler initialized successfully.
-- The progress indicator reached one of one processed requests.
-- Metrics recorded 20 total tokens: 16 prefill tokens and 4 decode tokens.
-- The command printed `LPServe exit status: 0`.
-- The successful log contained no `Traceback`, `ERROR`, or `Exception` marker.
-- At verification time, the output directory contained 114 files and occupied
-  approximately 1.4 MiB, before adding `pip-freeze.txt`.
-- `git status --short --branch --untracked-files=all` showed only
-  `## main...origin/main` because the environment and benchmark-output paths
-  are ignored.
+Phase B did not perform an LP scheduler implementation, architecture audit,
+large-scale benchmark sweep, solver integration, multi-GPU validation,
+checkpoint-weight loading validation, or semantic generation-quality check.
 
-Successful run artifacts on Unity:
+## Phase A reference
 
-```text
-benchmark_output/phase_a_smoke_known_good/console.log
-benchmark_output/phase_a_smoke_known_good/pip-freeze.txt
-benchmark_output/phase_a_smoke_known_good/plots/
-```
-
-## What the smoke test establishes
-
-The successful test establishes that the following unmodified LPServe path
-works on the recorded Unity environment:
-
-1. configuration and tokenizer loading;
-2. Ray initialization and worker placement;
-3. CUDA device selection;
-4. TinyLlama model construction with random dummy weights;
-5. LPServe native-extension and FlashAttention loading;
-6. GPU KV-cache allocation;
-7. existing Sarathi scheduling;
-8. one prefill execution and four decode executions; and
-9. ordinary metric aggregation and Plotly/Kaleido image generation.
-
-It does not establish checkpoint-weight loading, semantic generation quality,
-multi-GPU execution, large-model capacity, sustained-load stability, or
-performance. The recorded latency is not a benchmark result.
-
-## Environment and compatibility findings
-
-No LPServe source files were changed. The following environment adjustments
-were necessary:
-
-1. Use `pip`, rather than `uv`, for LPServe's editable installation against the
-   legacy FlashInfer wheel index.
-2. Pin Transformers below major version 5; the open-ended repository
-   requirement otherwise selected a release incompatible with PyTorch 2.3.
-3. Install `setuptools` explicitly for the FlashInfer/PyTorch extension import
-   path.
-4. Install `nvidia-ml-py==13.595.45`; LPServe imports `pynvml` but does not
-   declare the distribution.
-5. Install Chrome for Testing under the virtual environment and provide
-   `BROWSER_PATH` for Kaleido 1.4.0.
-
-Two source defects were observed and left unmodified:
-
-- `write_metrics=false` leaves `MetricsStore` partially initialized, but the
-  benchmark subsequently calls `reset()` and accesses a missing attribute.
-- `RequestOutput` defines `seq_id`, while request-output serialization expects
-  `request_id`. The successful run therefore retained metrics but set
-  `metrics_store_enable_request_outputs=false`.
-
-These are baseline compatibility findings, not LP-scheduler changes.
-
-## Source-change status
-
-Phase A introduced no changes to:
-
-- scheduler behavior;
-- scheduling policies;
-- model execution;
-- request admission or preemption;
-- LP formulation or extraction;
-- utility weights;
-- memory coefficients; or
-- solver integration.
-
-The repository remained at the original commit throughout the successful run.
-
-## Phase boundary
-
-Phase A is closed. Later work must begin as a separately scoped phase. In
-particular, this status does not authorize:
-
-- implementation of the LP scheduler;
-- an LP-to-LPServe architecture mapping or audit;
-- baseline-comparison experiments;
-- scheduler-performance claims;
-- benchmark sweeps; or
-- solver-overhead optimization.
-
-Before later experiments, preserve the successful console log and exact package
-snapshot, and reproduce the exit-status-zero smoke test after any intentional
-environment or repository change.
+Phase A remains the Unity environment and serving-stack smoke-test baseline
+recorded in `docs/unity_setup.md`. It established that unmodified LPServe could
+initialize TinyLlama with dummy weights on one A16 GPU, allocate KV cache, run
+the existing Sarathi scheduler, and generate metrics for a one-request smoke
+test. Phase A did not establish performance.
