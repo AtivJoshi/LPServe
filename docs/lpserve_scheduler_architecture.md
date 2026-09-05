@@ -51,7 +51,7 @@ The document is intentionally descriptive. It explains the state and control flo
 - claim to describe every version of Sarathi, Sarathi-Serve, SLAI, or LPServe;
 - make performance claims about paths that were not benchmarked.
 
-The future `lp_scheduler_design.md` should be normative: it should state what the new scheduler must do. This document is evidentiary: it states what the audited framework does and where its contracts are incomplete.
+The companion `docs/lp_scheduler_design.md` is normative: it states what the new scheduler must do. This document remains evidentiary: it states what the audited framework did and where its contracts were incomplete at the audited revision. The normative design does not rewrite that historical framework evidence.
 
 ## 2. Audit scope, revision, and evidence policy
 
@@ -64,6 +64,8 @@ c3e014363dd50e1830d7c85c3d043eab69fdc9e5
 ```
 
 GitHub reports this commit as `gitignore update`. Commit-pinned links are used throughout so that later repository changes do not silently alter the evidence.
+
+The later committed changes through `6fbc046` were documentation-only and did not change the audited implementation paths. They therefore do not invalidate or repin this historical audit; all framework claims in this document remain pinned to `c3e0143`.
 
 ### 2.2 Principal source files
 
@@ -91,7 +93,7 @@ The following labels are used deliberately.
 | **Verified observation** | Established by output observed during an earlier project phase; not generalized beyond that observation. |
 | **Architectural synthesis** | A composition of multiple verified code paths into a diagram or end-to-end trace. Every constituent edge is code-grounded, but the diagram itself does not exist in the repository. |
 | **Inference** | A consequence strongly suggested by verified code, but not demonstrated by an executed test during the audit. |
-| **Approved mathematical decision** | A decision now present in the updated `main.tex` and `LP Scheduler Research Context.md`. It is not presented as pre-existing framework behavior. |
+| **Approved mathematical decision** | A decision now present in the updated `docs/math/main-llm-serving.tex` and `docs/LP Scheduler Research Context.md`. It is not presented as pre-existing framework behavior. |
 | **Unresolved research decision** | A choice that the audit could not derive from LPServe and that must be made explicitly elsewhere. |
 | **Deferred implementation work** | Work intentionally outside the read-only Phase C audit. |
 

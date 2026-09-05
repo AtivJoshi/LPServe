@@ -8,7 +8,7 @@ The central implementation principle is:
 
 > Preserve the mathematical scheduling formulation while deriving the concrete software design from SLAI itself.
 
-The document is intended to provide future ChatGPT chats with the context needed to reason about the project without requiring knowledge of any other serving-system implementation.
+The document is intended to provide future research and implementation sessions with durable repository-local context for reasoning about the project without requiring knowledge of any other serving-system implementation.
 
 ---
 
@@ -47,14 +47,14 @@ Full feature parity with modern upstream vLLM is not a goal.
 
 # 3. Sources of Truth
 
-Three kinds of information must be kept separate.
+The following kinds of information must be kept separate.
 
 ## 3.1 Mathematical source of truth
 
-The mathematical scheduling problem is defined in the uploaded:
+The current mathematical source of truth for the proposed scheduler is the repository-local file:
 
 ```
-main.tex
+docs/math/main-llm-serving.tex
 ```
 
 especially:
@@ -110,9 +110,9 @@ Do not assume that similarly named concepts in modern vLLM, another Sarathi vers
 
 ## 3.3 This document
 
-This document provides implementation principles, validation requirements, research assumptions, and open design questions for the project.
+This document provides implementation principles, validation requirements, research assumptions, phase boundaries, and open design questions for the project. It is not the complete normative scheduler implementation specification; that role belongs to `docs/lp_scheduler_design.md`.
 
-If this document, `main.tex`, and the current `LPServe` implementation appear inconsistent, investigate the discrepancy rather than silently choosing one interpretation.
+If this document, `docs/math/main-llm-serving.tex`, `docs/lp_scheduler_design.md`, and the current `LPServe` implementation appear inconsistent, investigate the discrepancy rather than silently choosing one interpretation.
 
 ---
 
@@ -1459,13 +1459,16 @@ The immediate objective is to establish a clean `LPServe` baseline, understand t
 
 ---
 
-# 23. Guidance for Future Chats
+# 23. Guidance for Future Work
 
-Future ChatGPT chats should normally use:
+Future research and implementation sessions should normally begin from the current local `LPServe` repository and use:
 
 1. this document for the project research context;
-2. `main.tex` for the mathematical formulation;
-3. the current local `LPServe` fork for implementation details.
+2. `docs/math/main-llm-serving.tex` for the mathematical formulation, especially the myopic ILP and Primal Heuristic 1 / LP relaxation;
+3. `docs/lp_scheduler_design.md` for the normative scheduler implementation specification; and
+4. the current local `LPServe` source code for existing implementation behavior and details.
+
+When the local repository is available, use these repository-local sources rather than relying on uploaded or stale external copies.
 
 The working repository is:
 
