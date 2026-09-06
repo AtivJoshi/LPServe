@@ -8,7 +8,8 @@ Before substantial LP-scheduler research, design, implementation, or review work
 
 1. Read `PROJECT_GUIDE.md`.
 2. Inspect the branch, commit, and working-tree state.
-3. Read only the detailed sources relevant to the task, using the guide's claim-specific authority and provenance rules.
+3. When the task involves scheduler, engine, sequence, or block-manager behavior, read `docs/lpserve_scheduler_architecture_summary.md` first for architecture orientation before opening the full audit.
+4. Read only the detailed sources relevant to the task, using the guide's claim-specific authority and provenance rules.
 
 Do not reconstruct project context from `README.md`, modern vLLM, another Sarathi/SLAI version, or filenames alone.
 
@@ -41,6 +42,8 @@ Follow the ownership model in `docs/lp_scheduler_design.md` §3 and the project 
 - **Phase F — execution:** fresh physical and operational prevalidation followed by ordered LPServe-native mutation and `SchedulerOutputs` construction.
 
 Do not blur these layers. Phase E must not mutate scheduler or serving state. Phase F must not run after an unsuccessful or stale Phase D/E result and must comply with the failure and blocker contracts in the design.
+
+The architecture summary is an orientation aid only: `docs/lp_scheduler_design.md` remains authoritative for normative requirements, and `docs/lpserve_scheduler_architecture.md` remains the full descriptive audit evidence.
 
 ### Phase D rules
 
