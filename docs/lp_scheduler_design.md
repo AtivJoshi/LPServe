@@ -967,8 +967,10 @@ sampler-association, pipeline, or control-only behavior; affected cases are
 documented limitations rather than a reason to expand the executor.
 Mutation granularity and post-mutation recovery remain OPEN. Before output,
 verify ownership, allocation, no loss/duplication, free-block deltas, and exact
-action/token counts. Replay tests, not output alone, establish central/worker
-block equality.
+action/token counts. When the supported MVP path exercises and claims a
+cross-layer replay result, replay tests rather than output alone establish
+central/worker block equality. Other action combinations remain focused
+follow-up coverage under §15.4.
 
 ## 14. Failure contracts
 
@@ -1027,81 +1029,85 @@ No GPU experiment substitutes for mathematical or state-transition tests. Each p
 
 ### 15.1 Phase D problem and solver tests
 
-| Contract | Minimum coverage |
-|---|---|
-| Model construction | Empty; prefill-, decode-, preemption-only and mixed problems; continuous $x_i$; linkage (including reject $I_i^P=1,x_i<1$), causality, exclusion, token/action/memory saturation, and constructible feasible, infeasible, and unbounded solver cases. |
-| Input and layout validation | NaN, infinity, wrong dimensions, duplicate IDs, invalid units, and D-15 vector-order/request association; preserve raw vectors. |
-| Adapter and objective | Known nondegenerate SciPy/HiGHS optimum and vector; deterministic reconstruction; maximization-to-minimization conversion; reject missing, non-finite, or materially mismatched reported objectives; recomputed sign conversion. |
-| D-13 configuration | `method="highs-ds"`, explicit `presolve=True`, no `time_limit`/`maxiter`, explicit crossover, or undocumented thread/parallel/random-seed controls; when exposed, `crossover_nit == 0` is diagnostic only. Crossover, status 0, and `highs-ds` prove neither basicness/extremity nor a $|U_{\mathrm{frac}}|$ bound. |
-| Admission | Status 0 with `success=True` and valid shape reaches validation, then extraction only after validation succeeds; status 0 with bad/missing/wrong-sized/non-finite vector or `success != True` is invalid. Statuses 1--4, unknown/inconsistent status, exception, and interruption are rejected even with feasible-looking vectors; messages do not alter classification. |
-| Non-success boundary | Scoped finite-limit and independently feasible lower-objective status-1 fixtures remain D-12 non-successes. Spy/call-order tests prove no non-success reaches extraction or fabricates an all-zero plan. |
-| D-15 validation | Projection at half, exactly $\varepsilon_{\mathrm{feas}}$, and `nextafter` beyond it; reject over-tolerance values while retaining valid in-domain endpoints. Recompute raw and normalized global/local residuals, including post-projection failure; no coupled or multi-variable repair. |
-| Result integrity and diagnostics | Preserve raw/normalized vectors; recompute hatted-plan residual capacity. Record §14.5 fields, observed $|U_{\mathrm{frac}}|$, and environment provenance. |
-| Reproducibility | Repeated unique-optimum solves return the expected result; degenerate-optimum tests require validated objective and feasibility, not one primal vector. |
+Phase D needs focused synthetic evidence for the supported MVP path, not an
+exhaustive matrix of solver or inherited-framework edge cases. The minimum set
+is:
+
+1. a hard-coded `main()` smoke case that builds, solves, extracts, and prints
+   one plan, proving the module can run independently of LPServe and a GPU;
+2. one feasible mixed case containing prefill, decode, preemption, capacity
+   limits, and an ordering tie, proving the intended end-to-end mathematical
+   path and deterministic extraction;
+3. one case with a fractional prefill decision, proving $x_i$ is continuous in
+   the relaxation and that extraction returns a feasible integer plan; and
+4. one infeasible or unusable solver-result case, proving the layer returns a
+   visible failure rather than fabricating a schedule or falling back silently.
+
+The implementation must still honor the Phase D contracts in §§9--11: explicit
+SciPy/HiGHS configuration (D-11--D-13), input/result validation, optimal-only
+admission (D-12), the selected numerical tolerances (D-14--D-15), and the
+canonical order key (D-16). Add a direct focused regression only when a
+currently supported behavior breaks. Broader numerical-boundary, degeneracy,
+diagnostic, and exhaustive model-constraint matrices are deferred until they
+block the MVP or a later phase needs them.
 
 ### 15.2 Extraction tests
 
-| Contract | Minimum coverage |
-|---|---|
-| Classification and partition | All-integral inputs and flooring; D-14 exact `0.0`/`1.0`, inclusive endpoints, interiors, and adjacent representable values via `nextafter`; retain original indicators and fractional values. All three indicators classify into $U_{\mathrm{int}}$; any fractional indicator into $U_{\mathrm{frac}}$; $\tilde x_i$ is irrelevant. |
-| D-14/D-15 handoff | Repeated deterministic classification and locked integral decisions; no near-one $\tilde I_i^P$/sub-one $\tilde x_i$ repair. Out-of-domain values, non-finiteness, residuals, and permitted normalization are D-15 tests, not D-14 classification tests. |
-| Fractional-set support | Observe but never use $|U_{\mathrm{frac}}|$ as acceptance; more than three fractional requests remains valid. |
-| Preemption | Dominant legal selection; exclude non-$\mathcal Z_t$ and zero-recovery candidates; one and multiple safety preemptions; fail after positive-recovery candidates are exhausted. |
-| Packing and charges | Fractional decode/prefill selection and exact ties under each residual capacity; prefill truncation; accept full fixed charge only when it fits; shrinking a chunk cannot shrink $a_i^P$; zero resident-partial-prefill and full admission/recomputation charges. |
-| Ordering and final plan | Canonicalize $\hat I_i^P$; validate/reject D-16 tuple keys; permutation-invariant layout/output; exact action and safety-preemption ties; repeated key-sorted actions; exact final integer-plan validation. |
+The mixed and fractional cases in §15.1 are the initial extraction checks. They
+must show that extraction uses the documented canonical order, respects the
+supplied capacities and legal preemption set, and validates the returned
+integer plan. A small `main()` is a smoke check only; it does not replace these
+two behavior checks.
+
+Do not add separate tests for every tie, numerical boundary, packing variant,
+or unsupported preemption edge case at this stage. Add one focused regression
+when a supported extraction behavior fails; otherwise defer that expansion
+until it blocks the MVP or is needed by a later phase.
 
 ### 15.3 Phase E mapping tests
 
-Use real or faithful LPServe `Sequence` and block-manager state to test:
+When Phase E begins, use one real or faithful LPServe `Sequence` and
+block-manager case to prove that the supported request data and capacity inputs
+produce a coherent Phase D snapshot without mutating LPServe state. The case
+must make its prefill/decode eligibility and block-charge inputs visible.
 
-- request universe: exact prompt remainder; future/finished exclusion; complete
-  owned-unfinished inclusion; duplicate/conflicting ownership rejection; and
-  prefill/decode eligibility;
-- preemption: the selected native eligibility predicate and its documented
-  inherited limitations;
-- capacity mapping: allocator free blocks; resident/admission/recomputation
-  charges; exact/conservative decode charge; recovery; and separate
-  $B_{\max},C_{\max},S_{\max}$, and resident capacity; and
-- stale-snapshot detection and proof that mapping performs no mutation.
+Defer exhaustive status/ownership variants, duplicate-conflict handling,
+alternative decode-charge policies, stale-snapshot cases, and inherited
+preemption edge cases until they block the supported MVP path or Phase F needs
+them. Phase E remains read-only regardless of the size of its initial test set.
 
 ### 15.4 Phase F execution tests
 
-Before GPU validation, focused synthetic scheduler-state tests cover the
-supported MVP path:
+Before GPU validation, use one focused synthetic scheduler-state case to prove
+the smallest supported native execution path: a validated plan admits and
+executes work, emits valid metadata, and produces the expected queue and block
+deltas. Use one physically infeasible plan to prove rejection occurs visibly
+before scheduler or block-manager mutation.
 
-- waiting prefill admission;
-- resident partial prefill;
-- decode with zero and one exact marginal block demand;
-- resident-capacity release by preemption followed by admission;
-- do nothing;
-- queue and ownership postconditions;
-- allocation, append, free, and free-block deltas;
-- metadata chunk sign and bounds;
-- unique/disjoint output IDs;
-- central replay order matching worker replay order;
-- prompt-first metadata ordering when the selected MVP schedules mixed batches;
-- rejected stale or physically infeasible plan causing zero mutation;
-- the selected visible failure behavior for the MVP; and
-- central/worker block-table equality in deterministic replay tests when the
-  supported path reaches both layers.
-
-Known inherited edge cases are documented and deferred unless they block the
-supported MVP path; this section does not require their repair before a basic
-implementation runs.
+Add direct focused regressions only when a currently supported action breaks.
+Preemption, mixed batches, decode marginal-block variants, worker
+block-table equality, and ownership corner cases are not mandatory initial
+coverage. Known inherited framework limitations remain documented and deferred
+unless they block the supported MVP path; this section does not require their
+repair before a basic implementation runs.
 
 ### 15.5 Integrated validation sequence
 
-After Phases D–F pass their CPU tests:
+After the applicable focused Phase D--F checks pass:
 
 1. run syntax, import, and static checks;
-2. run focused mathematical tests;
-3. run state-mapping and executor tests;
-4. run one tiny single-GPU smoke test with the smallest supported action set;
-5. inspect per-iteration LP inputs, relaxed decisions, extracted decisions, queue transitions, and block deltas;
-6. exercise native preemption under the MVP compatibility policy and record its
-   inherited limitations where relevant;
-7. compare against tiny same-framework baselines;
-8. begin broader timing or performance experiments only after correctness evidence is retained.
+2. run the focused mathematical, mapping, and executor checks for the supported
+   path;
+3. run one tiny single-stage GPU smoke test with the smallest supported action
+   set; and
+4. inspect the resulting LP inputs, extracted decisions, queue transitions, and
+   block deltas.
+
+Native preemption exercises, tiny same-framework comparisons, additional
+action combinations, and broader timing or performance experiments are useful
+follow-up work once the basic path runs; they are not prerequisites for the
+initial MVP. Retain correctness evidence before treating any broader experiment
+as informative.
 
 Aggregate throughput or latency cannot establish scheduler correctness.
 
@@ -1211,7 +1217,7 @@ candidate is a hidden default.
 | D-19 | Stale-snapshot mechanism | Locking, versions, iteration identity, or another verified mechanism | Before Phase F |
 | D-20 | Post-mutation failure contract | Rollback, fail-stop, or another explicit mechanism | Before Phase F is enabled |
 | D-21 | Canonical within-prefill and within-decode metadata order | Prompt-first partition required; internal ordering unspecified | Before mixed-batch Phase F tests |
-| D-22 | Recomputation output contract | Original prompt/generated suffix versus expanded-context representation | Before preemption is enabled |
+| D-22 | Recomputation output contract | Original prompt/generated suffix versus expanded-context representation | Before claiming corrected or public recomputation-output semantics; MVP compatibility mode may use native preemption with the documented inherited limitation |
 | D-23 | Approximation guarantee | No ratio established | Before any theoretical quality claim |
 | D-24 | Pipeline-parallel policy | Deferred; safe eligibility and completion association unknown | Before any pipeline support claim |
 

@@ -764,7 +764,10 @@ However, the Fundamental Theorem of Linear Programming alone does not prove this
 
 Numerical tolerances, degeneracy, and solver crossover behavior may affect the observed fractional count. The scheduler must therefore record or otherwise expose the number of fractional requests and must not assume at runtime that \(\lvert U_{\mathrm{frac}}\rvert\le3\).
 
-The extraction implementation must safely process an arbitrary fractional set. Cases that exceed the expected structural bound should be observable and tested.
+The extraction implementation must safely process an arbitrary fractional set.
+Cases that exceed the expected structural bound must be observable. A dedicated
+test is follow-up work when such a case is encountered or becomes relevant to a
+supported MVP path; it is not an initial test gate.
 
 Do not add new global coupling constraints merely for implementation convenience without reconsidering the structural argument.
 
@@ -1277,9 +1280,11 @@ Run:
 2. targeted CPU tests;
 3. synthetic scheduler-state tests;
 4. a tiny GPU smoke test;
-5. tiny LP-versus-baseline runs.
+5. inspect actual scheduling decisions and state transitions.
 
-Inspect actual scheduling decisions and state transitions rather than relying only on aggregate performance metrics.
+Tiny LP-versus-baseline runs are useful follow-up validation once the basic
+path runs; they are not an initial MVP gate. Do not rely only on aggregate
+performance metrics.
 
 ## Phase H — Performance evaluation
 

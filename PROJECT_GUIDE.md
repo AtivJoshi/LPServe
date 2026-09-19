@@ -56,7 +56,7 @@ The planned sequence is:
 7. Phase G — perform integrated correctness validation.
 8. Phase H — attribute timing and run controlled performance comparisons.
 
-The Phase C architecture audit and the Phase D–F normative design artifacts exist, and `docs/project_status.md` now records **Phase C closure / Phase D preparation**. Phase D implementation has not started. The next work is to resolve only the OPEN decisions required by the pure Phase D mathematical layer, record the approved resolutions in `docs/lp_scheduler_design.md`, and then implement and validate that layer.
+The Phase C architecture audit and the Phase D–F normative design artifacts exist, and `docs/project_status.md` now records **Phase C closure / Phase D preparation**. Phase D implementation has not started. The next work is to supply only the values required by the pure Phase D mathematical layer, as approved resolutions or visible scoped provisional inputs, and then implement and validate that layer. Synthetic Phase D utilities, capacities, reserve, and decode-charge values need not become permanent project decisions.
 
 The key separation is:
 
