@@ -1197,7 +1197,7 @@ Codex prompts must therefore be self-contained and should specify:
 
 When implementation behavior is uncertain, Codex should inspect the local `LPServe` source rather than being given assumptions about how the framework works.
 
-The goal is to implement the required scheduling behavior in the simplest form that fits `LPServe`'s architecture.
+The goal is to implement the required scheduling behavior in the simplest form that fits `LPServe`'s architecture. Future sessions should not broaden work into inherited framework repairs, speculative abstractions, exhaustive edge-case handling, or documentation bloat unless the issue blocks the active MVP path.
 
 ---
 
@@ -1442,6 +1442,21 @@ This should be answered experimentally after the scheduler is working correctly.
 
 # 22. Current Project Scope and Priorities
 
+## 22.1 MVP compatibility mode
+
+The immediate priority is a basic runnable LP scheduler. The initial LP path
+uses existing LPServe/SLAI serving behavior, including native recomputation
+preemption, without repairing pre-existing serving-framework defects. Known or
+newly discovered inherited issues are documented as limitations unless they
+prevent the selected MVP path from running. This is a compatibility choice, not
+a claim that those behaviors are correct or repaired.
+
+Planning should resolve only the choices required by the active MVP. Necessary
+choices may be visible, provisional configuration or scoped experiment inputs;
+defer non-blocking edge cases, broad hardening, generalization, and performance
+optimization. Implement the smallest path needed now, and let unsupported
+states fail visibly rather than adding speculative recovery or fallback logic.
+
 The implementation is based on the following design principles:
 
 - model each scheduling step as a myopic utility-maximization problem;
@@ -1453,9 +1468,9 @@ The implementation is based on the following design principles:
 - keep the mathematical planning-memory model conceptually separate from physical KV-block feasibility;
 - keep utility design, decode-memory accounting, memory-reserve policy, and numerical tolerances explicit as research choices;
 - design the software directly around `LPServe`'s scheduler and block-manager architecture;
-- establish correctness before optimizing solver overhead.
+- establish focused evidence for the supported MVP path before optimizing solver overhead.
 
-The immediate objective is to establish a clean `LPServe` baseline, understand the SLAI-derived scheduler architecture precisely, and then implement the mathematical scheduler natively inside the `LPServe` fork.
+The immediate objective is to establish a clean `LPServe` baseline, understand the SLAI-derived scheduler architecture sufficiently for the selected MVP, and then implement the mathematical scheduler natively inside the `LPServe` fork as soon as possible.
 
 ---
 

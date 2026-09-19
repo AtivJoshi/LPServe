@@ -16,12 +16,20 @@ Do not reconstruct project context from `README.md`, modern vLLM, another Sarath
 ## Evidence and decision discipline
 
 - Keep these categories distinct in reasoning, code review, tests, and reports: mathematical requirements; verified existing-framework behavior; normative design requirements; OPEN decisions; BLOCKERs; and observed experimental evidence.
-- Never silently resolve an OPEN item in `docs/lp_scheduler_design.md`. An OPEN item is not a default or permission to choose the easiest implementation.
+- Do not silently turn an OPEN item into a permanent project decision. For the active MVP, an agent may choose a minimal, visible, provisional value when it is necessary to proceed; record it in the appropriate design/configuration surface.
 - Implementation convenience does not authorize changing the mathematical formulation. Do not alter mathematical or normative documentation merely to make code easier to write.
 - If authoritative sources appear inconsistent, identify the exact conflicting claims, paths or sections, and revision boundaries. Stop the affected decision and report the discrepancy instead of choosing silently.
 - When a claim about existing LPServe behavior materially affects implementation, inspect the current source. Recheck affected paths against the commit-pinned architecture audit; code at the checked-out revision is the ultimate evidence for existing behavior, but code presence is not proof of correctness.
 - Do not present a design requirement, planned test, inferred behavior, or unexecuted path as verified implementation evidence.
-- Respect every applicable BLOCKER in `docs/lp_scheduler_design.md` §16. Do not enable or claim correctness for blocked behavior until the required design change and validation are explicit.
+- Follow the MVP compatibility policy in `docs/lp_scheduler_design.md` §16. Existing LPServe/SLAI limitations may be inherited and documented rather than repaired; do not claim that inherited behavior is correct or fixed.
+
+## MVP-first planning and minimal implementation
+
+- Prioritize the shortest path to a basic runnable LP scheduler. Do not broaden a task into repairs for pre-existing serving-framework behavior, exhaustive edge-case design, or premature optimization unless that issue prevents the selected MVP path from running.
+- Keep documentation concise and local to the authoritative document. Record only material decisions, invariants, observed limitations, and reproducibility facts; do not create duplicate summaries, speculative notes, or routine status updates.
+- Implement the smallest code path required now. Do not add speculative abstractions, configuration knobs, compatibility shims, fallbacks, retries, rollback, or future-proofing without a demonstrated current need.
+- Unsupported states and unexpected failures must fail visibly through a clear error or structured failure result. Do not silently patch state, fabricate a schedule, or continue after a meaningful failure.
+- Ask for direction only when a choice materially changes the mathematical objective, public semantics, or project scope. Otherwise make the smallest reversible provisional choice and record it visibly.
 
 ## Modification discipline
 
@@ -41,7 +49,7 @@ Follow the ownership model in `docs/lp_scheduler_design.md` §3 and the project 
 - **Phase E — state mapping:** read-only construction of a coherent, immutable Phase D input from current LPServe state.
 - **Phase F — execution:** fresh physical and operational prevalidation followed by ordered LPServe-native mutation and `SchedulerOutputs` construction.
 
-Do not blur these layers. Phase E must not mutate scheduler or serving state. Phase F must not run after an unsuccessful or stale Phase D/E result and must comply with the failure and blocker contracts in the design.
+Do not blur these layers. Phase E must not mutate scheduler or serving state. Phase F must not run after an unsuccessful or stale Phase D/E result and must comply with the selected MVP compatibility and failure contracts in the design.
 
 The architecture summary is an orientation aid only: `docs/lp_scheduler_design.md` remains authoritative for normative requirements, and `docs/lpserve_scheduler_architecture.md` remains the full descriptive audit evidence.
 
@@ -59,16 +67,16 @@ For Phase D work:
 
 ## OPEN decisions and supplied inputs
 
-Implementation may proceed only when every OPEN decision required by the requested layer has been explicitly resolved by the project or supplied as an explicit input for the scoped test or configuration.
+Implementation may proceed when every OPEN decision required by the requested layer is either explicitly resolved or supplied as an explicit, visible provisional input for the scoped MVP, test, or configuration.
 
-Never invent hidden defaults for solver choice or status handling, numerical tolerances, tie-breaking or iteration order, utility policy or scaling, capacity mapping, memory coefficients or reserve, failure/fallback behavior, stale-state handling, or any other OPEN item in `docs/lp_scheduler_design.md` §17.
+Do not invent hidden defaults. Keep solver choice or status handling, numerical tolerances, tie-breaking or iteration order, utility policy or scaling, capacity mapping, memory coefficients or reserve, failure behavior, stale-state handling, and other values externally visible. A scoped value is not automatically a permanent project-wide decision.
 
-A value supplied for a synthetic test, smoke configuration, or experiment is not automatically a project-wide decision. Label it as scoped input, keep it externally visible, and do not encode it as an undocumented production default. If required input is absent, report the blocking OPEN decision and stop the affected implementation path while continuing any independent work that remains valid.
+Resolve only what the active MVP needs. If a missing input matters to that path, choose the smallest reversible provisional value or ask for direction when the choice materially changes objective, public semantics, or scope. Do not halt work for unrelated OPEN items.
 
 ## Testing and verification
 
-- Add focused tests for each new behavior and regression risk.
-- Use the authoritative requirements in `docs/lp_scheduler_design.md` §15 and relevant invariants in §§11–14; do not substitute a smaller ad hoc test plan.
+- Add focused tests for each implemented MVP behavior and directly relevant regression risk.
+- Use the MVP-oriented requirements in `docs/lp_scheduler_design.md` §15 and relevant invariants in §§11–14. Do not expand a task into exhaustive testing of inherited or deferred edge cases unless they block the supported path.
 - Run proportionate syntax, import, static, unit, and synthetic checks after changes. Advance to state-mapping, integration, GPU smoke, and performance tests only when the applicable earlier correctness gates pass.
 - Report the exact commands run and their observed results. Distinguish passed, failed, skipped, and unexecuted checks, including why anything was not run.
 - Never claim that a command, test, installation, GPU run, or benchmark succeeded unless its output was observed.

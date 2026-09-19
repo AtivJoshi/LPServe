@@ -6,7 +6,7 @@
 
 This repository is the working implementation and experiment base for a research prototype of an LP-relaxation scheduler for continuous-batching LLM inference. The scheduler is to be implemented natively in the LPServe/SLAI-derived serving framework and compared with existing policies in that same framework. The first target is **Primal Heuristic 1**: the myopic ILP's continuous relaxation followed by deterministic, feasibility-preserving integer extraction.
 
-Correctness and reproducibility come before performance. Proposed mathematics, observed framework behavior, scheduler requirements, implementation, and experimental evidence are different kinds of claims and must remain visibly separated.
+The immediate priority is a basic runnable LP scheduler as soon as possible. Proposed mathematics, observed framework behavior, scheduler requirements, implementation, and experimental evidence remain different kinds of claims and must remain visibly separated. The MVP may intentionally inherit existing LPServe/SLAI behavior and known defects; that is not evidence that those behaviors are correct or repaired.
 
 ## Repository knowledge map
 
@@ -33,7 +33,7 @@ Authority is **claim-specific**, not one universal ranking:
 
 - For what the proposed optimization problem means, use `docs/math/main-llm-serving.tex`.
 - For research assumptions, validation discipline, phase boundaries, and implementation philosophy, use `docs/LP Scheduler Research Context.md`.
-- For what the first LP scheduler must do, use `docs/lp_scheduler_design.md`, while preserving every OPEN decision and BLOCKER and checking it against the mathematical source.
+- For what the first LP scheduler must do, use `docs/lp_scheduler_design.md`, including its MVP compatibility policy, and check it against the mathematical source.
 - For quick architecture orientation, use `docs/lpserve_scheduler_architecture_summary.md`; it is a digest only. The full audit governs descriptive framework behavior when they conflict, and the design file governs normative LP-scheduler requirements when the summary and design conflict.
 - For what the audited existing framework did at `c3e0143`, use `docs/lpserve_scheduler_architecture.md` and its evidence classifications.
 - For a claim about existing framework behavior that must be verified, inspect the LPServe source code. Code is the ultimate evidence for the checked-out revision; the architecture document remains the durable description of its pinned audit revision. Code presence does not imply correctness.
@@ -66,7 +66,21 @@ LPServe state -> Phase E snapshot/mapping -> Phase D solve/extraction
               -> SchedulerOutputs
 ```
 
-Phase D must remain independent of mutable LPServe objects and GPU execution. Phase E is read-only. Phase F must not run after an unsuccessful prior stage and remains constrained by the design's unresolved decisions and blockers.
+Phase D must remain independent of mutable LPServe objects and GPU execution. Phase E is read-only. Phase F must not run after an unsuccessful prior stage and follows the design's selected MVP compatibility policy.
+
+## MVP triage and minimalism
+
+For the active MVP, distinguish three kinds of work:
+
+- Fix defects introduced by LP-scheduler work and issues that prevent the selected MVP path from running.
+- Inherit and document pre-existing LPServe/SLAI behavior, including known defects, rather than repairing it as collateral work.
+- Defer broad hardening, exhaustive edge-case coverage, generalization, and performance optimization until the MVP creates a concrete need.
+
+Resolve or supply only the values needed by the active phase. A necessary value may be a visible, provisional configuration or scoped experiment input; do not present it as a permanent research conclusion unless it is explicitly approved as one.
+
+Document only material decisions, invariants, observed issues, and reproducibility facts. Do not create duplicate summaries, speculative notes, exhaustive issue catalogs, or routine status updates. Update the single authoritative document for a meaningful decision.
+
+Implement the smallest code path that satisfies the active goal. Do not add speculative abstractions, configuration knobs, fallback policies, retries, recovery, or edge-case handling without a demonstrated current need. Unsupported states should fail visibly rather than being silently repaired.
 
 ## Work / research-design sessions
 
@@ -84,9 +98,9 @@ Keep verified facts, inferences, proposed requirements, unresolved choices, and 
 
 Before editing, record the branch, commit, and working-tree state, preserve unrelated user changes, and compare scheduler-relevant code with the audit baseline. For Phase D, read `docs/lp_scheduler_design.md` first for normative requirements, then `docs/lpserve_scheduler_architecture_summary.md` for architecture orientation, then the full audit and current source code only as needed for detailed framework claims; use Sections 7, 9–11, and 14–18 of the design and the corresponding ILP/relaxation/extraction sections of `docs/math/main-llm-serving.tex`.
 
-Implementation tasks should state the objective, files allowed to change, required behavior and invariants, tests, and out-of-scope work. Do not infer LPServe behavior from modern vLLM or another Sarathi/SLAI version. Do not hard-code utility policy, solver/status policy, tolerances, tie-breaking, memory coefficients or reserve, failure behavior, or other OPEN decisions.
+Implementation tasks should state the objective, files allowed to change, required behavior and invariants, focused checks, and out-of-scope work. Do not infer LPServe behavior from modern vLLM or another Sarathi/SLAI version. Supply only the policy values needed by the active MVP, visibly and provisionally where appropriate; do not bury them as undocumented defaults.
 
-Validate in phase order: syntax/import/static checks; focused CPU tests; synthetic mathematical tests; scheduler-state/integration tests; a tiny GPU smoke test; inspection of scheduling decisions and state transitions; then larger experiments. Never report a command, test, or experiment as successful without observing its output, and never substitute aggregate throughput or latency for scheduler-correctness evidence.
+Validate in phase order with focused evidence for the supported MVP path: syntax/import/static checks; focused CPU tests; synthetic mathematical tests; scheduler-state/integration tests; a tiny GPU smoke test; inspection of scheduling decisions and state transitions; then larger experiments. Do not expand the task into exhaustive inherited edge-case coverage unless it blocks that path. Never report a command, test, or experiment as successful without observing its output, and never substitute aggregate throughput or latency for scheduler-correctness evidence.
 
 ## Documentation maintenance
 

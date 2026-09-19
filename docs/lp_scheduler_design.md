@@ -102,6 +102,22 @@ The Phase C architecture audit and this design's code baseline are pinned to com
 
 This document relies especially on Sections 6–8, 11–18, 20–23, and 26–28 of `lpserve_scheduler_architecture.md`. Those sections remain the authoritative detailed account of request state, ownership, scheduler output replay, block allocation, recomputation, pipeline behavior, and known defects. Their walkthroughs are not duplicated here.
 
+### 2.4 MVP compatibility and minimalism policy
+
+The immediate objective is a basic runnable LP scheduler. For this MVP, the LP
+path reuses existing LPServe/SLAI native behavior, including recomputation
+preemption, without repairing pre-existing serving-framework defects. Known or
+newly discovered inherited framework issues are documented as limitations unless
+they prevent the selected MVP path from running. They are not evidence that the
+LP scheduler repaired them, and affected runs do not establish corrected
+framework semantics.
+
+The MVP implements the smallest path needed for that objective. It does not add
+speculative abstractions, fallback policies, retries, rollback, broad
+compatibility handling, or exhaustive edge-case coverage. Unsupported states or
+unexpected failures fail visibly through a clear error or structured failure
+result; they are not silently repaired or converted into fabricated actions.
+
 ## 3. End-to-end responsibility decomposition
 
 The conceptual flow is `LPServe state → Phase E read-only snapshot → utility and
@@ -176,14 +192,14 @@ i\text{ is resident and legally preemptible at the beginning of }t
 \right\}.
 $$
 
-Membership requires resident scheduler ownership, non-finished state, an
-allocated block table, accepted native status, safe decision-boundary release,
-and a validated recomputation-preemption path. `RUNNING`/`PAUSED` alone is
-insufficient. For $i\notin\mathcal Z_t$, $z_i=0$; Phase D receives
-$\mathcal Z_t$ explicitly and never infers legality from relaxed values or
-metadata. Until the recomputation and control-only blockers clear, integrated
-Phase E exposes no executable candidate: operational $\mathcal Z_t$ is empty
-although synthetic Phase D tests may be nonempty.
+For the MVP, membership follows the selected scheduler's native preemption
+eligibility and ownership path: the request is resident, unfinished, allocated,
+and has a native executing status. `RUNNING`/`PAUSED` alone remains insufficient
+without the selected scheduler ownership and allocation checks. For
+$i\notin\mathcal Z_t$, $z_i=0$; Phase D receives $\mathcal Z_t$ explicitly and
+never infers eligibility from relaxed values or metadata. This compatibility
+rule inherits the framework's known recomputation, control-only, and in-flight
+limitations; it is not a proof of safe release or corrected semantics.
 
 ### 4.5 Do nothing and non-LP control actions
 
@@ -886,7 +902,7 @@ incoherent state and never combines incompatible instants.
 |---|---|---|
 | Request ID $i$ | `Sequence.seq_id` | Resolved |
 | $U_t$ | Deduplicated arrived, non-finished sequences under the LP scheduler's authoritative ownership | Ownership container design OPEN |
-| $\mathcal Z_t$ | Owned resident, allocated, native-status-eligible, safely releasable, validated-recomputation requests | Empty while blockers remain; pipeline predicate OPEN |
+| $\mathcal Z_t$ | Owned resident, allocated, native-status-eligible requests on the selected native preemption path | MVP compatibility mode inherits known limitations; pipeline predicate OPEN |
 | $P_i^{\mathrm{rem}}$ | `get_prompt_len() - get_num_prompt_tokens_processed()` | Resolved |
 | Prefill eligibility | Positive remainder plus legal ownership/status/allocation path | Exact status policy must be documented |
 | Decode eligibility | Prompt complete, zero remainder, resident/allocated, legal status, not in-flight | Resolved boundary; pipeline predicate OPEN |
@@ -928,7 +944,7 @@ permission to patch a stale plan.
 ## 13. Validated Phase F action execution
 
 Phase F runs only after valid Phase E, admissible solve, successful extraction
-and plan validation, current snapshot identity, and enabled blocker gates.
+and plan validation, and current snapshot identity.
 Before its first mutation, it validates the whole plan: current
 existence/ownership/status/eligibility; ID uniqueness and exclusion; chunk and
 resident bounds; recovery, allocation, append, watermark, replay, and
@@ -940,14 +956,15 @@ Prevalidation reduces risk, not non-atomicity.
 | Unallocated prefill | Waiting/arrived/unfinished/prompt-incomplete; full allocation and resident slot; move ownership once, allocate full logical context, emit `SequenceScheduleMetadata` with positive `prompt_chunk_len=\hat x_i`. | Admission cost is independent of chunk length. |
 | Resident prefill | Verify allocation, $a_i^P=0$, positive remainder, and ownership; no new admission; emit positive `prompt_chunk_len` metadata. | Verify zero allocation in integration tests. |
 | Decode | Verify prompt completion, resident allocation/status, and append feasibility; append in metadata order; emit `prompt_chunk_len=0`. | $c_i^D$ is the pre-action gap. |
-| Preemption | Remove resident owner once, free central blocks, native-return to waiting, emit only `preempted_seq_ids`, replay `reset_for_recompute()`/local frees. | Disabled until applicable Section 16 blockers clear. |
+| Preemption | Remove resident owner once, free central blocks, native-return to waiting, emit `preempted_seq_ids`, replay `reset_for_recompute()`/local frees. | MVP compatibility mode: use the native path without repairing its inherited limitations. |
 | Do nothing | No mutation or output entry. | Empty-plan fallback/liveness is OPEN. |
 
 Central and workers use one replay-compatible deterministic order: validated
 ignored controls, preemption/free, scheduled actions, ownership finalization,
 then `SchedulerOutputs`; native replay uses ignored, preempted, then scheduled
-IDs, which are disjoint. Enabled mixed batches are prompt-first and sampler-safe;
-unsupported identity/length, pipeline, or control-only cases are rejected.
+IDs, which are disjoint. The MVP does not repair inherited mixed-batch,
+sampler-association, pipeline, or control-only behavior; affected cases are
+documented limitations rather than a reason to expand the executor.
 Mutation granularity and post-mutation recovery remain OPEN. Before output,
 verify ownership, allocation, no loss/duplication, free-block deltas, and exact
 action/token counts. Replay tests, not output alone, establish central/worker
@@ -1040,8 +1057,8 @@ Use real or faithful LPServe `Sequence` and block-manager state to test:
 - request universe: exact prompt remainder; future/finished exclusion; complete
   owned-unfinished inclusion; duplicate/conflicting ownership rejection; and
   prefill/decode eligibility;
-- preemption: empty operational $\mathcal Z_t$ while blockers remain, then the
-  legal predicate after they clear;
+- preemption: the selected native eligibility predicate and its documented
+  inherited limitations;
 - capacity mapping: allocator free blocks; resident/admission/recomputation
   charges; exact/conservative decode charge; recovery; and separate
   $B_{\max},C_{\max},S_{\max}$, and resident capacity; and
@@ -1049,7 +1066,8 @@ Use real or faithful LPServe `Sequence` and block-manager state to test:
 
 ### 15.4 Phase F execution tests
 
-Before GPU validation, synthetic scheduler-state tests must cover:
+Before GPU validation, focused synthetic scheduler-state tests cover the
+supported MVP path:
 
 - waiting prefill admission;
 - resident partial prefill;
@@ -1061,12 +1079,15 @@ Before GPU validation, synthetic scheduler-state tests must cover:
 - metadata chunk sign and bounds;
 - unique/disjoint output IDs;
 - central replay order matching worker replay order;
-- prompt-first mixed-batch metadata order;
+- prompt-first metadata ordering when the selected MVP schedules mixed batches;
 - rejected stale or physically infeasible plan causing zero mutation;
-- every enabled post-mutation failure policy;
-- preemption/recomputation only after the Section 16 fixes are present;
-- control-only outputs only after their engine semantics are fixed;
-- central/worker block-table equality in deterministic replay tests.
+- the selected visible failure behavior for the MVP; and
+- central/worker block-table equality in deterministic replay tests when the
+  supported path reaches both layers.
+
+Known inherited edge cases are documented and deferred unless they block the
+supported MVP path; this section does not require their repair before a basic
+implementation runs.
 
 ### 15.5 Integrated validation sequence
 
@@ -1077,7 +1098,8 @@ After Phases D–F pass their CPU tests:
 3. run state-mapping and executor tests;
 4. run one tiny single-GPU smoke test with the smallest supported action set;
 5. inspect per-iteration LP inputs, relaxed decisions, extracted decisions, queue transitions, and block deltas;
-6. add preemption only after its blockers and tests are cleared;
+6. exercise native preemption under the MVP compatibility policy and record its
+   inherited limitations where relevant;
 7. compare against tiny same-framework baselines;
 8. begin broader timing or performance experiments only after correctness evidence is retained.
 
@@ -1097,40 +1119,45 @@ Each phase handoff must record:
 
 The absence of a failure in a GPU run is not evidence that an unexercised invariant holds.
 
-## 16. Deferred blockers and unsupported scope
+## 16. Known inherited framework limitations in MVP compatibility mode
 
-### 16.1 Recomputation generation-limit semantics — BLOCKER
+### 16.1 Recomputation generation-limit semantics
 
 `reset_for_recompute()` moves existing generated token IDs into the prompt context and clears `output_token_ids`. The current length cap uses the cleared list rather than the cumulative output-token count. A preempted request can therefore generate beyond its requested `max_tokens` across restarts.
 
-The model's causal token context is preserved, but user-visible generation semantics are not. Runtime recomputation preemption MUST remain disabled until the generation limit is based on a correct cumulative notion and targeted tests cover one and multiple restarts.
+The model's causal token context is preserved, but user-visible generation semantics are not. The MVP inherits this behavior when it uses native recomputation preemption; it does not repair it or claim corrected generation semantics.
 
-### 16.2 Recomputation `RequestOutput` semantics — BLOCKER
+### 16.2 Recomputation `RequestOutput` semantics
 
 After recomputation, the audited `RequestOutput` can pair:
 
 - the original prompt string with expanded prompt token IDs; and
 - cumulative output text with only post-restart output token IDs.
 
-The intended external contract must be selected, repaired, and tested before preemption results are used in correctness or performance claims.
+The MVP inherits this behavior when it uses native recomputation preemption. It does not repair the external contract or use affected results to claim corrected output semantics.
 
-### 16.3 Control-only scheduler outputs — BLOCKER
+### 16.3 Control-only scheduler outputs
 
 A preempt-only or ignore-only output has no scheduled metadata. The single-stage engine drops such an output before replay, while the pipeline path can enqueue control state and then wait for model output from a batch never sent to workers.
 
-The LP can legitimately produce a preempt-only plan. Phase F MUST therefore not emit preempt-only output until engine handling of control-only output is repaired and tested. The executor MUST NOT force an unrelated scheduled action merely to avoid this defect.
+The LP can legitimately produce a preempt-only plan. In MVP compatibility mode,
+the executor does not repair this inherited behavior or force an unrelated
+scheduled action merely to avoid it. Affected executions are documented as
+unsupported/known-limitation outcomes.
 
-### 16.4 Mixed-batch and sampler association — BLOCKER for affected cases
+### 16.4 Mixed-batch and sampler association
 
 The model runner physically packs prompts before decodes, whereas existing scheduler metadata may be decode-first or interleaved. Sampling-type grouping can also select incorrect tensor rows, and completion uses positional `zip` without checking result IDs or lengths.
 
-The LP executor requires prompt-first metadata, but correctness for mixed sampling types additionally requires identity- and length-validated sampler association. Unsupported cases must be rejected or excluded from claims until the underlying path is fixed and tested.
+The LP executor preserves its selected replay order but does not repair the
+underlying framework behavior. Affected cases are documented limitations and do
+not establish corrected sampler semantics.
 
-### 16.5 Non-transactional mutation — BLOCKER for recovery claims
+### 16.5 Non-transactional mutation
 
-Scheduler queues and central blocks mutate before forward execution, workers replay later, and no cross-layer rollback exists. Prevalidation is mandatory, but no implementation may claim atomic commit or recoverable failure without additional design and evidence.
+Scheduler queues and central blocks mutate before forward execution, workers replay later, and no cross-layer rollback exists. Prevalidation remains part of the selected path, but the MVP adds no rollback or recovery. It must not claim atomic commit or recoverable failure.
 
-### 16.6 Pipeline-parallel support — DEFERRED
+### 16.6 Pipeline-parallel support — deferred from the initial MVP
 
 Pipeline execution permits multiple microbatches in flight. The audited framework anticipates preemption of a request while an older batch is executing, but exposes no safe physical-release predicate, per-batch KV version, or exact completion association sufficient for this design.
 
@@ -1154,13 +1181,17 @@ Initial correctness validation is limited to a single pipeline stage. Supporting
 | D-14 | **RESOLVED** — absolute $\varepsilon_{\mathrm{int}}=10^{-6}$ for validated indicators only. | §10.1; §15.2 |
 | D-15 | **RESOLVED** — absolute $\varepsilon_{\mathrm{feas}}=10^{-7}$, independent validation, narrow projection, and revalidation only. | §11.2; §15.1 |
 | D-16 | **RESOLVED** — ascending immutable lexicographic `order_key`; exact extraction ties. | §§9–10; §15.2 |
+| D-25 | **RESOLVED** — MVP compatibility mode reuses existing LPServe/SLAI behavior, including native recomputation preemption, without repairing inherited framework defects. Material inherited limitations are documented; only issues that block the selected MVP path require action. | §§2.4, 4.4, 13, 16 |
 
 D-13 provides no basic/extreme-point or fractional-count guarantee; its
 performance, control, and basis remainder remains OPEN (§9.3).
 
 ### 17.1 OPEN decisions
 
-Every row below is a required explicit decision. No listed candidate is a default.
+Only OPEN decisions required by the active MVP need an immediate value. A required
+value may be supplied as a visible, provisional configuration or scoped
+experiment input; it is not thereby a permanent project-wide decision. No listed
+candidate is a hidden default.
 
 | ID | Decision | Candidate space stated by sources | Must be resolved by |
 |---|---|---|---|
