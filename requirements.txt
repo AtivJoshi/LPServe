@@ -20,3 +20,4 @@ tiktoken
 grpcio
 tqdm
 vllm-flash-attn
+scipy == 1.15.3  # Required by lp_relaxation_scheduler.py; pinned to the version observed on Unity.
