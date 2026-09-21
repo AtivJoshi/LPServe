@@ -24,7 +24,7 @@ For an unpreempted fractional request, if normalized relaxed `y == 0.0` and norm
 
 The instruction's scenario (two legal candidates with `z=0.5`, `y=I=0`, recovery `2`, safety repair after the locked prefill) cannot reach the zero/zero branch. Under design §10.4, `z=0.5` strictly exceeds `y=I=0` with `c^Z=2>0`, so both candidates are selected as dominant preemptions before packing. Against the base code, that scenario failed only on `safety_preemption_ids == ()`, not because of the `y >= I` promotion.
 
-With user approval, the regression instead uses one legal-preemption candidate with recovery `0` (never a dominant or safety victim, per §§10.4–10.5), decode-ineligible, relaxed `x=0, y=0, I=0, z=0.5`, beside a locked prefill (fixed charge 2, `m_free=2`). This scenario does not exercise safety repair. The safety-repair path with a tie remains covered by the pre-existing `test_mixed_case_and_tied_extraction`. Design §10.4/§10.5 were not changed.
+With user approval, the regression instead uses one legal-preemption candidate with recovery `0` (never a dominant or safety victim, per §§10.4–10.5), decode-ineligible, relaxed `x=0, y=0, I=0, z=0.5` (with preemption penalty `0.5` in the original commit; superseded by the Addendum below, which sets the penalty to `0`), beside a locked prefill (fixed charge 2, `m_free=2`). This scenario does not exercise safety repair. The safety-repair path with a tie remains covered by the pre-existing `test_mixed_case_and_tied_extraction`. Design §10.4/§10.5 were not changed.
 
 ## Commands and observed results
 
@@ -96,3 +96,45 @@ No state mapping, execution, framework integration, or unrelated repair was perf
 ```
 
 `CLAUDE.md` was untracked at the start of the task and is unrelated.
+
+## Addendum: regression optimality correction
+
+- Correction commit: `db3a64afbe1aec2b6b11d477ced4f2f888288a06` (base `d0dc4280bbd45c658fda15664af24d1e023a4d8b`; changes only `tests/test_lp_relaxation_scheduler.py`, one line: `cand` utilities `(0, 0, 0.5)` -> `(0, 0, 0)`).
+- Why the former point was not optimal: with recovery `0`, `z=0.5` frees no memory but costs `0.5 * 0.5 = 0.25` in the objective. The point was feasible with objective `0.75`, while the LP optimum was `1.0` (solver `z=0`), so an optimal-only solver pipeline could never deliver it to extraction. The statement above that the former point was a valid extraction input is superseded.
+- Current status: with recovery `0` and penalty `0`, `cand.z` has no effect on feasibility or objective, so `z=0.5` is a degenerate optimal relaxed solution. Observed in a scratch check (not added to the repository): the solver returned `optimal_candidate`, status `0`, minimization objective `-1.0` (maximization `1.0`, raw vector `(1, 0, 0, 0, 1, 0, 0, 0)`). The hand-authored point `(1, 0, 0, 0, 1, 0, 0, z)` passed `validate_relaxed_solution` with maximization objective `1.0` for each of `z = 0.0, 0.5, 1.0`, equal to the solver optimum.
+- No test was added; the existing regression is unchanged except for the one-line utility change, so the suite still has five tests.
+
+### Commands and observed results (after correction)
+
+Same environment as above (Python 3.10.8 via the Unity module and `env`).
+
+```
+$ python -m py_compile lp_relaxation_scheduler.py tests/test_lp_relaxation_scheduler.py
+exit=0
+$ python lp_relaxation_scheduler.py
+exit=0   (output not repeated; unchanged production code)
+$ python -m unittest discover -s tests -p 'test_lp_relaxation_scheduler.py' -v
+test_fractional_prefill ... ok
+test_main_smoke ... ok
+test_mixed_case_and_tied_extraction ... ok
+test_visible_infeasibility ... ok
+test_zero_zero_execution_tie_is_no_action ... ok
+Ran 5 tests in 0.013s
+OK
+$ grep -n -i "phase" lp_relaxation_scheduler.py tests/test_lp_relaxation_scheduler.py
+exit=1   (no matches)
+```
+
+### Pre-fix sensitivity (corrected test file vs. `git show 6ddba39e12db885c5baa8b4e5262fd0b62155886:lp_relaxation_scheduler.py` in a scratch directory)
+
+`Ran 5 tests in 0.031s`, `FAILED (failures=1)`. The four original tests passed. `test_zero_zero_execution_tie_is_no_action` failed with `AssertionError: Tuples differ: (0, 1, 0, 0) != (0, 0, 0, 0)` (the candidate was promoted to an ineligible decode).
+
+### Check status
+
+- Passed: `py_compile`, smoke run, 5 of 5 unit tests on the fixed code, `grep` (no matches), pre-fix failure of the corrected regression only, and the scratch optimality check.
+- Failed: none other than the expected pre-fix regression failure.
+- Skipped/unexecuted: formatter/lint (tools not installed); LaTeX build; anything beyond CPU unit checks.
+
+### Working tree
+
+Before this handoff update, after the correction commit: `?? CLAUDE.md` only (pre-existing, unrelated).
