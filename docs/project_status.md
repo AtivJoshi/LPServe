@@ -2,41 +2,38 @@
 
 ## Current phase
 
-**Phase C closure / Phase D preparation as of 2026-09-05.**
+**Phase D accepted / Phase E preparation as of 2026-09-20.**
 
-The code-grounded Phase C architecture audit and its durable reference have been
-completed. The audit was read-only: it did not implement the LP scheduler,
-change serving code, add a solver, or execute new Phase C unit or GPU tests.
-Subsequent mathematical/source clarification and normative design work produced
-the Phase D--F design contract now present in the repository.
+The pure, framework-independent LP-relaxation mathematical layer is implemented
+in `lp_relaxation_scheduler.py` and accepted for the scoped MVP. It constructs
+and solves the documented continuous relaxation with SciPy/HiGHS, independently
+validates the relaxed solution, performs deterministic feasible integer
+extraction, validates the resulting plan, and returns structured success or
+failure without importing LPServe runtime objects.
 
-Phase D is the next implementation phase, but implementation has not started.
-The immediate handoff is to resolve only the OPEN decisions required by the
-affected Phase D layer, record those decisions in the normative design, and then
-implement and validate the pure mathematical layer.
+Phase E read-only state mapping is the next implementation phase. Phase E must
+construct coherent immutable inputs for the accepted mathematical layer without
+mutating queues, statuses, block state, prompt progress, or GPU state. Phase F
+execution and live scheduler integration remain out of scope until their design
+gates are satisfied.
 
-## Current repository and Phase C provenance
+## Current repository and provenance
 
 | Field | Recorded value |
 |---|---|
 | Local branch | `main` |
 | Phase C audited code revision | `c3e014363dd50e1830d7c85c3d043eab69fdc9e5` (`gitignore update`) |
-| Documentation integration revision | `6fbc046eca7c0cb7988f08690757d140a51a03e3` (`Initiated docs`) |
-| HEAD when this status was updated | `6fbc046eca7c0cb7988f08690757d140a51a03e3` |
+| Initial Phase D implementation | `f406eeaac7bafc4478304744c9187316b75b8f67` |
+| Zero-valued extraction-tie contract fix | `32036f6a0ddb9bf2b55fc81f48967d61d558b4c2` |
+| Regression optimality correction | `db3a64afbe1aec2b6b11d477ced4f2f888288a06` |
+| Accepted implementation/evidence HEAD | `67a336222a6ec2ac53d932e7928c597dd4ccbe23` |
 
 `docs/lpserve_scheduler_architecture.md` remains intentionally pinned to
-`c3e0143`. The committed diff from `c3e0143` through `6fbc046` adds only
-documentation: the architecture reference, scheduler design, updated research
-context, mathematical source, and bibliography. No audited implementation,
-configuration, or experiment-tooling path changed between those revisions.
-This establishes that the checked-in scheduler-relevant code at `6fbc046`
-matches the audited code baseline; it does not repin the historical audit.
-
-At the time of this update, the local working tree additionally contains
-uncommitted documentation work: untracked `PROJECT_GUIDE.md` and `AGENTS.md`,
-plus this modification to `docs/project_status.md`. No source-code modification
-is reported by the working tree. These statements are a dated snapshot and must
-be rechecked after later local or committed changes.
+`c3e0143`. The standalone mathematical module does not change the audited
+scheduler, engine, sequence, block-management, or execution paths and therefore
+does not repin the historical audit. The Mac review checkout was clean and
+synchronized with `origin/main` at `67a3362` when acceptance was recorded.
+These statements are a dated snapshot and must be rechecked after later changes.
 
 ## Phase C work completed
 
@@ -66,9 +63,8 @@ while retaining explicit OPEN decisions and BLOCKERs.
   implementation principles, validation requirements, and phase boundaries.
 - `docs/math/main-llm-serving.tex` — repository-local mathematical source of
   truth for the proposed formulation, especially Primal Heuristic 1.
-- `PROJECT_GUIDE.md` and `AGENTS.md` — local Phase D readiness and agent
-  navigation infrastructure. Both remain uncommitted at this snapshot and are
-  not Phase C code-audit evidence.
+- `PROJECT_GUIDE.md` and `AGENTS.md` — repository navigation and agent
+  instructions; not Phase C code-audit evidence.
 
 ### Phase C evidence boundary
 
@@ -79,34 +75,48 @@ or establish performance. It did not implement LP problem construction, solver
 integration, integer extraction, LPServe state mapping, native LP action
 execution, or fixes for the documented framework blockers.
 
-## Phase D handoff
+## Phase D acceptance and Phase E handoff
 
-Phase D is limited to a pure, framework-light, independently CPU-testable
-mathematical layer containing:
+Phase D delivered the scoped pure mathematical layer in
+`lp_relaxation_scheduler.py`, its focused tests in
+`tests/test_lp_relaxation_scheduler.py`, and an explicit SciPy `1.15.3`
+dependency. Python implementation names intentionally omit phase labels because
+phase names and numbers are project-management terminology rather than runtime
+or API terminology.
 
-- LP problem representation and construction;
-- a solver adapter/interface with explicit result handling;
-- relaxed-solution validation;
-- deterministic integer extraction;
-- integer-plan validation; and
-- focused CPU and synthetic tests required by `docs/lp_scheduler_design.md`
-  Section 15.
+Observed Unity evidence used Python 3.10.8, NumPy 2.2.6, and SciPy 1.15.3. It
+included successful syntax compilation, the independent `main()` smoke plan,
+and five passing focused unit tests:
 
-Phase D must not import or accept mutable LPServe scheduler, `Sequence`, block
-manager, engine, queue, or GPU state; perform LPServe mutations; or prematurely
-implement the Phase E mapper or Phase F executor.
+1. build/solve/extract/print smoke behavior;
+2. mixed prefill, decode, preemption, capacity, and ordering behavior;
+3. continuous fractional prefill with feasible integer extraction;
+4. visible infeasible-solver failure without a fabricated plan; and
+5. the approved zero-valued decode/prefill tie rule, including sensitivity
+   against the pre-fix implementation.
 
-Before affected Phase D implementation proceeds:
+The zero-valued rule is normative in `docs/lp_scheduler_design.md` §10.6 and
+the corresponding Primal Heuristic 1 algorithm: normalized
+`y == I^P == 0` selects no execution action, while other exact ties select
+decode. The regression uses zero recovery and zero preemption penalty so its
+fractional `z=0.5` point is a degenerate optimum rather than merely feasible.
 
-1. resolve the necessary Phase-D-blocking OPEN decisions explicitly rather than
-   inventing defaults;
-2. update the relevant normative documentation with the approved decisions and
-   their test implications; and
-3. create a clean Phase C / Phase D handoff commit that records the reviewed
-   documentation state.
+Detailed command output and provenance are retained outside the main
+documentation listing:
 
-No OPEN decision is resolved by this status update, and no Phase D
-implementation is claimed to have started.
+- `docs/handoffs/lp_relaxation_implementation_handoff.md`;
+- `docs/handoffs/lp_relaxation_zero_tie_fix_handoff.md`.
+
+No Phase E mapping, Phase F execution, live integration, GPU work, queue or
+block mutation, framework repair, approximation guarantee, or permanent
+utility/capacity/reserve/decode-charge policy was established. Remaining OPEN
+decisions in `docs/lp_scheduler_design.md` remain OPEN unless explicitly
+recorded there.
+
+The next permitted implementation work is the smallest read-only Phase E mapper
+described by the design. It must preserve the accepted mathematical interface,
+fail visibly on incoherent snapshots, and perform no scheduler or serving-state
+mutation.
 
 ## Historical repository baseline (Phases A and B)
 

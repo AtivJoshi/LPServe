@@ -36,6 +36,7 @@ Do not reconstruct project context from `README.md`, modern vLLM, another Sarath
 - Preserve unrelated user changes. Never overwrite, reformat, or clean them up as collateral work.
 - Inspect the working tree before substantial modification and again before reporting completion.
 - Modify only files required by the requested task. Avoid broad refactors, renames, dependency churn, or opportunistic cleanup unless explicitly requested.
+- Treat phase names and numbers as project-management labels only. Do not use them in Python filenames, package or module names, identifiers, comments, docstrings, printed output, diagnostics, result stages, categories, or failure messages; use responsibility-based implementation terminology instead.
 - Do not commit, push, reset, discard changes, restore files, or rewrite Git history unless explicitly instructed.
 - Do not modify the mathematical formulation or normative design unless the task explicitly authorizes that change and the change is an approved project decision.
 - When an explicitly approved design decision or implementation contract changes, update the appropriate documentation and traceability as part of an authorized task. Otherwise, preserve the documents and report the needed follow-up.

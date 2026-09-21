@@ -646,6 +646,11 @@ Phase D MUST NOT read clocks, global scheduler state, mutable queues, block
 managers, or randomness unless a future design explicitly introduces and
 records such inputs.
 
+Phase names and numbers are project-management labels only. They MUST NOT
+appear in Python filenames, package or module names, identifiers, comments,
+docstrings, printed output, diagnostics, result stages, categories, or failure
+messages. Python implementation surfaces use responsibility-based terminology.
+
 ## 10. LP solution classification and extraction
 
 ### 10.1 Numerical classification

@@ -1,6 +1,6 @@
 # LPServe Project Guide
 
-**Guide provenance:** Prepared on 2026-09-05 against committed HEAD `6fbc046eca7c0cb7988f08690757d140a51a03e3`. The committed changes after the Phase C audit baseline `c3e0143` through `6fbc046` were documentation-only and did not repin the audit. The current Phase C-closure / Phase D-preparation documentation also includes uncommitted local changes, so the working tree is not identical to `6fbc046`; inspect current Git state before relying on this snapshot.
+**Guide provenance:** Updated on 2026-09-20 against committed HEAD `67a336222a6ec2ac53d932e7928c597dd4ccbe23`. The Phase C architecture audit remains pinned to `c3e0143`; later implementation and documentation commits do not repin that historical audit. Inspect current Git state before relying on this snapshot.
 
 ## Project purpose
 
@@ -17,7 +17,8 @@ The immediate priority is a basic runnable LP scheduler as soon as possible. Pro
 | `docs/lpserve_scheduler_architecture_summary.md` | Compact implementation-facing digest of the Phase C architecture audit. Read it before the full audit when quick orientation to scheduler, engine, sequence, and block-management behavior is needed. | Normative LP-scheduler requirements, new evidence beyond the full audit, or authority over the full audit when they conflict. |
 | `docs/lpserve_scheduler_architecture.md` | Descriptive, code-grounded Phase C audit of the existing LPServe/SLAI-derived framework at commit `c3e014363dd50e1830d7c85c3d043eab69fdc9e5`. It records request state, queues, allocation, execution/replay, metrics, defects, gaps, and exact evidence labels. | A proposed LP-scheduler specification, proof about later revisions, or runtime validation of every inspected path. |
 | `docs/lp_scheduler_design.md` | Normative implementation specification for the proposed scheduler across Phases D, E, and F. It defines responsibilities, interfaces, invariants, validation gates, explicit **OPEN** decisions, and **BLOCKER** boundaries. | Permission to fill OPEN items with convenient defaults or to bypass blockers. It does not turn a design requirement into verified implementation. |
-| `docs/project_status.md` | Chronological project state and handoff record. Its current local version records Phase C closure / Phase D preparation while preserving Phase A/B history. | Mathematical, architectural, or design authority. It may lag newer artifacts and must not override them. |
+| `docs/project_status.md` | Chronological project state and acceptance record. It records Phase D acceptance and preserves Phase A--C history. | Mathematical, architectural, or design authority. It may lag newer artifacts and must not override them. |
+| `docs/handoffs/` | Provenance-bearing implementation and review handoffs retained as supporting evidence. | Normative requirements, mathematical authority, or current status by itself. |
 | `docs/experiment_reference.md` | Durable evidence and configuration record for the controlled Phase B baseline runs. | Performance conclusions, scheduler equivalence, or validation of the proposed LP scheduler. |
 | `docs/unity_setup.md` | Commit-pinned, validated Unity environment and operational setup for the Phase A smoke baseline. | A benchmark result or a guarantee that the same instructions work unchanged at later commits or in other environments. |
 | `sarathi/` | Main Python implementation: scheduler and sequence state under `sarathi/core/`, engine/worker execution, model execution, metrics, and benchmark machinery. | Proposed behavior merely because a design document describes it. |
@@ -56,7 +57,7 @@ The planned sequence is:
 7. Phase G — perform integrated correctness validation.
 8. Phase H — attribute timing and run controlled performance comparisons.
 
-The Phase C architecture audit and the Phase D–F normative design artifacts exist, and `docs/project_status.md` now records **Phase C closure / Phase D preparation**. Phase D implementation has not started. The next work is to supply only the values required by the pure Phase D mathematical layer, as approved resolutions or visible scoped provisional inputs, and then implement and validate that layer. Synthetic Phase D utilities, capacities, reserve, and decode-charge values need not become permanent project decisions.
+The Phase C architecture audit and the Phase D–F normative design artifacts exist. The standalone Phase D mathematical layer is implemented in `lp_relaxation_scheduler.py` and accepted for its scoped MVP after the focused solver, extraction, failure, and zero-valued tie checks recorded in `docs/handoffs/`. Phase E read-only state mapping is the next implementation target. Synthetic Phase D utilities, capacities, reserve, and decode-charge values remain scoped provisional inputs rather than permanent project decisions.
 
 The key separation is:
 
@@ -99,6 +100,8 @@ Keep verified facts, inferences, proposed requirements, unresolved choices, and 
 Before editing, record the branch, commit, and working-tree state, preserve unrelated user changes, and compare scheduler-relevant code with the audit baseline. For Phase D, read `docs/lp_scheduler_design.md` first for normative requirements, then `docs/lpserve_scheduler_architecture_summary.md` for architecture orientation, then the full audit and current source code only as needed for detailed framework claims; use Sections 7, 9–11, and 14–18 of the design and the corresponding ILP/relaxation/extraction sections of `docs/math/main-llm-serving.tex`.
 
 Implementation tasks should state the objective, files allowed to change, required behavior and invariants, focused checks, and out-of-scope work. Do not infer LPServe behavior from modern vLLM or another Sarathi/SLAI version. Supply only the policy values needed by the active MVP, visibly and provisionally where appropriate; do not bury them as undocumented defaults.
+
+Phase names and numbers are project-management labels, not implementation terminology. They MUST NOT appear in Python filenames, package or module names, identifiers, comments, docstrings, printed output, diagnostics, result stages, categories, or failure messages. Use responsibility-based names such as `lp_relaxation`, `state_mapping`, `precommit_validation`, and `execution` instead.
 
 Validate in phase order with focused evidence for the supported MVP path: syntax/import/static checks; focused CPU tests; synthetic mathematical tests; scheduler-state/integration tests; a tiny GPU smoke test; inspection of scheduling decisions and state transitions; then larger experiments. Do not expand the task into exhaustive inherited edge-case coverage unless it blocks that path. Never report a command, test, or experiment as successful without observing its output, and never substitute aggregate throughput or latency for scheduler-correctness evidence.
 
