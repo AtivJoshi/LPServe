@@ -130,7 +130,7 @@ class LPRelaxationSchedulerTest(unittest.TestCase):
         prob = problem(
             [
                 req("locked", (0, 10), 1, 1, "T/F/F", (2, 0, 0), (0, 1, 0)),
-                req("cand", (0, 20), 1, 1, "T/F/T", (1, 0, 0), (0, 0, 0.5)),
+                req("cand", (0, 20), 1, 1, "T/F/T", (1, 0, 0), (0, 0, 0)),
             ],
             b=2, c=1, s=2, m_free=2, w=0, legal={"cand"},
         )
