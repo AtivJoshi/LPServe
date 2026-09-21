@@ -123,6 +123,37 @@ class LPRelaxationSchedulerTest(unittest.TestCase):
         self.assertIs(lrs.validate_integer_plan(
             lrs.validate_problem(prob), plan), plan)
 
+    def test_zero_zero_execution_tie_is_no_action(self):
+        # A legal-preemption request with zero recovery is never preempted
+        # (c^Z must be positive), so its y=I=0, z=0.5 relaxed point must
+        # yield no execution action rather than a decode it is not eligible for.
+        prob = problem(
+            [
+                req("locked", (0, 10), 1, 1, "T/F/F", (2, 0, 0), (0, 1, 0)),
+                req("cand", (0, 20), 1, 1, "T/F/T", (1, 0, 0), (0, 0, 0.5)),
+            ],
+            b=2, c=1, s=2, m_free=2, w=0, legal={"cand"},
+        )
+        canonical = lrs.validate_problem(prob)
+        self.assertIsInstance(canonical, lrs.LPProblem)
+        # Layout is [x.., y.., I.., z..] in order_key order.
+        point = (1, 0, 0, 0, 1, 0, 0, 0.5)
+        relaxed = lrs.validate_relaxed_solution(canonical, point)
+        self.assertIsInstance(relaxed, lrs.RelaxedSolution)
+        plan = lrs.extract_integer_plan(canonical, relaxed)
+        self.assertIsInstance(plan, lrs.IntegerPlan)
+        self.assertEqual(plan.fractional_request_count, 1)
+        self.assertEqual(plan.dominant_preemption_ids, ())
+        self.assertEqual(plan.safety_preemption_ids, ())
+        self.assertEqual(decision(plan, "locked").prefill_tokens, 1)
+        other = decision(plan, "cand")
+        self.assertEqual(
+            (other.prefill_tokens, other.decode, other.preempt,
+             other.prefill_indicator),
+            (0, 0, 0, 0),
+        )
+        self.assertIs(lrs.validate_integer_plan(canonical, plan), plan)
+
     def test_visible_infeasibility(self):
         prob = problem(
             [req("only", (0, 10), 1, 1, "T/F/F", (1, 0, 0), (0, 1, 0))],

@@ -610,6 +610,10 @@ For readability, the explicit time argument is suppressed in the extraction algo
         \textbf{ where }
         $\hat{z}_i\ne1$
     }
+        \If{$\tilde{y}_i=0$ \textbf{and} $\tilde{I}_i^P=0$}
+            \State \textbf{continue}
+            \Comment{No relaxed support for decode or prefill}
+        \EndIf
         \State
         $
         \text{DominantAction}
@@ -620,6 +624,7 @@ For readability, the explicit time argument is suppressed in the extraction algo
             \tilde{I}_i^P
         \right)
         $
+        \Comment{Exact ties choose decode}
 
         \If{
             $\text{DominantAction}=\tilde{y}_i$

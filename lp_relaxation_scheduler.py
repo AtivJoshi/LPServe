@@ -749,6 +749,8 @@ def extract_integer_plan(problem, relaxed):
         if z_hat[i] == 1:
             continue
         r, d = reqs[i], relaxed.decisions[i]
+        if d.y == 0.0 and d.prefill_indicator == 0.0:
+            continue
         if d.y >= d.prefill_indicator:
             if b_curr >= 1 and s_curr >= 1 and m_curr >= r.decode_charge:
                 y_hat[i] = 1

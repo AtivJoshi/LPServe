@@ -752,8 +752,9 @@ allowed.
 ### 10.6 Fractional decode and prefill packing
 
 Process remaining unpreempted fractional requests ascending by `order_key`.
-Choose the larger of $\tilde y_i$ and $\tilde I_i^P$; an exact tie chooses
-decode. Decode requires $B_{\mathrm{curr}},S_{\mathrm{curr}}\ge1$ and
+If normalized $\tilde y_i=\tilde I_i^P=0$, select no execution action for the
+request. Otherwise choose the larger of $\tilde y_i$ and $\tilde I_i^P$; an
+exact tie chooses decode. Decode requires $B_{\mathrm{curr}},S_{\mathrm{curr}}\ge1$ and
 $M_{\mathrm{curr}}\ge c_i^D$, then consumes one token, action, and $c_i^D$.
 Prefill requires the corresponding token/action capacity and
 $M_{\mathrm{curr}}\ge a_i^P$, then sets
