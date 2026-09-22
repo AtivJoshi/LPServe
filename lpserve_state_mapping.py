@@ -16,7 +16,13 @@ module's handoff record):
 - ``waiting`` exclusively owns unallocated unfinished requests, and
   ``running`` exclusively owns allocated unfinished (resident) requests;
 - every raw ``Sequence.seq_id`` is an exact non-negative, non-boolean
-  integer, unique across both collections;
+  integer, unique across both collections, and every scheduler-owned request
+  has a finite real ``arrival_time`` (a malformed, missing, ``NaN``, or
+  infinite arrival time is a mapping failure regardless of status);
+- the central block manager's ``block_tables`` key set exactly equals the
+  raw IDs owned by ``running``: a missing resident table, a table owned by a
+  waiting request, an orphan table, or a malformed table key is a mapping
+  failure, checked before future/finished filtering;
 - an included waiting request has status ``WAITING``, is unallocated, and
   has positive, incomplete prompt remainder;
 - an included resident request has status ``PAUSED`` and is allocated; a
@@ -28,8 +34,11 @@ module's handoff record):
 Every unresolved policy value (capacities, memory reserve, the decode-memory
 charge policy identifier, per-request utilities, and the numerical policy)
 is a required explicit argument. Unsupported, contradictory, malformed, or
-incoherent state is returned as a ``MappingFailure``; this module never
-fabricates, repairs, or silently narrows LP input.
+incoherent state -- including malformed input that would otherwise raise an
+ordinary ``AttributeError``/``TypeError``/``ValueError``/``KeyError``/
+``AssertionError`` -- is returned as a ``MappingFailure`` at the public
+boundary; this module never fabricates, repairs, or silently narrows LP
+input.
 """
 
 from __future__ import annotations
@@ -232,6 +241,17 @@ def map_scheduler_state(
         return MappingFailure(
             None, STAGE_STATE_MAPPING, CATEGORY_MAPPING_FAILURE, err.reason,
         )
+    except (AttributeError, TypeError, ValueError, KeyError,
+            AssertionError) as err:
+        # A malformed scheduler field, collection shape, utility input, or
+        # read-only state access raised an ordinary data/access error rather
+        # than an explicit _require check; translate it into the same
+        # structured, immutable failure instead of letting it propagate.
+        return MappingFailure(
+            None, STAGE_STATE_MAPPING, CATEGORY_MAPPING_FAILURE,
+            f"malformed input or scheduler state raised "
+            f"{type(err).__name__}: {err}",
+        )
 
 
 _MISSING = object()
@@ -271,6 +291,11 @@ def _map_scheduler_state(
     _require(
         isinstance(numerical_policy, lrs.NumericalPolicy),
         "numerical_policy must be a NumericalPolicy",
+    )
+    _require(
+        utilities is not None,
+        "utilities must be an iterable of (raw_seq_id, RequestUtility) "
+        "pairs, not None",
     )
 
     scheduler_config = _read(scheduler, "scheduler_config")
@@ -326,11 +351,48 @@ def _map_scheduler_state(
                 )
             owners[raw_id] = (label, seq)
 
+    # Allocation ownership must agree in both directions before any
+    # future/finished filtering: every running-owned raw_seq_id must have a
+    # central block table, and no central block table may belong to a
+    # waiting-owned or otherwise unowned (orphan) raw_seq_id.
+    running_ids = {
+        raw_id for raw_id, (label, _) in owners.items()
+        if label == OWNERSHIP_RUNNING
+    }
+    waiting_ids = {
+        raw_id for raw_id, (label, _) in owners.items()
+        if label == OWNERSHIP_WAITING
+    }
+    block_tables = _read(block_manager, "block_tables")
+    block_table_keys = set(block_tables.keys())
+    for key in block_table_keys:
+        _require(
+            _is_int(key) and key >= 0,
+            f"central block manager has a malformed block-table key: {key!r}",
+        )
+    missing_tables = running_ids - block_table_keys
+    unexpected_tables = block_table_keys - running_ids
+    if missing_tables or unexpected_tables:
+        waiting_owned_tables = unexpected_tables & waiting_ids
+        orphan_tables = unexpected_tables - waiting_ids
+        raise _MappingError(
+            "central block-table ownership disagrees with running: missing "
+            f"resident tables for raw_seq_id(s) {sorted(missing_tables)}; "
+            "waiting-owned tables for raw_seq_id(s) "
+            f"{sorted(waiting_owned_tables)}; orphan tables for "
+            f"raw_seq_id(s) {sorted(orphan_tables)}"
+        )
+
     included = []
     for raw_id in sorted(owners):
         label, seq = owners[raw_id]
-        arrival_time = seq.arrival_time
-        if not (_is_real(arrival_time) and arrival_time <= snapshot_time):
+        arrival_time = getattr(seq, "arrival_time", None)
+        _require(
+            _is_real(arrival_time),
+            f"raw_seq_id {raw_id}: malformed arrival_time {arrival_time!r}; "
+            "must be a finite real number",
+        )
+        if arrival_time > snapshot_time:
             continue
         if seq.is_finished():
             continue

@@ -60,6 +60,16 @@ class _SchedulerHolder:
         self.running = []
 
 
+def _build_holder():
+    """A fresh block manager and scheduler holder for one isolated test."""
+    block_manager = VLLMBlockSpaceManager(BLOCK_SIZE, NUM_GPU_BLOCKS, MAX_MODEL_LEN)
+    holder = _SchedulerHolder(
+        _ConfigHolder(NUM_PIPELINE_STAGES, RESIDENT_LIMIT),
+        block_manager, ITERATION_ID, NUM_RUNNING_BATCHES,
+    )
+    return holder, block_manager
+
+
 def _make_sequence(raw_seq_id, num_prompt_tokens, arrival_time):
     return Sequence(
         seq_id=raw_seq_id,
@@ -137,13 +147,7 @@ def _assert_no_mutable_or_framework_objects(value, seen=None):
 
 class LPServeStateMappingTest(unittest.TestCase):
     def test_supported_mapping_and_nonmutation(self):
-        block_manager = VLLMBlockSpaceManager(
-            BLOCK_SIZE, NUM_GPU_BLOCKS, MAX_MODEL_LEN,
-        )
-        holder = _SchedulerHolder(
-            _ConfigHolder(NUM_PIPELINE_STAGES, RESIDENT_LIMIT),
-            block_manager, ITERATION_ID, NUM_RUNNING_BATCHES,
-        )
+        holder, block_manager = _build_holder()
 
         # Request 0: waiting, six prompt tokens, none processed, unallocated.
         waiting_seq = _make_sequence(0, 6, 1.0)
@@ -254,6 +258,121 @@ class LPServeStateMappingTest(unittest.TestCase):
         self.assertIsInstance(revalidated, lrs.LPProblem)
 
         _assert_no_mutable_or_framework_objects(result)
+
+    def test_malformed_arrival_time_is_rejected(self):
+        holder, _ = _build_holder()
+
+        valid_seq = _make_sequence(0, 6, 1.0)
+        holder.waiting.append(valid_seq)
+
+        # A waiting request with a non-finite arrival_time must not be
+        # silently treated as a future request and omitted.
+        nan_arrival_seq = _make_sequence(1, 6, float("nan"))
+        holder.waiting.append(nan_arrival_seq)
+
+        utilities = (
+            (0, lsm.RequestUtility(
+                decode_utility=0.0, prefill_token_utility=2.0,
+                preemption_penalty=0.0,
+            )),
+        )
+
+        before = _fingerprint(holder)
+        result = lsm.map_scheduler_state(
+            holder,
+            snapshot_time=SNAPSHOT_TIME,
+            b_max=B_MAX,
+            c_max=C_MAX,
+            s_max=S_MAX,
+            memory_reserve=MEMORY_RESERVE,
+            decode_memory_policy_id=DECODE_POLICY_ID,
+            utilities=utilities,
+            numerical_policy=NUMERICAL_POLICY,
+        )
+
+        self.assertEqual(_fingerprint(holder), before)
+        self.assertIsInstance(result, lsm.MappingFailure)
+        self.assertEqual(result.stage, "state_mapping")
+        self.assertEqual(result.category, "mapping_failure")
+        self.assertIn("arrival_time", result.reason)
+
+    def test_orphan_block_table_is_rejected(self):
+        holder, block_manager = _build_holder()
+
+        valid_seq = _make_sequence(0, 6, 1.0)
+        holder.waiting.append(valid_seq)
+
+        # Allocated through the real block manager, but never owned by
+        # waiting or running: an orphan central block table.
+        orphan_seq = _make_sequence(99, 4, 1.0)
+        block_manager.allocate(orphan_seq)
+
+        utilities = (
+            (0, lsm.RequestUtility(
+                decode_utility=0.0, prefill_token_utility=2.0,
+                preemption_penalty=0.0,
+            )),
+        )
+
+        before = _fingerprint(holder)
+        result = lsm.map_scheduler_state(
+            holder,
+            snapshot_time=SNAPSHOT_TIME,
+            b_max=B_MAX,
+            c_max=C_MAX,
+            s_max=S_MAX,
+            memory_reserve=MEMORY_RESERVE,
+            decode_memory_policy_id=DECODE_POLICY_ID,
+            utilities=utilities,
+            numerical_policy=NUMERICAL_POLICY,
+        )
+
+        self.assertEqual(_fingerprint(holder), before)
+        self.assertIsInstance(result, lsm.MappingFailure)
+        self.assertEqual(result.stage, "state_mapping")
+        self.assertEqual(result.category, "mapping_failure")
+        self.assertIn("orphan", result.reason)
+
+    def test_none_utilities_returns_mapping_failure(self):
+        holder, block_manager = _build_holder()
+
+        waiting_seq = _make_sequence(0, 6, 1.0)
+        holder.waiting.append(waiting_seq)
+
+        partial_prefill_seq = _make_sequence(1, 6, 2.0)
+        partial_prefill_seq.set_status(SequenceStatus.RUNNING)
+        block_manager.allocate(partial_prefill_seq)
+        partial_prefill_seq.update_prompt_tokens_processed(2)
+        partial_prefill_seq.set_status(SequenceStatus.PAUSED)
+        holder.running.append(partial_prefill_seq)
+
+        decode_seq = _make_sequence(2, 4, 3.0)
+        decode_seq.set_status(SequenceStatus.RUNNING)
+        block_manager.allocate(decode_seq)
+        decode_seq.update_prompt_tokens_processed(4)
+        decode_seq.set_status(SequenceStatus.PAUSED)
+        holder.running.append(decode_seq)
+
+        before = _fingerprint(holder)
+        # utilities=None on otherwise supported state must return a
+        # MappingFailure, not raise TypeError.
+        result = lsm.map_scheduler_state(
+            holder,
+            snapshot_time=SNAPSHOT_TIME,
+            b_max=B_MAX,
+            c_max=C_MAX,
+            s_max=S_MAX,
+            memory_reserve=MEMORY_RESERVE,
+            decode_memory_policy_id=DECODE_POLICY_ID,
+            utilities=None,
+            numerical_policy=NUMERICAL_POLICY,
+        )
+
+        self.assertEqual(_fingerprint(holder), before)
+        self.assertIsInstance(result, lsm.MappingFailure)
+        self.assertEqual(result.stage, "state_mapping")
+        self.assertEqual(result.category, "mapping_failure")
+        self.assertIn("utilities", result.reason)
 
 
 if __name__ == "__main__":
