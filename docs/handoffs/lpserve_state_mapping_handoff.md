@@ -241,3 +241,246 @@ block-manager instance, and no mutable `list` or `dict`, is reachable from it.
 
 `CLAUDE.md` is the pre-existing untracked file, not part of this work, and was
 left untouched throughout.
+
+## Correction addendum (reviewed defects)
+
+Evidence record for a focused correction of three defects found in review of
+the implementation above. It records observed facts only; it does not amend
+`docs/lp_scheduler_design.md` or `docs/math/main-llm-serving.tex`, and does
+not affect the OPEN decisions or scope confirmations recorded above except
+where explicitly noted below.
+
+### Correction provenance
+
+| Item | Value |
+|---|---|
+| Correction base commit | `bb5fd4283bfb0bb547107b02a7a1b7068b14c569` (this handoff document's original commit) |
+| Correction implementation commit | `02043930b01fb6e06cbcdd0fa7fc99a4fe61d823` |
+| Branch | `main` (local was ahead of `origin/main` by the correction commit only) |
+| Host used | Unity node `gpu048`, CPU-only work; no GPU, CUDA, or model touched |
+| Python | 3.10.8 (`/home/atjoshi_umass_edu/LPServe/env`, after `module load Python/3.10.8-GCCcore-12.2.0`) |
+| NumPy | 2.2.6 |
+| SciPy | 1.15.3 |
+
+State before editing: branch `main`, HEAD `bb5fd42`, working tree with only
+untracked `CLAUDE.md` (pre-existing, not part of this work). HEAD contained
+both the implementation commit `a0e35d7` and the handoff commit `bb5fd42`
+above, so the correction proceeded.
+
+### Exact changed paths (commit `0204393`)
+
+- `lpserve_state_mapping.py` (modified)
+- `tests/test_lpserve_state_mapping.py` (modified)
+
+No other file was changed by this commit. `git add` on the already-tracked
+`tests/test_lpserve_state_mapping.py` printed the `.gitignore` line-205
+(`test*`) ignored-path hint and returned a nonzero exit status, but the
+modification was in fact staged (confirmed with `git diff --cached --stat`
+before committing); no `-f` was needed because the file was already tracked.
+
+### Each defect and its correction
+
+1. **Malformed arrival times were silently excluded as "future."**
+   `_is_real(arrival_time) and arrival_time <= snapshot_time` treated a
+   non-finite (`NaN`/`inf`) or otherwise malformed `arrival_time` exactly like
+   a future arrival and dropped the request with no failure. Corrected: every
+   scheduler-owned raw ID (across both `waiting` and `running`, before any
+   future/finished filtering) now has its `arrival_time` validated with
+   `_is_real`; a malformed value raises `_MappingError` (surfaced as
+   `MappingFailure`). Only a *validated* finite `arrival_time > snapshot_time`
+   is excluded as future; finished requests remain excluded exactly as
+   before. No LPServe read beyond the existing `seq.arrival_time` attribute
+   access and `seq.is_finished()` call was added.
+
+2. **Central block tables were not checked against `running` in both
+   directions.** The mapper verified `is_allocated(seq)`/`get_block_table(seq)`
+   per included request, but never checked whether the central block
+   manager held a table for a raw ID that no `running`-owned request claimed
+   (an orphan table), or a table for a `waiting`-owned ID. Corrected: after
+   building the full waiting/running ownership map and before any
+   future/finished filtering, the mapper now reads
+   `block_manager.block_tables.keys()` into a local `set` (the dict itself is
+   never retained or returned), validates every key is an exact non-negative
+   integer, and requires that key set to equal exactly the raw IDs owned by
+   `running`. A mismatch raises `_MappingError` naming the missing resident
+   tables, the waiting-owned tables, and the orphan tables separately. The
+   pre-existing per-request `is_allocated()`/`get_block_table()` checks in the
+   per-request construction loop are unchanged and still run as a second,
+   local layer of the same consistency property.
+
+3. **Malformed input could raise an uncaught exception instead of returning
+   `MappingFailure`.** For example, `utilities=None` reached
+   `for row in utilities:` and raised `TypeError` directly out of
+   `map_scheduler_state`. Corrected: `map_scheduler_state` now also catches
+   `AttributeError`, `TypeError`, `ValueError`, `KeyError`, and
+   `AssertionError` around the internal mapping call and converts each into
+   an immutable `MappingFailure` with `stage="state_mapping"`,
+   `category="mapping_failure"`, and a reason naming the exception type and
+   message. `BaseException`, `KeyboardInterrupt`, and `SystemExit` are not
+   caught. An explicit `_require(utilities is not None, ...)` check was also
+   added so the specific `utilities=None` case gets a precise, dedicated
+   reason rather than relying only on the generic exception-translation
+   backstop. No fallback, retry, repair, or fabricated LP input was added.
+
+### Focused regression details
+
+Three regressions were added to `tests/test_lpserve_state_mapping.py`,
+alongside the unchanged, still-passing
+`test_supported_mapping_and_nonmutation`. A `_build_holder()` helper (a fresh
+`VLLMBlockSpaceManager` plus a fresh `_SchedulerHolder`) was factored out and
+used by all four tests so no fixture state is shared or reused across cases.
+
+1. `test_malformed_arrival_time_is_rejected`: a fresh holder with a valid
+   waiting request (raw ID `0`, arrival `1.0`) plus a second waiting request
+   (raw ID `1`) whose `arrival_time` is `float("nan")`. Asserts the result is
+   a `MappingFailure` with `stage == "state_mapping"`,
+   `category == "mapping_failure"`, and `"arrival_time"` in the reason; and
+   that the primitive fingerprint captured before the call is unchanged
+   after it.
+2. `test_orphan_block_table_is_rejected`: a fresh holder with a valid waiting
+   request (raw ID `0`) plus a second `Sequence` (raw ID `99`) allocated
+   directly through the real `VLLMBlockSpaceManager.allocate()` but never
+   appended to `holder.waiting` or `holder.running`. Asserts a
+   `MappingFailure` with `"orphan"` in the reason and an unchanged
+   fingerprint.
+3. `test_none_utilities_returns_mapping_failure`: the same three-request
+   otherwise-fully-supported fixture as
+   `test_supported_mapping_and_nonmutation` (waiting, resident partial
+   prefill, resident decode), called with `utilities=None`. Asserts a
+   `MappingFailure` with `"utilities"` in the reason, an unchanged
+   fingerprint, and (implicitly, by not raising) that no `TypeError`
+   propagated out of the call.
+
+Each regression captures the same primitive fingerprint shape used by the
+original test (collection identity/order, iteration ID, running-batch count,
+per-sequence status/tokens/processed-count/completion/logical-block content,
+central `block_tables`, and free-block order) before and after the
+`map_scheduler_state` call and asserts equality.
+
+### Commands run and complete observed output
+
+```text
+$ python -m py_compile lp_relaxation_scheduler.py lpserve_state_mapping.py \
+    tests/test_lp_relaxation_scheduler.py tests/test_lpserve_state_mapping.py
+[exit 0]
+
+$ python -m unittest discover -s tests -p 'test_lp_relaxation_scheduler.py' -v
+test_fractional_prefill (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_main_smoke (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_mixed_case_and_tied_extraction (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_visible_infeasibility (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_zero_zero_execution_tie_is_no_action (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.014s
+
+OK
+[exit 0]
+
+$ python -m unittest discover -s tests -p 'test_lpserve_state_mapping.py' -v
+test_malformed_arrival_time_is_rejected (test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_none_utilities_returns_mapping_failure (test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_orphan_block_table_is_rejected (test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_supported_mapping_and_nonmutation (test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.001s
+
+OK
+[exit 0]
+
+$ grep -n -i 'phase' lpserve_state_mapping.py tests/test_lpserve_state_mapping.py
+[no output, exit 1]
+
+$ git diff --check
+[no output, exit 0]
+
+$ git status --short --branch --untracked-files=all
+## main...origin/main [ahead 1]
+?? CLAUDE.md
+[exit 0]
+```
+
+### Check status (correction)
+
+- **Passed:** `py_compile` over all four listed files; the pre-existing five
+  `test_lp_relaxation_scheduler.py` tests (unchanged, no regression); all four
+  `test_lpserve_state_mapping.py` tests, including the unchanged original test
+  and the three new regressions; the phase-naming grep (exit `1`, no
+  matches); `git diff --check` (no whitespace/EOL issues).
+- **Failed:** none observed. Each new regression passed on its first run
+  after the corresponding correction was written; no defect required a second
+  attempt.
+- **Skipped:** a formatter or linter; none is installed in the environment,
+  and none was installed to run this correction.
+- **Unexecuted:** execution-layer, live-scheduler-integration, pipeline,
+  stale-snapshot, GPU, and performance checks (all out of scope, unchanged
+  from the original handoff). No broader status/ownership/malformed-input
+  matrix was added beyond the three specified regressions.
+
+### Non-mutation evidence (correction)
+
+Each of the three new regressions captures the same primitive fingerprint
+used by the original test (`waiting`/`running` object identity and order,
+scheduler iteration ID, running-batch count, per-sequence status/prompt
+tokens/output tokens/processed count/completion flag/full logical-block
+contents, the central `block_manager.block_tables` sorted by `seq_id` with
+each table's physical block numbers, and the GPU allocator's free-block
+order) immediately before calling `map_scheduler_state` and asserts it is
+identical immediately after. All three assertions passed, including for the
+orphan-allocation case, where the orphan `Sequence`'s own central block table
+and the reduced free-block list are part of the fingerprint and were also
+confirmed unchanged. The corrected mapper still calls only the same
+documented read-only accessors as before (`is_allocated`, `get_block_table`,
+`get_num_free_gpu_blocks`, `.block_size`, and now also reading
+`block_manager.block_tables.keys()`); no allocation, append, free,
+preemption, status-transition, or queue-mutation method was added or called.
+
+### Unresolved issues and limitations (correction)
+
+- The exception-translation backstop in `map_scheduler_state` (item 3) is
+  intentionally broad within the five listed exception types; it is a
+  boundary safety net for *any* malformed-input/read-only-access failure, not
+  only the three specific paths named above. It was exercised directly only
+  by the `utilities=None` regression; other malformed-input shapes that would
+  reach it (for example, a `waiting`/`running` collection that is not
+  iterable) were not separately regression-tested, per the task's request to
+  add only the three specified focused regressions.
+- The block-table ownership check reads `block_manager.block_tables.keys()`
+  directly; if `block_manager.block_tables` is present but not a mapping
+  (violates the framework's documented `Dict[int, BlockTable]` type), the
+  resulting `AttributeError`/`TypeError` is still caught by the boundary
+  backstop and returned as a `MappingFailure`, but this exact path has no
+  dedicated regression.
+- No OPEN decision in `docs/lp_scheduler_design.md` §17.1 was resolved or
+  affected by this correction; D-08/D-16/D-17/D-19 remain resolved as
+  recorded, and the interface shape and fixture-value notes in the original
+  handoff sections above are unchanged and still accurate.
+- No Python identifier, filename, docstring, comment, printed text, or result
+  field in either corrected file uses project phase names or numbers
+  (verified by the grep check above).
+
+### Scope confirmations (correction)
+
+- No LP solve, integer extraction, live `LPScheduler`, scheduler
+  registration, `SchedulerOutputs` construction, execution-layer logic, fresh
+  precommit validation, pipeline-parallel support, GPU test, or inherited
+  Sarathi/SLAI behavior repair was performed or added by this correction.
+- No scheduler, sequence-manager, or block-manager mutation occurred, per the
+  non-mutation evidence above.
+- No mathematical layer (`lp_relaxation_scheduler.py`), framework source,
+  normative documentation, `docs/project_status.md`, dependency file, or
+  other test file was modified.
+
+### Final working-tree state (correction)
+
+`git status --short --branch --untracked-files=all` after the correction
+implementation commit:
+
+```text
+## main...origin/main [ahead 1]
+?? CLAUDE.md
+```
+
+`CLAUDE.md` is the pre-existing untracked file, not part of this work, and
+was left untouched throughout the correction.
