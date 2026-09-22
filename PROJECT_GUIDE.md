@@ -83,6 +83,20 @@ Document only material decisions, invariants, observed issues, and reproducibili
 
 Implement the smallest code path that satisfies the active goal. Do not add speculative abstractions, configuration knobs, fallback policies, retries, recovery, or edge-case handling without a demonstrated current need. Unsupported states should fail visibly rather than being silently repaired.
 
+If an existing framework design, normative requirement, or prior project
+decision appears to impose complexity that is unnecessary for the currently
+supported MVP, the planning or implementation agent MUST flag it explicitly in
+the active user-facing chat before implementing the affected mechanism. The
+report must identify the exact source and decision, explain the added
+complexity using current evidence, propose the smallest alternative, state
+which guarantees or future scope the alternative would give up, and identify
+any authoritative documentation that would need to change. The agent MUST NOT
+silently ignore, reinterpret, or override the existing contract. This
+complexity challenge does not authorize weakening mathematical or correctness
+requirements, filling an OPEN decision implicitly, or bypassing a BLOCKER.
+Continue unaffected work when possible, but pause the affected choice until an
+approved resolution is recorded.
+
 ## Work / research-design sessions
 
 Begin with this guide, then read only the detailed sources needed for the question:

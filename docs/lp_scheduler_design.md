@@ -74,8 +74,10 @@ The following are not part of this design:
 
 Only decisions recorded as resolved in Section 17 are selected. Utility
 functions, watermarks, Phase F within-prefill/within-decode metadata ordering,
-fallback and rollback behavior, pipeline support, and every remaining OPEN item
-have no implicit default.
+rollback behavior, pipeline support, and every remaining OPEN item have no
+implicit default. The selected pre-mutation failure response is the scoped
+fail-stop rule in Section 14.2 and D-17; no alternate-policy fallback is
+selected.
 
 ## 2. Design status and terminology
 
@@ -520,10 +522,15 @@ Each request record MUST contain only immutable, framework-independent data:
 It MUST NOT contain a mutable `Sequence`, scheduler collection, block manager, callback, or engine object.
 
 `order_key` MUST be present, unique within the snapshot, finite/comparable, and
-normalized to a documented type, preferably a tuple of integers; malformed,
-duplicate, or unstable keys are invalid input. Tests may use `(3,)`. Phase E
-must derive a stable live key, expected to resemble
-`(monotone_admission_order, seq_id)`; `seq_id` alone is not the contract.
+normalized to a tuple of integers; malformed, duplicate, or unstable keys are
+invalid input. For the single-scheduler MVP, the current engine's monotone
+counter provides each `Sequence` with a unique non-negative integer
+`seq_id`. Phase E preserves that raw integer in its immutable snapshot,
+normalizes the Phase D `request_id` to its decimal string, and constructs
+`order_key=(raw_seq_id,)`. Non-integer, negative, duplicate, or otherwise
+unsupported live IDs are mapping failures. This scoped rule MUST be revisited
+if request-ID generation changes or a scheduling universe spans independent
+ID generators.
 
 ### 9.2 LP problem record
 
@@ -906,8 +913,9 @@ incoherent state and never combines incompatible instants.
 
 | Mathematical object | LPServe source or normative construction | Status |
 |---|---|---|
-| Request ID $i$ | `Sequence.seq_id` | Resolved |
-| $U_t$ | Deduplicated arrived, non-finished sequences under the LP scheduler's authoritative ownership | Ownership container design OPEN |
+| Request ID $i$ | Decimal string of the verified non-negative integer `Sequence.seq_id`; raw integer retained in the immutable snapshot | Resolved for the single-scheduler MVP by D-16 |
+| `order_key` | `(raw_seq_id,)`, using the current engine's monotone integer counter assignment | Resolved for the single-scheduler MVP by D-16 |
+| $U_t$ | Deduplicated arrived, non-finished sequences owned by the LP scheduler's inherited `waiting` or `running` collection | Resolved for the single-stage MVP by D-08 |
 | $\mathcal Z_t$ | Owned resident, allocated, native-status-eligible requests on the selected native preemption path | MVP compatibility mode inherits known limitations; pipeline predicate OPEN |
 | $P_i^{\mathrm{rem}}$ | `get_prompt_len() - get_num_prompt_tokens_processed()` | Resolved |
 | Prefill eligibility | Positive remainder plus legal ownership/status/allocation path | Exact status policy must be documented |
@@ -916,7 +924,7 @@ incoherent state and never combines incompatible instants.
 | $B_{\max}$ | Explicit combined prompt/decode token budget | Concrete config binding OPEN |
 | $C_{\max}$ | Explicit per-request prefill cap | Concrete config binding OPEN |
 | $S_{\max}$ | Explicit scheduled-metadata/action-width cap | Concrete config binding OPEN |
-| Resident capacity | `max_num_seqs`, checked against post-plan resident set | Resolved responsibility; resident ledger OPEN |
+| Resident capacity | `max_num_seqs`, checked against post-plan resident set; `running` is the authoritative resident ledger | Resolved for the single-stage MVP by D-08 |
 | $M_t^{\mathrm{free}}$ | `block_manager.get_num_free_gpu_blocks()` | Resolved |
 | $W_t$ | Explicit reserve in blocks | OPEN |
 | $a_i^P$, resident partial prefill | Zero after resident ownership and block-table allocation are verified | Resolved |
@@ -927,11 +935,34 @@ incoherent state and never combines incompatible instants.
 
 ### 12.4 Ownership contract
 
-Every unfinished request has one authoritative owner; auxiliary indexes may
-reference it but not own it. Phase E proves each included request occurs once
-and every owned, arrived, unfinished request is in $U_t$. It MUST NOT inherit
-SLAI's `_active_seq_ids`, `paused_prefills`, or `decode_queue` ownership without
-an explicit decision and tests.
+For the single-stage MVP, the LP scheduler inherits `BaseScheduler` directly,
+not `SLAIScheduler`, and uses the inherited collections as its only ownership
+structures:
+
+- `waiting` is the authoritative owner of every unallocated unfinished request
+  awaiting initial admission or recomputation;
+- `running` is the authoritative owner and resident ledger for every allocated
+  unfinished request, whether or not that request is selected for the next
+  forward pass.
+
+Every unfinished request MUST occur in exactly one of those collections.
+Unselected residents remain in `running`. At the supported mapping boundary,
+`waiting` requests MUST be unallocated, `running` requests MUST have central
+block tables, and resident ownership MUST agree with the block manager. Missing
+ownership, cross-collection duplication, contradictory objects sharing an ID,
+or an ownership/allocation mismatch is a mapping failure.
+
+The mapper observes this state at the quiescent beginning of a scheduling
+decision, before queue or block mutation, with one pipeline stage and no batch
+in flight. Auxiliary priority or lookup structures MAY be added later only as
+non-owning indexes; they MUST NOT define or extend the request universe. The LP
+scheduler does not inherit SLAI's `_active_seq_ids`, `paused_prefills`, or
+`decode_queue`. Pipeline ownership remains governed by D-24; the supported
+single-stage stale-state contract is defined in Section 12.6 and D-19.
+
+Phase E deduplicates the authoritative collections by `seq_id`, excludes future
+and finished requests from $U_t$, and proves that every remaining owned request
+appears in $U_t$ exactly once.
 
 ### 12.5 Capacity construction
 
@@ -942,10 +973,23 @@ separate names and validation.
 
 ### 12.6 Stale-plan detection
 
-The plan carries this snapshot ID. Phase F revalidates ownership, status,
-allocation, lengths, progress, completion, free blocks, and in-flight markers
-before commit. The mechanism is OPEN; a mismatch is precommit failure, never
-permission to patch a stale plan.
+For the single-stage MVP, state stability comes from the supported execution
+contract rather than a new lock or version subsystem. The same engine instance
+MUST receive no overlapping state-changing public calls; mapping starts with
+one pipeline stage and zero running batches; and mapping, solve, extraction,
+fresh prevalidation, and execution occur synchronously within one scheduler
+decision call. Pipeline execution and concurrent public engine calls are
+outside this contract.
+
+The plan carries the snapshot ID to associate it with the mapped problem and
+diagnostics; the ID is not a lock or reservation. Immediately before its first
+mutation, Phase F MUST reread and compare every plan-relevant ownership,
+status, allocation, length, progress, completion, free-block, and in-flight
+field and validate the complete plan against that fresh state. Any mismatch is
+a precommit failure with zero mutation, never permission to patch or execute a
+stale plan. Under D-17 the MVP raises its top-level scheduling failure and does
+not automatically retry or re-plan. No additional lock, state-version counter,
+reservation, or layer-local retry mechanism is required for this scoped MVP.
 
 ## 13. Validated Phase F action execution
 
@@ -982,7 +1026,7 @@ follow-up coverage under §15.4.
 
 ### 14.1 Layer-local behavior that is resolved
 
-| Failure location | Required behavior before live-policy selection |
+| Failure location | Required layer-local behavior |
 |---|---|
 | Invalid Phase D input | Return explicit failure; do not call solver |
 | Solver infeasible, unbounded, numerical error, limit, malformed output, or exception | Return explicit non-success; do not extract |
@@ -994,15 +1038,35 @@ follow-up coverage under §15.4.
 
 No layer may convert these outcomes into invented relaxed values, an all-zero plan, a baseline-policy action, or a partially accepted plan.
 
-### 14.2 Top-level solver and extraction failure policy
+### 14.2 Top-level pre-mutation failure policy
 
-What the live scheduler should do after a Phase D or Phase E failure is OPEN. Possibilities such as returning an empty output, retrying, invoking another policy, or failing the run have materially different correctness and experimental implications. None is selected here.
+For the MVP, every explicit mapping, solver, relaxed-validation, extraction,
+integer-plan-validation, or fresh-prevalidation failure before mutation is
+fail-stop. The responsible layer first returns its immutable structured failure
+without a plan. The live LP scheduler then raises a dedicated scheduler
+exception that carries that failure's snapshot/problem ID, stage, category,
+reason, and available solver diagnostics. It MUST NOT retain a mutable LPServe
+object in the exception.
 
-Consequently, integration into a live scheduler MUST NOT be declared complete until one policy is approved, named, instrumented, and tested. Phase D's explicit failure result is not itself a fallback policy.
+The failing call produces no `SchedulerOutputs` and ends the current run. It
+MUST NOT substitute an empty output or all-zero plan, invoke another scheduling
+policy, retry automatically, patch the failed result, or begin execution.
+Returning an empty output could leave unfinished requests in the engine loop
+indefinitely; retrying unchanged state would generally repeat the same failure;
+and an alternate policy would conceal failure of the LP path and confound its
+experimental results. A later attempt requires an explicit new invocation
+after the caller has intervened or supplied different state or policy inputs.
+
+This fail-stop rule is the complete D-17 response for failures detected before
+mutation. A valid plan that selects no work is governed separately by D-18.
+Failure after any mutation begins is governed separately by D-20 and MUST NOT
+be treated as safely covered by this pre-mutation rule.
 
 ### 14.3 Precommit physical failure
 
-If fresh physical prevalidation fails, Phase F must perform no mutation. What the scheduling loop does next remains governed by the unresolved top-level failure policy.
+If fresh physical prevalidation fails, Phase F must perform no mutation and
+return an explicit precommit failure. The live LP scheduler then applies the
+D-17 fail-stop rule in Section 14.2.
 
 ### 14.4 Failure after mutation begins
 
@@ -1075,7 +1139,8 @@ until it blocks the MVP or is needed by a later phase.
 When Phase E begins, use one real or faithful LPServe `Sequence` and
 block-manager case to prove that the supported request data and capacity inputs
 produce a coherent Phase D snapshot without mutating LPServe state. The case
-must make its prefill/decode eligibility and block-charge inputs visible.
+must make its request-ID normalization, `order_key`, prefill/decode eligibility,
+and block-charge inputs visible.
 
 Defer exhaustive status/ownership variants, duplicate-conflict handling,
 alternative decode-charge policies, stale-snapshot cases, and inherited
@@ -1088,7 +1153,8 @@ Before GPU validation, use one focused synthetic scheduler-state case to prove
 the smallest supported native execution path: a validated plan admits and
 executes work, emits valid metadata, and produces the expected queue and block
 deltas. Use one physically infeasible plan to prove rejection occurs visibly
-before scheduler or block-manager mutation.
+before scheduler or block-manager mutation, raises the D-17 top-level scheduler
+exception, and produces no `SchedulerOutputs`.
 
 Add direct focused regressions only when a currently supported action breaks.
 Preemption, mixed batches, decode marginal-block variants, worker
@@ -1173,6 +1239,20 @@ Scheduler queues and central blocks mutate before forward execution, workers rep
 
 Pipeline execution permits multiple microbatches in flight. The audited framework anticipates preemption of a request while an older batch is executing, but exposes no safe physical-release predicate, per-batch KV version, or exact completion association sufficient for this design.
 
+Existing schedulers rely on the running-batch counter, lifecycle status, replay
+order, and skipping some outputs for requests that have since returned to
+`WAITING`; they do not provide scheduler-state locking, block reservations, or
+versioned completion association. Their pipeline path also has the documented
+control-only-output failure. This is best-effort inherited behavior, not a
+verified concurrency contract.
+
+The LP scheduler adds a multi-field snapshot and a solve interval during which
+pipeline completion could change ownership, progress, or blocks; it can also
+legitimately produce a preempt-only plan. Supporting pipeline mode later
+requires a coherent snapshot/commit mechanism, an explicit per-request
+in-flight and safe-release predicate, plan-to-completion association,
+control-only handling, and focused central/worker replay tests.
+
 This specification therefore does not authorize pipeline-parallel LP execution. In particular, it does not define:
 
 - which in-flight requests belong to $\mathcal Z_t$;
@@ -1187,12 +1267,15 @@ Initial correctness validation is limited to a single pipeline stage. Supporting
 
 | ID | Status and selected rule | Canonical requirements |
 |---|---|---|
+| D-08 | **RESOLVED for the single-stage MVP** — the LP scheduler inherits `BaseScheduler` directly. Inherited `waiting` exclusively owns unallocated unfinished requests; inherited `running` exclusively owns all allocated resident unfinished requests, including residents not selected for the next forward pass. Auxiliary structures are non-owning indexes only. Mapping occurs at the quiescent pre-mutation boundary with no batch in flight. This avoids SLAI-specific ownership and preserves base unfinished-request and completion behavior while making ownership and allocation cross-checkable. | §§4.1–4.4, 6.4, 12.2–12.5; focused test §15.3; D-24 remains OPEN |
 | D-11 | **RESOLVED** — `scipy.optimize.linprog`/HiGHS behind a project-owned adapter; SciPy must become an explicit reproducible dependency before Phase D execution, and its exact version is not selected here. | §9.3; tests §15.1; diagnostics §14.5 |
 | D-12 | **RESOLVED** — optimal-only: only normalized SciPy `status == 0` may enter validation; only its validated candidate may extract. | §9.3, §11.2, §15.1 |
 | D-13 | **PARTIAL** — reference: `highs-ds`, explicit `presolve=True`, no project `time_limit`/`maxiter`, and no explicit crossover or undocumented thread/parallel/random-seed controls. Performance/control/basis remainder is **OPEN**. | §9.3; §10.8; §15.1–15.2 |
 | D-14 | **RESOLVED** — absolute $\varepsilon_{\mathrm{int}}=10^{-6}$ for validated indicators only. | §10.1; §15.2 |
 | D-15 | **RESOLVED** — absolute $\varepsilon_{\mathrm{feas}}=10^{-7}$, independent validation, narrow projection, and revalidation only. | §11.2; §15.1 |
-| D-16 | **RESOLVED** — ascending immutable lexicographic `order_key`; exact extraction ties. | §§9–10; §15.2 |
+| D-16 | **RESOLVED for the single-scheduler MVP** — ascending immutable lexicographic `order_key` with exact extraction ties. The current engine's unique non-negative integer `Sequence.seq_id` is its verified monotone admission identity; Phase E uses `order_key=(raw_seq_id,)` and the accepted decimal-string request ID. Unsupported live ID shapes fail mapping. Revisit this rule if ID generation changes or one scheduling universe spans independent generators. | §§9–10, 12.3; tests §§15.2–15.3 |
+| D-17 | **RESOLVED for the MVP** — every mapping, solver, relaxed-validation, extraction, integer-plan-validation, or fresh-prevalidation failure detected before mutation is fail-stop. The layer returns its immutable structured failure without a plan; the live LP scheduler raises a dedicated exception carrying its immutable diagnostics, produces no `SchedulerOutputs`, and ends the run. It performs no automatic retry or re-planning, empty/all-zero substitution, alternate-policy fallback, patching, or execution. D-18 governs a valid empty plan; D-20 governs failures after mutation begins. | §§14.1–14.3; focused test §15.4 |
+| D-19 | **RESOLVED for the single-stage MVP** — the same engine receives no overlapping state-changing public calls; mapping begins with one pipeline stage and zero running batches; and mapping through execution is synchronous within one scheduler decision call. The snapshot ID associates the problem and plan but is not a lock. Phase F rereads all plan-relevant state and fully prevalidates immediately before mutation; any mismatch is a zero-mutation precommit failure followed by the D-17 fail-stop response. No new lock, version, reservation, or layer-local retry subsystem is required. Pipeline mode and concurrent public calls remain unsupported. | §§12.2, 12.6, 13, 14.2–14.3; focused tests §§15.3–15.4; D-24 remains OPEN |
 | D-25 | **RESOLVED** — MVP compatibility mode reuses existing LPServe/SLAI behavior, including native recomputation preemption, without repairing inherited framework defects. Material inherited limitations are documented; only issues that block the selected MVP path require action. | §§2.4, 4.4, 13, 16 |
 
 D-13 provides no basic/extreme-point or fractional-count guarantee; its
@@ -1214,13 +1297,10 @@ candidate is a hidden default.
 | D-05 | $B_{\max}$ binding | Explicit combined token budget; Sarathi/SLAI-like fields are candidates | Before Phase E completion |
 | D-06 | $C_{\max}$ binding | Fixed chunk, dynamic chunk, or explicit new configuration | Before Phase E completion |
 | D-07 | $S_{\max}$ binding | Explicit next-forward action limit | Before Phase E completion |
-| D-08 | Authoritative ownership/resident ledger | New scheduler-owned representation; must not be inherited accidentally | Before Phase E completion |
 | D-09 | Decode planning charge $c_i^D$ | Exact gap or conservative one-block charge | Before final Phase D/Phase E interface freeze |
 | D-10 | Memory reserve $W_t$ | Zero, fixed, or state-dependent; not silently the watermark | Before live LP solves |
 | D-13 | Remaining solver performance, control, and basis policy | Finite live/performance limits; possible `highs`/`highs-ipm`; edge-weight and other tuning; IPM/crossover; basis certification; warm starts/basis reuse; threading/parallelism/random seed; cross-version degenerate-optimum behavior; any solver-output-to-fractional-bound assertion | Does not block initial Phase D; before the relevant performance, control, or structural claim |
-| D-17 | Solver/extraction/mapping failure response | Empty, retry, alternate policy, fail-stop, or another explicit policy | Before live scheduler integration |
 | D-18 | Empty-plan liveness | No policy specified | Before live scheduler integration |
-| D-19 | Stale-snapshot mechanism | Locking, versions, iteration identity, or another verified mechanism | Before Phase F |
 | D-20 | Post-mutation failure contract | Rollback, fail-stop, or another explicit mechanism | Before Phase F is enabled |
 | D-21 | Canonical within-prefill and within-decode metadata order | Prompt-first partition required; internal ordering unspecified | Before mixed-batch Phase F tests |
 | D-22 | Recomputation output contract | Original prompt/generated suffix versus expanded-context representation | Before claiming corrected or public recomputation-output semantics; MVP compatibility mode may use native preemption with the documented inherited limitation |
