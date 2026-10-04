@@ -253,6 +253,7 @@ class LPServeStateMappingTest(unittest.TestCase):
         self.assertEqual(problem.s_max, 3)
         self.assertEqual(problem.m_free, 7)
         self.assertEqual(problem.w, 1)
+        self.assertEqual(result.snapshot_id, str(ITERATION_ID))
         self.assertEqual(problem.problem_id, result.snapshot_id)
 
         revalidated = lrs.validate_problem(problem)
@@ -416,6 +417,54 @@ class LPServeStateMappingTest(unittest.TestCase):
         validate_problem_spy.assert_not_called()
 
         _assert_no_mutable_or_framework_objects(result)
+
+    def test_iteration_snapshot_id_and_plan_identity_check(self):
+        def map_at(iteration_id):
+            holder, _ = _build_holder()
+            holder._iteration_id = iteration_id
+            holder.waiting.append(_make_sequence(0, 6, 1.0))
+            utilities = (
+                (0, lsm.RequestUtility(
+                    decode_utility=0.0, prefill_token_utility=1.0,
+                    preemption_penalty=0.0,
+                )),
+            )
+            return lsm.map_scheduler_state(
+                holder,
+                snapshot_time=SNAPSHOT_TIME,
+                b_max=B_MAX,
+                c_max=C_MAX,
+                s_max=S_MAX,
+                memory_reserve=MEMORY_RESERVE,
+                decode_memory_policy_id=DECODE_POLICY_ID,
+                utilities=utilities,
+                numerical_policy=NUMERICAL_POLICY,
+            )
+
+        first = map_at(7)
+        second = map_at(8)
+        self.assertIsInstance(first, lsm.StateSnapshot)
+        self.assertIsInstance(second, lsm.StateSnapshot)
+        self.assertEqual(first.snapshot_id, "7")
+        self.assertEqual(second.snapshot_id, "8")
+        self.assertEqual(first.lp_problem.problem_id, "7")
+        self.assertEqual(second.lp_problem.problem_id, "8")
+
+        result = lrs.solve_and_extract(first.lp_problem)
+        self.assertIsInstance(result, lrs.SchedulingSuccess)
+        self.assertEqual(result.problem_id, "7")
+        self.assertEqual(result.plan.problem_id, "7")
+        self.assertIs(
+            lrs.validate_integer_plan(first.lp_problem, result.plan),
+            result.plan,
+        )
+
+        # A plan from one scheduling decision must not validate against the
+        # problem mapped for a different decision.
+        mismatch = lrs.validate_integer_plan(second.lp_problem, result.plan)
+        self.assertIsInstance(mismatch, lrs.Failure)
+        self.assertEqual(mismatch.category, "snapshot_mismatch")
+        self.assertEqual(mismatch.problem_id, "8")
 
 
 if __name__ == "__main__":

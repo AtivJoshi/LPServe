@@ -43,8 +43,6 @@ input.
 
 from __future__ import annotations
 
-import hashlib
-import json
 import math
 from dataclasses import dataclass
 from typing import Iterable, Optional, Tuple
@@ -154,51 +152,6 @@ def _is_real(value) -> bool:
         and not isinstance(value, bool)
         and math.isfinite(value)
     )
-
-
-# ---------------------------------------------------------------------------
-# Snapshot identity
-# ---------------------------------------------------------------------------
-
-
-def _compute_snapshot_id(
-    iteration_id, snapshot_time, num_pipeline_stages, num_running_batches,
-    resident_count, resident_limit, b_max, c_max, s_max, m_free,
-    memory_reserve, decode_memory_policy_id, numerical_policy, request_states,
-):
-    """Deterministic SHA-256 content identifier over primitive snapshot data.
-
-    ``request_states`` must already be in ascending canonical (raw_seq_id)
-    order. Uses only primitive values; never Python's randomized ``hash()``,
-    object identity, or a wall clock read here.
-    """
-    request_rows = [
-        [
-            rs.ownership, rs.raw_seq_id, rs.status, rs.arrival_time,
-            rs.prompt_len, rs.prompt_tokens_processed,
-            rs.prompt_tokens_remaining, rs.prompt_processing_finished,
-            rs.logical_block_count,
-            None if rs.physical_block_numbers is None
-            else list(rs.physical_block_numbers),
-            rs.prefill_eligible, rs.decode_eligible, rs.preemption_eligible,
-            rs.prefill_fixed_charge, rs.decode_charge, rs.preemption_recovery,
-            rs.utility.decode_utility, rs.utility.prefill_token_utility,
-            rs.utility.preemption_penalty,
-        ]
-        for rs in request_states
-    ]
-    payload = [
-        "lpserve_state_mapping_snapshot_v1",
-        iteration_id, snapshot_time, num_pipeline_stages, num_running_batches,
-        resident_count, resident_limit, b_max, c_max, s_max, m_free,
-        memory_reserve, decode_memory_policy_id,
-        numerical_policy.policy_id, numerical_policy.feasibility_tol,
-        numerical_policy.integrality_tol, numerical_policy.objective_abs_tol,
-        numerical_policy.objective_rel_tol,
-        request_rows,
-    ]
-    blob = json.dumps(payload, separators=(",", ":"))
-    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
 
 # ---------------------------------------------------------------------------
@@ -593,12 +546,10 @@ def _map_scheduler_state(
         f"block manager reported a malformed free-block count {m_free!r}",
     )
 
-    snapshot_id = _compute_snapshot_id(
-        iteration_id, snapshot_time, num_pipeline_stages, num_running_batches,
-        resident_count, max_num_seqs, b_max, c_max, s_max, m_free,
-        memory_reserve, decode_memory_policy_id, numerical_policy,
-        request_states,
-    )
+    # The scheduler iteration number identifies one scheduling decision within
+    # one scheduler instance. It is not a content fingerprint, proof of
+    # unchanged state, or globally unique identifier.
+    snapshot_id = str(iteration_id)
 
     if not request_inputs:
         return MappingFailure(
