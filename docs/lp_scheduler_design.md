@@ -542,7 +542,9 @@ The problem record MUST contain:
 - $B_{\max},C_{\max},S_{\max},M_t^{\mathrm{free}},W_t$;
 - the selected decode-memory policy identifier;
 - the selected numerical-policy identifier or explicit tolerance values;
-- a snapshot identifier sufficient for Phase F stale-state detection.
+- a snapshot identifier associating the mapped problem, returned plan, and
+  diagnostics; state stability and current-state validation are governed by
+  Section 12.6, not by the identifier.
 
 The record MUST be validated and sorted ascending by `order_key` before solver
 invocation. This canonical order is used for LP variables and solver-vector
@@ -965,7 +967,7 @@ in flight. Auxiliary priority or lookup structures MAY be added later only as
 non-owning indexes; they MUST NOT define or extend the request universe. The LP
 scheduler does not inherit SLAI's `_active_seq_ids`, `paused_prefills`, or
 `decode_queue`. Pipeline ownership remains governed by D-24; the supported
-single-stage stale-state contract is defined in Section 12.6 and D-19.
+single-stage state-stability contract is defined in Section 12.6 and D-19.
 
 Phase E deduplicates the authoritative collections by `seq_id`, excludes future
 and finished requests from $U_t$, and proves that every remaining owned request
@@ -978,7 +980,7 @@ $S_{\max}$ (execution actions now), and `max_num_seqs` (post-plan residents)
 separate. One value may bind several only under explicit approved policy with
 separate names and validation.
 
-### 12.6 Stale-plan detection
+### 12.6 State stability and precommit validation
 
 For the single-stage MVP, state stability comes from the supported execution
 contract rather than a new lock or version subsystem. The same engine instance
@@ -989,19 +991,31 @@ decision call. Pipeline execution and concurrent public engine calls are
 outside this contract.
 
 The plan carries the snapshot ID to associate it with the mapped problem and
-diagnostics; the ID is not a lock or reservation. Immediately before its first
-mutation, Phase F MUST reread and compare every plan-relevant ownership,
-status, allocation, length, progress, completion, free-block, and in-flight
-field and validate the complete plan against that fresh state. Any mismatch is
-a precommit failure with zero mutation, never permission to patch or execute a
-stale plan. Under D-17 the MVP raises its top-level scheduling failure and does
-not automatically retry or re-plan. No additional lock, state-version counter,
-reservation, or layer-local retry mechanism is required for this scoped MVP.
+diagnostics; the ID is not a lock, reservation, or proof of unchanged state.
+Immediately before its first mutation, Phase F MUST verify that the plan belongs
+to the current mapped problem and validate the complete plan against current
+state as specified in Section 13. This includes current request ownership and
+eligibility, action and resident bounds, supported in-flight state, and native
+memory feasibility for all actions together in execution order. Any identity
+mismatch or failed prevalidation is a precommit failure with zero mutation.
+Under D-17 the MVP raises its top-level scheduling failure and does not
+automatically retry or re-plan.
+
+**Approved simplification (2026-10-04):** The synchronous, non-overlapping
+execution contract supplies state stability. Phase F therefore does not perform
+a separate field-by-field comparison with the earlier snapshot or rebuild the
+mapper to compare its output. This removes a redundant comparison while
+preserving complete current-state plan validation. It gives up the separate
+comparison's detection of unexpected state changes that violate the execution
+contract; integration must verify the supported synchronous execution path.
+Pipeline execution and overlapping state-changing calls remain unsupported.
+No additional lock, state-version counter, reservation, or layer-local retry
+mechanism is required for this scoped MVP.
 
 ## 13. Validated Phase F action execution
 
 Phase F runs only after valid Phase E, admissible solve, successful extraction
-and plan validation, and current snapshot identity.
+and plan validation, and a plan snapshot ID matching the current mapped problem.
 Before its first mutation, it validates the whole plan: current
 existence/ownership/status/eligibility; ID uniqueness and exclusion; chunk and
 resident bounds; recovery, allocation, append, watermark, replay, and
@@ -1024,12 +1038,28 @@ sampler-association, pipeline, or control-only behavior. A plan that would
 produce controls without scheduled metadata, including a preempt-only plan,
 is rejected during precommit validation before mutation; the executor does not
 force an unrelated scheduled action to hide that failure. After mutation
-begins, D-20 supplies fail-stop behavior without rollback or recovery. Before
-output, verify ownership, allocation, no loss/duplication, free-block deltas,
-and exact action/token counts. When the supported MVP path exercises and
-claims a cross-layer replay result, replay tests rather than output alone
-establish central/worker block equality. Other action combinations remain
-focused follow-up coverage under §15.4.
+begins, D-20 supplies fail-stop behavior without rollback or recovery.
+
+**Approved simplification (2026-10-04):** Use native queue and block operations
+and keep final runtime checks close to SLAI. Before output, check
+`len(running) <= max_num_seqs`; `running` is the authoritative resident
+collection, so no separate active-request ledger is introduced. Verify that
+emitted scheduled request IDs and prompt-chunk lengths match the validated
+plan in the selected execution order, and that emitted control IDs match its
+validated controls. Derive action/token counts from the emitted entries rather
+than maintaining a second counting system. This output check is needed because
+the executor translates a separately constructed LP plan into native actions.
+
+Do not perform a separate post-execution ownership or allocation audit, either
+globally or for affected requests. Focused execution tests verify complete
+before-and-after queue membership, allocation, no request loss or duplication,
+and expected free-block changes, including unchanged unrelated requests. This
+scope gives up some immediate detection of unrelated state corruption. Failure
+of a native operation or final runtime check after mutation begins remains
+subject to D-20: terminate the run and do not reuse the affected engine state.
+When the supported MVP path exercises and claims a cross-layer replay result,
+replay tests rather than output alone establish central/worker block equality.
+Other action combinations remain focused follow-up coverage under §15.4.
 
 Ordinary future-only or completely empty scheduling is decided by the future
 live `LPScheduler` before the mapper is invoked. It follows the inherited
@@ -1071,7 +1101,7 @@ change the accepted mathematical layer to conceal the outcome.
 | Extraction cannot restore planning feasibility | Return `ExtractionFailure`; no plan |
 | Integer plan violates an invariant | Return explicit validation failure; do not invoke Phase F |
 | Phase E inconsistent snapshot | Return explicit mapping failure; no mutation |
-| Phase F stale state or failed prevalidation | Return explicit precommit failure; perform zero mutations |
+| Phase F problem/plan identity mismatch or failed current-state prevalidation | Return explicit precommit failure; perform zero mutations |
 
 No layer may convert these outcomes into invented relaxed values, an all-zero plan, a baseline-policy action, or a partially accepted plan.
 
@@ -1217,10 +1247,20 @@ them. Phase E remains read-only regardless of the size of its initial test set.
 
 ### 15.4 Phase F execution tests
 
+The live scheduler integration check MUST verify the supported D-19 path:
+mapping through execution occurs synchronously in one scheduler decision call,
+with one pipeline stage and zero running batches before execution mutation.
+A separate old-versus-current snapshot comparison is not required.
+
 Before GPU validation, use one focused synthetic scheduler-state case to prove
 the smallest supported native execution path: a validated plan admits and
-executes work, emits valid metadata, and produces the expected queue and block
-deltas. Use one physically infeasible plan to prove rejection occurs visibly
+executes work, emits scheduled/control entries matching the validated plan,
+respects the resident limit, and reports action/token counts derived from the
+emitted entries. In that same case, verify complete before-and-after queue
+membership and allocation, no request loss or duplication, expected free-block
+changes, and unchanged unrelated requests included in the fixture. These are
+test assertions, not a production post-execution state-auditing subsystem.
+Use one physically infeasible plan to prove rejection occurs visibly
 before scheduler or block-manager mutation, raises the D-17 top-level scheduler
 exception, and produces no `SchedulerOutputs`.
 
@@ -1369,7 +1409,7 @@ Initial correctness validation is limited to a single pipeline stage. Supporting
 | D-16 | **RESOLVED for the single-scheduler MVP** — ascending immutable lexicographic `order_key` with exact extraction ties. The current engine's unique non-negative integer `Sequence.seq_id` is its verified monotone admission identity; Phase E uses `order_key=(raw_seq_id,)` and the accepted decimal-string request ID. Unsupported live ID shapes fail mapping. Revisit this rule if ID generation changes or one scheduling universe spans independent generators. | §§9–10, 12.3; tests §§15.2–15.3 |
 | D-17 | **RESOLVED for the MVP** — every mapping, solver, relaxed-validation, extraction, integer-plan-validation, or fresh-prevalidation failure detected before mutation is fail-stop. The layer returns its immutable structured failure without a plan; the live LP scheduler raises a dedicated exception carrying its immutable diagnostics, produces no `SchedulerOutputs`, and ends the run. It performs no automatic retry or re-planning, empty/all-zero substitution, alternate-policy fallback, patching, or execution. D-18 governs a valid empty plan; D-20 governs failures after mutation begins. | §§14.1–14.3; focused test §15.4 |
 | D-18 | **RESOLVED for the single-stage MVP** — ordinary future-only or completely empty scheduling is handled by the future live `LPScheduler` before mapper invocation: when `running` is empty and `waiting` is empty or its head has `arrival_time > now`, the scheduler returns an ordinary empty `SchedulerOutputs` without mapping, LP construction, solving, extraction, precommit validation, or execution. This inherits the audited schedulers' waiting-order and future-request-validity assumptions and adds no separate validation subsystem. It also inherits `BaseScheduler.schedule()` bookkeeping: `_iteration_id` advances and supplies the output ID, while waiting/running ownership, sequence status and progress, block state, and `num_running_batches` remain unchanged. The mapper accepts only a nonempty arrived universe; an empty arrived universe reaching direct mapping is a `MappingFailure`. Future requests may still be filtered from a mixed nonempty snapshot. If the arrived universe is nonempty and a successfully validated plan contains no positive prefill or decode action, including an all-zero or preempt-only plan, precommit validation returns `no_progress` before execution mutation and the top-level scheduler applies D-17. No retry, forced action, alternate policy, or mathematical-layer change is added. | §§12.1, 13, 14.2, 15.4; D-20 covers failures after execution mutation |
-| D-19 | **RESOLVED for the single-stage MVP** — the same engine receives no overlapping state-changing public calls; mapping begins with one pipeline stage and zero running batches; and mapping through execution is synchronous within one scheduler decision call. The snapshot ID associates the problem and plan but is not a lock. Phase F rereads all plan-relevant state and fully prevalidates immediately before mutation; any mismatch is a zero-mutation precommit failure followed by the D-17 fail-stop response. No new lock, version, reservation, or layer-local retry subsystem is required. Pipeline mode and concurrent public calls remain unsupported. | §§12.2, 12.6, 13, 14.2–14.3; focused tests §§15.3–15.4; D-24 remains OPEN |
+| D-19 | **RESOLVED for the single-stage MVP; simplification approved 2026-10-04** — the same engine receives no overlapping state-changing public calls; mapping begins with one pipeline stage and zero running batches; and mapping through execution is synchronous within one scheduler decision call. This contract supplies state stability. The snapshot ID associates the problem and plan but is not a lock or proof of unchanged state. Phase F checks problem/plan identity and fully validates the complete plan against current state immediately before mutation, including combined native memory feasibility in execution order. It does not separately compare live fields with the earlier snapshot or rebuild the mapper for comparison. Identity mismatch or failed prevalidation is a zero-mutation precommit failure followed by the D-17 fail-stop response. The separate comparison's detection of unexpected contract-violating state changes is relinquished. No new lock, version, reservation, or layer-local retry subsystem is required. Pipeline mode and concurrent public calls remain unsupported. | §§12.2, 12.6, 13, 14.2–14.3; focused tests §§15.3–15.4; D-24 remains OPEN |
 | D-20 | **RESOLVED for the single-stage MVP** — Phase F fully prevalidates before mutation and then uses native LPServe operations. Any exception after the first mutation propagates and terminates the run; potentially divergent scheduler, engine, sequence-manager, and worker state is not reused. The MVP adds no rollback, retry, alternate-policy fallback, partial output, recovery, or transaction mechanism. Known control-only output shapes, including preempt-only plans, are rejected before mutation under D-17 rather than sent through this destructive path. | §§13, 14.4, 16.3, 16.5; focused tests §15.4; D-24 remains OPEN |
 | D-25 | **RESOLVED** — MVP compatibility mode reuses existing LPServe/SLAI behavior, including native recomputation preemption, without repairing inherited framework defects. Material inherited limitations are documented; only issues that block the selected MVP path require action. | §§2.4, 4.4, 13, 16 |
 
