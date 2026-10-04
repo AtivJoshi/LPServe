@@ -74,9 +74,10 @@ The following are not part of this design:
 
 Only decisions recorded as resolved in Section 17 are selected. Utility
 functions, watermarks, Phase F within-prefill/within-decode metadata ordering,
-rollback behavior, pipeline support, and every remaining OPEN item have no
-implicit default. The selected pre-mutation failure response is the scoped
-fail-stop rule in Section 14.2 and D-17; no alternate-policy fallback is
+pipeline support, and every remaining OPEN item have no implicit default. The
+selected pre-mutation failure response is the scoped fail-stop rule in Section
+14.2 and D-17. The selected post-mutation response is the no-rollback,
+fail-stop rule in Section 14.4 and D-20. No alternate-policy fallback is
 selected.
 
 ## 2. Design status and terminology
@@ -901,6 +902,10 @@ All hatted variables must have their integer domains. Integer plans are not acce
 Phase E builds one coherent, immutable Phase D snapshot and is independently
 testable without a solver. It MUST NOT mutate collections, blocks, status, or
 prompt progress; construct replayable output; or choose fallback behavior.
+After validating the authoritative ownership boundary, it returns either a
+snapshot containing a nonempty `LPProblem`, an explicit immutable ordinary-idle
+result for a coherent empty arrived universe under D-18, or a structured
+mapping failure. None may retain mutable LPServe objects.
 
 ### 12.2 Snapshot consistency
 
@@ -1006,21 +1011,45 @@ Prevalidation reduces risk, not non-atomicity.
 | Unallocated prefill | Waiting/arrived/unfinished/prompt-incomplete; full allocation and resident slot; move ownership once, allocate full logical context, emit `SequenceScheduleMetadata` with positive `prompt_chunk_len=\hat x_i`. | Admission cost is independent of chunk length. |
 | Resident prefill | Verify allocation, $a_i^P=0$, positive remainder, and ownership; no new admission; emit positive `prompt_chunk_len` metadata. | Verify zero allocation in integration tests. |
 | Decode | Verify prompt completion, resident allocation/status, and append feasibility; append in metadata order; emit `prompt_chunk_len=0`. | $c_i^D$ is the pre-action gap. |
-| Preemption | Remove resident owner once, free central blocks, native-return to waiting, emit `preempted_seq_ids`, replay `reset_for_recompute()`/local frees. | MVP compatibility mode: use the native path without repairing its inherited limitations. |
-| Do nothing | No mutation or output entry. | Empty-plan fallback/liveness is OPEN. |
+| Preemption | Remove resident owner once, free central blocks, native-return to waiting, emit `preempted_seq_ids`, replay `reset_for_recompute()`/local frees. | MVP compatibility mode: use the native path without repairing its inherited limitations; reject a control-only plan before mutation. |
+| Do nothing | No mutation or output entry. | With no arrived unfinished work, return ordinary idle before LP construction. With a nonempty arrived universe, a plan with no prefill or decode action fails `no_progress` before mutation. |
 
 Central and workers use one replay-compatible deterministic order: validated
 ignored controls, preemption/free, scheduled actions, ownership finalization,
 then `SchedulerOutputs`; native replay uses ignored, preempted, then scheduled
 IDs, which are disjoint. The MVP does not repair inherited mixed-batch,
-sampler-association, pipeline, or control-only behavior; affected cases are
-documented limitations rather than a reason to expand the executor.
-Mutation granularity and post-mutation recovery remain OPEN. Before output,
-verify ownership, allocation, no loss/duplication, free-block deltas, and exact
-action/token counts. When the supported MVP path exercises and claims a
-cross-layer replay result, replay tests rather than output alone establish
-central/worker block equality. Other action combinations remain focused
-follow-up coverage under §15.4.
+sampler-association, pipeline, or control-only behavior. A plan that would
+produce controls without scheduled metadata, including a preempt-only plan,
+is rejected during precommit validation before mutation; the executor does not
+force an unrelated scheduled action to hide that failure. After mutation
+begins, D-20 supplies fail-stop behavior without rollback or recovery. Before
+output, verify ownership, allocation, no loss/duplication, free-block deltas,
+and exact action/token counts. When the supported MVP path exercises and
+claims a cross-layer replay result, replay tests rather than output alone
+establish central/worker block equality. Other action combinations remain
+focused follow-up coverage under §15.4.
+
+Before constructing an `LPProblem`, Phase E performs a read-only idle
+classification over the authoritative ownership boundary. It returns an
+explicit immutable idle result only when there is no arrived, unfinished
+scheduler-owned request: the scheduler owns no unfinished request, or every
+unfinished request is a well-formed future waiting request and there is no
+resident owner. The classification MUST validate the IDs, arrival values,
+completion state, and ownership facts needed to prove that condition; malformed
+or contradictory state is a mapping failure, not idle. The live scheduler
+converts the idle result to an empty `SchedulerOutputs`. Ordinary idle invokes
+neither `LPProblem` construction, the solver, extraction, nor Phase F, and
+performs no state mutation. The accepted `LPProblem` interface need not
+represent an empty request set.
+
+For a nonempty arrived universe, successful integer-plan validation MUST be
+followed by a precommit progress gate. If the plan contains no positive prefill
+and no decode action, including an all-zero or preempt-only plan, Phase F
+returns a structured failure with category `no_progress` and the snapshot ID,
+with zero mutation. The top-level scheduler applies D-17: it raises its
+dedicated failure exception and produces no `SchedulerOutputs`. It MUST NOT
+retry unchanged state, force an unrelated action, invoke another policy, or
+change the accepted mathematical layer to conceal the outcome.
 
 ## 14. Failure contracts
 
@@ -1062,6 +1091,13 @@ mutation. A valid plan that selects no work is governed separately by D-18.
 Failure after any mutation begins is governed separately by D-20 and MUST NOT
 be treated as safely covered by this pre-mutation rule.
 
+D-18 distinguishes ordinary idle from failure. No arrived unfinished work is
+the normal idle case defined in Section 13 and may return an empty
+`SchedulerOutputs` without invoking the LP path. Once the arrived universe is
+nonempty, a validated plan with no prefill or decode action is a
+`no_progress` precommit failure and follows D-17. An idle output MUST NOT be
+used to represent or suppress that failure.
+
 ### 14.3 Precommit physical failure
 
 If fresh physical prevalidation fails, Phase F must perform no mutation and
@@ -1072,7 +1108,22 @@ D-17 fail-stop rule in Section 14.2.
 
 The audited framework has no transaction, reservation object, undo log, or rollback spanning scheduler collections, the central allocator, engine state, and worker allocators. Allocation can also fail after partially popping blocks from its free list.
 
-Rollback, fail-stop, or another post-mutation failure contract is OPEN. The executor MUST NOT claim atomicity, recovery, or safe continuation until a chosen contract is implemented and tested. Catching an exception and continuing is not an acceptable implicit policy because central and worker state may have diverged.
+For the single-stage MVP, D-20 deliberately inherits the existing schedulers'
+fail-stop behavior rather than adding a transaction or recovery subsystem.
+Phase F performs complete fresh prevalidation before its first mutation. If an
+exception occurs after that first mutation, it propagates and terminates the
+current run. The scheduler, engine, sequence-manager, and worker state MUST be
+treated as potentially divergent and MUST NOT be reused. The implementation
+MUST NOT catch the exception and continue, retry the plan, invoke another
+policy, return partial `SchedulerOutputs`, or claim rollback, atomicity,
+recovery, or safe continuation.
+
+Known deterministic incompatibilities are not deferred to this destructive
+failure rule. In particular, any plan that would create a control-only output
+with no scheduled metadata, including a preempt-only plan, MUST fail precommit
+validation with zero mutation under D-17. The executor MUST NOT manufacture an
+unrelated scheduled action to avoid the framework defect. Pipeline execution
+remains outside the supported contract under D-24.
 
 ### 14.5 Observability
 
@@ -1156,6 +1207,18 @@ deltas. Use one physically infeasible plan to prove rejection occurs visibly
 before scheduler or block-manager mutation, raises the D-17 top-level scheduler
 exception, and produces no `SchedulerOutputs`.
 
+Use one future-only case to prove ordinary idle returns an empty
+`SchedulerOutputs` without constructing an `LPProblem` or invoking solving,
+extraction, or execution and without mutation. Use one arrived unfinished case
+with a validated all-zero plan to prove it is rejected as `no_progress` before
+mutation. Use one focused control-only case to prove a preempt-only plan reaches
+the same progress gate. A larger empty-plan matrix is not required. Use one
+focused synthetic post-mutation failure, induced by a test double after the
+first native state change and without adding a production fault-injection
+mechanism, to prove the exception propagates, no later planned action or
+`SchedulerOutputs` is produced, and the mutated fixture is discarded rather
+than reused. This test does not require or imply rollback.
+
 Add direct focused regressions only when a currently supported action breaks.
 Preemption, mixed batches, decode marginal-block variants, worker
 block-table equality, and ownership corner cases are not mandatory initial
@@ -1220,8 +1283,9 @@ A preempt-only or ignore-only output has no scheduled metadata. The single-stage
 
 The LP can legitimately produce a preempt-only plan. In MVP compatibility mode,
 the executor does not repair this inherited behavior or force an unrelated
-scheduled action merely to avoid it. Affected executions are documented as
-unsupported/known-limitation outcomes.
+scheduled action merely to avoid it. It rejects any control-only plan during
+precommit validation with zero mutation. Supporting control-only execution
+later requires an explicit engine/replay repair and focused tests.
 
 ### 16.4 Mixed-batch and sampler association
 
@@ -1233,7 +1297,12 @@ not establish corrected sampler semantics.
 
 ### 16.5 Non-transactional mutation
 
-Scheduler queues and central blocks mutate before forward execution, workers replay later, and no cross-layer rollback exists. Prevalidation remains part of the selected path, but the MVP adds no rollback or recovery. It must not claim atomic commit or recoverable failure.
+Scheduler queues and central blocks mutate before forward execution, workers
+replay later, and no cross-layer rollback exists. Prevalidation remains part
+of the selected path, but the MVP adds no rollback or recovery. Under D-20, an
+exception after mutation begins terminates the run and the affected engine
+state is not reused. The MVP must not claim atomic commit or recoverable
+failure.
 
 ### 16.6 Pipeline-parallel support — deferred from the initial MVP
 
@@ -1275,7 +1344,9 @@ Initial correctness validation is limited to a single pipeline stage. Supporting
 | D-15 | **RESOLVED** — absolute $\varepsilon_{\mathrm{feas}}=10^{-7}$, independent validation, narrow projection, and revalidation only. | §11.2; §15.1 |
 | D-16 | **RESOLVED for the single-scheduler MVP** — ascending immutable lexicographic `order_key` with exact extraction ties. The current engine's unique non-negative integer `Sequence.seq_id` is its verified monotone admission identity; Phase E uses `order_key=(raw_seq_id,)` and the accepted decimal-string request ID. Unsupported live ID shapes fail mapping. Revisit this rule if ID generation changes or one scheduling universe spans independent generators. | §§9–10, 12.3; tests §§15.2–15.3 |
 | D-17 | **RESOLVED for the MVP** — every mapping, solver, relaxed-validation, extraction, integer-plan-validation, or fresh-prevalidation failure detected before mutation is fail-stop. The layer returns its immutable structured failure without a plan; the live LP scheduler raises a dedicated exception carrying its immutable diagnostics, produces no `SchedulerOutputs`, and ends the run. It performs no automatic retry or re-planning, empty/all-zero substitution, alternate-policy fallback, patching, or execution. D-18 governs a valid empty plan; D-20 governs failures after mutation begins. | §§14.1–14.3; focused test §15.4 |
+| D-18 | **RESOLVED for the single-stage MVP** — if no arrived unfinished request exists, Phase E proves ordinary idle read-only at the authoritative ownership boundary and returns an explicit immutable idle result without constructing an `LPProblem`; the live scheduler returns an empty `SchedulerOutputs` without solving or mutating state. If the arrived universe is nonempty and a successfully validated plan contains no positive prefill or decode action, including an all-zero or preempt-only plan, precommit validation returns `no_progress` with zero mutation and the top-level scheduler applies D-17. No retry, forced action, alternate policy, or mathematical-layer change is added. | §§13, 14.2, 15.4; D-20 covers failures after mutation |
 | D-19 | **RESOLVED for the single-stage MVP** — the same engine receives no overlapping state-changing public calls; mapping begins with one pipeline stage and zero running batches; and mapping through execution is synchronous within one scheduler decision call. The snapshot ID associates the problem and plan but is not a lock. Phase F rereads all plan-relevant state and fully prevalidates immediately before mutation; any mismatch is a zero-mutation precommit failure followed by the D-17 fail-stop response. No new lock, version, reservation, or layer-local retry subsystem is required. Pipeline mode and concurrent public calls remain unsupported. | §§12.2, 12.6, 13, 14.2–14.3; focused tests §§15.3–15.4; D-24 remains OPEN |
+| D-20 | **RESOLVED for the single-stage MVP** — Phase F fully prevalidates before mutation and then uses native LPServe operations. Any exception after the first mutation propagates and terminates the run; potentially divergent scheduler, engine, sequence-manager, and worker state is not reused. The MVP adds no rollback, retry, alternate-policy fallback, partial output, recovery, or transaction mechanism. Known control-only output shapes, including preempt-only plans, are rejected before mutation under D-17 rather than sent through this destructive path. | §§13, 14.4, 16.3, 16.5; focused tests §15.4; D-24 remains OPEN |
 | D-25 | **RESOLVED** — MVP compatibility mode reuses existing LPServe/SLAI behavior, including native recomputation preemption, without repairing inherited framework defects. Material inherited limitations are documented; only issues that block the selected MVP path require action. | §§2.4, 4.4, 13, 16 |
 
 D-13 provides no basic/extreme-point or fractional-count guarantee; its
@@ -1300,8 +1371,6 @@ candidate is a hidden default.
 | D-09 | Decode planning charge $c_i^D$ | Exact gap or conservative one-block charge | Before final Phase D/Phase E interface freeze |
 | D-10 | Memory reserve $W_t$ | Zero, fixed, or state-dependent; not silently the watermark | Before live LP solves |
 | D-13 | Remaining solver performance, control, and basis policy | Finite live/performance limits; possible `highs`/`highs-ipm`; edge-weight and other tuning; IPM/crossover; basis certification; warm starts/basis reuse; threading/parallelism/random seed; cross-version degenerate-optimum behavior; any solver-output-to-fractional-bound assertion | Does not block initial Phase D; before the relevant performance, control, or structural claim |
-| D-18 | Empty-plan liveness | No policy specified | Before live scheduler integration |
-| D-20 | Post-mutation failure contract | Rollback, fail-stop, or another explicit mechanism | Before Phase F is enabled |
 | D-21 | Canonical within-prefill and within-decode metadata order | Prompt-first partition required; internal ordering unspecified | Before mixed-batch Phase F tests |
 | D-22 | Recomputation output contract | Original prompt/generated suffix versus expanded-context representation | Before claiming corrected or public recomputation-output semantics; MVP compatibility mode may use native preemption with the documented inherited limitation |
 | D-23 | Approximation guarantee | No ratio established | Before any theoretical quality claim |
