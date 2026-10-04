@@ -1,6 +1,6 @@
 # LPServe Project Guide
 
-**Guide provenance:** Updated on 2026-09-20 against committed HEAD `67a336222a6ec2ac53d932e7928c597dd4ccbe23`. The Phase C architecture audit remains pinned to `c3e0143`; later implementation and documentation commits do not repin that historical audit. Inspect current Git state before relying on this snapshot.
+**Guide provenance:** Current-target wording updated on 2026-10-04 after source inspection at committed HEAD `78d663a2984aa4d4b7c5b09acf51d57e8f3266a8`; the earlier guide update was against `67a336222a6ec2ac53d932e7928c597dd4ccbe23` on 2026-09-20. The Phase C architecture audit remains pinned to `c3e0143`; later implementation and documentation commits do not repin that historical audit. Inspect current Git state before relying on this snapshot.
 
 ## Project purpose
 
@@ -57,7 +57,7 @@ The planned sequence is:
 7. Phase G — perform integrated correctness validation.
 8. Phase H — attribute timing and run controlled performance comparisons.
 
-The Phase C architecture audit and the Phase D–F normative design artifacts exist. The standalone Phase D mathematical layer is implemented in `lp_relaxation_scheduler.py` and accepted for its scoped MVP after the focused solver, extraction, failure, and zero-valued tie checks recorded in `docs/handoffs/`. Phase E read-only state mapping is the next implementation target. Synthetic Phase D utilities, capacities, reserve, and decode-charge values remain scoped provisional inputs rather than permanent project decisions.
+The Phase C architecture audit and the Phase D–F normative design artifacts exist. The standalone Phase D mathematical layer is implemented in `lp_relaxation_scheduler.py` and accepted for its scoped MVP after the focused solver, extraction, failure, and zero-valued tie checks recorded in `docs/handoffs/`. Phase E read-only state mapping is implemented in `lpserve_state_mapping.py`, with focused tests in `tests/test_lpserve_state_mapping.py`. Retained Unity CPU validation is recorded in `docs/handoffs/state_mapping_idle_contract_handoff.md` for `1c9141a`; it does not validate later simplification commits. Phase F native execution and live `LPScheduler` integration are not implemented and remain subsequent work subject to the design gates. See `docs/project_status.md` for the current evidence boundary. Synthetic Phase D utilities, capacities, reserve, and decode-charge values remain scoped provisional inputs rather than permanent project decisions.
 
 The key separation is:
 
@@ -113,7 +113,7 @@ Keep verified facts, inferences, proposed requirements, unresolved choices, and 
 
 Before editing, record the branch, commit, and working-tree state, preserve unrelated user changes, and compare scheduler-relevant code with the audit baseline. For Phase D, read `docs/lp_scheduler_design.md` first for normative requirements, then `docs/lpserve_scheduler_architecture_summary.md` for architecture orientation, then the full audit and current source code only as needed for detailed framework claims; use Sections 7, 9–11, and 14–18 of the design and the corresponding ILP/relaxation/extraction sections of `docs/math/main-llm-serving.tex`.
 
-Implementation tasks should state the objective, files allowed to change, required behavior and invariants, focused checks, and out-of-scope work. Do not infer LPServe behavior from modern vLLM or another Sarathi/SLAI version. Supply only the policy values needed by the active MVP, visibly and provisionally where appropriate; do not bury them as undocumented defaults.
+Implementation tasks should state the objective, files allowed to change, supported behavior and invariants, required checks, out-of-scope work, and an explicit completion boundary. Distinguish executor implementation, live scheduler integration, and GPU validation; name which are included in the task and do not treat one as evidence that the others are complete. Follow the communication, SLAI-reuse, execution-environment, and validation-provenance rules in `AGENTS.md`. Do not infer LPServe behavior from modern vLLM or another Sarathi/SLAI version. Supply only the policy values needed by the active MVP, visibly and provisionally where appropriate; do not bury them as undocumented defaults.
 
 Phase names and numbers are project-management labels, not implementation terminology. They MUST NOT appear in Python filenames, package or module names, identifiers, comments, docstrings, printed output, diagnostics, result stages, categories, or failure messages. Use responsibility-based names such as `lp_relaxation`, `state_mapping`, `precommit_validation`, and `execution` instead.
 

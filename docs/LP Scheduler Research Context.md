@@ -118,9 +118,9 @@ If this document, `docs/math/main-llm-serving.tex`, `docs/lp_scheduler_design.md
 
 # 4. High-Level Scheduling Problem
 
-At every scheduler decision epoch \(t\), let \(U_t\) denote the set of non-finished, arrived requests relevant to the current scheduling decision.
+At every scheduler decision epoch $t$, let $U_t$ denote the set of non-finished, arrived requests relevant to the current scheduling decision.
 
-Conceptually, \(U_t\) may contain:
+Conceptually, $U_t$ may contain:
 
 - newly waiting requests;
 - partially-prefilled requests;
@@ -130,24 +130,24 @@ Conceptually, \(U_t\) may contain:
 
 Let
 
-\[
+$$
 \mathcal{Z}_t
 =
 \left\{
 i \in U_t :
 i \text{ is resident and legally preemptible at the beginning of step }t
 \right\}
-\]
+$$
 
-denote the preemptible subset of \(U_t\). Waiting, already-preempted, finished, and otherwise non-preemptible requests do not belong to \(\mathcal{Z}_t\). Requests whose physical KV state cannot safely be released at the current decision boundary, including relevant pipeline-in-flight requests, must also be excluded.
+denote the preemptible subset of $U_t$. Waiting, already-preempted, finished, and otherwise non-preemptible requests do not belong to $\mathcal{Z}_t$. Requests whose physical KV state cannot safely be released at the current decision boundary, including relevant pipeline-in-flight requests, must also be excluded.
 
-The precise mappings of \(U_t\) and \(\mathcal{Z}_t\) to `LPServe`/SLAI `Sequence` objects must be derived from the current implementation and validated before scheduler state is mutated.
+The precise mappings of $U_t$ and $\mathcal{Z}_t$ to `LPServe`/SLAI `Sequence` objects must be derived from the current implementation and validated before scheduler state is mutated.
 
-For each request \(i \in U_t\), the scheduler chooses at most one of the following actions for the next execution step:
+For each request $i \in U_t$, the scheduler chooses at most one of the following actions for the next execution step:
 
 1. process a positive number of prefill tokens;
 2. generate one decode token;
-3. preempt the request, if \(i \in \mathcal{Z}_t\);
+3. preempt the request, if $i \in \mathcal{Z}_t$;
 4. do nothing.
 
 The LP scheduler is intended to choose these execution actions directly. It is not merely a mechanism for assigning queue priorities. The canonical do-nothing action sets all action variables for the request to zero.
@@ -156,85 +156,85 @@ The LP scheduler is intended to choose these execution actions directly. It is n
 
 # 5. Myopic ILP
 
-For every request \(i \in U_t\), define
+For every request $i \in U_t$, define
 
-\[
+$$
 x_i(t)\in\mathbb{Z}_{\ge0},
-\]
+$$
 
 the number of prefill tokens processed in the step;
 
-\[
+$$
 y_i(t)\in\{0,1\},
-\]
+$$
 
 indicating whether one decode token is generated; and
 
-\[
+$$
 I_i^P(t)\in\{0,1\},
-\]
+$$
 
 indicating whether the request receives a positive prefill operation.
 
-For every legally preemptible request \(i \in\mathcal{Z}_t\), define
+For every legally preemptible request $i \in\mathcal{Z}_t$, define
 
-\[
+$$
 z_i(t)\in\{0,1\},
-\]
+$$
 
 indicating whether the request is preempted. For notational convenience, define
 
-\[
+$$
 z_i(t)=0
 \qquad
 \forall i\in U_t\setminus\mathcal{Z}_t.
-\]
+$$
 
 The request/system parameters are:
 
-- \(P_i^{\mathrm{rem}}(t)\): remaining unprocessed prompt tokens;
-- \(C_{\max}\): maximum candidate prefill chunk size;
-- \(U_i(t)=\min(P_i^{\mathrm{rem}}(t),C_{\max})\): maximum prefill action available to request \(i\);
-- \(a_i^P(t)\): fixed planning-memory cost of executing a positive prefill action;
-- \(c_i^D(t)\): marginal planning-memory cost of one decode action;
-- \(c_i^Z(t)\): planning memory recovered by legally preempting request \(i\);
-- \(B_{\max}\): per-step token-volume budget;
-- \(S_{\max}\): scheduled-action concurrency budget;
-- \(M_t^{\mathrm{free}}\): free scheduling memory at the beginning of the step;
-- \(W_t\): optional conservative memory reserve.
+- $P_i^{\mathrm{rem}}(t)$: remaining unprocessed prompt tokens;
+- $C_{\max}$: maximum candidate prefill chunk size;
+- $U_i(t)=\min(P_i^{\mathrm{rem}}(t),C_{\max})$: maximum prefill action available to request $i$;
+- $a_i^P(t)$: fixed planning-memory cost of executing a positive prefill action;
+- $c_i^D(t)$: marginal planning-memory cost of one decode action;
+- $c_i^Z(t)$: planning memory recovered by legally preempting request $i$;
+- $B_{\max}$: per-step token-volume budget;
+- $S_{\max}$: scheduled-action concurrency budget;
+- $M_t^{\mathrm{free}}$: free scheduling memory at the beginning of the step;
+- $W_t$: optional conservative memory reserve.
 
 Under the audited Sarathi/LPServe allocation behavior,
 
-\[
+$$
 a_i^P(t)
 =
 \begin{cases}
 0,
-& \text{if request \(i\) is already resident and allocated},\\
+& \text{if request $i$ is already resident and allocated},\\
 A_i(t),
-& \text{if request \(i\) requires admission or recomputation},
+& \text{if request $i$ requires admission or recomputation},
 \end{cases}
-\]
+$$
 
-where \(A_i(t)\) is the number of physical KV-cache blocks required to allocate the request's complete current logical context.
+where $A_i(t)$ is the number of physical KV-cache blocks required to allocate the request's complete current logical context.
 
-For \(i\in\mathcal{Z}_t\),
+For $i\in\mathcal{Z}_t$,
 
-\[
+$$
 c_i^Z(t)
-\]
+$$
 
-is the number of physical blocks that would be released by legally preempting request \(i\) at time \(t\).
+is the number of physical blocks that would be released by legally preempting request $i$ at time $t$.
 
 The request-specific utility weights are:
 
-- \(\alpha_i(t)\): utility of scheduling one decode token;
-- \(\beta_i(t)\): utility per scheduled prefill token;
-- \(\gamma_i(t)\): penalty for legally preempting the request.
+- $\alpha_i(t)$: utility of scheduling one decode token;
+- $\beta_i(t)$: utility per scheduled prefill token;
+- $\gamma_i(t)$: penalty for legally preempting the request.
 
 The one-step objective is
 
-\[
+$$
 \max
 \left[
 \sum_{i\in U_t}
@@ -247,31 +247,31 @@ The one-step objective is
 \sum_{i\in\mathcal{Z}_t}
 \gamma_i(t)z_i(t)
 \right].
-\]
+$$
 
 The global token-volume constraint is
 
-\[
+$$
 \sum_{i\in U_t}
 \left(
 x_i(t)+y_i(t)
 \right)
 \le B_{\max}.
-\]
+$$
 
 The global scheduled-action concurrency constraint is
 
-\[
+$$
 \sum_{i\in U_t}
 \left(
 I_i^P(t)+y_i(t)
 \right)
 \le S_{\max}.
-\]
+$$
 
 The planning-memory constraint is
 
-\[
+$$
 \sum_{i\in U_t}
 \left(
 a_i^P(t)I_i^P(t)
@@ -283,11 +283,11 @@ c_i^D(t)y_i(t)
 c_i^Z(t)z_i(t)
 \le
 M_t^{\mathrm{free}}-W_t.
-\]
+$$
 
 Chunked prefill obeys
 
-\[
+$$
 I_i^P(t)
 \le
 x_i(t)
@@ -295,33 +295,33 @@ x_i(t)
 U_i(t)I_i^P(t)
 \qquad
 \forall i\in U_t.
-\]
+$$
 
-This pair of inequalities makes \(I_i^P(t)\) an exact indicator of a positive prefill action in the integer formulation:
+This pair of inequalities makes $I_i^P(t)$ an exact indicator of a positive prefill action in the integer formulation:
 
-- \(I_i^P(t)=0\) forces \(x_i(t)=0\);
-- \(I_i^P(t)=1\) requires \(1\le x_i(t)\le U_i(t)\).
+- $I_i^P(t)=0$ forces $x_i(t)=0$;
+- $I_i^P(t)=1$ requires $1\le x_i(t)\le U_i(t)$.
 
 Decode causality is represented by
 
-\[
+$$
 y_i(t)
 \le
 \mathbf{1}
 \left\{
 P_i^{\mathrm{rem}}(t)=0
 \right\}.
-\]
+$$
 
 Finally,
 
-\[
+$$
 I_i^P(t)+y_i(t)+z_i(t)\le1
 \qquad
 \forall i\in U_t
-\]
+$$
 
-enforces mutual exclusion between prefill, decode, and legal preemption. Because \(z_i(t)=0\) for \(i\notin\mathcal{Z}_t\), this constraint applies uniformly to all requests.
+enforces mutual exclusion between prefill, decode, and legal preemption. Because $z_i(t)=0$ for $i\notin\mathcal{Z}_t$, this constraint applies uniformly to all requests.
 
 These constraints define the mathematical core of the first scheduler. The three global coupling constraints are token volume, scheduled action width, and planning memory. Prefill linkage, decode causality, action mutual exclusion, and preemption eligibility remain request-local restrictions.
 
@@ -360,17 +360,17 @@ If simple utility weights are needed during early smoke testing, they should be 
 
 # 7. LP Relaxation
 
-A true continuous LP relaxation must relax the prefill-token variable \(x_i\) as well as the binary action variables. The relaxed domains are
+A true continuous LP relaxation must relax the prefill-token variable $x_i$ as well as the binary action variables. The relaxed domains are
 
-\[
+$$
 x_i\in\mathbb{R}_{\ge0},
 \qquad
 y_i,I_i^P\in[0,1],
-\]
+$$
 
 and
 
-\[
+$$
 z_i\in[0,1]
 \quad
 \forall i\in\mathcal{Z}_t,
@@ -378,23 +378,23 @@ z_i\in[0,1]
 z_i=0
 \quad
 \forall i\in U_t\setminus\mathcal{Z}_t.
-\]
+$$
 
 The request-local linkage constraints
 
-\[
+$$
 I_i^P
 \le
 x_i
 \le
 U_i I_i^P
-\]
+$$
 
 remain part of the relaxation. They prevent a full prefill indicator from being paired with fewer than one prefill token and strengthen the continuous formulation.
 
 Let the relaxed solution be
 
-\[
+$$
 \tilde{x}_i,
 \qquad
 \tilde{y}_i,
@@ -402,7 +402,7 @@ Let the relaxed solution be
 \tilde{z}_i,
 \qquad
 \tilde{I}_i^P.
-\]
+$$
 
 A standard LP solver may be used initially. SciPy/HiGHS is a reasonable first candidate if it fits naturally within the `LPServe` environment.
 
@@ -420,17 +420,17 @@ The extraction procedure converts the relaxed solution into executable integer a
 
 For each request, inspect the relaxed action indicators
 
-\[
+$$
 \tilde{y}_i,
 \qquad
 \tilde{I}_i^P,
 \qquad
 \tilde{z}_i,
-\]
+$$
 
-where \(\tilde{z}_i=0\) by definition for \(i\notin\mathcal{Z}_t\).
+where $\tilde{z}_i=0$ by definition for $i\notin\mathcal{Z}_t$.
 
-A request is considered indicator-integral when all three values are numerically close to \(0\) or \(1\). Use an explicit numerical tolerance rather than exact floating-point equality. A tolerance such as
+A request is considered indicator-integral when all three values are numerically close to $0$ or $1$. Use an explicit numerical tolerance rather than exact floating-point equality. A tolerance such as
 
 ```text
 1e-6
@@ -452,7 +452,7 @@ $$
 
 contain the remaining requests.
 
-For \(i\in U_{\mathrm{int}}\), lock
+For $i\in U_{\mathrm{int}}$, lock
 
 $$
 \hat{y}_i=\tilde{y}_i,
@@ -474,7 +474,7 @@ $$
 I_i^P\le x_i,
 $$
 
-an integral value \(\tilde{I}_i^P=1\) implies \(\tilde{x}_i\ge1\), and hence \(\hat{x}_i\ge1\). Flooring therefore cannot produce an integral action with \(\hat{I}_i^P=1\) and \(\hat{x}_i=0\).
+an integral value $\tilde{I}_i^P=1$ implies $\tilde{x}_i\ge1$, and hence $\hat{x}_i\ge1$. Flooring therefore cannot produce an integral action with $\hat{I}_i^P=1$ and $\hat{x}_i=0$.
 
 The remaining token and sequence capacities are
 
@@ -521,7 +521,7 @@ c_i^Z\hat{z}_i
 \right),
 $$
 
-using the convention \(\hat{z}_i=0\) for \(i\notin\mathcal{Z}_t\).
+using the convention $\hat{z}_i=0$ for $i\notin\mathcal{Z}_t$.
 
 The final plan must be canonicalized and validated so that
 
@@ -551,54 +551,54 @@ The hatted state already contains the decisions fixed for $U_{\mathrm{int}}$ and
 
 Dominant preemption rounding applies only to requests in
 
-\[
+$$
 U_{\mathrm{frac}}\cap\mathcal{Z}_t.
-\]
+$$
 
 For each such request, compare
 
-\[
+$$
 \tilde{y}_i,
 \qquad
 \tilde{I}_i^P,
 \qquad
 \tilde{z}_i.
-\]
+$$
 
-If preemption is the dominant relaxed action and \(c_i^Z(t)>0\), set
+If preemption is the dominant relaxed action and $c_i^Z(t)>0$, set
 
-\[
+$$
 \hat{z}_i=1
-\]
+$$
 
 before performing fractional capacity-consuming actions, and increase the residual planning memory by
 
-\[
+$$
 c_i^Z(t).
-\]
+$$
 
 This ordering is important because legal preemption is a capacity-producing action. Memory released through selected preemptions should be accounted for before additional decode or prefill actions are admitted.
 
-Waiting, already-preempted, and otherwise ineligible requests are excluded because they do not belong to \(\mathcal{Z}_t\). The extraction procedure must not infer preemption legality solely from the numerical value of \(\tilde{z}_i\).
+Waiting, already-preempted, and otherwise ineligible requests are excluded because they do not belong to $\mathcal{Z}_t$. The extraction procedure must not infer preemption legality solely from the numerical value of $\tilde{z}_i$.
 
 Ties must be resolved deterministically. The exact tie-breaking rule must be documented and tested.
 ## 8.4 Safety preemption
 
 After dominant fractional preemptions are selected, the residual planning memory may still satisfy
 
-\[
+$$
 M_{\mathrm{curr}}<0.
-\]
+$$
 
 This can occur because the relaxed LP may rely on the combined memory contribution of several non-dominant fractional preemptions. The repair step may therefore need to select multiple legal preemptions before feasibility is restored.
 
 The candidate set for safety preemption is restricted to unused requests satisfying
 
-\[
+$$
 i\in U_{\mathrm{frac}}\cap\mathcal{Z}_t
 \qquad\text{and}\qquad
 c_i^Z(t)>0.
-\]
+$$
 
 The intended procedure is:
 
@@ -622,75 +622,75 @@ $$
 
 or extraction fails.
 
-Restricting the candidate set to \(\mathcal{Z}_t\) prevents the mathematical repair procedure from producing an action that the LPServe executor cannot legally apply. Requiring \(c_i^Z(t)>0\) also ensures that every repair iteration makes strict progress toward restoring memory feasibility.
+Restricting the candidate set to $\mathcal{Z}_t$ prevents the mathematical repair procedure from producing an action that the LPServe executor cannot legally apply. Requiring $c_i^Z(t)>0$ also ensures that every repair iteration makes strict progress toward restoring memory feasibility.
 
-Choosing the eligible request with the largest remaining \(\tilde{z}_i\) keeps the repair decision close to the relaxed solution. This is an approximation-quality heuristic; it does not imply that the resulting integer solution maximizes the rounded objective.
+Choosing the eligible request with the largest remaining $\tilde{z}_i$ keeps the repair decision close to the relaxed solution. This is an approximation-quality heuristic; it does not imply that the resulting integer solution maximizes the rounded objective.
 
 ## 8.5 Decode and prefill extraction
 
 For each remaining unpreempted fractional request, compare
 
-\[
+$$
 \tilde{y}_i
-\]
+$$
 
 and
 
-\[
+$$
 \tilde{I}_i^P.
-\]
+$$
 
 A fractional decode may be selected only if all relevant residual capacities remain available:
 
-\[
+$$
 B_{\mathrm{curr}}\ge1,
-\]
+$$
 
-\[
+$$
 S_{\mathrm{curr}}\ge1,
-\]
+$$
 
 and
 
-\[
+$$
 M_{\mathrm{curr}}\ge c_i^D(t).
-\]
+$$
 
 After accepting a decode, update
 
-\[
+$$
 B_{\mathrm{curr}}
 \gets
 B_{\mathrm{curr}}-1,
-\]
+$$
 
-\[
+$$
 S_{\mathrm{curr}}
 \gets
 S_{\mathrm{curr}}-1,
-\]
+$$
 
 and
 
-\[
+$$
 M_{\mathrm{curr}}
 \gets
 M_{\mathrm{curr}}-c_i^D(t).
-\]
+$$
 
 A fractional prefill action may be accepted only if
 
-\[
+$$
 B_{\mathrm{curr}}\ge1,
 \qquad
 S_{\mathrm{curr}}\ge1,
 \qquad
 M_{\mathrm{curr}}\ge a_i^P(t).
-\]
+$$
 
 If these conditions hold, select
 
-\[
+$$
 \hat{x}_i
 =
 \min
@@ -699,41 +699,41 @@ P_i^{\mathrm{rem}}(t),
 C_{\max},
 B_{\mathrm{curr}}
 \right).
-\]
+$$
 
-If \(\hat{x}_i>0\), set
+If $\hat{x}_i>0$, set
 
-\[
+$$
 \hat{I}_i^P=1
-\]
+$$
 
 and update
 
-\[
+$$
 B_{\mathrm{curr}}
 \gets
 B_{\mathrm{curr}}-\hat{x}_i,
-\]
+$$
 
-\[
+$$
 S_{\mathrm{curr}}
 \gets
 S_{\mathrm{curr}}-1,
-\]
+$$
 
 and
 
-\[
+$$
 M_{\mathrm{curr}}
 \gets
 M_{\mathrm{curr}}-a_i^P(t).
-\]
+$$
 
-Under the audited Sarathi allocation behavior, memory is a fixed admission gate for prefill rather than a per-token fluid capacity. Reducing \(\hat{x}_i\) does not reduce \(a_i^P(t)\). Consequently, prefill chunk size may be truncated by the remaining token budget, but not by dividing the remaining memory by a per-token coefficient.
+Under the audited Sarathi allocation behavior, memory is a fixed admission gate for prefill rather than a per-token fluid capacity. Reducing $\hat{x}_i$ does not reduce $a_i^P(t)$. Consequently, prefill chunk size may be truncated by the remaining token budget, but not by dividing the remaining memory by a per-token coefficient.
 
-If the complete fixed charge \(a_i^P(t)\) does not fit, the initial safe extraction policy skips that fractional prefill action. A later extraction policy may consider additional legal preemptions, but such behavior must be specified and tested separately.
+If the complete fixed charge $a_i^P(t)$ does not fit, the initial safe extraction policy skips that fractional prefill action. A later extraction policy may consider additional legal preemptions, but such behavior must be specified and tested separately.
 
-The extraction routine therefore requires access to \(C_{\max}\), \(\mathcal{Z}_t\), and the per-request memory quantities \(a_i^P(t)\), \(c_i^D(t)\), and \(c_i^Z(t)\).
+The extraction routine therefore requires access to $C_{\max}$, $\mathcal{Z}_t$, and the per-request memory quantities $a_i^P(t)$, $c_i^D(t)$, and $c_i^Z(t)$.
 
 ---
 
@@ -747,12 +747,12 @@ The relaxed LP has three global coupling constraints:
 
 The remaining constraints are request-local, including:
 
-- prefill linkage \(I_i^P\le x_i\le U_iI_i^P\);
+- prefill linkage $I_i^P\le x_i\le U_iI_i^P$;
 - decode causality;
 - action mutual exclusion;
-- restriction of preemption support to \(\mathcal{Z}_t\).
+- restriction of preemption support to $\mathcal{Z}_t$.
 
-Replacing \(c_i^Px_i\) with \(a_i^PI_i^P\) changes a coefficient in the existing global memory constraint; it does not introduce another global coupling constraint. Similarly, restricting \(z_i\) to \(\mathcal{Z}_t\) is a request-local domain restriction.
+Replacing $c_i^Px_i$ with $a_i^PI_i^P$ changes a coefficient in the existing global memory constraint; it does not introduce another global coupling constraint. Similarly, restricting $z_i$ to $\mathcal{Z}_t$ is a request-local domain restriction.
 
 This block-angular structure suggests that an appropriate optimal basic feasible solution may contain only a small number of request blocks that are not at local extreme points. The current formulation motivates an expected at-most-three-fractional-request property.
 
@@ -762,7 +762,7 @@ However, the Fundamental Theorem of Linear Programming alone does not prove this
 - a block-angular argument relating the three global constraints to the number of nonintegral request blocks;
 - a solver that returns an appropriate basic feasible solution.
 
-Numerical tolerances, degeneracy, and solver crossover behavior may affect the observed fractional count. The scheduler must therefore record or otherwise expose the number of fractional requests and must not assume at runtime that \(\lvert U_{\mathrm{frac}}\rvert\le3\).
+Numerical tolerances, degeneracy, and solver crossover behavior may affect the observed fractional count. The scheduler must therefore record or otherwise expose the number of fractional requests and must not assume at runtime that $\lvert U_{\mathrm{frac}}\rvert\le3$.
 
 The extraction implementation must safely process an arbitrary fractional set.
 Cases that exceed the expected structural bound must be observable. A dedicated
@@ -777,17 +777,17 @@ Do not add new global coupling constraints merely for implementation convenience
 
 A general token-incremental serving model may use the planning-memory expression
 
-\[
+$$
 c_i^P(t)x_i(t)
 +
 c_i^D(t)y_i(t)
 -
 c_i^Z(t)z_i(t),
-\]
+$$
 
 leading to the constraint
 
-\[
+$$
 \sum_{i\in U_t}
 \left(
 c_i^P(t)x_i(t)
@@ -798,7 +798,7 @@ c_i^Z(t)z_i(t)
 \right)
 \le
 M_t^{\mathrm{free}}-W_t.
-\]
+$$
 
 This abstraction is more general for serving architectures that allocate KV-cache capacity incrementally as prefill tokens are processed.
 
@@ -806,17 +806,17 @@ The audited Sarathi serving architecture used by `LPServe`, however, allocates t
 
 Because of this limitation of the Sarathi serving architecture, the first LPServe-native scheduler uses the specialized fixed-charge expression
 
-\[
+$$
 a_i^P(t)I_i^P(t)
 +
 c_i^D(t)y_i(t)
 -
 c_i^Z(t)z_i(t),
-\]
+$$
 
-or, with preemption explicitly restricted to \(\mathcal{Z}_t\),
+or, with preemption explicitly restricted to $\mathcal{Z}_t$,
 
-\[
+$$
 \sum_{i\in U_t}
 \left(
 a_i^P(t)I_i^P(t)
@@ -828,7 +828,7 @@ c_i^D(t)y_i(t)
 c_i^Z(t)z_i(t)
 \le
 M_t^{\mathrm{free}}-W_t.
-\]
+$$
 
 This is still a planning model. `LPServe` ultimately manages KV cache through physical block tables, and feasibility can depend on:
 
@@ -844,12 +844,12 @@ The natural planning unit is the number of KV-cache blocks rather than raw bytes
 
 The state-mapping layer should construct:
 
-- \(M_t^{\mathrm{free}}\) from the block manager's free-block count;
-- \(a_i^P(t)=0\) for an already allocated resident partial prefill;
-- \(a_i^P(t)=A_i(t)\) for an unallocated request requiring full-context admission or recomputation;
-- \(c_i^D(t)\) from the marginal physical block demand of one decode step, subject to the selected conservative policy;
-- \(c_i^Z(t)\) from the request's currently allocated physical block-table length;
-- \(\mathcal{Z}_t\) from legal preemption status, ownership, allocation, and in-flight conditions.
+- $M_t^{\mathrm{free}}$ from the block manager's free-block count;
+- $a_i^P(t)=0$ for an already allocated resident partial prefill;
+- $a_i^P(t)=A_i(t)$ for an unallocated request requiring full-context admission or recomputation;
+- $c_i^D(t)$ from the marginal physical block demand of one decode step, subject to the selected conservative policy;
+- $c_i^Z(t)$ from the request's currently allocated physical block-table length;
+- $\mathcal{Z}_t$ from legal preemption status, ownership, allocation, and in-flight conditions.
 
 The final LPServe action executor remains responsible for checking that selected actions are physically and operationally legal. It must validate the complete integer plan before mutating scheduler state and must serialize physical mutations in the selected commit order.
 
@@ -859,7 +859,7 @@ Therefore:
 
 Do not claim that satisfying the scalar LP memory inequality proves that every selected action can be executed. Conversely, avoid expanding the LP merely to reproduce every allocator implementation detail. The initial mathematical layer should use the simplest meaningful planning abstraction and rely on exact physical validation at the execution boundary.
 
-The memory reserve \(W_t\) remains a separate research decision because the current Sarathi allocation watermark does not apply uniformly to every allocation and append path.
+The memory reserve $W_t$ remains a separate research decision because the current Sarathi allocation watermark does not apply uniformly to every allocation and append path.
 
 ---
 
@@ -935,8 +935,8 @@ Before implementing the scheduler, inspect the actual `LPServe` fork and answer 
 
 ## Request state
 
-- Which sequences belong in \(U_t\)?
-- Which resident sequences belong in the legally preemptible set \(\mathcal{Z}_t\)?
+- Which sequences belong in $U_t$?
+- Which resident sequences belong in the legally preemptible set $\mathcal{Z}_t$?
 - How is remaining prefill work computed?
 - How is decode readiness represented?
 - Which sequence statuses, collection memberships, allocation states, and pipeline states make preemption legal?
@@ -960,11 +960,11 @@ Before implementing the scheduler, inspect the actual `LPServe` fork and answer 
 - What free-block information does the block manager expose?
 - How does it decide whether a new or recomputation-preempted sequence can be allocated?
 - How does it decide whether a resident sequence can append one decode slot?
-- How is \(a_i^P(t)\) computed for unallocated and already allocated requests?
-- How is \(c_i^D(t)\) computed or conservatively approximated?
-- How is \(c_i^Z(t)\) computed from the current physical block table?
-- Does the proposed \(\mathcal{Z}_t\) include only requests whose KV state can legally be released at the current decision boundary?
-- How does the allocation watermark relate to the planning reserve \(W_t\)?
+- How is $a_i^P(t)$ computed for unallocated and already allocated requests?
+- How is $c_i^D(t)$ computed or conservatively approximated?
+- How is $c_i^Z(t)$ computed from the current physical block table?
+- Does the proposed $\mathcal{Z}_t$ include only requests whose KV state can legally be released at the current decision boundary?
+- How does the allocation watermark relate to the planning reserve $W_t$?
 
 ## Action execution
 
@@ -994,29 +994,29 @@ The architecture audit should answer these questions before Codex is asked to im
 
 For every final integer action plan, the implementation must enforce
 
-\[
+$$
 \sum_i
 \left(
 \hat{x}_i+\hat{y}_i
 \right)
 \le
 B_{\max},
-\]
+$$
 
 and
 
-\[
+$$
 \sum_i
 \left(
 \hat{I}_i^P+\hat{y}_i
 \right)
 \le
 S_{\max}.
-\]
+$$
 
 The fixed-charge planning-memory constraint must also hold:
 
-\[
+$$
 \sum_{i\in U_t}
 \left(
 a_i^P(t)\hat{I}_i^P
@@ -1028,11 +1028,11 @@ c_i^D(t)\hat{y}_i
 c_i^Z(t)\hat{z}_i
 \le
 M_t^{\mathrm{free}}-W_t.
-\]
+$$
 
 The prefill indicator must be canonical:
 
-\[
+$$
 \hat{I}_i^P
 =
 \mathbf{1}
@@ -1041,7 +1041,7 @@ The prefill indicator must be canonical:
 \right\}
 \qquad
 \forall i\in U_t.
-\]
+$$
 
 Additionally, the final plan must:
 
@@ -1049,12 +1049,12 @@ Additionally, the final plan must:
 - prefill only when prompt tokens remain;
 - schedule at least one token for every selected prefill action;
 - never schedule more prompt tokens than remain;
-- never exceed \(C_{\max}\);
+- never exceed $C_{\max}$;
 - never simultaneously prefill, decode, and preempt the same request;
-- set \(\hat{z}_i=0\) for every \(i\notin\mathcal{Z}_t\);
+- set $\hat{z}_i=0$ for every $i\notin\mathcal{Z}_t$;
 - preempt only requests whose status, ownership, allocation, and in-flight state make preemption legal;
-- charge the complete \(a_i^P(t)\) for every selected unallocated prefill action;
-- charge zero additional prefill memory for an already allocated resident partial prefill when \(a_i^P(t)=0\);
+- charge the complete $a_i^P(t)$ for every selected unallocated prefill action;
+- charge zero additional prefill memory for an already allocated resident partial prefill when $a_i^P(t)=0$;
 - maintain LPServe/SLAI sequence-state invariants;
 - maintain block-manager invariants;
 - never duplicate a request;
@@ -1076,25 +1076,25 @@ At minimum, synthetic tests should cover:
 
 - empty request set;
 - all-integral relaxed solution;
-- explicit continuous relaxation of \(x_i\);
-- enforcement of \(I_i^P\le x_i\le U_iI_i^P\);
-- rejection of \(I_i^P=1\) with \(x_i<1\);
-- canonicalization of \(\hat{I}_i^P=\mathbf{1}\{\hat{x}_i>0\}\);
-- numerical tolerance near \(0\) and \(1\);
+- explicit continuous relaxation of $x_i$;
+- enforcement of $I_i^P\le x_i\le U_iI_i^P$;
+- rejection of $I_i^P=1$ with $x_i<1$;
+- canonicalization of $\hat{I}_i^P=\mathbf{1}\{\hat{x}_i>0\}$;
+- numerical tolerance near $0$ and $1$;
 - token-budget saturation;
 - sequence-budget saturation;
 - fixed-charge memory-budget saturation;
 - decode causality;
 - mutual exclusion;
 - prefill chunk cap;
-- exclusion of requests outside \(\mathcal{Z}_t\) from preemption;
-- dominant fractional preemption over \(\mathcal{Z}_t\);
+- exclusion of requests outside $\mathcal{Z}_t$ from preemption;
+- dominant fractional preemption over $\mathcal{Z}_t$;
 - deterministic tie handling;
 - prefill truncation by residual token capacity;
-- full acceptance when the complete fixed prefill charge \(a_i^P\) fits;
-- rejection when the complete fixed prefill charge \(a_i^P\) does not fit;
-- verification that reducing a chunk does not reduce \(a_i^P\);
-- zero additional planning-memory cost for a resident partial prefill with \(a_i^P=0\);
+- full acceptance when the complete fixed prefill charge $a_i^P$ fits;
+- rejection when the complete fixed prefill charge $a_i^P$ does not fit;
+- verification that reducing a chunk does not reduce $a_i^P$;
+- zero additional planning-memory cost for a resident partial prefill with $a_i^P=0$;
 - full-context admission cost for an unallocated waiting or recomputation request;
 - more fractional requests than predicted by the expected structural rule;
 - solver failure;
@@ -1358,15 +1358,15 @@ Possible designs imply different behavior for:
 
 The prefill-memory structure for the initial LPServe-native scheduler has been resolved as a fixed admission charge:
 
-\[
+$$
 a_i^P(t)I_i^P(t),
-\]
+$$
 
-rather than a token-linear term \(c_i^P(t)x_i(t)\).
+rather than a token-linear term $c_i^P(t)x_i(t)$.
 
 The state-mapping layer should compute
 
-\[
+$$
 a_i^P(t)
 =
 \begin{cases}
@@ -1375,26 +1375,26 @@ a_i^P(t)
 A_i(t),
 & \text{for a request requiring full-context allocation},
 \end{cases}
-\]
+$$
 
-where \(A_i(t)\) is derived from the request's current logical block requirement.
+where $A_i(t)$ is derived from the request's current logical block requirement.
 
 The preemption-recovery coefficient should be
 
-\[
+$$
 c_i^Z(t)
 =
 \text{the number of physical blocks currently recoverable from request }i,
-\]
+$$
 
-and preemption actions should be defined only over the legally preemptible set \(\mathcal{Z}_t\).
+and preemption actions should be defined only over the legally preemptible set $\mathcal{Z}_t$.
 
-The remaining memory-model research choice concerns \(c_i^D(t)\):
+The remaining memory-model research choice concerns $c_i^D(t)$:
 
 - use the exact marginal block demand of the next decode step; or
 - use a conservative one-block charge aligned with the current append-feasibility gate.
 
-Whichever decode policy is selected must be explicit, tested, and followed by exact physical validation. The project should also verify that the calculated \(a_i^P(t)\), \(c_i^D(t)\), and \(c_i^Z(t)\) agree with actual block-manager transitions in synthetic integration tests.
+Whichever decode policy is selected must be explicit, tested, and followed by exact physical validation. The project should also verify that the calculated $a_i^P(t)$, $c_i^D(t)$, and $c_i^Z(t)$ agree with actual block-manager transitions in synthetic integration tests.
 
 ## Memory reserve
 

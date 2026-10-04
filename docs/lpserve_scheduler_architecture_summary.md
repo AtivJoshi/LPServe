@@ -8,6 +8,8 @@ This document is for an implementer who needs a quick working model of the audit
 
 The intended implementation boundary is: a read-only Phase E mapper observes LPServe state, the framework-light Phase D layer solves and extracts a plan, and Phase F validates fresh native state before executing that plan.
 
+**Design alignment (2026-10-04):** The implementation guidance below follows the current design, including MVP compatibility decision D-25, state-stability decision D-19, and failure decision D-20. This alignment does not repin the Phase C audit, change its defect evidence, or establish an implemented executor or live scheduler.
+
 ## 2. High-level execution flow
 
 LPServe has a central engine and scheduler plus one or more GPU workers. The central scheduler owns the authoritative scheduler collections and central block manager. The engine-side sequence manager shares central `Sequence` objects; workers hold serialized copies and local block managers. Synchrony is intended to come from replaying the same `SchedulerOutputs`, not by sending physical block tables.
@@ -66,7 +68,7 @@ The design document defines planning-memory quantities and their policy choices.
 
 Native preemption is reset-and-recompute, not swapping. A legal executing resident is removed from the policy resident ownership, its central physical blocks are freed, and it is returned to the front of `waiting`. Replaying its preempted ID resets prompt progress, clears prompt completion, moves generated tokens into the prompt context, clears the current output-token list, and frees worker-local blocks. A later admission allocates the expanded full context and prefills it again.
 
-This path preserves causal token context but has verified semantic defects. The generation limit reads the cleared current output list rather than the cumulative generation count, so restarts can permit overgeneration. After a restart, `RequestOutput` can combine original prompt text with expanded prompt token IDs and cumulative output text with only post-restart token IDs. Control-only preempt outputs are also broken: single-stage execution can drop them before replay, while pipeline execution can wait for a model result from a batch never sent. Operational preemption must remain disabled until the recomputation generation-limit, request-output, and control-output blockers are repaired and tested.
+This path preserves causal token context but has verified semantic defects. The generation limit reads the cleared current output list rather than the cumulative generation count, so restarts can permit overgeneration. After a restart, `RequestOutput` can combine original prompt text with expanded prompt token IDs and cumulative output text with only post-restart token IDs. Control-only preempt outputs are also broken: single-stage execution can drop them before replay, while pipeline execution can wait for a model result from a batch never sent. Under design §2.4, §§16.1–16.3, and D-25, the single-stage MVP may reuse native recomputation preemption with these documented inherited generation-limit and request-output limitations. Their repair is not a prerequisite unless they prevent the selected MVP path from running; affected results do not establish corrected output semantics. Control-only plans must still be rejected before mutation, and pipeline execution remains unsupported. This is the current implementation policy, not a claim that the audited defects have been fixed.
 
 ## 7. Scheduler output contract
 
@@ -74,7 +76,7 @@ This path preserves causal token context but has verified semantic defects. The 
 
 Positive metadata must be bounded by current prompt remainder and describe prefill; zero metadata must be emitted only for an already-validated decode. Ignored sequences must be handled as controls without colliding with scheduled or preempted IDs. A true no-op has all action/control fields empty; it differs from a control-only output.
 
-For enabled mixed batches, physical inputs are prompt-first. The audit found that existing Sarathi scheduling can append decode metadata before prefill metadata, whereas input construction packs prompts first and downstream sampler/completion logic has ordering and identity weaknesses. The LP executor must use deterministic, replay-compatible order and must not claim support for mixed sampling cases until sampler identity and length association are validated.
+For enabled mixed batches, physical inputs are prompt-first. The audit found that existing Sarathi scheduling can append decode metadata before prefill metadata, whereas input construction packs prompts first and downstream sampler/completion logic has ordering and identity weaknesses. The LP executor must use deterministic, replay-compatible order. Under design §16.4 and D-25, the MVP inherits the underlying mixed-batch and sampler limitations rather than requiring a general framework repair before the basic path runs. Focused tests establish only the exercised path; affected cases do not establish corrected sampler semantics, and issues that prevent the selected path from running still require action.
 
 ## 8. Phase E implications for LP-state construction
 
@@ -84,9 +86,9 @@ The mapper computes prompt remainder from audited sequence fields, checks prompt
 
 ## 9. Phase F implications for native execution
 
-Before mutation, Phase F must re-read plan-relevant state and reject stale ownership, status, allocation, progress, block, or in-flight state. It must validate the whole integer action plan before the first mutation: ID uniqueness/exclusion, eligibility, chunk bounds and positivity, resident limits, allocation and append gates, recovery, replay order, and supported output shape. It then uses native admission, resident-prefill, decode, and, only after blockers clear, preemption paths rather than inventing parallel state changes.
+Before mutation, Phase F checks that the plan belongs to the current mapped problem and validates the whole integer action plan against current state: ownership/status, ID uniqueness/exclusion, eligibility, chunk bounds and positivity, resident limits, allocation and append gates, recovery, replay order, and supported output shape. Combined native memory feasibility is checked in execution order. Under design §12.6 and D-19, state stability comes from one synchronous scheduling decision with one pipeline stage, no batch in flight, and no overlapping state-changing public calls; no separate comparison with the earlier snapshot or mapper rebuild is required. Phase F then uses native admission, resident-prefill, decode, and preemption paths under the MVP compatibility policy rather than inventing parallel state changes.
 
-Prevalidation is necessary but not atomicity. The audited scheduler mutates collections and central blocks before worker replay and model execution, and has no transaction, reservation, undo log, or cross-layer rollback. Rollback or other post-mutation recovery remains OPEN. Unsupported control-only, pipeline-parallel, and affected mixed-batch/sampler behavior must remain blocked rather than being hidden by an unrelated scheduled action.
+Prevalidation is necessary but not atomicity. The audited scheduler mutates collections and central blocks before worker replay and model execution, and has no transaction, reservation, undo log, or cross-layer rollback. Under design §§13, 16.5, and D-20, the MVP adds no rollback or recovery: an exception after mutation begins terminates the run, and the affected engine state is not reused. Control-only plans are rejected before mutation and must not be hidden by forcing an unrelated scheduled action; pipeline execution remains unsupported. Mixed-batch/sampler defects are inherited limitations under §16.4 and D-25, not blanket repair prerequisites.
 
 ## 10. Implementation hazards checklist
 
@@ -95,7 +97,9 @@ Prevalidation is necessary but not atomicity. The audited scheduler mutates coll
 - [ ] Do not treat planning memory as native allocator feasibility.
 - [ ] Do not impose artificial prompt block alignment.
 - [ ] Do not treat zero `prompt_chunk_len` as proof of decode legality.
-- [ ] Do not use operational preemption before recomputation and control-output blockers are fixed.
+- [ ] Reuse native preemption only within the design’s supported MVP contract; document inherited recomputation limitations and reject control-only plans before mutation.
+- [ ] Do not claim inherited mixed-batch/sampler defects are repaired; validate the exercised path and address issues that prevent it from running.
+- [ ] Stop and discard affected engine state after a post-mutation failure; add no MVP rollback or recovery.
 - [ ] Do not import SLAI `limit_total_decodes` as the LP action-width cap without mathematical revision.
 - [ ] Do not assume pipeline support or safe in-flight physical release.
 - [ ] Do not rely on solver-side fractional-count folklore as an extraction guarantee.

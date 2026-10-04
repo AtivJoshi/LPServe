@@ -2,7 +2,7 @@
 
 ## Current phase
 
-**Phase D accepted / Phase E preparation as of 2026-09-20.**
+**Phase D accepted / Phase E mapper implemented; Phase F execution and live integration not implemented, as inspected on 2026-10-04 at `78d663a`.**
 
 The pure, framework-independent LP-relaxation mathematical layer is implemented
 in `lp_relaxation_scheduler.py` and accepted for the scoped MVP. It constructs
@@ -11,11 +11,14 @@ validates the relaxed solution, performs deterministic feasible integer
 extraction, validates the resulting plan, and returns structured success or
 failure without importing LPServe runtime objects.
 
-Phase E read-only state mapping is the next implementation phase. Phase E must
-construct coherent immutable inputs for the accepted mathematical layer without
-mutating queues, statuses, block state, prompt progress, or GPU state. Phase F
-execution and live scheduler integration remain out of scope until their design
-gates are satisfied.
+Phase E read-only state mapping is implemented in `lpserve_state_mapping.py`,
+with focused tests in `tests/test_lpserve_state_mapping.py`. It constructs
+immutable mathematical-layer inputs without scheduler or serving-state
+mutation. Retained Unity CPU test evidence and its revision limits are recorded
+below. Phase F native execution and live `LPScheduler` integration are not
+implemented; they remain subsequent work subject to the normative design gates.
+This update records implementation and available evidence, not a new phase
+acceptance or integrated serving-validation result.
 
 ## Current repository and provenance
 
@@ -26,7 +29,7 @@ gates are satisfied.
 | Initial Phase D implementation | `f406eeaac7bafc4478304744c9187316b75b8f67` |
 | Zero-valued extraction-tie contract fix | `32036f6a0ddb9bf2b55fc81f48967d61d558b4c2` |
 | Regression optimality correction | `db3a64afbe1aec2b6b11d477ced4f2f888288a06` |
-| Accepted implementation/evidence HEAD | `67a336222a6ec2ac53d932e7928c597dd4ccbe23` |
+| Accepted Phase D implementation/evidence HEAD (2026-09-20) | `67a336222a6ec2ac53d932e7928c597dd4ccbe23` |
 
 `docs/lpserve_scheduler_architecture.md` remains intentionally pinned to
 `c3e0143`. The standalone mathematical module does not change the audited
@@ -75,7 +78,7 @@ or establish performance. It did not implement LP problem construction, solver
 integration, integer extraction, LPServe state mapping, native LP action
 execution, or fixes for the documented framework blockers.
 
-## Phase D acceptance and Phase E handoff
+## Historical Phase D acceptance and Phase E handoff (2026-09-20)
 
 Phase D delivered the scoped pure mathematical layer in
 `lp_relaxation_scheduler.py`, its focused tests in
@@ -107,16 +110,46 @@ documentation listing:
 - `docs/handoffs/lp_relaxation_implementation_handoff.md`;
 - `docs/handoffs/lp_relaxation_zero_tie_fix_handoff.md`.
 
-No Phase E mapping, Phase F execution, live integration, GPU work, queue or
+At that Phase D acceptance boundary, no Phase E mapping, Phase F execution,
+live integration, GPU work, queue or
 block mutation, framework repair, approximation guarantee, or permanent
 utility/capacity/reserve/decode-charge policy was established. Remaining OPEN
 decisions in `docs/lp_scheduler_design.md` remain OPEN unless explicitly
 recorded there.
 
-The next permitted implementation work is the smallest read-only Phase E mapper
+At that boundary, the next permitted implementation work was the smallest
+read-only Phase E mapper
 described by the design. It must preserve the accepted mathematical interface,
 fail visibly on incoherent snapshots, and perform no scheduler or serving-state
 mutation.
+
+## Phase E implementation and current evidence boundary (2026-10-04)
+
+The mapper was introduced in `a0e35d7`, corrected in `0204393`, and aligned
+with the current ordinary-idle contract in `1c9141a`. The retained
+`docs/handoffs/state_mapping_idle_contract_handoff.md` records post-commit
+syntax checks and five mathematical-layer plus five mapping tests passing on
+Unity node `gpu048` at `1c9141a`, using Python 3.10.8, NumPy 2.2.6, and SciPy
+1.15.3. That validation was CPU-only; no model, GPU kernel, or benchmark ran.
+Earlier implementation and correction evidence remains in
+`docs/handoffs/lpserve_state_mapping_handoff.md`.
+
+Subsequent simplifications use the scheduler iteration number as the snapshot
+ID (`2c31d5b`), accept a utility mapping (`1996b68`), and retain physical block
+counts instead of identities (`78d663a`). Source inspection confirms these
+changes and the continued absence of a live `LPScheduler` or LP plan executor
+at the inspected revision. The retained `1c9141a` test results do not establish
+runtime validation of these later commits. Local review syntax and commit
+whitespace checks passed, but focused CPU tests could not start because SciPy
+was unavailable in the review environment. Current-revision runtime validation
+therefore remains unverified by this review.
+
+The mapper returns a snapshot or mapping failure. Ordinary empty/future-only
+live scheduling is specified for the future scheduler; its documented behavior
+is not implemented integration evidence. Phase F execution, live integration,
+and subsequent GPU correctness validation remain pending and subject to the
+existing design gates. No OPEN decision or BLOCKER is resolved by this status
+correction.
 
 ## Historical repository baseline (Phases A and B)
 

@@ -34,6 +34,31 @@ clean.
   processes.
 - Do not use the smoke-test timings as performance results.
 
+## Working inside an existing allocation
+
+**Agent workflow clarification (2026-10-04):** When Claude or another
+implementation agent is already running on an allocated Unity GPU node, run
+code directly on that node using the repository's existing Python environment.
+Do not invoke `srun`, request another allocation, submit a job, or SSH to another
+node unless explicitly requested. The allocation instructions below apply when
+obtaining a session, not to every test run. The fresh-environment instructions
+record setup procedure, not a requirement to recreate the environment for each
+task. This clarification does not change the historical validation record.
+
+Confirm the current host and allocation, then load the required modules and
+activate the existing environment in the same shell used to execute the code.
+See §3 for modules and §4 for environment activation; do not assume activation
+persists across separate tool shells. Use the current allocation's node name,
+not the historical example `gpu048`, as execution provenance.
+
+If the current environment cannot run a required check, report the exact error
+rather than automatically changing nodes, rebuilding the environment, or
+installing dependencies. Report the tested commit (or base commit plus
+uncommitted changes), host/node, Python interpreter and environment, commands,
+and observed results. Source review on another machine does not establish a
+Unity test pass. CPU-only changes need no model initialization, CUDA execution,
+or GPU smoke test unless the task explicitly requires them.
+
 ## 1. Obtain an A16 allocation
 
 Log in and start `tmux`:

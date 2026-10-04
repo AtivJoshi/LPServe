@@ -2,6 +2,13 @@
 
 These instructions apply repository-wide. They complement `PROJECT_GUIDE.md`; they do not replace the mathematical, architectural, design, status, environment, or experiment documents it indexes.
 
+## Communication
+
+Use simple, concrete language in explanations, reviews, plans, and completion
+reports. Explain technical terms when first used. State what changes, why it
+matters, and what remains unverified. Include exact technical details when they
+help the user assess or reproduce the work.
+
 ## Start with the project guide
 
 Before substantial LP-scheduler research, design, implementation, or review work:
@@ -28,6 +35,7 @@ Do not reconstruct project context from `README.md`, modern vLLM, another Sarath
 
 - Prioritize the shortest path to a basic runnable LP scheduler. Do not broaden a task into repairs for pre-existing serving-framework behavior, exhaustive edge-case design, or premature optimization unless that issue prevents the selected MVP path from running.
 - Keep documentation concise and local to the authoritative document. Record only material decisions, invariants, observed limitations, and reproducibility facts; do not create duplicate summaries, speculative notes, or routine status updates.
+- Reuse existing LPServe/SLAI mechanisms when they safely perform the same task. Add LP-specific machinery only for a concrete requirement introduced by mapping, solving, plan validation, or execution. Explain that requirement before adding substantial complexity; preserve the normative design and its approval rules.
 - Implement the smallest code path required now. Do not add speculative abstractions, configuration knobs, compatibility shims, fallbacks, retries, rollback, or future-proofing without a demonstrated current need.
 - Unsupported states and unexpected failures must fail visibly through a clear error or structured failure result. Do not silently patch state, fabricate a schedule, or continue after a meaningful failure.
 - Ask for direction only when a choice materially changes the mathematical objective, public semantics, or project scope. Otherwise make the smallest reversible provisional choice and record it visibly.
@@ -80,6 +88,7 @@ Resolve only what the active MVP needs. If a missing input matters to that path,
 - Add focused tests for each implemented MVP behavior and directly relevant regression risk.
 - Use the MVP-oriented requirements in `docs/lp_scheduler_design.md` §15 and relevant invariants in §§11–14. Do not expand a task into exhaustive testing of inherited or deferred edge cases unless they block the supported path.
 - Run proportionate syntax, import, static, unit, and synthetic checks after changes. Advance to state-mapping, integration, GPU smoke, and performance tests only when the applicable earlier correctness gates pass.
+- A local source review does not establish that Unity tests passed. Test reports must identify the tested commit (or base commit plus uncommitted changes), node/host, Python interpreter and environment, commands, and observed results. Test results from an earlier revision do not validate later changes.
 - Report the exact commands run and their observed results. Distinguish passed, failed, skipped, and unexecuted checks, including why anything was not run.
 - Never claim that a command, test, installation, GPU run, or benchmark succeeded unless its output was observed.
 - Inspect actual scheduling decisions, feasibility checks, and state transitions. Throughput or latency alone is never evidence of scheduler correctness.
@@ -89,7 +98,10 @@ Resolve only what the active MVP needs. If a missing input matters to that path,
 
 - Use local development for documentation, source inspection, implementation, and CPU/unit tests when appropriate.
 - Use the validated Unity setup in `docs/unity_setup.md` for GPU and serving validation unless an explicit task establishes and records another environment.
-- On Unity, use the documented allocation workflow and never initialize models, run CUDA validation, or benchmark on a login node.
+- On Unity, obtain an allocation only when one is needed; never initialize models, run CUDA validation, or benchmark on a login node.
+- When Claude or another implementation agent starts inside an allocated Unity GPU node, use that node and the repository's existing Python environment directly. Do not invoke `srun`, create another allocation, submit a job, or SSH elsewhere unless explicitly requested. Load required modules and activate the existing environment in the shell used for execution. Do not assume activation persists across separate tool shells.
+- If the current environment cannot run a required check, report the exact problem. Do not automatically change nodes, rebuild the environment, or install dependencies. Follow `docs/unity_setup.md` for environment procedure; its allocation and fresh-environment sections are not steps to repeat for every task.
+- Use the current host and allocation identifiers for evidence; never hard-code a historical Unity node name as the execution target.
 - Begin GPU work with the smallest useful smoke test and retain its outputs before larger experiments.
 - Do not hard-code workstation, Unity path, GPU, CUDA, allocation, or other machine-specific assumptions into the Phase D mathematical layer.
 
