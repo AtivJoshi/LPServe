@@ -965,6 +965,16 @@ overwrote while constructing the dictionary cannot be detected by the mapper.
 This choice fixes only the input shape; utility formulas, scaling, and the
 D-01–D-04 policy decisions remain OPEN.
 
+**Physical allocation representation (approved 2026-10-04).** The immutable
+snapshot retains allocation quantities, not block identities: each request
+record carries `physical_block_count: int`, equal to
+`len(block_manager.get_block_table(seq))` for an allocated resident and `0`
+for an unallocated waiting request. The native block manager remains the sole
+holder of physical block identities; the mapper copies no block table and
+keeps no separate allocation ledger. The logical/physical block gap and
+$c_i^Z$ above use this count unchanged. Exact block numbers are no longer
+preserved in the snapshot for debugging.
+
 ### 12.4 Ownership contract
 
 For the single-stage MVP, the LP scheduler inherits `BaseScheduler` directly,

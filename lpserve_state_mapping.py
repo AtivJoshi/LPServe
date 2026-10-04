@@ -92,7 +92,7 @@ class RequestStateSnapshot:
     prompt_tokens_remaining: int
     prompt_processing_finished: bool
     logical_block_count: int
-    physical_block_numbers: Optional[tuple]
+    physical_block_count: int
     prefill_eligible: bool
     decode_eligible: bool
     preemption_eligible: bool
@@ -453,7 +453,7 @@ def _map_scheduler_state(
                 f"raw_seq_id {raw_id}: waiting-owned request has "
                 "prompt_processing_finished True",
             )
-            physical_block_numbers = None
+            physical_block_count = 0
             prefill_eligible, decode_eligible, preemption_eligible = (
                 True, False, False,
             )
@@ -470,8 +470,8 @@ def _map_scheduler_state(
                 is_allocated,
                 f"raw_seq_id {raw_id}: resident request is not allocated",
             )
-            physical_block_numbers = tuple(block_manager.get_block_table(seq))
-            gap = logical_block_count - len(physical_block_numbers)
+            physical_block_count = len(block_manager.get_block_table(seq))
+            gap = logical_block_count - physical_block_count
             if remainder > 0:
                 _require(
                     gap == 0,
@@ -483,7 +483,7 @@ def _map_scheduler_state(
                 )
                 prefill_fixed_charge = 0
                 decode_charge = 0
-                preemption_recovery = len(physical_block_numbers)
+                preemption_recovery = physical_block_count
             else:
                 _require(
                     gap in (0, 1),
@@ -495,7 +495,7 @@ def _map_scheduler_state(
                 )
                 prefill_fixed_charge = 0
                 decode_charge = 1
-                preemption_recovery = len(physical_block_numbers)
+                preemption_recovery = physical_block_count
 
         if preemption_eligible:
             legal_ids.add(request_id)
@@ -515,7 +515,7 @@ def _map_scheduler_state(
             prompt_tokens_remaining=remainder,
             prompt_processing_finished=finished_flag,
             logical_block_count=logical_block_count,
-            physical_block_numbers=physical_block_numbers,
+            physical_block_count=physical_block_count,
             prefill_eligible=prefill_eligible,
             decode_eligible=decode_eligible,
             preemption_eligible=preemption_eligible,

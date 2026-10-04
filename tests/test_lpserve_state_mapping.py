@@ -255,6 +255,16 @@ class LPServeStateMappingTest(unittest.TestCase):
             tuple(r.order_key for r in requests), ((0,), (1,), (2,)),
         )
 
+        # The snapshot retains allocation quantities only: the waiting request
+        # has a zero physical block count, residents carry their block-table
+        # lengths, and no block identities are copied.
+        self.assertEqual(
+            tuple(r.physical_block_count for r in requests), (0, 2, 1),
+        )
+        self.assertEqual(
+            tuple(r.logical_block_count for r in requests), (2, 2, 1),
+        )
+
         problem = result.lp_problem
         problem_requests = problem.requests
         self.assertEqual(
