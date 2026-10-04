@@ -375,18 +375,19 @@ class LPServeStateMappingTest(unittest.TestCase):
         self.assertEqual(result.category, "mapping_failure")
         self.assertIn("utilities", result.reason)
 
-    def test_idle_result_for_future_only_universe(self):
+    def test_future_only_universe_is_mapping_failure(self):
         holder, _ = _build_holder()
 
-        # A single well-formed future waiting request and no resident
-        # owner: a coherent empty arrived universe under D-18.
+        # One waiting request that has not yet arrived and no resident owner:
+        # the arrived unfinished universe is empty, so direct mapping must not
+        # produce an LPProblem.
         future_seq = _make_sequence(0, 6, 101.0)
         holder.waiting.append(future_seq)
 
         before = _fingerprint(holder)
 
-        # Spies (not production fault-injection hooks) proving LPProblem
-        # construction and validate_problem are never reached on this path.
+        # Spies (test-only, not production fault-injection hooks) proving that
+        # LPProblem construction and validate_problem are never reached.
         with mock.patch.object(
             lsm.lrs, "LPProblem", wraps=lsm.lrs.LPProblem,
         ) as lp_problem_spy, mock.patch.object(
@@ -406,36 +407,15 @@ class LPServeStateMappingTest(unittest.TestCase):
 
         self.assertEqual(_fingerprint(holder), before)
 
-        self.assertIsInstance(result, lsm.IdleStateSnapshot)
-        self.assertNotIsInstance(result, lsm.MappingFailure)
-        self.assertEqual(result.snapshot_time, SNAPSHOT_TIME)
-        self.assertEqual(result.scheduler_iteration_id, ITERATION_ID)
-        self.assertIsInstance(result.snapshot_id, str)
-        self.assertTrue(result.snapshot_id)
+        self.assertIsInstance(result, lsm.MappingFailure)
+        self.assertEqual(result.stage, "state_mapping")
+        self.assertEqual(result.category, "mapping_failure")
+        self.assertIn("arrived, unfinished request universe is empty", result.reason)
 
         lp_problem_spy.assert_not_called()
         validate_problem_spy.assert_not_called()
 
-        with self.assertRaises(dataclasses.FrozenInstanceError):
-            result.snapshot_id = "mutated"
-
         _assert_no_mutable_or_framework_objects(result)
-
-        # The snapshot ID is a stable function of the same observed state.
-        repeat = lsm.map_scheduler_state(
-            holder,
-            snapshot_time=SNAPSHOT_TIME,
-            b_max=B_MAX,
-            c_max=C_MAX,
-            s_max=S_MAX,
-            memory_reserve=MEMORY_RESERVE,
-            decode_memory_policy_id=DECODE_POLICY_ID,
-            utilities=(),
-            numerical_policy=NUMERICAL_POLICY,
-        )
-        self.assertIsInstance(repeat, lsm.IdleStateSnapshot)
-        self.assertEqual(repeat.snapshot_id, result.snapshot_id)
-        self.assertEqual(_fingerprint(holder), before)
 
 
 if __name__ == "__main__":

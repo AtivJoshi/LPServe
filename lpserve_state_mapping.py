@@ -1,20 +1,12 @@
 """Read-only LPServe state mapper for the LP-relaxation scheduling layer.
 
 Observes a scheduler holder's inherited ``waiting``/``running`` collections
-and its block manager, and returns either a frozen, framework-independent
-snapshot suitable for ``lp_relaxation_scheduler.LPProblem`` construction, an
-explicit immutable ordinary-idle result (docs/lp_scheduler_design.md D-18),
-or a structured mapping failure (see docs/lp_scheduler_design.md, especially
-sections 4, 9, 12, and 14). It performs no LPServe mutation: it calls only
-read-only scheduler, sequence, and block manager accessors, never allocation,
-append, free, preemption, status transition, or queue-mutation methods.
-
-Under D-18, a coherent empty arrived universe -- no scheduler-owned unfinished
-request, or every unfinished owned request a well-formed future waiting
-request with no resident owner -- returns ``IdleStateSnapshot`` without
-constructing an ``LPProblem`` or calling ``validate_problem``. A resident
-(``running``) owner present while the arrived universe is empty is
-incoherent, not idle, and is rejected as a ``MappingFailure``.
+and its block manager, and returns a frozen, framework-independent snapshot
+suitable for ``lp_relaxation_scheduler.LPProblem`` construction (see
+docs/lp_scheduler_design.md, especially sections 4, 9, and 12). It performs
+no LPServe mutation: it calls only read-only scheduler, sequence, and block
+manager accessors, never allocation, append, free, preemption, status
+transition, or queue-mutation methods.
 
 Supported state shape (docs/lp_scheduler_design.md section 12.4 and this
 module's handoff record):
@@ -132,19 +124,6 @@ class StateSnapshot:
 
 
 @dataclass(frozen=True)
-class IdleStateSnapshot:
-    """An explicit, immutable ordinary-idle result under D-18.
-
-    Returned only for a coherent empty arrived universe; never carries an
-    ``LPProblem``, a mutable LPServe object, a list, or a dict.
-    """
-
-    snapshot_id: str
-    snapshot_time: float
-    scheduler_iteration_id: int
-
-
-@dataclass(frozen=True)
 class MappingFailure:
     """A precise, structured mapping rejection. Never carries a fabricated plan."""
 
@@ -238,15 +217,8 @@ def map_scheduler_state(
     decode_memory_policy_id: str,
     utilities: Iterable[Tuple[int, RequestUtility]],
     numerical_policy: lrs.NumericalPolicy,
-) -> "StateSnapshot | IdleStateSnapshot | MappingFailure":
-    """Read ``scheduler`` state and return one of three immutable results.
-
-    Returns a ``StateSnapshot`` (containing a validated ``LPProblem``) for a
-    nonempty arrived, unfinished request universe; an ``IdleStateSnapshot``
-    for a coherent empty arrived universe under D-18, constructing no
-    ``LPProblem`` and calling no solver/extraction/validation of it; or a
-    ``MappingFailure`` for unsupported, contradictory, malformed, or
-    incoherent state.
+) -> "StateSnapshot | MappingFailure":
+    """Read ``scheduler`` state and return a ``StateSnapshot`` or ``MappingFailure``.
 
     ``scheduler`` is read through ``waiting``, ``running``, ``_iteration_id``,
     ``num_running_batches``, ``scheduler_config.num_pipeline_stages``,
@@ -629,23 +601,10 @@ def _map_scheduler_state(
     )
 
     if not request_inputs:
-        # D-18 ordinary idle: no arrived, unfinished scheduler-owned request.
-        # Every owned entry is either finished or a validated future waiting
-        # request (the block-table ownership check above already proved no
-        # orphan or waiting-owned table exists). A resident owner here would
-        # be incoherent -- residency implies prior arrival -- so it is
-        # rejected rather than silently treated as idle.
-        if resident_count != 0:
-            return MappingFailure(
-                snapshot_id, STAGE_STATE_MAPPING, CATEGORY_MAPPING_FAILURE,
-                "a resident owner exists while the arrived, unfinished "
-                "request universe is empty; this is incoherent, not "
-                "ordinary idle",
-            )
-        return IdleStateSnapshot(
-            snapshot_id=snapshot_id,
-            snapshot_time=float(snapshot_time),
-            scheduler_iteration_id=iteration_id,
+        return MappingFailure(
+            snapshot_id, STAGE_STATE_MAPPING, CATEGORY_MAPPING_FAILURE,
+            "the arrived, unfinished request universe is empty; the "
+            "accepted LPProblem type cannot represent an empty request set",
         )
 
     problem = lrs.LPProblem(
