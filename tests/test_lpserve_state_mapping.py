@@ -146,6 +146,59 @@ def _assert_no_mutable_or_framework_objects(value, seen=None):
             _assert_no_mutable_or_framework_objects(item, seen)
 
 
+def _three_request_utilities():
+    """A fresh caller-owned utility mapping for raw_seq_ids 0, 1, and 2."""
+    return {
+        0: lsm.RequestUtility(
+            decode_utility=0.0, prefill_token_utility=2.0,
+            preemption_penalty=0.0,
+        ),
+        1: lsm.RequestUtility(
+            decode_utility=0.0, prefill_token_utility=1.0,
+            preemption_penalty=0.25,
+        ),
+        2: lsm.RequestUtility(
+            decode_utility=3.0, prefill_token_utility=0.0,
+            preemption_penalty=0.5,
+        ),
+    }
+
+
+def _build_three_request_holder():
+    """Waiting request 0, resident partial prefill 1, resident decode 2."""
+    holder, block_manager = _build_holder()
+    holder.waiting.append(_make_sequence(0, 6, 1.0))
+
+    partial_prefill_seq = _make_sequence(1, 6, 2.0)
+    partial_prefill_seq.set_status(SequenceStatus.RUNNING)
+    block_manager.allocate(partial_prefill_seq)
+    partial_prefill_seq.update_prompt_tokens_processed(2)
+    partial_prefill_seq.set_status(SequenceStatus.PAUSED)
+    holder.running.append(partial_prefill_seq)
+
+    decode_seq = _make_sequence(2, 4, 3.0)
+    decode_seq.set_status(SequenceStatus.RUNNING)
+    block_manager.allocate(decode_seq)
+    decode_seq.update_prompt_tokens_processed(4)
+    decode_seq.set_status(SequenceStatus.PAUSED)
+    holder.running.append(decode_seq)
+    return holder
+
+
+def _map(holder, utilities):
+    return lsm.map_scheduler_state(
+        holder,
+        snapshot_time=SNAPSHOT_TIME,
+        b_max=B_MAX,
+        c_max=C_MAX,
+        s_max=S_MAX,
+        memory_reserve=MEMORY_RESERVE,
+        decode_memory_policy_id=DECODE_POLICY_ID,
+        utilities=utilities,
+        numerical_policy=NUMERICAL_POLICY,
+    )
+
+
 class LPServeStateMappingTest(unittest.TestCase):
     def test_supported_mapping_and_nonmutation(self):
         holder, block_manager = _build_holder()
@@ -172,20 +225,8 @@ class LPServeStateMappingTest(unittest.TestCase):
         decode_seq.set_status(SequenceStatus.PAUSED)
         holder.running.append(decode_seq)
 
-        utilities = (
-            (0, lsm.RequestUtility(
-                decode_utility=0.0, prefill_token_utility=2.0,
-                preemption_penalty=0.0,
-            )),
-            (1, lsm.RequestUtility(
-                decode_utility=0.0, prefill_token_utility=1.0,
-                preemption_penalty=0.25,
-            )),
-            (2, lsm.RequestUtility(
-                decode_utility=3.0, prefill_token_utility=0.0,
-                preemption_penalty=0.5,
-            )),
-        )
+        utilities = _three_request_utilities()
+        utilities_before = dict(utilities)
 
         before = _fingerprint(holder)
 
@@ -259,6 +300,20 @@ class LPServeStateMappingTest(unittest.TestCase):
         revalidated = lrs.validate_problem(problem)
         self.assertIsInstance(revalidated, lrs.LPProblem)
 
+        # Utilities are read by raw_seq_id, copied, and the caller's mapping
+        # is left unchanged.
+        self.assertEqual(utilities, utilities_before)
+        for r in requests:
+            self.assertEqual(r.utility, utilities[r.raw_seq_id])
+            self.assertIsNot(r.utility, utilities[r.raw_seq_id])
+        self.assertEqual(
+            tuple(
+                (r.decode_utility, r.prefill_token_utility, r.preemption_penalty)
+                for r in problem_requests
+            ),
+            ((0.0, 2.0, 0.0), (0.0, 1.0, 0.25), (3.0, 0.0, 0.5)),
+        )
+
         _assert_no_mutable_or_framework_objects(result)
 
     def test_malformed_arrival_time_is_rejected(self):
@@ -272,12 +327,12 @@ class LPServeStateMappingTest(unittest.TestCase):
         nan_arrival_seq = _make_sequence(1, 6, float("nan"))
         holder.waiting.append(nan_arrival_seq)
 
-        utilities = (
-            (0, lsm.RequestUtility(
+        utilities = {
+            0: lsm.RequestUtility(
                 decode_utility=0.0, prefill_token_utility=2.0,
                 preemption_penalty=0.0,
-            )),
-        )
+            ),
+        }
 
         before = _fingerprint(holder)
         result = lsm.map_scheduler_state(
@@ -309,12 +364,12 @@ class LPServeStateMappingTest(unittest.TestCase):
         orphan_seq = _make_sequence(99, 4, 1.0)
         block_manager.allocate(orphan_seq)
 
-        utilities = (
-            (0, lsm.RequestUtility(
+        utilities = {
+            0: lsm.RequestUtility(
                 decode_utility=0.0, prefill_token_utility=2.0,
                 preemption_penalty=0.0,
-            )),
-        )
+            ),
+        }
 
         before = _fingerprint(holder)
         result = lsm.map_scheduler_state(
@@ -335,46 +390,93 @@ class LPServeStateMappingTest(unittest.TestCase):
         self.assertEqual(result.category, "mapping_failure")
         self.assertIn("orphan", result.reason)
 
-    def test_none_utilities_returns_mapping_failure(self):
-        holder, block_manager = _build_holder()
+    def test_malformed_utilities_return_mapping_failure(self):
+        good = lsm.RequestUtility(
+            decode_utility=0.0, prefill_token_utility=1.0,
+            preemption_penalty=0.0,
+        )
+        cases = {
+            "none": (None, "mapping"),
+            "pair_rows": (
+                tuple(_three_request_utilities().items()), "mapping",
+            ),
+            # True hashes equal to 1, so it would otherwise match raw_seq_id 1.
+            "bool_key": (
+                {
+                    True if k == 1 else k: v
+                    for k, v in _three_request_utilities().items()
+                },
+                "integer raw_seq_id",
+            ),
+            "string_key": (
+                {**_three_request_utilities(), "3": good}, "integer raw_seq_id",
+            ),
+            "non_record_value": (
+                {**_three_request_utilities(), 2: (3.0, 0.0, 0.5)},
+                "must be a RequestUtility",
+            ),
+            "missing_key": (
+                {k: v for k, v in _three_request_utilities().items() if k != 1},
+                "missing utilities for raw_seq_id(s) [1]",
+            ),
+            "extra_key": (
+                {**_three_request_utilities(), 5: good},
+                "extra utilities for raw_seq_id(s) [5]",
+            ),
+        }
+        for field in (
+            "decode_utility", "prefill_token_utility", "preemption_penalty",
+        ):
+            for bad in (float("nan"), float("inf"), True, "1.0"):
+                cases[f"{field}={bad!r}"] = (
+                    {
+                        **_three_request_utilities(),
+                        0: dataclasses.replace(good, **{field: bad}),
+                    },
+                    f"utility {field} for raw_seq_id 0",
+                )
 
-        waiting_seq = _make_sequence(0, 6, 1.0)
-        holder.waiting.append(waiting_seq)
+        for name, (utilities, reason) in cases.items():
+            with self.subTest(name):
+                holder = _build_three_request_holder()
+                before = _fingerprint(holder)
+                result = _map(holder, utilities)
+                self.assertEqual(_fingerprint(holder), before)
+                self.assertIsInstance(result, lsm.MappingFailure)
+                self.assertEqual(result.stage, "state_mapping")
+                self.assertEqual(result.category, "mapping_failure")
+                self.assertIn(reason, result.reason)
 
-        partial_prefill_seq = _make_sequence(1, 6, 2.0)
-        partial_prefill_seq.set_status(SequenceStatus.RUNNING)
-        block_manager.allocate(partial_prefill_seq)
-        partial_prefill_seq.update_prompt_tokens_processed(2)
-        partial_prefill_seq.set_status(SequenceStatus.PAUSED)
-        holder.running.append(partial_prefill_seq)
-
-        decode_seq = _make_sequence(2, 4, 3.0)
-        decode_seq.set_status(SequenceStatus.RUNNING)
-        block_manager.allocate(decode_seq)
-        decode_seq.update_prompt_tokens_processed(4)
-        decode_seq.set_status(SequenceStatus.PAUSED)
-        holder.running.append(decode_seq)
-
-        before = _fingerprint(holder)
-        # utilities=None on otherwise supported state must return a
-        # MappingFailure, not raise TypeError.
-        result = lsm.map_scheduler_state(
-            holder,
-            snapshot_time=SNAPSHOT_TIME,
-            b_max=B_MAX,
-            c_max=C_MAX,
-            s_max=S_MAX,
-            memory_reserve=MEMORY_RESERVE,
-            decode_memory_policy_id=DECODE_POLICY_ID,
-            utilities=None,
-            numerical_policy=NUMERICAL_POLICY,
+    def test_snapshot_is_independent_of_later_utility_changes(self):
+        holder = _build_three_request_holder()
+        utilities = _three_request_utilities()
+        result = _map(holder, utilities)
+        self.assertIsInstance(result, lsm.StateSnapshot)
+        mapped = tuple(r.utility for r in result.requests)
+        problem_utilities = tuple(
+            (r.decode_utility, r.prefill_token_utility, r.preemption_penalty)
+            for r in result.lp_problem.requests
         )
 
-        self.assertEqual(_fingerprint(holder), before)
-        self.assertIsInstance(result, lsm.MappingFailure)
-        self.assertEqual(result.stage, "state_mapping")
-        self.assertEqual(result.category, "mapping_failure")
-        self.assertIn("utilities", result.reason)
+        utilities[0] = lsm.RequestUtility(
+            decode_utility=9.0, prefill_token_utility=9.0,
+            preemption_penalty=9.0,
+        )
+        del utilities[1]
+        utilities[7] = utilities[2]
+
+        self.assertEqual(tuple(r.utility for r in result.requests), mapped)
+        self.assertEqual(
+            tuple(
+                (r.decode_utility, r.prefill_token_utility, r.preemption_penalty)
+                for r in result.lp_problem.requests
+            ),
+            problem_utilities,
+        )
+        self.assertEqual(
+            problem_utilities,
+            ((0.0, 2.0, 0.0), (0.0, 1.0, 0.25), (3.0, 0.0, 0.5)),
+        )
 
     def test_future_only_universe_is_mapping_failure(self):
         holder, _ = _build_holder()
@@ -402,7 +504,7 @@ class LPServeStateMappingTest(unittest.TestCase):
                 s_max=S_MAX,
                 memory_reserve=MEMORY_RESERVE,
                 decode_memory_policy_id=DECODE_POLICY_ID,
-                utilities=(),
+                utilities={},
                 numerical_policy=NUMERICAL_POLICY,
             )
 
@@ -423,12 +525,12 @@ class LPServeStateMappingTest(unittest.TestCase):
             holder, _ = _build_holder()
             holder._iteration_id = iteration_id
             holder.waiting.append(_make_sequence(0, 6, 1.0))
-            utilities = (
-                (0, lsm.RequestUtility(
+            utilities = {
+                0: lsm.RequestUtility(
                     decode_utility=0.0, prefill_token_utility=1.0,
                     preemption_penalty=0.0,
-                )),
-            )
+                ),
+            }
             return lsm.map_scheduler_state(
                 holder,
                 snapshot_time=SNAPSHOT_TIME,

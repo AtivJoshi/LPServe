@@ -45,7 +45,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Iterable, Optional, Tuple
+from typing import Mapping, Optional
 
 from sarathi.core.datatypes.sequence_status import SequenceStatus
 
@@ -168,7 +168,7 @@ def map_scheduler_state(
     s_max: int,
     memory_reserve: int,
     decode_memory_policy_id: str,
-    utilities: Iterable[Tuple[int, RequestUtility]],
+    utilities: Mapping[int, RequestUtility],
     numerical_policy: lrs.NumericalPolicy,
 ) -> "StateSnapshot | MappingFailure":
     """Read ``scheduler`` state and return a ``StateSnapshot`` or ``MappingFailure``.
@@ -181,9 +181,11 @@ def map_scheduler_state(
     mutating method is called and no LPServe object is retained in the
     result.
 
-    ``utilities`` is an iterable of ``(raw_seq_id, RequestUtility)`` pairs,
-    one per request expected to be included after arrival/completion
-    filtering; a missing, duplicate, or extra row is a mapping failure.
+    ``utilities`` maps each raw integer ``seq_id`` to its ``RequestUtility``;
+    its key set must exactly equal the requests included after
+    arrival/completion filtering, so a missing or extra key is a mapping
+    failure. Validated values are copied into new immutable records; the
+    caller's mapping is neither mutated nor retained.
     """
     try:
         return _map_scheduler_state(
@@ -246,9 +248,9 @@ def _map_scheduler_state(
         "numerical_policy must be a NumericalPolicy",
     )
     _require(
-        utilities is not None,
-        "utilities must be an iterable of (raw_seq_id, RequestUtility) "
-        "pairs, not None",
+        isinstance(utilities, Mapping),
+        "utilities must be a mapping from raw_seq_id to RequestUtility, got "
+        f"{type(utilities).__name__}",
     )
 
     scheduler_config = _read(scheduler, "scheduler_config")
@@ -351,45 +353,43 @@ def _map_scheduler_state(
             continue
         included.append((raw_id, label, seq))
 
+    # Copy each validated value into a fresh frozen record so the result
+    # never shares state with the caller's mapping.
     util_map = {}
-    for row in utilities:
-        _require(
-            isinstance(row, tuple) and len(row) == 2,
-            "each utility row must be a (raw_seq_id, RequestUtility) pair, "
-            f"got {row!r}",
-        )
-        raw_id, utility = row
+    for raw_id, utility in utilities.items():
         _require(
             _is_int(raw_id),
-            f"utility row raw_seq_id must be an integer, got {raw_id!r}",
+            f"utilities key must be an integer raw_seq_id, got {raw_id!r}",
         )
         _require(
             isinstance(utility, RequestUtility),
-            f"utility row for raw_seq_id {raw_id} must be a RequestUtility",
+            f"utilities value for raw_seq_id {raw_id} must be a "
+            "RequestUtility",
         )
-        for name in (
-            "decode_utility", "prefill_token_utility", "preemption_penalty",
+        values = (
+            utility.decode_utility, utility.prefill_token_utility,
+            utility.preemption_penalty,
+        )
+        for name, value in zip(
+            ("decode_utility", "prefill_token_utility", "preemption_penalty"),
+            values,
         ):
-            value = getattr(utility, name)
             _require(
                 _is_real(value),
                 f"utility {name} for raw_seq_id {raw_id} must be a finite "
                 f"number, got {value!r}",
             )
-        _require(
-            raw_id not in util_map,
-            f"duplicate utility row for raw_seq_id {raw_id}",
-        )
-        util_map[raw_id] = utility
+        util_map[raw_id] = RequestUtility(*values)
 
     included_ids = {raw_id for raw_id, _, _ in included}
     missing = included_ids - util_map.keys()
     extra = util_map.keys() - included_ids
     _require(
-        not missing, f"missing utility rows for raw_seq_id(s) {sorted(missing)}",
+        not missing,
+        f"missing utilities for raw_seq_id(s) {sorted(missing)}",
     )
     _require(
-        not extra, f"extra utility rows for raw_seq_id(s) {sorted(extra)}",
+        not extra, f"extra utilities for raw_seq_id(s) {sorted(extra)}",
     )
 
     request_states = []

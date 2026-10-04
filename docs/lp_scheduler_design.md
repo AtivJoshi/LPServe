@@ -953,6 +953,18 @@ incoherent state and never combines incompatible instants.
 | $c_i^Z$ | Current physical block-table length | Resolved for legal candidate |
 | $\alpha_i,\beta_i,\gamma_i$ | Explicit utility provider using snapshot data | OPEN policy |
 
+**Utility input interface (approved 2026-10-04).** The mapper receives
+utilities as a `Mapping[int, RequestUtility]` keyed by raw integer
+`Sequence.seq_id`. The key set must equal the included arrived, unfinished
+request set exactly; keys follow the raw-ID integer rules (booleans rejected),
+and each value is a `RequestUtility` whose three fields are finite reals.
+Malformed input, missing or extra keys, or invalid values are mapping failures.
+The mapper copies validated values into new immutable records and retains no
+reference to the caller's mapping. Duplicate entries that the caller
+overwrote while constructing the dictionary cannot be detected by the mapper.
+This choice fixes only the input shape; utility formulas, scaling, and the
+D-01–D-04 policy decisions remain OPEN.
+
 ### 12.4 Ownership contract
 
 For the single-stage MVP, the LP scheduler inherits `BaseScheduler` directly,
