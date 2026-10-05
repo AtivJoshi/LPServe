@@ -51,6 +51,28 @@ Do not reconstruct project context from `README.md`, modern vLLM, another Sarath
 - When an explicitly approved design decision or implementation contract changes, update the appropriate documentation and traceability as part of an authorized task. Otherwise, preserve the documents and report the needed follow-up.
 - Keep historical audits and experiment records provenance-bearing; do not rewrite historical evidence to describe later code.
 
+## Commit and evidence workflow
+
+Approved simplification (2026-10-05): when committing is explicitly authorized,
+default to one cohesive commit containing implementation, focused tests,
+necessary documentation, and the material evidence handoff. This supersedes
+the earlier two-commit implementation-then-handoff convention. Separate commits
+are optional when they have independently useful review boundaries; do not
+create a second commit solely to record the first commit's hash.
+
+Before committing, evidence may identify the tested base commit plus exact
+working-tree changes, with full file hashes or a retained diff sufficient to
+match the tested code to the final commit. Record commands, environment, and
+observed results as before. Verify that the final committed code matches the
+tested code; later code changes require applicable checks again. Report the
+final commit hash in the completion message rather than trying to embed a
+commit's own hash in its handoff. A post-commit rerun is needed only when code
+changed or a check depends on committed state, not merely because a commit was
+created. Preserve historical handoffs and hashes without rewriting history.
+
+This workflow grants no standing permission to stage, commit, or push. Obtain
+explicit authorization for those actions as before.
+
 ## Phase boundaries
 
 Follow the ownership model in `docs/lp_scheduler_design.md` §3 and the project sequence in `docs/LP Scheduler Research Context.md` §19.

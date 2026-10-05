@@ -271,3 +271,21 @@ evidence of generation quality.
   changed.
 - **Not committed.** The script, artifacts, and this handoff are left
   uncommitted for review.
+
+
+## Post-review acceptance and commit provenance (2026-10-05)
+
+The user accepted the bounded single-request dummy-weight GPU milestone after
+Mac source/evidence review at `14a15356e64e175f5def042d582412b40af4de2d`.
+The earlier "Not committed" statement describes the pre-commit handoff state.
+The script was subsequently committed as
+`54bcd72a62571457fe074d2edc814ce6f8ea7827`; this handoff and the three listed
+artifacts were committed as `14a15356e64e175f5def042d582412b40af4de2d`.
+
+Local review verified that the committed script and all three artifacts match
+the full SHA-256 hashes above. Thus the run identifies the exact committed
+script through base-plus-working-tree provenance; no post-commit GPU rerun is
+claimed or needed merely to attach a commit hash. Local syntax, whitespace,
+and retained-JSON consistency checks passed; no GPU run was made on the Mac.
+All original evidence and stated scope limits remain unchanged. This is not
+full native-execution acceptance.

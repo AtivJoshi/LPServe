@@ -1,6 +1,6 @@
 # LPServe Project Guide
 
-**Guide provenance:** Current-target wording updated on 2026-10-05 after read-only review at committed HEAD `4f553b4f238fe93e87623de3612d20362888899f` and user acceptance of the bounded CPU integration milestone. Earlier guide updates inspected `78d663a` (2026-10-04) and `67a3362` (2026-09-20). The Phase C architecture audit remains pinned to `c3e0143`; later implementation and documentation commits do not repin that historical audit. Inspect current Git state before relying on this snapshot.
+**Guide provenance:** Current-target wording updated on 2026-10-05 after read-only review at committed HEAD `14a15356e64e175f5def042d582412b40af4de2d` and user acceptance of the bounded single-request dummy-weight GPU milestone. The CPU milestone was accepted after review at `4f553b4`. Earlier guide updates inspected `78d663a` (2026-10-04) and `67a3362` (2026-09-20). The Phase C architecture audit remains pinned to `c3e0143`; later implementation and documentation commits do not repin that historical audit. Inspect current Git state before relying on this snapshot.
 
 ## Project purpose
 
@@ -59,7 +59,7 @@ The planned sequence is:
 
 The Phase C architecture audit and the Phase D–F normative design artifacts exist. The standalone Phase D mathematical layer remains accepted for its scoped MVP. The read-only mapper, native executor, and live `LPScheduler(BaseScheduler)` are implemented. The bounded single-stage CPU integration milestone was accepted on 2026-10-05 after source review and review of provenance-bearing Unity evidence at implementation commit `276e5f4`. The handoff records five mathematical, seven mapper, nine executor, and thirteen live-scheduler tests passing, including native replay/completion for the exercised paths. See `docs/project_status.md` and `docs/handoffs/lp_scheduler_integration_handoff.md` for revision and environment boundaries.
 
-Supported execution includes waiting admission, resident prefill, and decode with prompt-first mixed output. Runtime preemption, ignore controls, pipeline execution, and overlapping state-changing calls remain unsupported. Direct configuration and registry construction are implemented; `EngineArgs` and benchmark integration are deferred. LP scheduling requires the repository root on Python's import path. GPU/model execution, sampler correctness, generation quality, arbitrary-workload completion, and performance remain unverified. The next task is planning a tiny GPU correctness check, including review of the model runner's LP memory-profiling path; this CPU milestone is not full Phase F acceptance. Utilities, capacities, reserve, and decode-charge values remain scoped provisional inputs.
+Supported execution includes waiting admission, resident prefill, and decode with prompt-first mixed output. Runtime preemption, ignore controls, pipeline execution, and overlapping state-changing calls remain unsupported. Direct configuration and registry construction are implemented; `EngineArgs` and benchmark integration are deferred. LP scheduling requires the repository root on Python's import path. A single-request dummy-weight GPU run now establishes the exercised admission, partial-prefill, decode/block-growth, completion/free, and final idle path. Its accepted evidence is in `docs/handoffs/lp_scheduler_gpu_handoff.md`, tested at `a3be58a` plus the exact script later committed as `54bcd72`. General sampler correctness, generation quality, mixed-batch GPU correctness, independent GPU-worker block-table equality, arbitrary-workload completion, and performance remain unverified. Next work is planning a tiny mixed-batch GPU check with one sampling method. Neither bounded milestone is full Phase F acceptance. Utilities, capacities, reserve, and decode-charge values remain scoped provisional inputs.
 
 The key separation is:
 
@@ -120,6 +120,10 @@ Implementation tasks should state the objective, files allowed to change, suppor
 Phase names and numbers are project-management labels, not implementation terminology. They MUST NOT appear in Python filenames, package or module names, identifiers, comments, docstrings, printed output, diagnostics, result stages, categories, or failure messages. Use responsibility-based names such as `lp_relaxation`, `state_mapping`, `precommit_validation`, and `execution` instead.
 
 Validate in phase order with focused evidence for the supported MVP path: syntax/import/static checks; focused CPU tests; synthetic mathematical tests; scheduler-state/integration tests; a tiny GPU smoke test; inspection of scheduling decisions and state transitions; then larger experiments. Do not expand the task into exhaustive inherited edge-case coverage unless it blocks that path. Never report a command, test, or experiment as successful without observing its output, and never substitute aggregate throughput or latency for scheduler-correctness evidence.
+
+For authorized commits, use the single cohesive commit and tested-code
+provenance workflow in `AGENTS.md`. Separate implementation and handoff commits
+are no longer mandatory.
 
 ## Documentation maintenance
 

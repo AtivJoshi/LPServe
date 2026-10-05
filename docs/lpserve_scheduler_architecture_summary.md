@@ -14,7 +14,11 @@ The intended implementation boundary is: a read-only Phase E mapper observes LPS
 single-stage scheduler now exist; the bounded CPU integration milestone was
 accepted after review at `4f553b4`, using Unity evidence tested at `276e5f4`.
 See `docs/project_status.md` and the integration handoff for the exercised
-replay/completion paths and provenance. GPU/model execution remains unverified.
+replay/completion paths and provenance. A subsequent bounded single-request
+dummy-weight GPU milestone was accepted after review at `14a1535`; its exact
+script and run evidence are in `docs/handoffs/lp_scheduler_gpu_handoff.md`.
+Mixed-batch GPU correctness, general sampler correctness, and generation
+quality remain unverified.
 This status note does not repin or extend the historical Phase C audit.
 
 ## 2. High-level execution flow

@@ -2,7 +2,7 @@
 
 ## Current phase
 
-**Phase D accepted; mapper, native executor, and live scheduler implemented. Bounded CPU integration milestone accepted on 2026-10-05 after review at `4f553b4`. GPU correctness remains pending; full Phase F acceptance is not claimed.**
+**Phase D accepted; mapper, native executor, and live scheduler implemented. Bounded CPU integration milestone accepted on 2026-10-05 after review at `4f553b4`. The bounded single-request dummy-weight GPU milestone was also accepted after review at `14a1535`; full Phase F acceptance is not claimed.**
 
 The pure, framework-independent LP-relaxation mathematical layer is implemented
 in `lp_relaxation_scheduler.py` and accepted for the scoped MVP. It constructs
@@ -17,8 +17,9 @@ immutable mathematical-layer inputs without scheduler or serving-state
 mutation. Retained Unity CPU test evidence and its revision limits are recorded
 below. Native execution and live `LPScheduler` integration now support the
 scoped single-stage prefill/decode path, with CPU replay/completion evidence.
-The accepted milestone does not establish model execution, sampler correctness,
-GPU correctness, or performance. See the 2026-10-05 record below.
+The subsequent GPU milestone establishes only the exercised single-request
+execution path. General sampler correctness, generation quality, mixed-batch
+GPU behavior, and performance remain unverified. See the 2026-10-05 records below.
 
 ## Current repository and provenance
 
@@ -199,15 +200,63 @@ unsupported. LP scheduling requires the repository root on Python's import path.
 Direct configuration/registry construction is supported; `EngineArgs` and
 benchmark options remain deferred.
 
-Next permitted work is planning the smallest GPU correctness test, including
-review of the model runner's default memory-profiling path for `SchedulerType.LP`
-and the launch/import path. Model execution, sampler correctness, generation
-quality, arbitrary-workload success, GPU correctness, and performance remain
-unverified. The inherited limitations in design §16 remain in force.
+At this CPU milestone boundary, the next permitted work was planning the
+smallest GPU correctness test, including review of the model runner's default
+memory-profiling path for `SchedulerType.LP` and the launch/import path. Model
+execution and GPU correctness were then unverified; the subsequent bounded
+GPU evidence is recorded below. General sampler correctness, generation
+quality, arbitrary-workload success, and performance remain unverified. The
+inherited limitations in design §16 remain in force.
 
 The evidence commit `ec15af2` also began tracking the pre-existing `CLAUDE.md`
 containing `@AGENTS.md`, outside the implementation prompt's allowed paths.
 The integration handoff's dated addendum records this file-scope discrepancy.
+
+## Bounded single-request dummy-weight GPU milestone (2026-10-05)
+
+The user accepted this milestone after read-only review at clean HEAD
+`14a15356e64e175f5def042d582412b40af4de2d`. The script is committed as
+`54bcd72a62571457fe074d2edc814ce6f8ea7827`; the handoff and retained run
+artifacts are committed as `14a1535`. See
+`docs/handoffs/lp_scheduler_gpu_handoff.md` for commands, full environment,
+configuration, and artifact hashes.
+
+The single Unity GPU attempt tested base
+`a3be58a4e632da79edcc4b3b5d70b0471ed013d9` plus the uncommitted validation
+script. Its full SHA-256 matches the committed script. No serving implementation
+changed. The run used `gpu048`, allocation `65250285`, an NVIDIA A16, Python
+3.10.8, Torch 2.3.0+cu121, NumPy 2.2.6, and SciPy 1.15.3. The handoff reports
+the four prerequisite CPU suites passing (5/7/9/13 tests) at the base revision.
+
+TinyLlama dummy weights, one 16-token prompt, two generated tokens, one pipeline
+stage, and one tensor-parallel worker exercised the real engine/worker path.
+The selected actions were prefill 8, prefill 8, decode, decode. Admission
+allocated one block; resident prefill and the first decode allocated none; the
+second decode appended one block before completion freed both. The request
+finished by length, all 15,612 central blocks were free again, and a final idle
+call advanced the iteration without LP or worker execution. The retained
+console reports `RESULT: PASS` and exit status 0. Existing enabled metrics mode
+was used because disabled mode cannot complete an engine step; no framework
+repair or plotting was added.
+
+Mac review on `atmac.local`, Python 3.14.7, checked the script source, syntax,
+commit-range whitespace, exact script/artifact hashes, and JSON consistency for
+the actions, solver outcomes, completion, memory restoration, and idle call.
+It did not rerun GPU execution. The worker profiling batch was not directly
+observed; its one-32-token shape was established from source and configured
+inputs. Successful execution is evidence for this bounded run, not a general
+memory-profile guarantee.
+
+This acceptance excludes semantic generation quality, reference numerical
+agreement, mixed-batch GPU correctness, independent GPU-worker block-table
+equality, runtime preemption, arbitrary-workload success, and performance.
+The next proposed task is a tiny mixed-batch GPU check with one sampling method.
+Full Phase F acceptance is not claimed.
+
+The user also approved simplifying the commit workflow: one cohesive authorized
+commit may include code, tests, documentation, and handoff evidence. Tested-code
+provenance remains required under `AGENTS.md`; a separate evidence commit and
+post-commit rerun are not required solely because a commit was created.
 
 ## Historical repository baseline (Phases A and B)
 
