@@ -12,9 +12,9 @@ executor, and their tests are reused unchanged.
 |---|---|
 | Base revision | `d1bd69c2d5c359f542f086d07de3340b5e0e5e7c` on `main`, in sync with `origin/main`; no newer commits |
 | Reviewed commits included | `0afba0d`, `74f5d09`, `f053afd`, `d1bd69c` (full hashes confirmed as ancestors with `git merge-base --is-ancestor`) |
-| Tested revision | Base plus uncommitted changes (not committed). `git diff d1bd69c -- sarathi docs/lp_scheduler_design.md \| sha256sum` = `8f743fde…afcbc`; `sha256(lp_scheduler.py)` = `debfd4ec…eb0c3`; `sha256(tests/test_lp_scheduler.py)` = `0db8d438…4eec`. This handoff file was written after testing. |
+| Tested revision | Base plus uncommitted changes (not committed). `git diff d1bd69c -- sarathi docs/lp_scheduler_design.md \| sha256sum` = `8f743fde…afcbc`; `sha256(lp_scheduler.py)` = `debfd4ec…eb0c3`; `sha256(tests/test_lp_scheduler.py)` = `0db8d438…4eec`. This handoff file was written after testing. Re-verified after commit at implementation commit `276e5f4c188b6137fd5f953eda67503d41b0718f` (tested paths clean against HEAD): the four suites again ran 5, 7, 9, and 13 tests, all OK, on `gpu048`, SLURM job `65250285`. |
 | Pre-existing unrelated state | Untracked `CLAUDE.md`, left untouched |
-| Host / allocation | Unity node `gpu048`, SLURM job `65249627`, partition `gpu-preempt`; CPU-only work. No model, CUDA, GPU, or benchmark was run |
+| Host / allocation | Unity node `gpu048`, SLURM job `65249627` (post-commit re-run: job `65250285`), partition `gpu-preempt`; CPU-only work. No model, CUDA, GPU, or benchmark was run |
 | Environment | `module load Python/3.10.8-GCCcore-12.2.0`, then `source env/bin/activate`, in the same shell as each command |
 | Interpreter / dependencies | `/home/atjoshi_umass_edu/LPServe/env/bin/python`, Python 3.10.8; NumPy 2.2.6, SciPy 1.15.3, torch 2.3.0+cu121, transformers 4.57.6 |
 
@@ -202,6 +202,6 @@ Passed: everything above. Failed: none. Skipped: none.
   and is relevant only to a later GPU task.
 - **Stale wording.** The guide, status, and the D-18 row still describe live
   integration as future work and are left for post-review updates.
-- **Committing.** Not committed. If authorized: implementation, config,
-  design, and tests first (using `git add -f` for the test file), then this
-  handoff.
+- **Committing.** Implementation, config, design, and tests are in
+  `276e5f4` (the test file was added with `git add -f`); this handoff is in
+  `ec15af2`.
