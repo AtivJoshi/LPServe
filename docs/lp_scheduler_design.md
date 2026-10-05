@@ -73,8 +73,9 @@ The following are not part of this design:
 - pipeline-parallel support before the blockers in Section 16 are resolved.
 
 Only decisions recorded as resolved in Section 17 are selected. Utility
-functions, watermarks, Phase F within-prefill/within-decode metadata ordering,
-pipeline support, and every remaining OPEN item have no implicit default. The
+functions, watermarks, pipeline support, and every remaining OPEN item have no
+implicit default. Phase F metadata ordering is resolved for the supported
+single-stage scope by D-21. The
 selected pre-mutation failure response is the scoped fail-stop rule in Section
 14.2 and D-17. The selected post-mutation response is the no-rollback,
 fail-stop rule in Section 14.4 and D-20. No alternate-policy fallback is
@@ -1094,6 +1095,62 @@ When the supported MVP path exercises and claims a cross-layer replay result,
 replay tests rather than output alone establish central/worker block equality.
 Other action combinations remain focused follow-up coverage under §15.4.
 
+**Execution and metadata order (D-21, approved 2026-10-05):** For the supported
+single-stage scope, the executor executes and emits all selected prefills
+first, then all selected decodes, each group ascending by the existing
+`order_key`. Central native operations and emitted
+`scheduled_seq_metadata_list` entries use this same order. The order is
+built as a new action list; it does not reorder the accepted mathematical plan
+in place and changes neither the selected actions nor their chunk sizes. It
+matches the model runner's prompt-first input packing and keeps a deterministic
+order within each group. It does not repair the inherited mixed-batch and
+sampler limitations in §16.4 (D-25). Focused test:
+`tests/test_lpserve_plan_execution.py`,
+`test_mixed_output_is_prompt_first_in_native_execution_order`.
+
+**Initial executor supported subset (approved 2026-10-05):**
+`lpserve_plan_execution.execute_plan(scheduler, snapshot, result)` is one
+synchronous call that receives the live scheduler, the immutable
+`StateSnapshot`, and a `SchedulingSuccess`. It does not invoke the mapper or
+solver. It supports only:
+
+- admission of an unallocated waiting request with a positive chunk, using the
+  native manager's full initial allocation demand (the full logical context
+  for the supported manager, regardless of chunk size), the native admission
+  watermark, and the inherited `_allocate` helper; the waiting entry is removed
+  once and appended to `running` once, in execution order;
+- continuation of a resident partial prefill with zero logical/physical block
+  gap and no new allocation;
+- one decode for a prompt-complete resident with a gap of zero or one, through
+  the inherited `_append_slot` helper; the native append gate requires a free
+  block even at gap zero, and only the actual gap is consumed;
+- any combination of these in one prompt-first output.
+
+Before mutation it checks record identity against the current
+`_iteration_id`, reuses `validate_problem` and `validate_integer_plan`,
+applies the progress gate, checks one pipeline stage and zero running batches,
+and checks each selected request's current ownership, status, arrival
+relative to `snapshot_time`, unfinished state, prompt progress, allocation,
+chunk bound against current remainder and $C_{\max}$, resident capacity, and
+overlength admission (read-only; the mutating prompt-rejection helper is not
+called). Combined native memory feasibility is proved with a temporary running
+count of free blocks and residents in execution order; the allocator and block
+tables are not copied. A rejection returns the immutable mathematical-layer
+`Failure` record (stage `precommit_validation`, or the plan validator's own
+failure unchanged) with no output and no mutation. After mutation begins,
+exceptions propagate under D-20. The executor does not change
+`_iteration_id` or `num_running_batches`, and leaves status transitions and
+prompt progress to replay and completion.
+
+Runtime preemption and prompt-ignore controls are not executed by this
+executor. A plan that combines execution actions with any selected preemption
+fails precommit validation as `unsupported_preemption`; an all-zero or
+preempt-only plan fails as `no_progress`. Selected preemptions are never
+removed and no action is forced. Successful output carries empty ignored and
+preempted lists. This deferral does not change mathematical eligibility, the
+legal-preemption set, or extraction. Live `LPScheduler` integration, ordinary
+idle handling, and D-17 exception conversion are not part of the executor.
+
 Ordinary future-only or completely empty scheduling is decided by the future
 live `LPScheduler` before the mapper is invoked. It follows the inherited
 single-stage scheduler convention: when `running` is empty and `waiting` is
@@ -1444,6 +1501,7 @@ Initial correctness validation is limited to a single pipeline stage. Supporting
 | D-18 | **RESOLVED for the single-stage MVP** — ordinary future-only or completely empty scheduling is handled by the future live `LPScheduler` before mapper invocation: when `running` is empty and `waiting` is empty or its head has `arrival_time > now`, the scheduler returns an ordinary empty `SchedulerOutputs` without mapping, LP construction, solving, extraction, precommit validation, or execution. This inherits the audited schedulers' waiting-order and future-request-validity assumptions and adds no separate validation subsystem. It also inherits `BaseScheduler.schedule()` bookkeeping: `_iteration_id` advances and supplies the output ID, while waiting/running ownership, sequence status and progress, block state, and `num_running_batches` remain unchanged. The mapper accepts only a nonempty arrived universe; an empty arrived universe reaching direct mapping is a `MappingFailure`. Future requests may still be filtered from a mixed nonempty snapshot. If the arrived universe is nonempty and a successfully validated plan contains no positive prefill or decode action, including an all-zero or preempt-only plan, precommit validation returns `no_progress` before execution mutation and the top-level scheduler applies D-17. No retry, forced action, alternate policy, or mathematical-layer change is added. | §§12.1, 13, 14.2, 15.4; D-20 covers failures after execution mutation |
 | D-19 | **RESOLVED for the single-stage MVP; simplification approved 2026-10-04** — the same engine receives no overlapping state-changing public calls; mapping begins with one pipeline stage and zero running batches; and mapping through execution is synchronous within one scheduler decision call. This contract supplies state stability. The snapshot ID (the scheduler iteration number, §9.2) associates the problem and plan but is not a lock or proof of unchanged state. Phase F checks problem/plan identity and fully validates the complete plan against current state immediately before mutation, including combined native memory feasibility in execution order. It does not separately compare live fields with the earlier snapshot or rebuild the mapper for comparison. Identity mismatch or failed prevalidation is a zero-mutation precommit failure followed by the D-17 fail-stop response. The separate comparison's detection of unexpected contract-violating state changes is relinquished. No new lock, version, reservation, or layer-local retry subsystem is required. Pipeline mode and concurrent public calls remain unsupported. | §§12.2, 12.6, 13, 14.2–14.3; focused tests §§15.3–15.4; D-24 remains OPEN |
 | D-20 | **RESOLVED for the single-stage MVP** — Phase F fully prevalidates before mutation and then uses native LPServe operations. Any exception after the first mutation propagates and terminates the run; potentially divergent scheduler, engine, sequence-manager, and worker state is not reused. The MVP adds no rollback, retry, alternate-policy fallback, partial output, recovery, or transaction mechanism. Known control-only output shapes, including preempt-only plans, are rejected before mutation under D-17 rather than sent through this destructive path. | §§13, 14.4, 16.3, 16.5; focused tests §15.4; D-24 remains OPEN |
+| D-21 | **RESOLVED for the single-stage MVP (approved 2026-10-05)** — execute and emit all selected prefills first, then all selected decodes, each ascending by existing `order_key`; central native operations and emitted metadata share this order. Built as a separate ordered action list; the accepted plan, its selected actions, and chunk sizes are unchanged. Rationale: matches prompt-first physical input packing and gives a deterministic within-group order. Inherited mixed-batch/sampler limitations remain under §16.4 and D-25. | §13; focused test `tests/test_lpserve_plan_execution.py` (`test_mixed_output_is_prompt_first_in_native_execution_order`) |
 | D-25 | **RESOLVED** — MVP compatibility mode reuses existing LPServe/SLAI behavior, including native recomputation preemption, without repairing inherited framework defects. Material inherited limitations are documented; only issues that block the selected MVP path require action. | §§2.4, 4.4, 13, 16 |
 
 D-13 provides no basic/extreme-point or fractional-count guarantee; its
@@ -1468,7 +1526,6 @@ candidate is a hidden default.
 | D-09 | Decode planning charge $c_i^D$ | Exact gap or conservative one-block charge | Before final Phase D/Phase E interface freeze |
 | D-10 | Memory reserve $W_t$ | Zero, fixed, or state-dependent; not silently the watermark | Before live LP solves |
 | D-13 | Remaining solver performance, control, and basis policy | Finite live/performance limits; possible `highs`/`highs-ipm`; edge-weight and other tuning; IPM/crossover; basis certification; warm starts/basis reuse; threading/parallelism/random seed; cross-version degenerate-optimum behavior; any solver-output-to-fractional-bound assertion | Does not block initial Phase D; before the relevant performance, control, or structural claim |
-| D-21 | Canonical within-prefill and within-decode metadata order | Prompt-first partition required; internal ordering unspecified | Before mixed-batch Phase F tests |
 | D-22 | Recomputation output contract | Original prompt/generated suffix versus expanded-context representation | Before claiming corrected or public recomputation-output semantics; MVP compatibility mode may use native preemption with the documented inherited limitation |
 | D-23 | Approximation guarantee | No ratio established | Before any theoretical quality claim |
 | D-24 | Pipeline-parallel policy | Deferred; safe eligibility and completion association unknown | Before any pipeline support claim |
