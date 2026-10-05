@@ -10,6 +10,13 @@ The intended implementation boundary is: a read-only Phase E mapper observes LPS
 
 **Design alignment (2026-10-04):** The implementation guidance below follows the current design, including MVP compatibility decision D-25, state-stability decision D-19, and failure decision D-20. This alignment does not repin the Phase C audit, change its defect evidence, or establish an implemented executor or live scheduler.
 
+**Implementation status (2026-10-05):** The native LP executor and live
+single-stage scheduler now exist; the bounded CPU integration milestone was
+accepted after review at `4f553b4`, using Unity evidence tested at `276e5f4`.
+See `docs/project_status.md` and the integration handoff for the exercised
+replay/completion paths and provenance. GPU/model execution remains unverified.
+This status note does not repin or extend the historical Phase C audit.
+
 ## 2. High-level execution flow
 
 LPServe has a central engine and scheduler plus one or more GPU workers. The central scheduler owns the authoritative scheduler collections and central block manager. The engine-side sequence manager shares central `Sequence` objects; workers hold serialized copies and local block managers. Synchrony is intended to come from replaying the same `SchedulerOutputs`, not by sending physical block tables.

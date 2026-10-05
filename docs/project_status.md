@@ -2,7 +2,7 @@
 
 ## Current phase
 
-**Phase D accepted / Phase E mapper implemented; Phase F execution and live integration not implemented, as inspected on 2026-10-04 at `78d663a`.**
+**Phase D accepted; mapper, native executor, and live scheduler implemented. Bounded CPU integration milestone accepted on 2026-10-05 after review at `4f553b4`. GPU correctness remains pending; full Phase F acceptance is not claimed.**
 
 The pure, framework-independent LP-relaxation mathematical layer is implemented
 in `lp_relaxation_scheduler.py` and accepted for the scoped MVP. It constructs
@@ -15,10 +15,10 @@ Phase E read-only state mapping is implemented in `lpserve_state_mapping.py`,
 with focused tests in `tests/test_lpserve_state_mapping.py`. It constructs
 immutable mathematical-layer inputs without scheduler or serving-state
 mutation. Retained Unity CPU test evidence and its revision limits are recorded
-below. Phase F native execution and live `LPScheduler` integration are not
-implemented; they remain subsequent work subject to the normative design gates.
-This update records implementation and available evidence, not a new phase
-acceptance or integrated serving-validation result.
+below. Native execution and live `LPScheduler` integration now support the
+scoped single-stage prefill/decode path, with CPU replay/completion evidence.
+The accepted milestone does not establish model execution, sampler correctness,
+GPU correctness, or performance. See the 2026-10-05 record below.
 
 ## Current repository and provenance
 
@@ -123,7 +123,10 @@ described by the design. It must preserve the accepted mathematical interface,
 fail visibly on incoherent snapshots, and perform no scheduler or serving-state
 mutation.
 
-## Phase E implementation and current evidence boundary (2026-10-04)
+## Historical Phase E implementation and evidence boundary (2026-10-04)
+
+This dated record is preserved; the 2026-10-05 evidence below supersedes its
+then-current implementation and validation boundary.
 
 The mapper was introduced in `a0e35d7`, corrected in `0204393`, and aligned
 with the current ordinary-idle contract in `1c9141a`. The retained
@@ -150,6 +153,61 @@ is not implemented integration evidence. Phase F execution, live integration,
 and subsequent GPU correctness validation remain pending and subject to the
 existing design gates. No OPEN decision or BLOCKER is resolved by this status
 correction.
+
+## Native executor and live CPU integration milestone (2026-10-05)
+
+The user accepted this bounded milestone after source review at clean Mac HEAD
+`4f553b4f238fe93e87623de3612d20362888899f` and review of the retained Unity
+handoffs. This is not full Phase F acceptance or GPU validation.
+
+| Change | Implementation | Evidence |
+|---|---|---|
+| Native executor and D-21 prompt-first ordering | `0afba0d7a7d7f5952975332086e1cca953aff5c4` | `74f5d09`, `docs/handoffs/lpserve_plan_execution_handoff.md` |
+| Nested-input failure-interface correction | `f053afd74f8f91db5d8feefd91dfc1f8d428717e` | `d1bd69c`, `docs/handoffs/lpserve_plan_execution_failure_interface_handoff.md` |
+| Live scheduler, explicit configuration, registration, CPU replay tests | `276e5f4c188b6137fd5f953eda67503d41b0718f` | `ec15af2`, with post-commit evidence recorded in `4f553b4`, `docs/handoffs/lp_scheduler_integration_handoff.md` |
+
+The integration handoff reports post-commit checks at `276e5f4` on Unity
+`gpu048`, allocation `65250285`, using the existing repository environment:
+Python 3.10.8, NumPy 2.2.6, SciPy 1.15.3, Torch 2.3.0+cu121, and Transformers
+4.57.6. Its recorded commands run the mathematical, mapper, executor, and live
+scheduler suites separately: 5, 7, 9, and 13 tests passed, respectively. Syntax
+and whitespace checks also passed. No model, CUDA execution, or benchmark ran.
+This evidence includes the mapper simplifications that lacked current-revision
+runtime evidence in the 2026-10-04 record.
+
+Exercised CPU behavior includes synchronous mapping through execution, ordinary
+idle, iteration and running-batch bookkeeping, immutable pre-mutation failure
+propagation, destructive post-mutation exception propagation, and native
+central/worker replay. Synthetic sampler outputs drive admission, partial
+prefill, decode at physical block gaps zero and one, completion/free, mixed
+prompt-first output, and preservation of an unselected resident. Detokenization
+is stubbed. Central/worker block equality is established only for the exercised
+CPU cases, not for model or GPU execution.
+
+Local review on `atmac.local` used Python 3.14.7 at
+`/opt/homebrew/opt/python@3.14/bin/python3.14`. In-memory syntax compilation,
+`git diff --check d1bd69c HEAD`, and the new-module naming check passed. The
+command `python3 -B -m unittest discover -s tests -p 'test_lp_scheduler.py' -v`
+could not import because NumPy was unavailable. No substantive integration
+tests ran on the Mac; Unity passes above are reported handoff evidence.
+
+The mathematical layer, mapper, and executor were unchanged by live integration.
+D-21 is resolved for the supported single-stage ordering; provisional utilities
+and capacities do not resolve the remaining research-policy decisions. Runtime
+preemption, ignore controls, pipeline execution, and overlapping calls remain
+unsupported. LP scheduling requires the repository root on Python's import path.
+Direct configuration/registry construction is supported; `EngineArgs` and
+benchmark options remain deferred.
+
+Next permitted work is planning the smallest GPU correctness test, including
+review of the model runner's default memory-profiling path for `SchedulerType.LP`
+and the launch/import path. Model execution, sampler correctness, generation
+quality, arbitrary-workload success, GPU correctness, and performance remain
+unverified. The inherited limitations in design §16 remain in force.
+
+The evidence commit `ec15af2` also began tracking the pre-existing `CLAUDE.md`
+containing `@AGENTS.md`, outside the implementation prompt's allowed paths.
+The integration handoff's dated addendum records this file-scope discrepancy.
 
 ## Historical repository baseline (Phases A and B)
 

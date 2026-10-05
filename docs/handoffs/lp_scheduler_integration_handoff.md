@@ -205,3 +205,20 @@ Passed: everything above. Failed: none. Skipped: none.
 - **Committing.** Implementation, config, design, and tests are in
   `276e5f4` (the test file was added with `git add -f`); this handoff is in
   `ec15af2`.
+
+
+## Post-review provenance addendum (2026-10-05)
+
+Mac review at `4f553b4f238fe93e87623de3612d20362888899f` confirmed the
+implementation commit `276e5f4` contains the six implementation/design/test
+paths listed above. The evidence commit `ec15af2d1879028152cc25cea6ead936143e46ef`
+contains this handoff **and `CLAUDE.md`**, newly tracked with the single line
+`@AGENTS.md`. That file was pre-existing and untracked before implementation;
+tracking it was outside the prompt's allowed file list. The earlier statements
+that it was left untouched describe the pre-commit working-tree state, not the
+complete committed path list. No scheduler-runtime effect is attributed to it.
+
+Commit `4f553b4` changes only this handoff to record post-commit verification.
+The test file is tracked as of `276e5f4`; the earlier ignored-file staging note
+is historical. This addendum corrects provenance only and records no new test
+run. Historical commands and results above are preserved.

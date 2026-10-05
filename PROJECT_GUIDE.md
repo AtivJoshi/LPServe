@@ -1,6 +1,6 @@
 # LPServe Project Guide
 
-**Guide provenance:** Current-target wording updated on 2026-10-04 after source inspection at committed HEAD `78d663a2984aa4d4b7c5b09acf51d57e8f3266a8`; the earlier guide update was against `67a336222a6ec2ac53d932e7928c597dd4ccbe23` on 2026-09-20. The Phase C architecture audit remains pinned to `c3e0143`; later implementation and documentation commits do not repin that historical audit. Inspect current Git state before relying on this snapshot.
+**Guide provenance:** Current-target wording updated on 2026-10-05 after read-only review at committed HEAD `4f553b4f238fe93e87623de3612d20362888899f` and user acceptance of the bounded CPU integration milestone. Earlier guide updates inspected `78d663a` (2026-10-04) and `67a3362` (2026-09-20). The Phase C architecture audit remains pinned to `c3e0143`; later implementation and documentation commits do not repin that historical audit. Inspect current Git state before relying on this snapshot.
 
 ## Project purpose
 
@@ -57,7 +57,9 @@ The planned sequence is:
 7. Phase G — perform integrated correctness validation.
 8. Phase H — attribute timing and run controlled performance comparisons.
 
-The Phase C architecture audit and the Phase D–F normative design artifacts exist. The standalone Phase D mathematical layer is implemented in `lp_relaxation_scheduler.py` and accepted for its scoped MVP after the focused solver, extraction, failure, and zero-valued tie checks recorded in `docs/handoffs/`. Phase E read-only state mapping is implemented in `lpserve_state_mapping.py`, with focused tests in `tests/test_lpserve_state_mapping.py`. Retained Unity CPU validation is recorded in `docs/handoffs/state_mapping_idle_contract_handoff.md` for `1c9141a`; it does not validate later simplification commits. Phase F native execution and live `LPScheduler` integration are not implemented and remain subsequent work subject to the design gates. See `docs/project_status.md` for the current evidence boundary. Synthetic Phase D utilities, capacities, reserve, and decode-charge values remain scoped provisional inputs rather than permanent project decisions.
+The Phase C architecture audit and the Phase D–F normative design artifacts exist. The standalone Phase D mathematical layer remains accepted for its scoped MVP. The read-only mapper, native executor, and live `LPScheduler(BaseScheduler)` are implemented. The bounded single-stage CPU integration milestone was accepted on 2026-10-05 after source review and review of provenance-bearing Unity evidence at implementation commit `276e5f4`. The handoff records five mathematical, seven mapper, nine executor, and thirteen live-scheduler tests passing, including native replay/completion for the exercised paths. See `docs/project_status.md` and `docs/handoffs/lp_scheduler_integration_handoff.md` for revision and environment boundaries.
+
+Supported execution includes waiting admission, resident prefill, and decode with prompt-first mixed output. Runtime preemption, ignore controls, pipeline execution, and overlapping state-changing calls remain unsupported. Direct configuration and registry construction are implemented; `EngineArgs` and benchmark integration are deferred. LP scheduling requires the repository root on Python's import path. GPU/model execution, sampler correctness, generation quality, arbitrary-workload completion, and performance remain unverified. The next task is planning a tiny GPU correctness check, including review of the model runner's LP memory-profiling path; this CPU milestone is not full Phase F acceptance. Utilities, capacities, reserve, and decode-charge values remain scoped provisional inputs.
 
 The key separation is:
 
