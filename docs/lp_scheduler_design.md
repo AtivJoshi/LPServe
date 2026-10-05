@@ -1179,6 +1179,60 @@ dedicated failure exception and produces no `SchedulerOutputs`. It MUST NOT
 retry unchanged state, force an unrelated action, invoke another policy, or
 change the accepted mathematical layer to conceal the outcome.
 
+**Live scheduler integration (approved scoped inputs, 2026-10-05):**
+`sarathi/core/scheduler/lp_scheduler.py` defines `LPScheduler(BaseScheduler)`
+and `LPSchedulingError`.
+
+- *Configuration and entry point.* `LPSchedulerConfig` in `sarathi/config.py`
+  (`SchedulerType.LP = 8`) requires explicit `max_num_seqs`, `max_model_len`,
+  `num_pipeline_stages`, `b_max`, `c_max`, `s_max`, `memory_reserve`,
+  `decode_memory_policy_id`, `decode_utility`, `prefill_token_utility`,
+  `preemption_penalty`, and `numerical_policy`, with no defaults.
+  `max_num_batched_tokens` returns `b_max`; `s_max` is separate from
+  `max_num_seqs`. A stage count other than one raises `ValueError` at config
+  construction. The entry point is direct configuration plus
+  `SchedulerRegistry`; the same type is registered with the existing
+  `VLLMBlockSpaceManager` (central and worker). `EngineArgs`, benchmark
+  configuration, and command-line parsing are unchanged.
+- *Scoped values.* The CPU plumbing fixture uses `b_max=8`, `c_max=4`,
+  `s_max=3`, resident limit 4, `max_model_len=32`, block size 4, 10 blocks,
+  reserve 1, `conservative_one_block_v1`, uniform utilities
+  $\alpha=\beta=\gamma=1$, and the accepted numerical policy (§§10.1, 11.2).
+  These are provisional plumbing inputs only; D-01–D-07, D-09, and D-10 remain
+  OPEN. A positive penalty does not prevent a selected preemption, which the
+  executor still rejects; resident and native memory gates may reject a
+  mathematically valid plan.
+- *Utilities.* For a non-idle decision the scheduler builds
+  `Mapping[int, RequestUtility]` with the configured uniform triple for every
+  owned request with `arrival_time <= now` that is not finished. There is no
+  per-request policy storage or callback. The mapper still validates IDs,
+  arrival, ownership, and the exact key set. If building the mapping raises
+  `AttributeError`/`TypeError`, the scheduler raises `LPSchedulingError` with
+  an `lp_relaxation_scheduler.Failure` (stage `utility_construction`).
+- *Decision flow.* `schedule()` first rejects a stage count other than one or
+  a nonzero `num_running_batches` by raising `LPSchedulingError` (stage
+  `scheduler_entry`) *before* calling `BaseScheduler.schedule()`, so
+  `_iteration_id` is unchanged and no empty output is returned. Otherwise the
+  inherited method advances `_iteration_id` exactly once and calls
+  `_schedule()`, which reads `time.monotonic()` once. It then returns the D-18
+  idle output, or calls `map_scheduler_state`, `solve_and_extract`, and
+  `execute_plan` in sequence, each only after the previous stage succeeded.
+  For supported calls the single increment also applies to ordinary idle and to
+  pre-mutation failures. Nothing is retained between decisions.
+- *Failure conversion (D-17).* A returned `MappingFailure` or
+  `lp_relaxation_scheduler.Failure` from mapping, solving/extraction, or
+  executor precommit validation is raised as `LPSchedulingError`, which
+  carries that frozen record unchanged (`snapshot_id`, `stage`, `category`,
+  `reason`, and `solver_diagnostics` read from it). The scheduler has no broad
+  exception handler: exceptions after executor mutation begins propagate
+  unchanged (D-20).
+- *Responsibilities.* The scheduler owns entry checks, the clock read, idle
+  handling, utility construction, stage sequencing, and exception conversion.
+  The executor owns precommit validation, prompt-first order (D-21), native
+  mutation, and output construction; the scheduler does not reorder output.
+  `BaseScheduler` owns `_iteration_id`, `num_running_batches`, and
+  completion bookkeeping.
+
 ## 14. Failure contracts
 
 ### 14.1 Layer-local behavior that is resolved
@@ -1373,6 +1427,15 @@ mechanism, to prove the exception propagates, no later planned action or
 `SchedulerOutputs` is produced, and the mutated fixture is discarded rather
 than reused. This test does not require or imply rollback.
 
+Live scheduler integration traceability: `tests/test_lp_scheduler.py` covers
+registration and explicit configuration, multi-stage rejection, empty and
+future-only idle, the real synchronous pipeline with real native replay
+(admission → partial prefill → prompt completion → decode at gap 0 and 1 →
+finish/free with matching central/worker block tables), a mixed prompt-first
+decision with an unselected resident, real mapping, mathematical, physical
+(resident capacity), and `no_progress` failures raised as `LPSchedulingError`,
+the unsupported-entry guard, and a post-mutation failure that propagates.
+
 Add direct focused regressions only when a currently supported action breaks.
 Preemption, mixed batches, decode marginal-block variants, worker
 block-table equality, and ownership corner cases are not mandatory initial
@@ -1497,7 +1560,7 @@ Initial correctness validation is limited to a single pipeline stage. Supporting
 | D-14 | **RESOLVED** — absolute $\varepsilon_{\mathrm{int}}=10^{-6}$ for validated indicators only. | §10.1; §15.2 |
 | D-15 | **RESOLVED** — absolute $\varepsilon_{\mathrm{feas}}=10^{-7}$, independent validation, narrow projection, and revalidation only. | §11.2; §15.1 |
 | D-16 | **RESOLVED for the single-scheduler MVP** — ascending immutable lexicographic `order_key` with exact extraction ties. The current engine's unique non-negative integer `Sequence.seq_id` is its verified monotone admission identity; Phase E uses `order_key=(raw_seq_id,)` and the accepted decimal-string request ID. Unsupported live ID shapes fail mapping. Revisit this rule if ID generation changes or one scheduling universe spans independent generators. | §§9–10, 12.3; tests §§15.2–15.3 |
-| D-17 | **RESOLVED for the MVP** — every mapping, solver, relaxed-validation, extraction, integer-plan-validation, or fresh-prevalidation failure detected before mutation is fail-stop. The layer returns its immutable structured failure without a plan; the live LP scheduler raises a dedicated exception carrying its immutable diagnostics, produces no `SchedulerOutputs`, and ends the run. It performs no automatic retry or re-planning, empty/all-zero substitution, alternate-policy fallback, patching, or execution. D-18 governs a valid empty plan; D-20 governs failures after mutation begins. | §§14.1–14.3; focused test §15.4 |
+| D-17 | **RESOLVED for the MVP** — every mapping, solver, relaxed-validation, extraction, integer-plan-validation, or fresh-prevalidation failure detected before mutation is fail-stop. The layer returns its immutable structured failure without a plan; the live LP scheduler raises a dedicated exception carrying its immutable diagnostics, produces no `SchedulerOutputs`, and ends the run. It performs no automatic retry or re-planning, empty/all-zero substitution, alternate-policy fallback, patching, or execution. D-18 governs a valid empty plan; D-20 governs failures after mutation begins. Implemented by `LPSchedulingError` (§13, live scheduler integration). | §§13, 14.1–14.3; focused tests §15.4 |
 | D-18 | **RESOLVED for the single-stage MVP** — ordinary future-only or completely empty scheduling is handled by the future live `LPScheduler` before mapper invocation: when `running` is empty and `waiting` is empty or its head has `arrival_time > now`, the scheduler returns an ordinary empty `SchedulerOutputs` without mapping, LP construction, solving, extraction, precommit validation, or execution. This inherits the audited schedulers' waiting-order and future-request-validity assumptions and adds no separate validation subsystem. It also inherits `BaseScheduler.schedule()` bookkeeping: `_iteration_id` advances and supplies the output ID, while waiting/running ownership, sequence status and progress, block state, and `num_running_batches` remain unchanged. The mapper accepts only a nonempty arrived universe; an empty arrived universe reaching direct mapping is a `MappingFailure`. Future requests may still be filtered from a mixed nonempty snapshot. If the arrived universe is nonempty and a successfully validated plan contains no positive prefill or decode action, including an all-zero or preempt-only plan, precommit validation returns `no_progress` before execution mutation and the top-level scheduler applies D-17. No retry, forced action, alternate policy, or mathematical-layer change is added. | §§12.1, 13, 14.2, 15.4; D-20 covers failures after execution mutation |
 | D-19 | **RESOLVED for the single-stage MVP; simplification approved 2026-10-04** — the same engine receives no overlapping state-changing public calls; mapping begins with one pipeline stage and zero running batches; and mapping through execution is synchronous within one scheduler decision call. This contract supplies state stability. The snapshot ID (the scheduler iteration number, §9.2) associates the problem and plan but is not a lock or proof of unchanged state. Phase F checks problem/plan identity and fully validates the complete plan against current state immediately before mutation, including combined native memory feasibility in execution order. It does not separately compare live fields with the earlier snapshot or rebuild the mapper for comparison. Identity mismatch or failed prevalidation is a zero-mutation precommit failure followed by the D-17 fail-stop response. The separate comparison's detection of unexpected contract-violating state changes is relinquished. No new lock, version, reservation, or layer-local retry subsystem is required. Pipeline mode and concurrent public calls remain unsupported. | §§12.2, 12.6, 13, 14.2–14.3; focused tests §§15.3–15.4; D-24 remains OPEN |
 | D-20 | **RESOLVED for the single-stage MVP** — Phase F fully prevalidates before mutation and then uses native LPServe operations. Any exception after the first mutation propagates and terminates the run; potentially divergent scheduler, engine, sequence-manager, and worker state is not reused. The MVP adds no rollback, retry, alternate-policy fallback, partial output, recovery, or transaction mechanism. Known control-only output shapes, including preempt-only plans, are rejected before mutation under D-17 rather than sent through this destructive path. | §§13, 14.4, 16.3, 16.5; focused tests §15.4; D-24 remains OPEN |

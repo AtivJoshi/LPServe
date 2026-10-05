@@ -19,6 +19,7 @@ class SchedulerType(BaseIntEnum):
     SIMPLE_CHUNKING = 5
     HOLD_N = 6
     SLAI_SCHEDULER = 7
+    LP = 8
 
 
 class ModelConfig:
@@ -424,6 +425,69 @@ class SLAISchedulerConfig(BaseSchedulerConfig):
     @property
     def type(self):
         return SchedulerType.SLAI_SCHEDULER
+
+
+class LPSchedulerConfig(BaseSchedulerConfig):
+    """LP-relaxation scheduler configuration.
+
+    Every value is an explicit scoped input with no default. Value validation
+    beyond the pipeline-stage restriction is left to the LP state mapper and
+    mathematical layer, which return visible failures.
+
+    Args:
+        b_max: Combined prefill and decode token budget for one forward pass.
+        c_max: Per-request prefill chunk limit.
+        s_max: Scheduled execution-action limit for one forward pass. It is
+            separate from the resident limit ``max_num_seqs``.
+        memory_reserve: Planning-memory reserve in KV-cache blocks. It is not
+            the block manager watermark.
+        decode_memory_policy_id: Decode planning-charge policy identifier.
+        decode_utility: Uniform utility of one decode action.
+        prefill_token_utility: Uniform utility per prefill token.
+        preemption_penalty: Uniform preemption penalty.
+        numerical_policy: ``lp_relaxation_scheduler.NumericalPolicy`` passed
+            unchanged to the LP layer.
+    """
+
+    def __init__(
+        self,
+        max_num_seqs: int,
+        max_model_len: int,
+        num_pipeline_stages: int,
+        b_max: int,
+        c_max: int,
+        s_max: int,
+        memory_reserve: int,
+        decode_memory_policy_id: str,
+        decode_utility: float,
+        prefill_token_utility: float,
+        preemption_penalty: float,
+        numerical_policy,
+    ) -> None:
+        if num_pipeline_stages != 1:
+            raise ValueError(
+                f"LP scheduler supports exactly one pipeline stage, got "
+                f"num_pipeline_stages={num_pipeline_stages!r}"
+            )
+        super().__init__(max_num_seqs, max_model_len, num_pipeline_stages)
+        self.b_max = b_max
+        self.c_max = c_max
+        self.s_max = s_max
+        self.memory_reserve = memory_reserve
+        self.decode_memory_policy_id = decode_memory_policy_id
+        self.decode_utility = decode_utility
+        self.prefill_token_utility = prefill_token_utility
+        self.preemption_penalty = preemption_penalty
+        self.numerical_policy = numerical_policy
+
+    @property
+    def max_num_batched_tokens(self):
+        return self.b_max
+
+    @property
+    def type(self):
+        return SchedulerType.LP
+
 
 class MetricsConfig:
     """Metric configuration."""

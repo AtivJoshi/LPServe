@@ -1,0 +1,655 @@
+import copy
+import dataclasses
+import sys
+import unittest
+from pathlib import Path
+from unittest import mock
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+import lp_relaxation_scheduler as lrs  # noqa: E402
+import lpserve_plan_execution as lpe  # noqa: E402
+import lpserve_state_mapping as lsm  # noqa: E402
+
+from sarathi.config import (  # noqa: E402
+    CacheConfig,
+    LPSchedulerConfig,
+    SchedulerType,
+)
+from sarathi.core.block_space_manager.block_space_manager_registry import (  # noqa: E402
+    BlockSpaceManagerRegistry,
+)
+from sarathi.core.block_space_manager.vllm_block_space_manager import (  # noqa: E402
+    VLLMBlockSpaceManager,
+)
+from sarathi.core.datatypes.sampling_params import SamplingParams  # noqa: E402
+from sarathi.core.datatypes.scheduler_output import SchedulerOutputs  # noqa: E402
+from sarathi.core.datatypes.sequence import SamplerOutput, Sequence  # noqa: E402
+from sarathi.core.datatypes.sequence_status import SequenceStatus  # noqa: E402
+from sarathi.core.scheduler import lp_scheduler  # noqa: E402
+from sarathi.core.scheduler.lp_scheduler import (  # noqa: E402
+    LPScheduler,
+    LPSchedulingError,
+)
+from sarathi.core.scheduler.scheduler_registry import SchedulerRegistry  # noqa: E402
+from sarathi.core.sequence_manager.engine_sequence_manager import (  # noqa: E402
+    EngineSequenceManager,
+)
+from sarathi.core.sequence_manager.worker_sequence_manager import (  # noqa: E402
+    WorkerSequenceManager,
+)
+from sarathi.metrics.metrics_store import MetricsStore  # noqa: E402
+from sarathi.utils.singleton import Singleton  # noqa: E402
+
+# Approved provisional plumbing inputs, not production defaults or research
+# decisions. Individual tests override one value only where documented.
+BLOCK_SIZE = 4
+NUM_GPU_BLOCKS = 10
+MAX_MODEL_LEN = 32
+RESIDENT_LIMIT = 4
+B_MAX = 8
+C_MAX = 4
+S_MAX = 3
+MEMORY_RESERVE = 1
+DECODE_POLICY_ID = "conservative_one_block_v1"
+DECODE_UTILITY = 1.0
+PREFILL_TOKEN_UTILITY = 1.0
+PREEMPTION_PENALTY = 1.0
+NUMERICAL_POLICY = lrs.NumericalPolicy(
+    policy_id="lp_relaxation_mvp_v1",
+    feasibility_tol=1e-7,
+    integrality_tol=1e-6,
+    objective_abs_tol=1e-9,
+    objective_rel_tol=1e-9,
+)
+SAMPLED_TOKEN = 7
+
+_created_metrics_store = False
+
+
+def setUpModule():
+    # BaseScheduler reads the MetricsStore singleton; initialize it through
+    # its existing disabled mode for this module only.
+    global _created_metrics_store
+    if MetricsStore not in Singleton._instances:
+        MetricsStore(None)
+        _created_metrics_store = True
+
+
+def tearDownModule():
+    if _created_metrics_store:
+        Singleton._instances.pop(MetricsStore, None)
+
+
+def _config(**overrides):
+    values = dict(
+        max_num_seqs=RESIDENT_LIMIT,
+        max_model_len=MAX_MODEL_LEN,
+        num_pipeline_stages=1,
+        b_max=B_MAX,
+        c_max=C_MAX,
+        s_max=S_MAX,
+        memory_reserve=MEMORY_RESERVE,
+        decode_memory_policy_id=DECODE_POLICY_ID,
+        decode_utility=DECODE_UTILITY,
+        prefill_token_utility=PREFILL_TOKEN_UTILITY,
+        preemption_penalty=PREEMPTION_PENALTY,
+        numerical_policy=NUMERICAL_POLICY,
+    )
+    values.update(overrides)
+    return LPSchedulerConfig(**values)
+
+
+def _cache_config():
+    cache_config = CacheConfig(block_size=BLOCK_SIZE, gpu_memory_utilization=0.9)
+    cache_config.num_gpu_blocks = NUM_GPU_BLOCKS
+    return cache_config
+
+
+class _EngineSequenceManager(EngineSequenceManager):
+    """Engine sequence manager without a tokenizer: text detokenization is
+    suppressed; status, progress, and token bookkeeping stay native. This
+    does not test text generation."""
+
+    def __init__(self):
+        super().__init__(tokenizer=None)
+
+    def _decode_seq(self, seq):
+        pass
+
+
+class _Harness:
+    """Real registered scheduler, central sequence manager sharing the
+    scheduler's sequence objects, and a worker sequence manager holding
+    separate copies, replayed in the engine's single-stage order."""
+
+    def __init__(self, **config_overrides):
+        self.scheduler_config = _config(**config_overrides)
+        cache_config = _cache_config()
+        self.scheduler = SchedulerRegistry.get(
+            SchedulerType.LP, self.scheduler_config, cache_config,
+        )
+        self.engine_seqs = _EngineSequenceManager()
+        self.worker_seqs = WorkerSequenceManager(
+            cache_config, self.scheduler_config,
+        )
+        self.clock = mock.Mock()
+
+    def add(self, seq_id, num_prompt_tokens, arrival_time, max_tokens):
+        seq = Sequence(
+            seq_id=seq_id,
+            prompt=None,
+            prompt_token_ids=list(range(num_prompt_tokens)),
+            block_size=BLOCK_SIZE,
+            eos_token_id=-2,
+            arrival_time=arrival_time,
+            sampling_params=SamplingParams(ignore_eos=True, max_tokens=max_tokens),
+        )
+        self.engine_seqs.add_seq(seq)
+        self.worker_seqs.add_seq(copy.deepcopy(seq))
+        self.scheduler.add_seq(seq)
+        return seq
+
+    def schedule(self, now):
+        self.clock.monotonic.return_value = now
+        with mock.patch.object(lp_scheduler, "time", self.clock):
+            return self.scheduler.schedule()
+
+    def replay(self, outputs):
+        """Engine replay, worker replay/completion with synthetic sampler
+        output (one entry per scheduled entry, in order, including prefill
+        entries), then central and scheduler completion."""
+        self.engine_seqs.on_schedule(outputs)
+        self.worker_seqs.on_schedule(outputs)
+        sampler_outputs = [
+            SamplerOutput(m.seq_id, SAMPLED_TOKEN)
+            for m in outputs.scheduled_seq_metadata_list
+        ]
+        self.worker_seqs.on_step_completed(outputs, sampler_outputs)
+        self.engine_seqs.on_step_completed(outputs, sampler_outputs)
+        self.scheduler.on_step_completed()
+
+    def step(self, now):
+        outputs = self.schedule(now)
+        self.replay(outputs)
+        return outputs
+
+    def central_tables(self):
+        return _tables(self.scheduler.block_manager)
+
+    def worker_tables(self):
+        return _tables(self.worker_seqs.block_manager)
+
+
+def _tables(block_manager):
+    return {
+        seq_id: [b.block_number for b in table]
+        for seq_id, table in block_manager.block_tables.items()
+    }
+
+
+def _emitted(outputs):
+    return [
+        (m.seq_id, m.prompt_chunk_len)
+        for m in outputs.scheduled_seq_metadata_list
+    ]
+
+
+def _seq_fingerprint(seq):
+    return (
+        seq.seq_id,
+        seq.get_status().name,
+        tuple(seq.prompt_token_ids),
+        tuple(seq.output_token_ids),
+        seq.prompt_tokens_processed,
+        seq.prompt_processing_finished,
+        len(seq.logical_token_blocks),
+    )
+
+
+def _fingerprint(scheduler):
+    """Scheduler state other than ``_iteration_id`` that a non-executing
+    call must leave unchanged."""
+    block_manager = scheduler.block_manager
+    return (
+        tuple(id(s) for s in scheduler.waiting),
+        tuple(id(s) for s in scheduler.running),
+        tuple(_seq_fingerprint(s) for s in scheduler.waiting + scheduler.running),
+        scheduler.num_running_batches,
+        tuple(sorted(
+            (seq_id, tuple(b.block_number for b in table))
+            for seq_id, table in block_manager.block_tables.items()
+        )),
+        tuple(b.block_number for b in block_manager.gpu_allocator.free_blocks),
+    )
+
+
+class _Spies:
+    """Test-only wrappers around the real pipeline entry points that record
+    call order and the values crossing each boundary."""
+
+    def __init__(self):
+        self.calls = []
+        self._patches = []
+
+    def __enter__(self):
+        real_utilities = LPScheduler._build_utilities
+        real_map = lsm.map_scheduler_state
+        real_solve = lrs.solve_and_extract
+        real_execute = lpe.execute_plan
+        calls = self.calls
+
+        def utilities(scheduler, now):
+            calls.append(("utilities", now))
+            return real_utilities(scheduler, now)
+
+        def map_state(scheduler, **kwargs):
+            result = real_map(scheduler, **kwargs)
+            calls.append((
+                "map", kwargs["snapshot_time"], scheduler.num_running_batches,
+                scheduler._iteration_id, result,
+            ))
+            return result
+
+        def solve(problem):
+            result = real_solve(problem)
+            calls.append(("solve", problem.problem_id, result))
+            return result
+
+        def execute(scheduler, snapshot, result):
+            # Recorded on entry so a call that raises is still visible.
+            call = ["execute", snapshot, scheduler.num_running_batches, None]
+            calls.append(call)
+            call[3] = real_execute(scheduler, snapshot, result)
+            return call[3]
+
+        self._patches = [
+            mock.patch.object(LPScheduler, "_build_utilities", utilities),
+            mock.patch.object(lsm, "map_scheduler_state", map_state),
+            mock.patch.object(lrs, "solve_and_extract", solve),
+            mock.patch.object(lpe, "execute_plan", execute),
+        ]
+        for patch in self._patches:
+            patch.start()
+        return self
+
+    def __exit__(self, *exc):
+        for patch in reversed(self._patches):
+            patch.stop()
+        return False
+
+    def names(self):
+        return [call[0] for call in self.calls]
+
+
+class RegistrationAndConfigTest(unittest.TestCase):
+    def test_registration_and_explicit_configuration(self):
+        self.assertEqual(int(SchedulerType.LP), 8)
+        self.assertEqual(int(SchedulerType.SLAI_SCHEDULER), 7)
+        self.assertIs(SchedulerRegistry.get_class(SchedulerType.LP), LPScheduler)
+        self.assertIs(
+            BlockSpaceManagerRegistry.get_class(SchedulerType.LP),
+            VLLMBlockSpaceManager,
+        )
+
+        harness = _Harness()
+        scheduler = harness.scheduler
+        config = scheduler.scheduler_config
+        self.assertIsInstance(scheduler, LPScheduler)
+        self.assertIs(type(scheduler.block_manager), VLLMBlockSpaceManager)
+        self.assertIs(type(harness.worker_seqs.block_manager), VLLMBlockSpaceManager)
+        self.assertEqual(scheduler.block_manager.num_total_gpu_blocks, NUM_GPU_BLOCKS)
+        self.assertEqual(config.type, SchedulerType.LP)
+        self.assertEqual(config.max_num_batched_tokens, B_MAX)
+        self.assertEqual(
+            (config.c_max, config.s_max, config.max_num_seqs), (C_MAX, S_MAX, 4),
+        )
+        self.assertIs(config.numerical_policy, NUMERICAL_POLICY)
+        self.assertEqual(scheduler._iteration_id, -1)
+        self.assertEqual(scheduler.num_running_batches, 0)
+
+    def test_multi_stage_configuration_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "exactly one pipeline stage"):
+            _config(num_pipeline_stages=2)
+
+
+class OrdinaryIdleTest(unittest.TestCase):
+    def _assert_idle(self, harness, now):
+        scheduler = harness.scheduler
+        before = _fingerprint(scheduler)
+        iteration = scheduler._iteration_id
+        with _Spies() as spies:
+            outputs = harness.schedule(now)
+        self.assertIsInstance(outputs, SchedulerOutputs)
+        self.assertTrue(outputs.has_no_output())
+        self.assertEqual(scheduler._iteration_id, iteration + 1)
+        self.assertEqual(outputs.id, scheduler._iteration_id)
+        self.assertEqual(spies.calls, [])
+        self.assertEqual(_fingerprint(scheduler), before)
+        self.assertEqual(harness.clock.monotonic.call_count, 1)
+
+    def test_empty_state_is_ordinary_idle(self):
+        harness = _Harness()
+        self._assert_idle(harness, now=5.0)
+
+    def test_future_only_state_is_ordinary_idle(self):
+        harness = _Harness()
+        harness.add(0, 4, arrival_time=10.0, max_tokens=2)
+        self._assert_idle(harness, now=5.0)
+        self.assertEqual(harness.scheduler.waiting[0].get_status(), SequenceStatus.WAITING)
+
+
+class LivePipelineTest(unittest.TestCase):
+    def _assert_synchronous_pipeline(self, harness, spies, now, outputs):
+        scheduler = harness.scheduler
+        self.assertEqual(spies.names(), ["utilities", "map", "solve", "execute"])
+        self.assertEqual(harness.clock.monotonic.call_count, 1)
+        _, utilities_now = spies.calls[0]
+        _, map_now, map_batches, map_iteration, snapshot = spies.calls[1]
+        _, problem_id, result = spies.calls[2]
+        _, executed_snapshot, execute_batches, executed_outputs = spies.calls[3]
+        decision_id = str(scheduler._iteration_id)
+        self.assertEqual((utilities_now, map_now, snapshot.snapshot_time), (now,) * 3)
+        self.assertEqual(map_iteration, scheduler._iteration_id)
+        self.assertEqual(
+            (snapshot.snapshot_id, problem_id, result.problem_id,
+             result.plan.problem_id),
+            (decision_id,) * 4,
+        )
+        self.assertIs(executed_snapshot, snapshot)
+        self.assertEqual((map_batches, execute_batches), (0, 0))
+        self.assertIs(executed_outputs, outputs)
+        self.assertEqual(outputs.id, scheduler._iteration_id)
+        self.assertEqual(scheduler.num_running_batches, 1)
+
+    def test_request_lifecycle_through_real_pipeline_and_replay(self):
+        harness = _Harness()
+        scheduler = harness.scheduler
+        seq = harness.add(0, 8, arrival_time=1.0, max_tokens=2)
+        worker_seq = harness.worker_seqs.get_seq(0)
+        self.assertIs(harness.engine_seqs.get_seq(0), seq)
+        self.assertIsNot(worker_seq, seq)
+
+        # Each entry: emitted output, then the expected prompt progress,
+        # output length, and central physical block count after replay.
+        expected = [
+            ([(0, 4)], 4, 0, 2),  # admission: full 8-token context, 2 blocks
+            ([(0, 4)], 8, 0, 2),  # resident prefill completes the prompt
+            ([(0, 0)], 8, 1, 2),  # decode with logical/physical gap 0
+            ([(0, 0)], 8, 2, 3),  # decode with gap 1 allocates; then finishes
+        ]
+        for index, (emitted, processed, output_len, blocks) in enumerate(expected):
+            now = 2.0 + index
+            harness.clock.reset_mock()
+            with _Spies() as spies:
+                outputs = harness.schedule(now)
+            self._assert_synchronous_pipeline(harness, spies, now, outputs)
+            self.assertEqual(_emitted(outputs), emitted)
+            self.assertEqual(outputs.ignored_seq_ids, [])
+            self.assertEqual(outputs.preempted_seq_ids, [])
+            self.assertEqual(scheduler.waiting, [])
+            self.assertEqual(scheduler.running, [seq])
+            self.assertEqual(len(harness.central_tables()[0]), blocks)
+
+            harness.replay(outputs)
+
+            self.assertEqual(scheduler.num_running_batches, 0)
+            for copy_ in (seq, worker_seq):
+                self.assertEqual(copy_.get_num_prompt_tokens_processed(), processed)
+                self.assertEqual(copy_.prompt_processing_finished, processed == 8)
+                self.assertEqual(copy_.get_output_len(), output_len)
+            if index < len(expected) - 1:
+                self.assertEqual(seq.get_status(), SequenceStatus.PAUSED)
+                self.assertEqual(worker_seq.get_status(), SequenceStatus.PAUSED)
+                self.assertEqual(scheduler.running, [seq])
+                self.assertEqual(harness.central_tables(), harness.worker_tables())
+                self.assertEqual(len(harness.central_tables()[0]), blocks)
+
+        # Finished: removed everywhere and blocks freed centrally and on the
+        # worker.
+        self.assertEqual(seq.get_status(), SequenceStatus.FINISHED_LENGTH_CAPPED)
+        self.assertEqual(worker_seq.get_status(), SequenceStatus.FINISHED_LENGTH_CAPPED)
+        self.assertEqual(seq.get_output_token_ids(), [SAMPLED_TOKEN] * 2)
+        self.assertEqual((scheduler.waiting, scheduler.running), ([], []))
+        self.assertIsNone(harness.engine_seqs.get_seq(0))
+        self.assertIsNone(harness.worker_seqs.get_seq(0))
+        self.assertEqual((harness.central_tables(), harness.worker_tables()), ({}, {}))
+        for block_manager in (scheduler.block_manager, harness.worker_seqs.block_manager):
+            self.assertEqual(block_manager.get_num_free_gpu_blocks(), NUM_GPU_BLOCKS)
+        self.assertFalse(scheduler.has_unfinished_seqs())
+
+        # The drained scheduler returns to ordinary idle.
+        with _Spies() as spies:
+            outputs = harness.schedule(10.0)
+        self.assertTrue(outputs.has_no_output())
+        self.assertEqual(spies.calls, [])
+        self.assertEqual(outputs.id, 4)
+
+    def test_mixed_prompt_first_output_and_unselected_resident(self):
+        harness = _Harness()
+        scheduler = harness.scheduler
+        harness.add(0, 4, arrival_time=1.0, max_tokens=4)
+        harness.add(1, 4, arrival_time=2.0, max_tokens=4)
+        harness.add(2, 4, arrival_time=3.0, max_tokens=4)
+        harness.add(3, 8, arrival_time=4.0, max_tokens=4)
+
+        # Staggered arrivals give unique optima: every arrived request fits
+        # the token, action, and memory limits, so each is selected.
+        self.assertEqual(_emitted(harness.step(1.0)), [(0, 4)])
+        # Request 1 is admitted ahead of request 0's decode (prompt first),
+        # although request 0 has the smaller order_key.
+        self.assertEqual(_emitted(harness.step(2.0)), [(1, 4), (0, 0)])
+        self.assertEqual(_emitted(harness.step(3.0)), [(2, 4), (0, 0), (1, 0)])
+        self.assertEqual(harness.central_tables(), harness.worker_tables())
+        self.assertEqual(scheduler.num_running_batches, 0)
+
+        # Three decode-ready residents and one arriving 8-token prompt with
+        # S_MAX=3: request 3's 4-token admission is in every optimum, and two
+        # of the three decodes fill the remaining action slots. Which decode
+        # is left out is a solver tie, so only the invariant is asserted.
+        seqs = {s.seq_id: s for s in scheduler.waiting + scheduler.running}
+        before = {k: _seq_fingerprint(seqs[k]) for k in seqs}
+        tables_before = harness.central_tables()
+        harness.clock.reset_mock()
+        with _Spies() as spies:
+            outputs = harness.schedule(4.0)
+        self._assert_synchronous_pipeline(harness, spies, 4.0, outputs)
+        emitted = _emitted(outputs)
+        self.assertEqual(emitted[0], (3, 4))
+        decoded = [seq_id for seq_id, chunk in emitted[1:]]
+        self.assertEqual([chunk for _, chunk in emitted[1:]], [0, 0])
+        self.assertEqual(decoded, sorted(decoded))
+        self.assertEqual(len(decoded), 2)
+        self.assertTrue(set(decoded) < {0, 1, 2})
+        (unselected,) = {0, 1, 2} - set(decoded)
+        self.assertEqual(outputs.num_batched_tokens, 6)
+        self.assertEqual(len(scheduler.running), RESIDENT_LIMIT)
+
+        harness.replay(outputs)
+
+        # The unselected resident stays owned and allocated, unchanged.
+        self.assertIn(seqs[unselected], scheduler.running)
+        self.assertEqual(_seq_fingerprint(seqs[unselected]), before[unselected])
+        self.assertEqual(
+            harness.central_tables()[unselected], tables_before[unselected],
+        )
+        for seq_id in decoded:
+            self.assertEqual(
+                seqs[seq_id].get_output_len(), len(before[seq_id][3]) + 1,
+            )
+        self.assertEqual(seqs[3].get_num_prompt_tokens_processed(), 4)
+        self.assertEqual(scheduler.waiting, [])
+        self.assertEqual(scheduler.num_running_batches, 0)
+        self.assertEqual(harness.central_tables(), harness.worker_tables())
+
+
+class PreMutationFailureTest(unittest.TestCase):
+    def _assert_failure(self, harness, now, expected_calls):
+        scheduler = harness.scheduler
+        before = _fingerprint(scheduler)
+        iteration = scheduler._iteration_id
+        with _Spies() as spies:
+            with self.assertRaises(LPSchedulingError) as caught:
+                harness.schedule(now)
+        self.assertEqual(spies.names(), expected_calls)
+        self.assertEqual(scheduler._iteration_id, iteration + 1)
+        self.assertEqual(_fingerprint(scheduler), before)
+        error = caught.exception
+        self.assertTrue(dataclasses.is_dataclass(error.failure))
+        with self.assertRaises(dataclasses.FrozenInstanceError):
+            error.failure.reason = "changed"
+        self.assertEqual(
+            (error.stage, error.category, error.reason),
+            (error.failure.stage, error.failure.category, error.failure.reason),
+        )
+        return error, spies
+
+    def test_mapping_failure_stops_before_solver(self):
+        # Case-specific: a decode policy identifier the mapper does not accept.
+        harness = _Harness(decode_memory_policy_id="exact_gap_v1")
+        harness.add(0, 4, arrival_time=1.0, max_tokens=2)
+        error, spies = self._assert_failure(harness, 2.0, ["utilities", "map"])
+        self.assertIsInstance(error.failure, lsm.MappingFailure)
+        self.assertEqual(error.stage, lsm.STAGE_STATE_MAPPING)
+        self.assertIn("decode_memory_policy_id", error.reason)
+        self.assertIsNone(error.solver_diagnostics)
+
+    def test_mathematical_failure_stops_before_executor(self):
+        # Case-specific: a reserve above the 10 free blocks makes the LP
+        # infeasible even for the all-zero plan.
+        harness = _Harness(memory_reserve=11)
+        harness.add(0, 4, arrival_time=1.0, max_tokens=2)
+        error, spies = self._assert_failure(harness, 2.0, ["utilities", "map", "solve"])
+        self.assertIsInstance(error.failure, lrs.Failure)
+        self.assertEqual((error.stage, error.category), ("solver", "infeasible"))
+        self.assertEqual(error.snapshot_id, "0")
+        self.assertIsInstance(error.solver_diagnostics, lrs.SolverDiagnostics)
+        self.assertEqual(error.solver_diagnostics.raw_status, 2)
+
+    def test_physically_infeasible_plan_raises_executor_failure(self):
+        # Case-specific resident limit 1: the LP has no resident constraint,
+        # so it selects request 0's decode and request 1's admission, which
+        # native precommit validation rejects.
+        harness = _Harness(max_num_seqs=1)
+        harness.add(0, 4, arrival_time=1.0, max_tokens=4)
+        harness.add(1, 4, arrival_time=2.0, max_tokens=4)
+        self.assertEqual(_emitted(harness.step(1.0)), [(0, 4)])
+        error, spies = self._assert_failure(
+            harness, 2.0, ["utilities", "map", "solve", "execute"],
+        )
+        self.assertIsInstance(error.failure, lrs.Failure)
+        self.assertEqual(
+            (error.stage, error.category),
+            (lpe.STAGE_PRECOMMIT_VALIDATION, lpe.CATEGORY_RESIDENT_CAPACITY),
+        )
+        self.assertEqual(error.snapshot_id, "1")
+        self.assertEqual(harness.scheduler.num_running_batches, 0)
+
+    def test_no_progress_plan_is_not_ordinary_idle(self):
+        # Case-specific reserve 9: one planning block remains, below the
+        # 2-block admission charge, so the validated plan is all-zero.
+        harness = _Harness(memory_reserve=9)
+        harness.add(0, 8, arrival_time=1.0, max_tokens=2)
+        error, spies = self._assert_failure(
+            harness, 2.0, ["utilities", "map", "solve", "execute"],
+        )
+        self.assertEqual(error.category, lpe.CATEGORY_NO_PROGRESS)
+        self.assertEqual(error.snapshot_id, "0")
+        _, _, result = spies.calls[2]
+        self.assertIsInstance(result, lrs.SchedulingSuccess)
+        self.assertEqual(
+            [(d.prefill_tokens, d.decode, d.preempt) for d in result.plan.decisions],
+            [(0, 0, 0)],
+        )
+
+
+class UnsupportedEntryAndDestructiveFailureTest(unittest.TestCase):
+    def test_changed_stage_count_fails_before_base_scheduling(self):
+        harness = _Harness()
+        harness.add(0, 4, arrival_time=1.0, max_tokens=2)
+        harness.scheduler.scheduler_config.num_pipeline_stages = 2
+        before = _fingerprint(harness.scheduler)
+        with _Spies() as spies:
+            with self.assertRaises(LPSchedulingError) as caught:
+                harness.schedule(2.0)
+        self.assertEqual(caught.exception.stage, lp_scheduler.STAGE_SCHEDULER_ENTRY)
+        self.assertIsNone(caught.exception.snapshot_id)
+        self.assertEqual(harness.scheduler._iteration_id, -1)
+        self.assertEqual(spies.calls, [])
+        self.assertEqual(harness.clock.monotonic.call_count, 0)
+        self.assertEqual(_fingerprint(harness.scheduler), before)
+
+    def test_nonzero_running_batches_fails_before_base_scheduling(self):
+        harness = _Harness()
+        scheduler = harness.scheduler
+        harness.add(0, 8, arrival_time=1.0, max_tokens=2)
+        first = harness.schedule(1.0)
+        self.assertEqual(_emitted(first), [(0, 4)])
+        self.assertEqual(scheduler.num_running_batches, 1)
+
+        # Scheduling again before completion: the inherited method would
+        # return an ordinary empty output here.
+        before = _fingerprint(scheduler)
+        harness.clock.reset_mock()
+        with _Spies() as spies:
+            with self.assertRaises(LPSchedulingError) as caught:
+                harness.schedule(2.0)
+        error = caught.exception
+        self.assertEqual(
+            (error.stage, error.category),
+            (lp_scheduler.STAGE_SCHEDULER_ENTRY, lp_scheduler.CATEGORY_UNSUPPORTED_STATE),
+        )
+        self.assertIn("num_running_batches=1", error.reason)
+        self.assertEqual(scheduler._iteration_id, 0)
+        self.assertEqual(spies.calls, [])
+        self.assertEqual(harness.clock.monotonic.call_count, 0)
+        self.assertEqual(_fingerprint(scheduler), before)
+
+    def test_post_mutation_failure_propagates_without_recovery(self):
+        harness = _Harness()
+        scheduler = harness.scheduler
+        resident = harness.add(0, 4, arrival_time=1.0, max_tokens=4)
+        first = harness.add(1, 3, arrival_time=2.0, max_tokens=4)
+        second = harness.add(2, 3, arrival_time=2.0, max_tokens=4)
+        self.assertEqual(_emitted(harness.step(1.0)), [(0, 4)])
+        resident_table = harness.central_tables()[0]
+
+        # Planned order: admit 1, admit 2, decode 0. The second native
+        # allocation fails after the first admission has mutated state.
+        real_allocate = scheduler._allocate
+        allocations = []
+
+        def allocate(seq):
+            allocations.append(seq.seq_id)
+            if len(allocations) == 2:
+                raise RuntimeError("induced allocation failure")
+            real_allocate(seq)
+
+        with mock.patch.object(scheduler, "_allocate", allocate), \
+                mock.patch.object(scheduler, "_append_slot") as append_slot, \
+                _Spies() as spies:
+            with self.assertRaises(RuntimeError) as caught:
+                harness.schedule(2.0)
+
+        self.assertIs(type(caught.exception), RuntimeError)
+        self.assertEqual(str(caught.exception), "induced allocation failure")
+        self.assertEqual(spies.names(), ["utilities", "map", "solve", "execute"])
+        self.assertIsNone(spies.calls[3][3])
+        self.assertEqual(allocations, [1, 2])
+        append_slot.assert_not_called()
+        # The first admission mutated state; the failed admission was already
+        # removed from waiting. No output was returned and the batch count
+        # was not raised. Nothing was rolled back.
+        self.assertIn(first, scheduler.running)
+        self.assertIn(1, scheduler.block_manager.block_tables)
+        self.assertNotIn(second, scheduler.waiting + scheduler.running)
+        self.assertEqual(harness.central_tables()[0], resident_table)
+        self.assertEqual(resident.get_output_len(), 0)
+        self.assertEqual(scheduler.num_running_batches, 0)
+        self.assertEqual(scheduler._iteration_id, 1)
+        # The mutated fixture is discarded, not recovered or reused.
+        del harness, scheduler
+
+
+if __name__ == "__main__":
+    unittest.main()
