@@ -133,6 +133,15 @@ def _validate_before_mutation(scheduler, snapshot, result):
 
     problem = snapshot.lp_problem
     plan = result.plan
+    _require(
+        isinstance(problem, lrs.LPProblem), CATEGORY_MALFORMED_INPUT,
+        "snapshot.lp_problem must be an LPProblem, got "
+        f"{type(problem).__name__}",
+    )
+    _require(
+        isinstance(plan, lrs.IntegerPlan), CATEGORY_MALFORMED_INPUT,
+        f"result.plan must be an IntegerPlan, got {type(plan).__name__}",
+    )
 
     # Identity: snapshot, problem, result, plan, and the current scheduler
     # decision. This associates records; it does not prove unchanged state.

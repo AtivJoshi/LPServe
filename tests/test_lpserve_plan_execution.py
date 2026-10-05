@@ -550,6 +550,38 @@ class PlanExecutionTest(unittest.TestCase):
                 self.assertEqual(failure.category, category)
                 self.assertEqual(failure.problem_id, str(ITERATION_ID))
 
+    def test_malformed_nested_records_return_failure(self):
+        cases = {
+            "plan_none": (
+                lambda s, r: (s, dataclasses.replace(r, plan=None)),
+                "result.plan",
+            ),
+            "lp_problem_none": (
+                lambda s, r: (dataclasses.replace(s, lp_problem=None), r),
+                "snapshot.lp_problem",
+            ),
+        }
+        for name, (malform, record) in cases.items():
+            with self.subTest(name):
+                holder = _build_case_one()
+                snapshot, result = _map_and_solve(holder, CASE_ONE_UTILITIES)
+                snapshot, result = malform(snapshot, result)
+                before = _fingerprint(holder)
+                with mock.patch.object(
+                    holder, "_allocate", wraps=holder._allocate,
+                ) as allocate_spy, mock.patch.object(
+                    holder, "_append_slot", wraps=holder._append_slot,
+                ) as append_spy:
+                    failure = lpe.execute_plan(holder, snapshot, result)
+                self.assertEqual(_fingerprint(holder), before)
+                allocate_spy.assert_not_called()
+                append_spy.assert_not_called()
+                self.assertIsInstance(failure, lrs.Failure)
+                self.assertEqual(failure.stage, "precommit_validation")
+                self.assertEqual(failure.category, "malformed_input")
+                self.assertEqual(failure.problem_id, str(ITERATION_ID))
+                self.assertIn(record, failure.reason)
+
     def test_post_mutation_exception_propagates_without_recovery(self):
         holder = _build_mixed_case()
         snapshot, result = _map_and_solve(holder, MIXED_UTILITIES)
