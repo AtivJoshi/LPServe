@@ -1,0 +1,44 @@
+Removing uri version main
+Loading uri version main
+NOTE: The modules under this branch will not run on the login node. Use
+--constraint=avx512 for sbatch or srun sessions. 
+Lmod Warning:
+-------------------------------------------------------------------------------
+The following dependent module(s) are not currently loaded: GCCcore/13.3.0
+(required by: ICU/75.1-GCCcore-13.3.0, nodejs/20.13.1-GCCcore-13.3.0),
+OpenSSL/3 (required by: nodejs/20.13.1-GCCcore-13.3.0)
+-------------------------------------------------------------------------------
+
+
+
+date_utc=2026-10-06T07:24:52Z
+host=gpu049
+SLURM_CPUS_ON_NODE=8
+SLURM_JOB_ID=65305994
+SLURM_JOB_NODELIST=gpu049
+SLURM_JOB_PARTITION=gpu-preempt
+SLURM_MEM_PER_NODE=16384
+SLURM_STEP_ID=4294967290
+CUDA_VISIBLE_DEVICES=0
+VIRTUAL_ENV=/home/atjoshi_umass_edu/LPServe/env
+which_python=/home/atjoshi_umass_edu/LPServe/env/bin/python
+Python 3.10.8
+PYTHONPATH=/home/atjoshi_umass_edu/LPServe:/modules/uri_apps/software/Python/3.10.8-GCCcore-12.2.0/easybuild/python
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_HUB_CACHE=unset HF_HOME=unset
+LOADEDMODULES=uri/main:ICU/75.1-GCCcore-13.3.0:nodejs/20.13.1-GCCcore-13.3.0:GCCcore/12.2.0:zlib/.1.2.12-GCCcore-12.2.0:binutils/.2.39-GCCcore-12.2.0:bzip2/.1.0.8-GCCcore-12.2.0:ncurses/.6.3-GCCcore-12.2.0:libreadline/.8.2-GCCcore-12.2.0:Tcl/.8.6.12-GCCcore-12.2.0:SQLite/.3.39.4-GCCcore-12.2.0:XZ/.5.2.7-GCCcore-12.2.0:GMP/.6.2.1-GCCcore-12.2.0:libffi/3.4.4-GCCcore-12.2.0:OpenSSL/1.1:Python/3.10.8-GCCcore-12.2.0:CUDA/12.1.1
+0, NVIDIA A16, GPU-07228a4a-f06f-c9af-92a0-ed30e030c387, 595.91.07, 15356 MiB, 0 MiB
+torch 2.3.0+cu121
+transformers 4.57.6
+tokenizers 0.22.2
+ray 2.58.0
+huggingface-hub 0.36.2
+vllm-flash-attn 2.5.9
+flashinfer 0.2.0.post1+cu121torch2.3
+numpy 2.2.6
+scipy 1.15.3
+git_head=c7ebebdac637f54e823bb955ef27f14ef8d0de21
+git_status_short_begin
+?? validation_output/lp_inference_generation_debug/20261006T072447Z/cpu_checks/environment.txt
+git_status_short_end
+2567297 /bin/bash -c source /home/atjoshi_umass_edu/.claude/shell-snapshots/snapshot-bash-1791268680671-moo830.sh 2>/dev/null || true && shopt -u extglob 2>/dev/null || true && { \builtin unalias -- 'unsetenv'; \builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'TS=$(date -u +%Y%m%dT%H%M%SZ) && D=validation_output/lp_inference_generation_debug/$TS && mkdir -p $D/cpu_checks && echo $D && { module load uri/main && module load Python/3.10.8-GCCcore-12.2.0 && module load CUDA/12.1.1 source env/bin/activate export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}" HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 echo "date_utc=$(date -u +%FT%TZ)"; echo "host=$(hostname)" env | grep -E '"'"'^SLURM_(JOB_ID|JOB_NODELIST|JOB_PARTITION|STEP_ID|CPUS_ON_NODE|MEM_PER_NODE)='"'"' | sort echo "CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-unset}" echo "VIRTUAL_ENV=$VIRTUAL_ENV"; echo "which_python=$(which python)"; python --version echo "PYTHONPATH=$PYTHONPATH"; echo "HF_HUB_OFFLINE=$HF_HUB_OFFLINE TRANSFORMERS_OFFLINE=$TRANSFORMERS_OFFLINE HF_HUB_CACHE=${HF_HUB_CACHE:-unset} HF_HOME=${HF_HOME:-unset}" echo "LOADEDMODULES=$LOADEDMODULES" nvidia-smi --query-gpu=index,name,uuid,driver_version,memory.total,memory.used --format=csv,noheader nvidia-smi --query-compute-apps=pid,used_memory --format=csv,noheader python -c "import importlib.metadata as m for d in ['"'"'torch'"'"','"'"'transformers'"'"','"'"'tokenizers'"'"','"'"'ray'"'"','"'"'huggingface-hub'"'"','"'"'vllm-flash-attn'"'"','"'"'flashinfer'"'"','"'"'numpy'"'"','"'"'scipy'"'"']:     try: print(d, m.version(d))     except m.PackageNotFoundError: print(d, None)" echo "git_head=$(git rev-parse HEAD)"; echo "git_status_short_begin"; git status --short --untracked-files=all; echo "git_status_short_end" pgrep -u $USER -fa '"'"'ray::|raylet|gcs_server'"'"' || echo "no ray processes" } 2>&1 | tee $D/cpu_checks/environment.txt' < /dev/null && pwd -P >| /tmp/claude-03af-cwd
+2567301 /bin/bash -c source /home/atjoshi_umass_edu/.claude/shell-snapshots/snapshot-bash-1791268680671-moo830.sh 2>/dev/null || true && shopt -u extglob 2>/dev/null || true && { \builtin unalias -- 'unsetenv'; \builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'TS=$(date -u +%Y%m%dT%H%M%SZ) && D=validation_output/lp_inference_generation_debug/$TS && mkdir -p $D/cpu_checks && echo $D && { module load uri/main && module load Python/3.10.8-GCCcore-12.2.0 && module load CUDA/12.1.1 source env/bin/activate export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}" HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 echo "date_utc=$(date -u +%FT%TZ)"; echo "host=$(hostname)" env | grep -E '"'"'^SLURM_(JOB_ID|JOB_NODELIST|JOB_PARTITION|STEP_ID|CPUS_ON_NODE|MEM_PER_NODE)='"'"' | sort echo "CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-unset}" echo "VIRTUAL_ENV=$VIRTUAL_ENV"; echo "which_python=$(which python)"; python --version echo "PYTHONPATH=$PYTHONPATH"; echo "HF_HUB_OFFLINE=$HF_HUB_OFFLINE TRANSFORMERS_OFFLINE=$TRANSFORMERS_OFFLINE HF_HUB_CACHE=${HF_HUB_CACHE:-unset} HF_HOME=${HF_HOME:-unset}" echo "LOADEDMODULES=$LOADEDMODULES" nvidia-smi --query-gpu=index,name,uuid,driver_version,memory.total,memory.used --format=csv,noheader nvidia-smi --query-compute-apps=pid,used_memory --format=csv,noheader python -c "import importlib.metadata as m for d in ['"'"'torch'"'"','"'"'transformers'"'"','"'"'tokenizers'"'"','"'"'ray'"'"','"'"'huggingface-hub'"'"','"'"'vllm-flash-attn'"'"','"'"'flashinfer'"'"','"'"'numpy'"'"','"'"'scipy'"'"']:     try: print(d, m.version(d))     except m.PackageNotFoundError: print(d, None)" echo "git_head=$(git rev-parse HEAD)"; echo "git_status_short_begin"; git status --short --untracked-files=all; echo "git_status_short_end" pgrep -u $USER -fa '"'"'ray::|raylet|gcs_server'"'"' || echo "no ray processes" } 2>&1 | tee $D/cpu_checks/environment.txt' < /dev/null && pwd -P >| /tmp/claude-03af-cwd

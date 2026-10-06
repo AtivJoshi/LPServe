@@ -1,0 +1,561 @@
+{
+ "scheduler": "vllm",
+ "passed": true,
+ "failure": null,
+ "command": [
+  "/home/atjoshi_umass_edu/LPServe/env/bin/python",
+  "/home/atjoshi_umass_edu/LPServe/validation_output/lp_inference_generation_debug/20261006T072447Z/debug_run.py",
+  "--scheduler",
+  "vllm",
+  "--model-path",
+  "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+  "--recorded-results",
+  "validation_output/lp_inference/20261006T064204Z/run/results.json",
+  "--output-dir",
+  "/home/atjoshi_umass_edu/LPServe/validation_output/lp_inference_generation_debug/20261006T072447Z/reference"
+ ],
+ "provenance": {
+  "git_head": "c7ebebdac637f54e823bb955ef27f14ef8d0de21",
+  "git_branch": "main",
+  "git_status_short": "?? validation_output/lp_inference_generation_debug/20261006T072447Z/cpu_checks/asset_identity.txt\n?? validation_output/lp_inference_generation_debug/20261006T072447Z/cpu_checks/driver_checks.txt\n?? validation_output/lp_inference_generation_debug/20261006T072447Z/cpu_checks/environment.txt\n?? validation_output/lp_inference_generation_debug/20261006T072447Z/cpu_checks/tokenizer_inspection.txt\n?? validation_output/lp_inference_generation_debug/20261006T072447Z/debug_run.py\n?? validation_output/lp_inference_generation_debug/20261006T072447Z/reference/command.txt\n",
+  "git_diff_head_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "driver_sha256": "786d0bfaf3317f84269b1791713c64aef242bf9fea75dd4ac855307538a27ca6",
+  "file_sha256": {
+   "scripts/run_lp_inference.py": "7d23d8c7a3b4ea8e5f5b3f1ce4c8248281826f1ed7713172e4c5e4219e101195",
+   "scripts/check_lp_scheduler_gpu.py": "8d1423df0ad3052b0474679bac3c09014693331b44a53dca160d509613cf8591",
+   "scripts/check_lp_scheduler_contention_gpu.py": "7addc0013f4d98ea57fa7dccf8676d4e0b64593800b59c0505eb78ef771f812f",
+   "scripts/check_lp_scheduler_reference_gpu.py": "b0eeb8852095b9253245898cfdb554c1d1607387a79e0d564a9083c2030bb6a9",
+   "sarathi/engine/base_llm_engine.py": "301f11f55ce19b08728df9f238b675916ee6d2c94373645dc72ccc348516f69c",
+   "sarathi/core/scheduler/vllm_scheduler.py": "a0e0edf8ae6cdf054fff19acaba2852cd504dc4948933a5e5f3e253e7095255f",
+   "sarathi/core/scheduler/lp_scheduler.py": "debfd4eca2225815d6c944b91d7c544b5af0e2fd8aaf4d5b645addd9cb2eb0c3",
+   "sarathi/core/sequence_manager/base_sequence_manager.py": "1705241edd761aabde072332a806772eb90e1f245db608b183e5bcec29a6a103",
+   "sarathi/core/sequence_manager/engine_sequence_manager.py": "7c3fd9c2152011629edec216cb76dc1f26481ceb275447482ef7ca85638c05b9",
+   "sarathi/core/datatypes/sequence.py": "a10a34fbab78d8aaa7e0e2c18aa11641d0b33534a23092ccfcbe9715d39523b4",
+   "sarathi/transformers_utils/tokenizer.py": "3e5d643b35b477a149c14ef4cf175b6abea06ef2149fdad546d5e4b0b64f2867",
+   "sarathi/model_executor/model_runner.py": "259dc36dbd87986847284146003cdb4d4485ac881ef8d18e80198d1cd99179b3",
+   "sarathi/model_executor/attention/flash_attention_wrapper.py": "df84ea01db065f1cd74043d1ebc8cc1cbb7e9161925510e88fb9a23447d20518",
+   "sarathi/model_executor/layers/sampler.py": "b9f7905a5f9aa4c373a0fb39e1341ccc78cca8a8e0a1b2342fb22944b73f0238",
+   "sarathi/config.py": "6069257709b2270844c6a7b2909461692396647211132307a94137aefa3bffb8",
+   "lp_relaxation_scheduler.py": "616f18d57eb10a1aa8d9f54b049335ba4f9c31f1ccce64e82c2d42dda665cdf3",
+   "lpserve_state_mapping.py": "7d95bf62e477716ea622654a047594214b9c4083fdd0921c4d4c6ccb34ecd2a7",
+   "lpserve_plan_execution.py": "e7f9b7310ae24688e19244f2ae0872c102976af609d0a0ec48867371f3f28912",
+   "validation_output/lp_inference/20261006T064204Z/validate_run.py": "41c588111b45e3fec662e612d5363b3b180f57dfb5e0ab0b980d29f7874d3720"
+  },
+  "loaded_modules": "uri/main:ICU/75.1-GCCcore-13.3.0:nodejs/20.13.1-GCCcore-13.3.0:GCCcore/12.2.0:zlib/.1.2.12-GCCcore-12.2.0:binutils/.2.39-GCCcore-12.2.0:bzip2/.1.0.8-GCCcore-12.2.0:ncurses/.6.3-GCCcore-12.2.0:libreadline/.8.2-GCCcore-12.2.0:Tcl/.8.6.12-GCCcore-12.2.0:SQLite/.3.39.4-GCCcore-12.2.0:XZ/.5.2.7-GCCcore-12.2.0:GMP/.6.2.1-GCCcore-12.2.0:libffi/3.4.4-GCCcore-12.2.0:OpenSSL/1.1:Python/3.10.8-GCCcore-12.2.0:CUDA/12.1.1"
+ },
+ "recorded": {
+  "results_path": "/home/atjoshi_umass_edu/LPServe/validation_output/lp_inference/20261006T064204Z/run/results.json",
+  "results_sha256": "8be141499939f7c1cbd184e6050fc76b1dbb588a1c1bfd1a12563b6e622ef4a2",
+  "prompts_path": "/home/atjoshi_umass_edu/LPServe/validation_output/lp_inference/20261006T064204Z/prompts.json",
+  "prompts_sha256": "19135ce0e5abd6932060c63d969083a88945fa707fa4a63dbc4d88e5d8035079",
+  "all_generated_token_ids": [
+   [
+    2,
+    29871,
+    13,
+    29966
+   ],
+   [
+    2,
+    29871,
+    13,
+    29966
+   ],
+   [
+    2,
+    29871,
+    13,
+    29966
+   ]
+  ],
+  "entry": {
+   "index": 0,
+   "seq_id": 0,
+   "prompt": "Explain why plants need sunlight.",
+   "prompt_token_ids": [
+    1,
+    12027,
+    7420,
+    2020,
+    18577,
+    817,
+    6575,
+    4366,
+    29889
+   ],
+   "generated_text": ". \n<",
+   "generated_token_ids": [
+    2,
+    29871,
+    13,
+    29966
+   ],
+   "finish_reason": "length"
+  }
+ },
+ "asset": {
+  "repository": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+  "snapshot_path": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+  "snapshot_revision": "fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+  "refs_main": "fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+  "architectures": [
+   "LlamaForCausalLM"
+  ],
+  "config_torch_dtype": "bfloat16",
+  "config_vocab_size": 32000,
+  "small_files": {
+   "config.json": {
+    "name": "config.json",
+    "is_symlink": true,
+    "exists": true,
+    "link_target": "../../blobs/4ea05f1bc289d48ba9b92eea2f58ad8acd3dce5d",
+    "size": 608,
+    "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/4ea05f1bc289d48ba9b92eea2f58ad8acd3dce5d",
+    "sha256": "486bedda3a6988332e60d9638a09ca4b260d34ebcf1b19e22cf3b140b63d8fe9"
+   },
+   "tokenizer_config.json": {
+    "name": "tokenizer_config.json",
+    "is_symlink": true,
+    "exists": true,
+    "link_target": "../../blobs/fa96b85858f4053b0142a18e2b09dbe94e3fae46",
+    "size": 1289,
+    "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/fa96b85858f4053b0142a18e2b09dbe94e3fae46",
+    "sha256": "7b41ba7d0eb91e77914ca3dafde559ea3e19878769b7e68409e89bed5222e77a"
+   },
+   "tokenizer.json": {
+    "name": "tokenizer.json",
+    "is_symlink": true,
+    "exists": true,
+    "link_target": "../../blobs/a6e931b92caff4c79c5c56282f1e89569a0ae558",
+    "size": 1842767,
+    "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/a6e931b92caff4c79c5c56282f1e89569a0ae558",
+    "sha256": "bcd04f0eadf90287bd26e1a183ac487d8a141b09b06aecb7725bbdd343640f2e"
+   },
+   "tokenizer.model": {
+    "name": "tokenizer.model",
+    "is_symlink": true,
+    "exists": true,
+    "link_target": "../../blobs/9e556afd44213b6bd1be2b850ebbbd98f5481437a8021afaf58ee7fb1818d347",
+    "size": 499723,
+    "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/9e556afd44213b6bd1be2b850ebbbd98f5481437a8021afaf58ee7fb1818d347",
+    "sha256": "9e556afd44213b6bd1be2b850ebbbd98f5481437a8021afaf58ee7fb1818d347"
+   },
+   "special_tokens_map.json": {
+    "name": "special_tokens_map.json",
+    "is_symlink": true,
+    "exists": true,
+    "link_target": "../../blobs/492d4b2966a1763442d426d880dbc29f94906e4c",
+    "size": 551,
+    "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/492d4b2966a1763442d426d880dbc29f94906e4c",
+    "sha256": "82d96d7a9e6ced037f12394b7ea6a5b02e6ca87e0d11edaa8d60d9be857ce7db"
+   }
+  },
+  "weight_format": "safetensors",
+  "weight_files": [
+   {
+    "name": "model.safetensors",
+    "is_symlink": true,
+    "exists": true,
+    "link_target": "../../blobs/6e6001da2106d4757498752a021df6c2bdc332c650aae4bae6b0c004dcf14933",
+    "size": 2200119864,
+    "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/6e6001da2106d4757498752a021df6c2bdc332c650aae4bae6b0c004dcf14933",
+    "safetensors": {
+     "num_tensors": 201,
+     "dtypes": [
+      "BF16"
+     ],
+     "tensor_names_sha256": "70b5291b06b5feffd9efcf70e39ec5a22e193c52a989c13859d03295f4a079ec"
+    },
+    "sha256": "6e6001da2106d4757498752a021df6c2bdc332c650aae4bae6b0c004dcf14933"
+   }
+  ],
+  "weight_indexes": {},
+  "npcache_dir_present": false
+ },
+ "environment": {
+  "hostname": "gpu049",
+  "slurm": {
+   "SLURM_JOB_ID": "65305994",
+   "SLURM_JOB_NODELIST": "gpu049",
+   "SLURM_JOB_PARTITION": "gpu-preempt",
+   "SLURM_STEP_ID": "4294967290"
+  },
+  "cuda_visible_devices": "0",
+  "gpu": "0, NVIDIA A16, GPU-07228a4a-f06f-c9af-92a0-ed30e030c387, 595.91.07, 15356 MiB",
+  "torch_cuda": "12.1",
+  "python_executable": "/home/atjoshi_umass_edu/LPServe/env/bin/python",
+  "python_version": "3.10.8",
+  "virtual_env": "/home/atjoshi_umass_edu/LPServe/env",
+  "pythonpath": "/home/atjoshi_umass_edu/LPServe:/modules/uri_apps/software/Python/3.10.8-GCCcore-12.2.0/easybuild/python",
+  "versions": {
+   "torch": "2.3.0+cu121",
+   "transformers": "4.57.6",
+   "ray": "2.58.0",
+   "numpy": "2.2.6",
+   "scipy": "1.15.3",
+   "flashinfer": "0.2.0.post1+cu121torch2.3",
+   "vllm-flash-attn": "2.5.9",
+   "sarathi": "0.1.7",
+   "nvidia-ml-py": "13.595.45",
+   "huggingface-hub": "0.36.2",
+   "tokenizers": "0.22.2"
+  },
+  "git_head": "c7ebebdac637f54e823bb955ef27f14ef8d0de21",
+  "git_status_short": "?? validation_output/lp_inference_generation_debug/20261006T072447Z/cpu_checks/asset_identity.txt\n?? validation_output/lp_inference_generation_debug/20261006T072447Z/cpu_checks/driver_checks.txt\n?? validation_output/lp_inference_generation_debug/20261006T072447Z/cpu_checks/environment.txt\n?? validation_output/lp_inference_generation_debug/20261006T072447Z/cpu_checks/tokenizer_inspection.txt\n?? validation_output/lp_inference_generation_debug/20261006T072447Z/debug_run.py\n?? validation_output/lp_inference_generation_debug/20261006T072447Z/reference/command.txt",
+  "cwd": "/home/atjoshi_umass_edu/LPServe"
+ },
+ "engine_init_seconds": 51.071,
+ "engine_facts": {
+  "scheduler_type": "VLLMScheduler",
+  "scheduler_config_type": "VLLMSchedulerConfig",
+  "scheduler_config": {
+   "max_num_seqs": 1,
+   "max_model_len": 32,
+   "num_pipeline_stages": 1,
+   "max_num_batched_tokens": 32
+  },
+  "numerical_policy": null,
+  "model": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+  "tokenizer": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+  "load_format": "auto",
+  "dtype": "torch.float16",
+  "max_model_len": 32,
+  "seed": 42,
+  "attention_backend": "flash_attention",
+  "tokenizer_mode": "auto",
+  "trust_remote_code": true,
+  "hf_config_commit_hash": "fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+  "block_size": 16,
+  "gpu_memory_utilization": 0.5,
+  "tensor_parallel_size": 1,
+  "pipeline_parallel_size": 1,
+  "metrics": {
+   "write_metrics": true,
+   "enable_request_outputs": false,
+   "enable_chrome_trace": false
+  },
+  "tokenizer_class": "LlamaTokenizerFast",
+  "eos_token_id": 2,
+  "eos_token": "</s>",
+  "num_total_gpu_blocks": 15612,
+  "watermark_blocks": 156
+ },
+ "prompt_tokens": [
+  "<s>",
+  "▁Exp",
+  "lain",
+  "▁why",
+  "▁plants",
+  "▁need",
+  "▁sun",
+  "light",
+  "."
+ ],
+ "n_free": 15612,
+ "seq_id": 0,
+ "sampling": {
+  "temperature": 0.0,
+  "max_tokens": 4,
+  "ignore_eos": true,
+  "stop": [],
+  "sampling_type": "GREEDY"
+ },
+ "steps": 5,
+ "final_state": {
+  "iteration_id": 4,
+  "num_running_batches": 0,
+  "num_pipeline_stages": 1,
+  "waiting": [],
+  "running": [],
+  "free_blocks": 15612,
+  "block_tables": {},
+  "engine_seq_ids": [],
+  "num_unfinished": 0,
+  "requests": {
+   "0": {
+    "seq_id": 0,
+    "status": "FINISHED_LENGTH_CAPPED",
+    "prompt_tokens_processed": 9,
+    "prompt_processing_finished": true,
+    "generated": 4,
+    "output_token_ids": [
+     2,
+     29871,
+     13,
+     29966
+    ],
+    "logical_blocks": 1,
+    "physical_blocks": 0,
+    "block_ids": null,
+    "is_finished": true
+   }
+  }
+ },
+ "finished_output": {
+  "seq_id": 0,
+  "prompt_token_ids": [
+   1,
+   12027,
+   7420,
+   2020,
+   18577,
+   817,
+   6575,
+   4366,
+   29889
+  ],
+  "token_ids": [
+   2,
+   29871,
+   13,
+   29966
+  ],
+  "text": ". \n<",
+  "finished": true,
+  "finish_reason": "length"
+ },
+ "decisions": [
+  {
+   "step": 1,
+   "emitted": [
+    [
+     0,
+     9
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     0,
+     2
+    ]
+   ],
+   "free": {
+    "before": 15612,
+    "sched": 15611,
+    "after": 15611
+   },
+   "finished": []
+  },
+  {
+   "step": 2,
+   "emitted": [
+    [
+     0,
+     0
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     0,
+     2
+    ]
+   ],
+   "free": {
+    "before": 15611,
+    "sched": 15611,
+    "after": 15611
+   },
+   "finished": []
+  },
+  {
+   "step": 3,
+   "emitted": [
+    [
+     0,
+     0
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     0,
+     29871
+    ]
+   ],
+   "free": {
+    "before": 15611,
+    "sched": 15611,
+    "after": 15611
+   },
+   "finished": []
+  },
+  {
+   "step": 4,
+   "emitted": [
+    [
+     0,
+     0
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     0,
+     13
+    ]
+   ],
+   "free": {
+    "before": 15611,
+    "sched": 15611,
+    "after": 15611
+   },
+   "finished": []
+  },
+  {
+   "step": 5,
+   "emitted": [
+    [
+     0,
+     0
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     0,
+     29966
+    ]
+   ],
+   "free": {
+    "before": 15611,
+    "sched": 15611,
+    "after": 15612
+   },
+   "finished": [
+    "0"
+   ]
+  }
+ ],
+ "text": {
+  "native_text": ". \n<",
+  "decode": "</s> \n<",
+  "decode_skip_special_tokens": "\n<",
+  "generated_tokens": [
+   "</s>",
+   "▁",
+   "<0x0A>",
+   "<"
+  ],
+  "prompt_tail_tokens": [
+   "▁why",
+   "▁plants",
+   "▁need",
+   "▁sun",
+   "light",
+   "."
+  ],
+  "replay": {
+   "text": ". \n<",
+   "steps": [
+    {
+     "token_id": 2,
+     "new_tokens": [
+      "▁plants",
+      "▁need",
+      "▁sun",
+      "light",
+      "."
+     ],
+     "new_text": ".",
+     "prefix_offset": 4,
+     "read_offset": 5,
+     "tokens": [
+      "▁plants",
+      "▁need",
+      "▁sun",
+      "light",
+      "."
+     ]
+    },
+    {
+     "token_id": 29871,
+     "new_tokens": [
+      "▁"
+     ],
+     "new_text": " ",
+     "prefix_offset": 5,
+     "read_offset": 6,
+     "tokens": [
+      "▁plants",
+      "▁need",
+      "▁sun",
+      "light",
+      ".",
+      "▁"
+     ]
+    },
+    {
+     "token_id": 13,
+     "new_tokens": [
+      "<0x0A>"
+     ],
+     "new_text": "\n",
+     "prefix_offset": 6,
+     "read_offset": 7,
+     "tokens": [
+      "▁plants",
+      "▁need",
+      "▁sun",
+      "light",
+      ".",
+      "▁",
+      "<0x0A>"
+     ]
+    },
+    {
+     "token_id": 29966,
+     "new_tokens": [
+      "<"
+     ],
+     "new_text": "<",
+     "prefix_offset": 7,
+     "read_offset": 8,
+     "tokens": [
+      "▁plants",
+      "▁need",
+      "▁sun",
+      "light",
+      ".",
+      "▁",
+      "<0x0A>",
+      "<"
+     ]
+    }
+   ]
+  },
+  "replay_equals_native": true,
+  "eos_token_id": 2,
+  "eos_positions": [
+   0
+  ],
+  "ignore_eos": true
+ },
+ "comparisons": {
+  "recorded_lp_three_request": {
+   "reference_token_ids": [
+    2,
+    29871,
+    13,
+    29966
+   ],
+   "lp_token_ids": [
+    2,
+    29871,
+    13,
+    29966
+   ],
+   "equal": true,
+   "indexing": "zero-based position within the generated tokens",
+   "first_difference_index": null,
+   "reference_token_at_difference": null,
+   "lp_token_at_difference": null
+  }
+ },
+ "generated_token_ids": [
+  2,
+  29871,
+  13,
+  29966
+ ],
+ "ray": {
+  "started_by_this_run": true,
+  "initialized_after_shutdown": false
+ }
+}

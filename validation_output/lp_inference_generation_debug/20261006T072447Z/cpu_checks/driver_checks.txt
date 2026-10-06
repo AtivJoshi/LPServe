@@ -1,0 +1,40 @@
+== py_compile
+exit=0
+== --help
+usage: debug_run.py [-h] --scheduler {vllm,lp} --model-path MODEL_PATH
+                    --recorded-results RECORDED_RESULTS --output-dir
+                    OUTPUT_DIR
+
+Serve one recorded LP-inference request alone and compare generated IDs.
+
+options:
+  -h, --help            show this help message and exit
+  --scheduler {vllm,lp}
+  --model-path MODEL_PATH
+  --recorded-results RECORDED_RESULTS
+  --output-dir OUTPUT_DIR
+exit=0
+== no args
+usage: debug_run.py [-h] --scheduler {vllm,lp} --model-path MODEL_PATH
+                    --recorded-results RECORDED_RESULTS --output-dir
+                    OUTPUT_DIR
+debug_run.py: error: the following arguments are required: --scheduler, --model-path, --recorded-results, --output-dir
+exit=2
+== bad scheduler
+usage: debug_run.py [-h] --scheduler {vllm,lp} --model-path MODEL_PATH
+                    --recorded-results RECORDED_RESULTS --output-dir
+                    OUTPUT_DIR
+debug_run.py: error: argument --scheduler: invalid choice: 'x' (choose from 'vllm', 'lp')
+exit=2
+== import safety, loaders, detokenizer replay (CPU, no model)
+imported; torch loaded: False ray loaded: False sarathi.engine loaded: False
+recorded: {"results_path": "/home/atjoshi_umass_edu/LPServe/validation_output/lp_inference/20261006T064204Z/run/results.json", "results_sha256": "8be141499939f7c1cbd184e6050fc76b1dbb588a1c1bfd1a12563b6e622ef4a2", "prompts_path": "/home/atjoshi_umass_edu/LPServe/validation_output/lp_inference/20261006T064204Z/prompts.json", "prompts_sha256": "19135ce0e5abd6932060c63d969083a88945fa707fa4a63dbc4d88e5d8035079", "all_generated_token_ids": [[2, 29871, 13, 29966], [2, 29871, 13, 29966], [2, 29871, 13, 29966]]}
+validate_run.check_step: True
+replayed text: '. \n<' equals recorded saved text: True
+  {"token_id": 2, "new_tokens": ["▁plants", "▁need", "▁sun", "light", "."], "new_text": ".", "prefix_offset": 4, "read_offset": 5, "tokens": ["▁plants", "▁need", "▁sun", "light", "."]}
+  {"token_id": 29871, "new_tokens": ["▁"], "new_text": " ", "prefix_offset": 5, "read_offset": 6, "tokens": ["▁plants", "▁need", "▁sun", "light", ".", "▁"]}
+  {"token_id": 13, "new_tokens": ["<0x0A>"], "new_text": "\n", "prefix_offset": 6, "read_offset": 7, "tokens": ["▁plants", "▁need", "▁sun", "light", ".", "▁", "<0x0A>"]}
+  {"token_id": 29966, "new_tokens": ["<"], "new_text": "<", "prefix_offset": 7, "read_offset": 8, "tokens": ["▁plants", "▁need", "▁sun", "light", ".", "▁", "<0x0A>", "<"]}
+exit=0
+== phase scan
+rg exit=1

@@ -1,0 +1,11 @@
+tokenizer_class LlamaTokenizerFast is_fast True
+encode [1, 12027, 7420, 2020, 18577, 817, 6575, 4366, 29889] equals_recorded True
+prompt_tokens ['<s>', '▁Exp', 'lain', '▁why', '▁plants', '▁need', '▁sun', 'light', '.']
+generated_tokens ['</s>', '▁', '<0x0A>', '<']
+eos 2 </s> bos 1 <s>
+all_special_ids [1, 2, 0] added_vocab {'<unk>': 0, '<s>': 1, '</s>': 2}
+decode '</s> \n<'
+decode_skip '\n<'
+chat_template "{% for message in messages %}\n{% if message['role'] == 'user' %}\n{{ '<|user|>\n' + message['content'] + eos_token }}\n{% elif message['role'] == 'system' %}\n{{ '<|system|>\n' + message['content'] + eos_token }}\n{% elif message['role'] == 'assistant' %}\n{{ '<|assistant|>\n'  + message['content'] + eos_token }}\n{% endif %}\n{% if loop.last and add_generation_prompt %}\n{{ '<|assistant|>' }}\n{% endif %}\n{% endfor %}"
+templated_text '<|user|>\nExplain why plants need sunlight.</s>\n<|assistant|>\n'
+generation_config_json None
