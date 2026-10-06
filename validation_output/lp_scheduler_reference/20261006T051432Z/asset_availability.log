@@ -1,0 +1,87 @@
+date_utc=2026-10-06T05:15:54Z hostname=gpu051 SLURM_JOB_ID=65298930
+HF_HOME=<unset> HF_HUB_CACHE=<unset>
+resolved HF_HUB_CACHE=/home/atjoshi_umass_edu/.cache/huggingface/hub
+
+$ ls /home/atjoshi_umass_edu/.cache/huggingface/hub
+CACHEDIR.TAG
+models--hf-internal-testing--tiny-random-LlamaForCausalLM
+models--Qwen--Qwen3-0.6B
+models--TinyLlama--TinyLlama-1.1B-Chat-v1.0
+
+$ cat /home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/refs/main
+fe8a4ea1ffedaf415f4da2f062534de366a451e6
+
+$ ls /home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots
+fe8a4ea1ffedaf415f4da2f062534de366a451e6
+
+$ ls -la /home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6
+total 0
+drwxr-xr-x 2 atjoshi_umass_edu atjoshi_umass_edu 4096 Sep  1 22:18 .
+drwxr-xr-x 2 atjoshi_umass_edu atjoshi_umass_edu 4096 Sep  1 22:18 ..
+lrwxrwxrwx 1 atjoshi_umass_edu atjoshi_umass_edu   52 Sep  1 22:18 config.json -> ../../blobs/4ea05f1bc289d48ba9b92eea2f58ad8acd3dce5d
+lrwxrwxrwx 1 atjoshi_umass_edu atjoshi_umass_edu   52 Sep  1 22:18 special_tokens_map.json -> ../../blobs/492d4b2966a1763442d426d880dbc29f94906e4c
+lrwxrwxrwx 1 atjoshi_umass_edu atjoshi_umass_edu   52 Sep  1 22:18 tokenizer_config.json -> ../../blobs/fa96b85858f4053b0142a18e2b09dbe94e3fae46
+lrwxrwxrwx 1 atjoshi_umass_edu atjoshi_umass_edu   52 Sep  1 22:18 tokenizer.json -> ../../blobs/a6e931b92caff4c79c5c56282f1e89569a0ae558
+lrwxrwxrwx 1 atjoshi_umass_edu atjoshi_umass_edu   76 Sep  1 22:18 tokenizer.model -> ../../blobs/9e556afd44213b6bd1be2b850ebbbd98f5481437a8021afaf58ee7fb1818d347
+
+$ ls -laL /home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6  (sizes of link targets)
+total 2292
+drwxr-xr-x 2 atjoshi_umass_edu atjoshi_umass_edu    4096 Sep  1 22:18 .
+drwxr-xr-x 2 atjoshi_umass_edu atjoshi_umass_edu    4096 Sep  1 22:18 ..
+-rw-r--r-- 1 atjoshi_umass_edu atjoshi_umass_edu     608 Sep  1 22:18 config.json
+-rw-r--r-- 1 atjoshi_umass_edu atjoshi_umass_edu     551 Sep  1 22:18 special_tokens_map.json
+-rw-r--r-- 1 atjoshi_umass_edu atjoshi_umass_edu    1289 Sep  1 22:18 tokenizer_config.json
+-rw-r--r-- 1 atjoshi_umass_edu atjoshi_umass_edu 1842767 Sep  1 22:18 tokenizer.json
+-rw-r--r-- 1 atjoshi_umass_edu atjoshi_umass_edu  499723 Sep  1 22:18 tokenizer.model
+
+$ ls -la /home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs
+total 2292
+drwxr-xr-x 2 atjoshi_umass_edu atjoshi_umass_edu    4096 Sep  1 22:18 .
+drwxr-xr-x 2 atjoshi_umass_edu atjoshi_umass_edu    4096 Sep  1 22:18 ..
+-rw-r--r-- 1 atjoshi_umass_edu atjoshi_umass_edu     551 Sep  1 22:18 492d4b2966a1763442d426d880dbc29f94906e4c
+-rw-r--r-- 1 atjoshi_umass_edu atjoshi_umass_edu     608 Sep  1 22:18 4ea05f1bc289d48ba9b92eea2f58ad8acd3dce5d
+-rw-r--r-- 1 atjoshi_umass_edu atjoshi_umass_edu  499723 Sep  1 22:18 9e556afd44213b6bd1be2b850ebbbd98f5481437a8021afaf58ee7fb1818d347
+-rw-r--r-- 1 atjoshi_umass_edu atjoshi_umass_edu 1842767 Sep  1 22:18 a6e931b92caff4c79c5c56282f1e89569a0ae558
+-rw-r--r-- 1 atjoshi_umass_edu atjoshi_umass_edu    1289 Sep  1 22:18 fa96b85858f4053b0142a18e2b09dbe94e3fae46
+
+$ ls -laR /home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/.no_exist
+/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/.no_exist:
+total 0
+drwxr-xr-x 2 atjoshi_umass_edu atjoshi_umass_edu 4096 Sep  1 22:18 .
+drwxr-xr-x 2 atjoshi_umass_edu atjoshi_umass_edu 4096 Sep  1 22:18 ..
+drwxr-xr-x 2 atjoshi_umass_edu atjoshi_umass_edu 4096 Sep  1 22:18 fe8a4ea1ffedaf415f4da2f062534de366a451e6
+
+/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/.no_exist/fe8a4ea1ffedaf415f4da2f062534de366a451e6:
+total 0
+drwxr-xr-x 2 atjoshi_umass_edu atjoshi_umass_edu 4096 Sep  1 22:18 .
+drwxr-xr-x 2 atjoshi_umass_edu atjoshi_umass_edu 4096 Sep  1 22:18 ..
+-rw-r--r-- 1 atjoshi_umass_edu atjoshi_umass_edu    0 Sep  1 22:18 added_tokens.json
+-rw-r--r-- 1 atjoshi_umass_edu atjoshi_umass_edu    0 Sep  1 22:18 chat_template.jinja
+
+$ sha256sum (config/tokenizer)
+486bedda3a6988332e60d9638a09ca4b260d34ebcf1b19e22cf3b140b63d8fe9  /home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6/config.json
+82d96d7a9e6ced037f12394b7ea6a5b02e6ca87e0d11edaa8d60d9be857ce7db  /home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6/special_tokens_map.json
+7b41ba7d0eb91e77914ca3dafde559ea3e19878769b7e68409e89bed5222e77a  /home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6/tokenizer_config.json
+bcd04f0eadf90287bd26e1a183ac487d8a141b09b06aecb7725bbdd343640f2e  /home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6/tokenizer.json
+9e556afd44213b6bd1be2b850ebbbd98f5481437a8021afaf58ee7fb1818d347  /home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6/tokenizer.model
+
+Shared dataset check: $ ls -d /datasets/ai/*inyllama* /datasets/ai/*TinyLlama*
+ls: cannot access '/datasets/ai/*inyllama*': No such file or directory
+ls: cannot access '/datasets/ai/*TinyLlama*': No such file or directory
+
+Script asset gate (no engine, no GPU):
+$ python -B -c '...inspect_snapshot("/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6")'
+Traceback (most recent call last):
+  File "<string>", line 5, in <module>
+  File "/home/atjoshi_umass_edu/LPServe/scripts/check_lp_scheduler_reference_gpu.py", line 249, in inspect_snapshot
+    check(weights, f"no weight files (*.safetensors, *.bin, *.pt) in "
+  File "/home/atjoshi_umass_edu/LPServe/scripts/check_lp_scheduler_gpu.py", line 103, in check
+    raise CheckFailure(message)
+check_lp_scheduler_gpu.CheckFailure: no weight files (*.safetensors, *.bin, *.pt) in /home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6; only ['config.json', 'special_tokens_map.json', 'tokenizer.json', 'tokenizer.model', 'tokenizer_config.json']
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<string>", line 6, in <module>
+AttributeError: module 'check_lp_scheduler_reference_gpu' has no attribute 'CheckFailure'
+exit_status=1

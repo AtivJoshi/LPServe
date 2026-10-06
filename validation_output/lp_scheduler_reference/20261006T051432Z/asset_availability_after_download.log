@@ -1,0 +1,122 @@
+date_utc=2026-10-06T05:23:44Z hostname=gpu051
+$ ls -la /home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6
+total 0
+drwxr-xr-x 2 atjoshi_umass_edu atjoshi_umass_edu 4096 Oct  6 05:23 .
+drwxr-xr-x 2 atjoshi_umass_edu atjoshi_umass_edu 4096 Sep  1 22:18 ..
+lrwxrwxrwx 1 atjoshi_umass_edu atjoshi_umass_edu   52 Sep  1 22:18 config.json -> ../../blobs/4ea05f1bc289d48ba9b92eea2f58ad8acd3dce5d
+lrwxrwxrwx 1 atjoshi_umass_edu atjoshi_umass_edu   76 Oct  6 05:23 model.safetensors -> ../../blobs/6e6001da2106d4757498752a021df6c2bdc332c650aae4bae6b0c004dcf14933
+lrwxrwxrwx 1 atjoshi_umass_edu atjoshi_umass_edu   52 Sep  1 22:18 special_tokens_map.json -> ../../blobs/492d4b2966a1763442d426d880dbc29f94906e4c
+lrwxrwxrwx 1 atjoshi_umass_edu atjoshi_umass_edu   52 Sep  1 22:18 tokenizer_config.json -> ../../blobs/fa96b85858f4053b0142a18e2b09dbe94e3fae46
+lrwxrwxrwx 1 atjoshi_umass_edu atjoshi_umass_edu   52 Sep  1 22:18 tokenizer.json -> ../../blobs/a6e931b92caff4c79c5c56282f1e89569a0ae558
+lrwxrwxrwx 1 atjoshi_umass_edu atjoshi_umass_edu   76 Sep  1 22:18 tokenizer.model -> ../../blobs/9e556afd44213b6bd1be2b850ebbbd98f5481437a8021afaf58ee7fb1818d347
+$ ls -laL /home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6
+total 2150847
+drwxr-xr-x 2 atjoshi_umass_edu atjoshi_umass_edu       4096 Oct  6 05:23 .
+drwxr-xr-x 2 atjoshi_umass_edu atjoshi_umass_edu       4096 Sep  1 22:18 ..
+-rw-r--r-- 1 atjoshi_umass_edu atjoshi_umass_edu        608 Sep  1 22:18 config.json
+-rw-r--r-- 1 atjoshi_umass_edu atjoshi_umass_edu 2200119864 Oct  6 05:23 model.safetensors
+-rw-r--r-- 1 atjoshi_umass_edu atjoshi_umass_edu        551 Sep  1 22:18 special_tokens_map.json
+-rw-r--r-- 1 atjoshi_umass_edu atjoshi_umass_edu       1289 Sep  1 22:18 tokenizer_config.json
+-rw-r--r-- 1 atjoshi_umass_edu atjoshi_umass_edu    1842767 Sep  1 22:18 tokenizer.json
+-rw-r--r-- 1 atjoshi_umass_edu atjoshi_umass_edu     499723 Sep  1 22:18 tokenizer.model
+blob_name=6e6001da2106d4757498752a021df6c2bdc332c650aae4bae6b0c004dcf14933
+$ sha256sum model.safetensors
+sha256=6e6001da2106d4757498752a021df6c2bdc332c650aae4bae6b0c004dcf14933
+content sha256 equals blob name: yes
+Script asset gate:
+{
+ "repository": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+ "snapshot_path": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+ "snapshot_revision": "fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+ "refs_main": "fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+ "architectures": [
+  "LlamaForCausalLM"
+ ],
+ "config_torch_dtype": "bfloat16",
+ "config_vocab_size": 32000,
+ "small_files": {
+  "config.json": {
+   "name": "config.json",
+   "is_symlink": true,
+   "exists": true,
+   "link_target": "../../blobs/4ea05f1bc289d48ba9b92eea2f58ad8acd3dce5d",
+   "size": 608,
+   "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/4ea05f1bc289d48ba9b92eea2f58ad8acd3dce5d",
+   "sha256": "486bedda3a6988332e60d9638a09ca4b260d34ebcf1b19e22cf3b140b63d8fe9"
+  },
+  "tokenizer_config.json": {
+   "name": "tokenizer_config.json",
+   "is_symlink": true,
+   "exists": true,
+   "link_target": "../../blobs/fa96b85858f4053b0142a18e2b09dbe94e3fae46",
+   "size": 1289,
+   "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/fa96b85858f4053b0142a18e2b09dbe94e3fae46",
+   "sha256": "7b41ba7d0eb91e77914ca3dafde559ea3e19878769b7e68409e89bed5222e77a"
+  },
+  "tokenizer.json": {
+   "name": "tokenizer.json",
+   "is_symlink": true,
+   "exists": true,
+   "link_target": "../../blobs/a6e931b92caff4c79c5c56282f1e89569a0ae558",
+   "size": 1842767,
+   "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/a6e931b92caff4c79c5c56282f1e89569a0ae558",
+   "sha256": "bcd04f0eadf90287bd26e1a183ac487d8a141b09b06aecb7725bbdd343640f2e"
+  },
+  "tokenizer.model": {
+   "name": "tokenizer.model",
+   "is_symlink": true,
+   "exists": true,
+   "link_target": "../../blobs/9e556afd44213b6bd1be2b850ebbbd98f5481437a8021afaf58ee7fb1818d347",
+   "size": 499723,
+   "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/9e556afd44213b6bd1be2b850ebbbd98f5481437a8021afaf58ee7fb1818d347",
+   "sha256": "9e556afd44213b6bd1be2b850ebbbd98f5481437a8021afaf58ee7fb1818d347"
+  },
+  "special_tokens_map.json": {
+   "name": "special_tokens_map.json",
+   "is_symlink": true,
+   "exists": true,
+   "link_target": "../../blobs/492d4b2966a1763442d426d880dbc29f94906e4c",
+   "size": 551,
+   "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/492d4b2966a1763442d426d880dbc29f94906e4c",
+   "sha256": "82d96d7a9e6ced037f12394b7ea6a5b02e6ca87e0d11edaa8d60d9be857ce7db"
+  }
+ },
+ "weight_format": "safetensors",
+ "weight_files": [
+  {
+   "name": "model.safetensors",
+   "is_symlink": true,
+   "exists": true,
+   "link_target": "../../blobs/6e6001da2106d4757498752a021df6c2bdc332c650aae4bae6b0c004dcf14933",
+   "size": 2200119864,
+   "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/6e6001da2106d4757498752a021df6c2bdc332c650aae4bae6b0c004dcf14933",
+   "safetensors": {
+    "num_tensors": 201,
+    "dtypes": [
+     "BF16"
+    ],
+    "tensor_names_sha256": "70b5291b06b5feffd9efcf70e39ec5a22e193c52a989c13859d03295f4a079ec"
+   }
+  }
+ ],
+ "weight_indexes": {},
+ "npcache_dir_present": false
+}
+exit_status=0
+Code unchanged since gates (sha256 compare with cpu_checks/environment.txt):
+scripts/check_lp_scheduler_reference_gpu.py: OK
+scripts/check_lp_scheduler_gpu.py: OK
+tests/test_lp_relaxation_scheduler.py: OK
+tests/test_lpserve_state_mapping.py: OK
+tests/test_lpserve_plan_execution.py: OK
+tests/test_lp_scheduler.py: OK
+lp_relaxation_scheduler.py: OK
+lpserve_state_mapping.py: OK
+lpserve_plan_execution.py: OK
+sarathi/core/scheduler/lp_scheduler.py: OK
+sarathi/core/scheduler/vllm_scheduler.py: OK
+hash_check_exit=0
+git_head=e3e5647800cbe54d22bc1bccd73c9e8e7dd21546
+?? docs/handoffs/lp_scheduler_reference_handoff.md
+?? scripts/check_lp_scheduler_reference_gpu.py
+?? validation_output/lp_scheduler_reference/20261006T051432Z/cpu_checks/environment.txt

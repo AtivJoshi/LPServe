@@ -1,0 +1,6 @@
+$ python -m py_compile scripts/check_lp_scheduler_reference_gpu.py
+exit_status=0
+$ git diff --check
+exit_status=0
+$ rg -n -i 'phase' scripts/check_lp_scheduler_reference_gpu.py
+exit_status=1
