@@ -1560,6 +1560,48 @@ This specification therefore does not authorize pipeline-parallel LP execution. 
 
 Initial correctness validation is limited to a single pipeline stage. Supporting more stages requires a separate design amendment and new architecture tests; changing only `num_pipeline_stages` is insufficient.
 
+### 16.7 Incremental text conversion can include the prompt's final token
+
+**Confirmed inherited defect (2026-10-06).** When the first generated token
+is skipped as a special token, `detokenize_incrementally` can treat the
+prompt's final token as newly generated text. For the raw prompt
+"Explain why plants need sunlight.", both the recorded LP run and the
+single-request `VLLMScheduler` reference saved a leading period from the
+prompt. CPU replay of `EngineSequenceManager._decode_seq`'s native text
+conversion reproduced that period exactly. The generated token IDs did not
+contain a period; native text and decoding only the generated IDs differed.
+
+Evidence: [generation diagnostic handoff](../validation_output/lp_inference_generation_debug/20261006T072447Z/HANDOFF.md)
+and its retained reference summary and trace. The diagnostic ran at
+`c7ebebd` and was reviewed at `0557e30`; the affected tokenizer and
+engine-sequence-manager code is unchanged from audit baseline `c3e0143`.
+This later observation does not repin or rewrite the historical audit.
+
+Under D-25, the restricted MVP inherits this defect without repairing it.
+Saved native text MUST NOT be presented as proof of correct conversion of
+the generated token IDs.
+
+### 16.8 EOS-first generation on raw text: cause unverified
+
+In the same evidence, TinyLlama/TinyLlama-1.1B-Chat-v1.0, with real weights,
+greedy sampling, four requested output tokens, and no chat template,
+generated `[2, 29871, 13, 29966]`. The first generated token, 2, is EOS
+(the end-of-sequence signal). `ignore_eos=True` deliberately continued
+execution after that signal. The reference reproduced the recorded LP
+result for this one prompt; the conditional LP-alone run was not needed.
+
+Why EOS was selected first is unknown. Missing chat formatting remains an
+inspection-based hypothesis, not a tested cause. Reference agreement does
+not prove correct generation or exclude a defect shared by both paths.
+This observation is separate from the confirmed text-conversion defect in
+§16.7 and is not classified as a proven LP-scheduler defect.
+
+Deeper EOS diagnosis and text-conversion repair are deferred while the
+restricted scheduler MVP proceeds. Revisit these limitations when useful
+text answers are required or an unexplained LP/reference token mismatch
+appears on a supported workload. This deferral establishes no claim about
+generation quality and changes no mathematical, execution, or failure contract.
+
 ## 17. Decision register
 
 | ID | Status and selected rule | Canonical requirements |
