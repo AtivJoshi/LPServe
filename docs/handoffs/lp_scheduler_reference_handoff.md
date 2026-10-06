@@ -98,6 +98,12 @@ the reference summary path and SHA-256
 - The hashes were rechecked after the download and matched the gated code
   (`asset_availability_after_download.log`).
 
+**Correction (2026-10-06):** The SLURM job above is the allocation recorded
+in `cpu_checks/environment.txt` (`65298930`), where the CPU gates ran. Both GPU
+runs recorded `SLURM_JOB_ID` `65301682` (same host `gpu051`, partition
+`gpu-preempt`) in `reference/summary.json` and `lp/summary.json` under
+`environment.slurm`. The original line is kept unchanged above.
+
 ## Commands and results
 
 Each execution shell loaded the modules, ran `source env/bin/activate`, and

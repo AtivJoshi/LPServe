@@ -1,0 +1,11 @@
+$ python -B scripts/check_lp_scheduler_contention_reference_gpu.py --help
+exit_status=0
+$ ... --scheduler lp --model-path x --output-dir <scratch> (missing --references-dir; expect usage error exit 2)
+usage: check_lp_scheduler_contention_reference_gpu.py [-h] --scheduler
+                                                      {vllm,lp} --model-path
+                                                      MODEL_PATH --output-dir
+                                                      OUTPUT_DIR
+                                                      [--request {A,B,C}]
+                                                      [--references-dir REFERENCES_DIR]
+check_lp_scheduler_contention_reference_gpu.py: error: --references-dir is required for --scheduler lp and not accepted for --scheduler vllm
+exit_status=2

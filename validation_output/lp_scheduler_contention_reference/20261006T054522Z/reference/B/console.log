@@ -1,0 +1,57 @@
+asset: {"repository": "TinyLlama/TinyLlama-1.1B-Chat-v1.0", "snapshot_path": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6", "snapshot_revision": "fe8a4ea1ffedaf415f4da2f062534de366a451e6", "refs_main": "fe8a4ea1ffedaf415f4da2f062534de366a451e6", "architectures": ["LlamaForCausalLM"], "config_torch_dtype": "bfloat16", "config_vocab_size": 32000, "small_files": {"config.json": {"name": "config.json", "is_symlink": true, "exists": true, "link_target": "../../blobs/4ea05f1bc289d48ba9b92eea2f58ad8acd3dce5d", "size": 608, "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/4ea05f1bc289d48ba9b92eea2f58ad8acd3dce5d", "sha256": "486bedda3a6988332e60d9638a09ca4b260d34ebcf1b19e22cf3b140b63d8fe9"}, "tokenizer_config.json": {"name": "tokenizer_config.json", "is_symlink": true, "exists": true, "link_target": "../../blobs/fa96b85858f4053b0142a18e2b09dbe94e3fae46", "size": 1289, "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/fa96b85858f4053b0142a18e2b09dbe94e3fae46", "sha256": "7b41ba7d0eb91e77914ca3dafde559ea3e19878769b7e68409e89bed5222e77a"}, "tokenizer.json": {"name": "tokenizer.json", "is_symlink": true, "exists": true, "link_target": "../../blobs/a6e931b92caff4c79c5c56282f1e89569a0ae558", "size": 1842767, "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/a6e931b92caff4c79c5c56282f1e89569a0ae558", "sha256": "bcd04f0eadf90287bd26e1a183ac487d8a141b09b06aecb7725bbdd343640f2e"}, "tokenizer.model": {"name": "tokenizer.model", "is_symlink": true, "exists": true, "link_target": "../../blobs/9e556afd44213b6bd1be2b850ebbbd98f5481437a8021afaf58ee7fb1818d347", "size": 499723, "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/9e556afd44213b6bd1be2b850ebbbd98f5481437a8021afaf58ee7fb1818d347", "sha256": "9e556afd44213b6bd1be2b850ebbbd98f5481437a8021afaf58ee7fb1818d347"}, "special_tokens_map.json": {"name": "special_tokens_map.json", "is_symlink": true, "exists": true, "link_target": "../../blobs/492d4b2966a1763442d426d880dbc29f94906e4c", "size": 551, "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/492d4b2966a1763442d426d880dbc29f94906e4c", "sha256": "82d96d7a9e6ced037f12394b7ea6a5b02e6ca87e0d11edaa8d60d9be857ce7db"}}, "weight_format": "safetensors", "weight_files": [{"name": "model.safetensors", "is_symlink": true, "exists": true, "link_target": "../../blobs/6e6001da2106d4757498752a021df6c2bdc332c650aae4bae6b0c004dcf14933", "size": 2200119864, "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/6e6001da2106d4757498752a021df6c2bdc332c650aae4bae6b0c004dcf14933", "safetensors": {"num_tensors": 201, "dtypes": ["BF16"], "tensor_names_sha256": "70b5291b06b5feffd9efcf70e39ec5a22e193c52a989c13859d03295f4a079ec"}}], "weight_indexes": {}, "npcache_dir_present": false}
+`torch_dtype` is deprecated! Use `dtype` instead!
+WARNING 10-06 05:48:40 config.py:585] Casting torch.bfloat16 to torch.float16.
+environment: {
+ "hostname": "gpu051",
+ "slurm": {
+  "SLURM_JOB_ID": "65301682",
+  "SLURM_JOB_NODELIST": "gpu051",
+  "SLURM_JOB_PARTITION": "gpu-preempt",
+  "SLURM_STEP_ID": "4294967290"
+ },
+ "cuda_visible_devices": "0",
+ "gpu": "0, NVIDIA A16, GPU-b7192761-b009-1409-dfe0-541ef40add86, 595.91.07, 15356 MiB",
+ "torch_cuda": "12.1",
+ "python_executable": "/home/atjoshi_umass_edu/LPServe/env/bin/python",
+ "python_version": "3.10.8",
+ "virtual_env": "/home/atjoshi_umass_edu/LPServe/env",
+ "pythonpath": "/home/atjoshi_umass_edu/LPServe:/modules/uri_apps/software/Python/3.10.8-GCCcore-12.2.0/easybuild/python",
+ "versions": {
+  "torch": "2.3.0+cu121",
+  "transformers": "4.57.6",
+  "ray": "2.58.0",
+  "numpy": "2.2.6",
+  "scipy": "1.15.3",
+  "flashinfer": "0.2.0.post1+cu121torch2.3",
+  "vllm-flash-attn": "2.5.9",
+  "sarathi": "0.1.7",
+  "nvidia-ml-py": "13.595.45",
+  "huggingface-hub": "0.36.2",
+  "tokenizers": "0.22.2"
+ },
+ "git_head": "e04ba4a535dc6f89b3cb418b3bbd3dc7f5ca1ba6",
+ "git_status_short": "?? scripts/check_lp_scheduler_contention_reference_gpu.py\n?? validation_output/lp_scheduler_contention_reference/20261006T054522Z/cpu_checks/environment.txt\n?? validation_output/lp_scheduler_contention_reference/20261006T054522Z/reference/A/command.txt\n?? validation_output/lp_scheduler_contention_reference/20261006T054522Z/reference/A/decision_trace.json\n?? validation_output/lp_scheduler_contention_reference/20261006T054522Z/reference/A/ray_state_after.txt\n?? validation_output/lp_scheduler_contention_reference/20261006T054522Z/reference/A/ray_state_before.txt\n?? validation_output/lp_scheduler_contention_reference/20261006T054522Z/reference/A/summary.json\n?? validation_output/lp_scheduler_contention_reference/20261006T054522Z/reference/B/command.txt\n?? validation_output/lp_scheduler_contention_reference/20261006T054522Z/reference/B/ray_state_before.txt",
+ "cwd": "/home/atjoshi_umass_edu/LPServe"
+}
+INFO 10-06 05:48:41 base_llm_engine.py:68] Initializing an LLM engine with config: model='/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6', tokenizer='/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6', tokenizer_mode=auto, revision=None, trust_remote_code=True, dtype=torch.float16, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, seed=42)
+2026-10-06 05:48:50,044	INFO worker.py:2024 -- Started a local Ray instance.
+INFO 10-06 05:49:02 base_llm_engine.py:146] Starting workers with resource mapping: [(None, 0)]
+INFO 10-06 05:49:02 base_llm_engine.py:189] Initializing workers with distributed init method: tcp://10.100.20.51:61704
+[36m(RayWorker pid=1659015)[0m INFO 10-06 05:49:13 base_worker.py:103] Worker 0 is using device 0
+[36m(RayWorker pid=1659015)[0m INFO 10-06 05:49:13 base_worker.py:122] Initializing worker 0 on device cuda:0, tensor parallel rank 0 and pipeline parallel rank 0.
+[36m(RayWorker pid=1659015)[0m INFO 10-06 05:49:14 base_worker.py:138] Model initialized on worker 0.
+INFO 10-06 05:49:14 base_llm_engine.py:242] # GPU blocks: 15612
+INFO 10-06 05:49:15 base_llm_engine.py:129] Scheduler initialised, block_manager has 15612 total blocks
+shared_after_init: {"resolved_dtype": "torch.float16", "vocab_size": 32000, "tokenizer_len": 32000, "tokenizer_class": "LlamaTokenizerFast", "eos_token_id": 2, "prompt_tokens": {"A": ["ied", "ER", "\u2581stat", "fig", "me", "\u2581von", "\u2581inter", "roid", "ater", "\u2581their", "\u2581bet", "\u2581ein", "}\\", "\">", "\u2581sub", "\u2581op"], "B": ["\u2581called", "Item", "ura", "vec", "eme", "\u2581della", "embre", "urg", "Se", "\u2581request", "ische", "\u2581port", "\u2581instead", "=\\", "\u2581\u0423", "hor"], "C": ["anguage", "\u2581total", "ology", "\u00e4t", "\u2581\u0425", "\u2581fre", "\u2581ten", "ideo", "\u2581bes", "true", "Query", "omm", "\u2581Art", "\u2581keep", "\u2581University", "reate"]}, "max_model_len": 32, "hf_config_commit_hash": "fe8a4ea1ffedaf415f4da2f062534de366a451e6"}
+pool: {"profiled_num_gpu_blocks": 15612, "block_manager_total_blocks": 15612, "watermark": 0.01, "watermark_blocks": 156, "free_blocks_before_requests": 15612, "engine_init_seconds": 33.774}
+submitted B: seq 0 prompt [2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015]
+B step 0 admission_full_prefill: emitted [[0, 16]], +1 block(s), free 15611 -> 15611, PAUSED prompt=16 generated=[]
+B step 1 decode_without_allocation: emitted [[0, 0]], +0 block(s), free 15611 -> 15611, PAUSED prompt=16 generated=[344]
+B step 2 decode_with_block_append: emitted [[0, 0]], +1 block(s), free 15610 -> 15610, PAUSED prompt=16 generated=[344, 29892]
+B step 3 decode: emitted [[0, 0]], +0 block(s), free 15610 -> 15610, PAUSED prompt=16 generated=[344, 29892, 322]
+B step 4 final_decode: emitted [[0, 0]], +0 block(s), free 15610 -> 15612, FINISHED_LENGTH_CAPPED prompt=16 generated=[344, 29892, 322, 278]
+idle: no outputs, calls ['schedule'], iteration 4 -> 5
+B generated token ids: [344, 29892, 322, 278]
+RESULT: PASS
+
+exit_status=0

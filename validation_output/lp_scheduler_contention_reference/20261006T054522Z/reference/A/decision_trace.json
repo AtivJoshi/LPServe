@@ -1,0 +1,1046 @@
+{
+ "submission": {
+  "label": "A",
+  "seq_id": 0,
+  "prompt_token_ids": [
+   1000,
+   1001,
+   1002,
+   1003,
+   1004,
+   1005,
+   1006,
+   1007,
+   1008,
+   1009,
+   1010,
+   1011,
+   1012,
+   1013,
+   1014,
+   1015
+  ],
+  "before": {
+   "iteration_id": -1,
+   "num_running_batches": 0,
+   "num_pipeline_stages": 1,
+   "waiting": [],
+   "running": [],
+   "free_blocks": 15612,
+   "block_tables": {},
+   "engine_seq_ids": [],
+   "num_unfinished": 0,
+   "request": null
+  },
+  "events": [
+   {
+    "call": "_run_workers",
+    "method": "add_seq"
+   }
+  ],
+  "after": {
+   "iteration_id": -1,
+   "num_running_batches": 0,
+   "num_pipeline_stages": 1,
+   "waiting": [
+    0
+   ],
+   "running": [],
+   "free_blocks": 15612,
+   "block_tables": {},
+   "engine_seq_ids": [
+    0
+   ],
+   "num_unfinished": 1,
+   "request": {
+    "seq_id": 0,
+    "status": "WAITING",
+    "prompt_tokens_processed": 0,
+    "prompt_processing_finished": false,
+    "generated": 0,
+    "output_token_ids": [],
+    "logical_blocks": 1,
+    "physical_blocks": 0,
+    "block_ids": null,
+    "is_finished": false
+   }
+  }
+ },
+ "steps": [
+  {
+   "index": 0,
+   "name": "admission_full_prefill",
+   "before": {
+    "iteration_id": -1,
+    "num_running_batches": 0,
+    "num_pipeline_stages": 1,
+    "waiting": [
+     0
+    ],
+    "running": [],
+    "free_blocks": 15612,
+    "block_tables": {},
+    "engine_seq_ids": [
+     0
+    ],
+    "num_unfinished": 1,
+    "request": {
+     "seq_id": 0,
+     "status": "WAITING",
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "generated": 0,
+     "output_token_ids": [],
+     "logical_blocks": 1,
+     "physical_blocks": 0,
+     "block_ids": null,
+     "is_finished": false
+    }
+   },
+   "events": [
+    {
+     "call": "schedule",
+     "outputs": {
+      "id": 0,
+      "scheduled": [
+       [
+        0,
+        16
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "state": {
+      "iteration_id": 0,
+      "num_running_batches": 1,
+      "num_pipeline_stages": 1,
+      "waiting": [],
+      "running": [
+       0
+      ],
+      "free_blocks": 15611,
+      "block_tables": {
+       "0": [
+        15611
+       ]
+      },
+      "engine_seq_ids": [
+       0
+      ],
+      "num_unfinished": 1,
+      "request": {
+       "seq_id": 0,
+       "status": "WAITING",
+       "prompt_tokens_processed": 0,
+       "prompt_processing_finished": false,
+       "generated": 0,
+       "output_token_ids": [],
+       "logical_blocks": 1,
+       "physical_blocks": 1,
+       "block_ids": [
+        15611
+       ],
+       "is_finished": false
+      }
+     }
+    },
+    {
+     "call": "_run_workers",
+     "method": "execute_model",
+     "sampler_outputs": [
+      [
+       0,
+       601
+      ]
+     ]
+    }
+   ],
+   "after": {
+    "iteration_id": 0,
+    "num_running_batches": 0,
+    "num_pipeline_stages": 1,
+    "waiting": [],
+    "running": [
+     0
+    ],
+    "free_blocks": 15611,
+    "block_tables": {
+     "0": [
+      15611
+     ]
+    },
+    "engine_seq_ids": [
+     0
+    ],
+    "num_unfinished": 1,
+    "request": {
+     "seq_id": 0,
+     "status": "PAUSED",
+     "prompt_tokens_processed": 16,
+     "prompt_processing_finished": true,
+     "generated": 0,
+     "output_token_ids": [],
+     "logical_blocks": 1,
+     "physical_blocks": 1,
+     "block_ids": [
+      15611
+     ],
+     "is_finished": false
+    }
+   },
+   "request_outputs": [
+    {
+     "seq_id": 0,
+     "prompt_token_ids": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004,
+      1005,
+      1006,
+      1007,
+      1008,
+      1009,
+      1010,
+      1011,
+      1012,
+      1013,
+      1014,
+      1015
+     ],
+     "token_ids": [],
+     "text": "",
+     "finished": false,
+     "finish_reason": null
+    }
+   ],
+   "checked": {
+    "emitted": [
+     [
+      0,
+      16
+     ]
+    ],
+    "blocks_added": 1,
+    "free_after_schedule": 15611,
+    "free_after_completion": 15611,
+    "sampler_outputs": [
+     [
+      0,
+      601
+     ]
+    ]
+   }
+  },
+  {
+   "index": 1,
+   "name": "decode_without_allocation",
+   "before": {
+    "iteration_id": 0,
+    "num_running_batches": 0,
+    "num_pipeline_stages": 1,
+    "waiting": [],
+    "running": [
+     0
+    ],
+    "free_blocks": 15611,
+    "block_tables": {
+     "0": [
+      15611
+     ]
+    },
+    "engine_seq_ids": [
+     0
+    ],
+    "num_unfinished": 1,
+    "request": {
+     "seq_id": 0,
+     "status": "PAUSED",
+     "prompt_tokens_processed": 16,
+     "prompt_processing_finished": true,
+     "generated": 0,
+     "output_token_ids": [],
+     "logical_blocks": 1,
+     "physical_blocks": 1,
+     "block_ids": [
+      15611
+     ],
+     "is_finished": false
+    }
+   },
+   "events": [
+    {
+     "call": "schedule",
+     "outputs": {
+      "id": 1,
+      "scheduled": [
+       [
+        0,
+        0
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "state": {
+      "iteration_id": 1,
+      "num_running_batches": 1,
+      "num_pipeline_stages": 1,
+      "waiting": [],
+      "running": [
+       0
+      ],
+      "free_blocks": 15611,
+      "block_tables": {
+       "0": [
+        15611
+       ]
+      },
+      "engine_seq_ids": [
+       0
+      ],
+      "num_unfinished": 1,
+      "request": {
+       "seq_id": 0,
+       "status": "PAUSED",
+       "prompt_tokens_processed": 16,
+       "prompt_processing_finished": true,
+       "generated": 0,
+       "output_token_ids": [],
+       "logical_blocks": 1,
+       "physical_blocks": 1,
+       "block_ids": [
+        15611
+       ],
+       "is_finished": false
+      }
+     }
+    },
+    {
+     "call": "_run_workers",
+     "method": "execute_model",
+     "sampler_outputs": [
+      [
+       0,
+       601
+      ]
+     ]
+    }
+   ],
+   "after": {
+    "iteration_id": 1,
+    "num_running_batches": 0,
+    "num_pipeline_stages": 1,
+    "waiting": [],
+    "running": [
+     0
+    ],
+    "free_blocks": 15611,
+    "block_tables": {
+     "0": [
+      15611
+     ]
+    },
+    "engine_seq_ids": [
+     0
+    ],
+    "num_unfinished": 1,
+    "request": {
+     "seq_id": 0,
+     "status": "PAUSED",
+     "prompt_tokens_processed": 16,
+     "prompt_processing_finished": true,
+     "generated": 1,
+     "output_token_ids": [
+      601
+     ],
+     "logical_blocks": 2,
+     "physical_blocks": 1,
+     "block_ids": [
+      15611
+     ],
+     "is_finished": false
+    }
+   },
+   "request_outputs": [
+    {
+     "seq_id": 0,
+     "prompt_token_ids": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004,
+      1005,
+      1006,
+      1007,
+      1008,
+      1009,
+      1010,
+      1011,
+      1012,
+      1013,
+      1014,
+      1015
+     ],
+     "token_ids": [
+      601
+     ],
+     "text": "io",
+     "finished": false,
+     "finish_reason": null
+    }
+   ],
+   "checked": {
+    "emitted": [
+     [
+      0,
+      0
+     ]
+    ],
+    "blocks_added": 0,
+    "free_after_schedule": 15611,
+    "free_after_completion": 15611,
+    "sampler_outputs": [
+     [
+      0,
+      601
+     ]
+    ]
+   }
+  },
+  {
+   "index": 2,
+   "name": "decode_with_block_append",
+   "before": {
+    "iteration_id": 1,
+    "num_running_batches": 0,
+    "num_pipeline_stages": 1,
+    "waiting": [],
+    "running": [
+     0
+    ],
+    "free_blocks": 15611,
+    "block_tables": {
+     "0": [
+      15611
+     ]
+    },
+    "engine_seq_ids": [
+     0
+    ],
+    "num_unfinished": 1,
+    "request": {
+     "seq_id": 0,
+     "status": "PAUSED",
+     "prompt_tokens_processed": 16,
+     "prompt_processing_finished": true,
+     "generated": 1,
+     "output_token_ids": [
+      601
+     ],
+     "logical_blocks": 2,
+     "physical_blocks": 1,
+     "block_ids": [
+      15611
+     ],
+     "is_finished": false
+    }
+   },
+   "events": [
+    {
+     "call": "schedule",
+     "outputs": {
+      "id": 2,
+      "scheduled": [
+       [
+        0,
+        0
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "state": {
+      "iteration_id": 2,
+      "num_running_batches": 1,
+      "num_pipeline_stages": 1,
+      "waiting": [],
+      "running": [
+       0
+      ],
+      "free_blocks": 15610,
+      "block_tables": {
+       "0": [
+        15611,
+        15610
+       ]
+      },
+      "engine_seq_ids": [
+       0
+      ],
+      "num_unfinished": 1,
+      "request": {
+       "seq_id": 0,
+       "status": "PAUSED",
+       "prompt_tokens_processed": 16,
+       "prompt_processing_finished": true,
+       "generated": 1,
+       "output_token_ids": [
+        601
+       ],
+       "logical_blocks": 2,
+       "physical_blocks": 2,
+       "block_ids": [
+        15611,
+        15610
+       ],
+       "is_finished": false
+      }
+     }
+    },
+    {
+     "call": "_run_workers",
+     "method": "execute_model",
+     "sampler_outputs": [
+      [
+       0,
+       333
+      ]
+     ]
+    }
+   ],
+   "after": {
+    "iteration_id": 2,
+    "num_running_batches": 0,
+    "num_pipeline_stages": 1,
+    "waiting": [],
+    "running": [
+     0
+    ],
+    "free_blocks": 15610,
+    "block_tables": {
+     "0": [
+      15611,
+      15610
+     ]
+    },
+    "engine_seq_ids": [
+     0
+    ],
+    "num_unfinished": 1,
+    "request": {
+     "seq_id": 0,
+     "status": "PAUSED",
+     "prompt_tokens_processed": 16,
+     "prompt_processing_finished": true,
+     "generated": 2,
+     "output_token_ids": [
+      601,
+      333
+     ],
+     "logical_blocks": 2,
+     "physical_blocks": 2,
+     "block_ids": [
+      15611,
+      15610
+     ],
+     "is_finished": false
+    }
+   },
+   "request_outputs": [
+    {
+     "seq_id": 0,
+     "prompt_token_ids": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004,
+      1005,
+      1006,
+      1007,
+      1008,
+      1009,
+      1010,
+      1011,
+      1012,
+      1013,
+      1014,
+      1015
+     ],
+     "token_ids": [
+      601,
+      333
+     ],
+     "text": "ioid",
+     "finished": false,
+     "finish_reason": null
+    }
+   ],
+   "checked": {
+    "emitted": [
+     [
+      0,
+      0
+     ]
+    ],
+    "blocks_added": 1,
+    "free_after_schedule": 15610,
+    "free_after_completion": 15610,
+    "sampler_outputs": [
+     [
+      0,
+      333
+     ]
+    ]
+   }
+  },
+  {
+   "index": 3,
+   "name": "decode",
+   "before": {
+    "iteration_id": 2,
+    "num_running_batches": 0,
+    "num_pipeline_stages": 1,
+    "waiting": [],
+    "running": [
+     0
+    ],
+    "free_blocks": 15610,
+    "block_tables": {
+     "0": [
+      15611,
+      15610
+     ]
+    },
+    "engine_seq_ids": [
+     0
+    ],
+    "num_unfinished": 1,
+    "request": {
+     "seq_id": 0,
+     "status": "PAUSED",
+     "prompt_tokens_processed": 16,
+     "prompt_processing_finished": true,
+     "generated": 2,
+     "output_token_ids": [
+      601,
+      333
+     ],
+     "logical_blocks": 2,
+     "physical_blocks": 2,
+     "block_ids": [
+      15611,
+      15610
+     ],
+     "is_finished": false
+    }
+   },
+   "events": [
+    {
+     "call": "schedule",
+     "outputs": {
+      "id": 3,
+      "scheduled": [
+       [
+        0,
+        0
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "state": {
+      "iteration_id": 3,
+      "num_running_batches": 1,
+      "num_pipeline_stages": 1,
+      "waiting": [],
+      "running": [
+       0
+      ],
+      "free_blocks": 15610,
+      "block_tables": {
+       "0": [
+        15611,
+        15610
+       ]
+      },
+      "engine_seq_ids": [
+       0
+      ],
+      "num_unfinished": 1,
+      "request": {
+       "seq_id": 0,
+       "status": "PAUSED",
+       "prompt_tokens_processed": 16,
+       "prompt_processing_finished": true,
+       "generated": 2,
+       "output_token_ids": [
+        601,
+        333
+       ],
+       "logical_blocks": 2,
+       "physical_blocks": 2,
+       "block_ids": [
+        15611,
+        15610
+       ],
+       "is_finished": false
+      }
+     }
+    },
+    {
+     "call": "_run_workers",
+     "method": "execute_model",
+     "sampler_outputs": [
+      [
+       0,
+       29899
+      ]
+     ]
+    }
+   ],
+   "after": {
+    "iteration_id": 3,
+    "num_running_batches": 0,
+    "num_pipeline_stages": 1,
+    "waiting": [],
+    "running": [
+     0
+    ],
+    "free_blocks": 15610,
+    "block_tables": {
+     "0": [
+      15611,
+      15610
+     ]
+    },
+    "engine_seq_ids": [
+     0
+    ],
+    "num_unfinished": 1,
+    "request": {
+     "seq_id": 0,
+     "status": "PAUSED",
+     "prompt_tokens_processed": 16,
+     "prompt_processing_finished": true,
+     "generated": 3,
+     "output_token_ids": [
+      601,
+      333,
+      29899
+     ],
+     "logical_blocks": 2,
+     "physical_blocks": 2,
+     "block_ids": [
+      15611,
+      15610
+     ],
+     "is_finished": false
+    }
+   },
+   "request_outputs": [
+    {
+     "seq_id": 0,
+     "prompt_token_ids": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004,
+      1005,
+      1006,
+      1007,
+      1008,
+      1009,
+      1010,
+      1011,
+      1012,
+      1013,
+      1014,
+      1015
+     ],
+     "token_ids": [
+      601,
+      333,
+      29899
+     ],
+     "text": "ioid-",
+     "finished": false,
+     "finish_reason": null
+    }
+   ],
+   "checked": {
+    "emitted": [
+     [
+      0,
+      0
+     ]
+    ],
+    "blocks_added": 0,
+    "free_after_schedule": 15610,
+    "free_after_completion": 15610,
+    "sampler_outputs": [
+     [
+      0,
+      29899
+     ]
+    ]
+   }
+  },
+  {
+   "index": 4,
+   "name": "final_decode",
+   "before": {
+    "iteration_id": 3,
+    "num_running_batches": 0,
+    "num_pipeline_stages": 1,
+    "waiting": [],
+    "running": [
+     0
+    ],
+    "free_blocks": 15610,
+    "block_tables": {
+     "0": [
+      15611,
+      15610
+     ]
+    },
+    "engine_seq_ids": [
+     0
+    ],
+    "num_unfinished": 1,
+    "request": {
+     "seq_id": 0,
+     "status": "PAUSED",
+     "prompt_tokens_processed": 16,
+     "prompt_processing_finished": true,
+     "generated": 3,
+     "output_token_ids": [
+      601,
+      333,
+      29899
+     ],
+     "logical_blocks": 2,
+     "physical_blocks": 2,
+     "block_ids": [
+      15611,
+      15610
+     ],
+     "is_finished": false
+    }
+   },
+   "events": [
+    {
+     "call": "schedule",
+     "outputs": {
+      "id": 4,
+      "scheduled": [
+       [
+        0,
+        0
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "state": {
+      "iteration_id": 4,
+      "num_running_batches": 1,
+      "num_pipeline_stages": 1,
+      "waiting": [],
+      "running": [
+       0
+      ],
+      "free_blocks": 15610,
+      "block_tables": {
+       "0": [
+        15611,
+        15610
+       ]
+      },
+      "engine_seq_ids": [
+       0
+      ],
+      "num_unfinished": 1,
+      "request": {
+       "seq_id": 0,
+       "status": "PAUSED",
+       "prompt_tokens_processed": 16,
+       "prompt_processing_finished": true,
+       "generated": 3,
+       "output_token_ids": [
+        601,
+        333,
+        29899
+       ],
+       "logical_blocks": 2,
+       "physical_blocks": 2,
+       "block_ids": [
+        15611,
+        15610
+       ],
+       "is_finished": false
+      }
+     }
+    },
+    {
+     "call": "_run_workers",
+     "method": "execute_model",
+     "sampler_outputs": [
+      [
+       0,
+       6707
+      ]
+     ]
+    }
+   ],
+   "after": {
+    "iteration_id": 4,
+    "num_running_batches": 0,
+    "num_pipeline_stages": 1,
+    "waiting": [],
+    "running": [],
+    "free_blocks": 15612,
+    "block_tables": {},
+    "engine_seq_ids": [],
+    "num_unfinished": 0,
+    "request": {
+     "seq_id": 0,
+     "status": "FINISHED_LENGTH_CAPPED",
+     "prompt_tokens_processed": 16,
+     "prompt_processing_finished": true,
+     "generated": 4,
+     "output_token_ids": [
+      601,
+      333,
+      29899,
+      6707
+     ],
+     "logical_blocks": 2,
+     "physical_blocks": 0,
+     "block_ids": null,
+     "is_finished": true
+    }
+   },
+   "request_outputs": [
+    {
+     "seq_id": 0,
+     "prompt_token_ids": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004,
+      1005,
+      1006,
+      1007,
+      1008,
+      1009,
+      1010,
+      1011,
+      1012,
+      1013,
+      1014,
+      1015
+     ],
+     "token_ids": [
+      601,
+      333,
+      29899,
+      6707
+     ],
+     "text": "ioid-based",
+     "finished": true,
+     "finish_reason": "length"
+    }
+   ],
+   "checked": {
+    "emitted": [
+     [
+      0,
+      0
+     ]
+    ],
+    "blocks_added": 0,
+    "free_after_schedule": 15610,
+    "free_after_completion": 15612,
+    "sampler_outputs": [
+     [
+      0,
+      6707
+     ]
+    ]
+   }
+  }
+ ],
+ "idle": {
+  "before": {
+   "iteration_id": 4,
+   "num_running_batches": 0,
+   "num_pipeline_stages": 1,
+   "waiting": [],
+   "running": [],
+   "free_blocks": 15612,
+   "block_tables": {},
+   "engine_seq_ids": [],
+   "num_unfinished": 0,
+   "request": null
+  },
+  "events": [
+   {
+    "call": "schedule",
+    "outputs": {
+     "id": 5,
+     "scheduled": [],
+     "ignored_seq_ids": [],
+     "preempted_seq_ids": []
+    },
+    "state": {
+     "iteration_id": 5,
+     "num_running_batches": 0,
+     "num_pipeline_stages": 1,
+     "waiting": [],
+     "running": [],
+     "free_blocks": 15612,
+     "block_tables": {},
+     "engine_seq_ids": [],
+     "num_unfinished": 0,
+     "request": {
+      "seq_id": 0,
+      "status": "FINISHED_LENGTH_CAPPED",
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "generated": 4,
+      "output_token_ids": [
+       601,
+       333,
+       29899,
+       6707
+      ],
+      "logical_blocks": 2,
+      "physical_blocks": 0,
+      "block_ids": null,
+      "is_finished": true
+     }
+    }
+   }
+  ],
+  "after": {
+   "iteration_id": 5,
+   "num_running_batches": 0,
+   "num_pipeline_stages": 1,
+   "waiting": [],
+   "running": [],
+   "free_blocks": 15612,
+   "block_tables": {},
+   "engine_seq_ids": [],
+   "num_unfinished": 0,
+   "request": null
+  },
+  "request_outputs": []
+ }
+}
