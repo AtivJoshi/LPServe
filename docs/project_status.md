@@ -18,8 +18,10 @@ mutation. Retained Unity CPU test evidence and its revision limits are recorded
 below. Native execution and live `LPScheduler` integration now support the
 scoped single-stage prefill/decode path, with CPU replay/completion evidence.
 The subsequent GPU milestone establishes only the exercised single-request
-execution path. General sampler correctness, generation quality, mixed-batch
-GPU behavior, and performance remain unverified. See the 2026-10-05 records below.
+execution path. A bounded two-request mixed-batch GPU check and a three-request
+contention workload also passed (records below). General sampler correctness,
+generation quality, general mixed-batch behavior, and performance remain
+unverified.
 
 ## Current repository and provenance
 
@@ -250,13 +252,36 @@ memory-profile guarantee.
 This acceptance excludes semantic generation quality, reference numerical
 agreement, mixed-batch GPU correctness, independent GPU-worker block-table
 equality, runtime preemption, arbitrary-workload success, and performance.
-The next proposed task is a tiny mixed-batch GPU check with one sampling method.
-Full Phase F acceptance is not claimed.
+Full Phase F acceptance is not claimed. (The mixed-batch and contention
+records below supersede this record's next-task proposal.)
 
 The user also approved simplifying the commit workflow: one cohesive authorized
 commit may include code, tests, documentation, and handoff evidence. Tested-code
 provenance remains required under `AGENTS.md`; a separate evidence commit and
 post-commit rerun are not required solely because a commit was created.
+
+## Bounded two-request mixed-batch GPU check (2026-10-05)
+
+Two greedy requests ran through the live scheduler on one GPU worker with
+dummy TinyLlama weights; two steps carried B's prefill chunk before A's decode
+(prompt-first). All assertions passed (exit 0). The prior review recommended
+acceptance; no explicit acceptance is recorded here. Evidence and limits:
+`docs/handoffs/lp_scheduler_mixed_gpu_handoff.md`. It does not establish
+general mixed-batch or sampler correctness.
+
+## Three-request contention workload (2026-10-06, awaiting review)
+
+Three requests competed for two scheduled actions per step until all
+finished. The new CPU case passed (live-scheduler suite 14 tests), and one
+dummy-weight GPU run passed (exit 0): a waiting request was omitted, then at
+three prompt-complete residents one was omitted unchanged and later served;
+all three finished with blocks restored. The originally specified exact
+central/worker block-ID comparison failed nondeterministically (5 of 12
+characterization runs) because inherited frees iterate `set(block_table)`;
+with user approval the CPU case checks counts, ownership, and per-manager pool
+integrity instead. Not yet accepted. Evidence:
+`docs/handoffs/lp_scheduler_contention_handoff.md` and
+`validation_output/lp_scheduler_contention/20261006T043706Z/`.
 
 ## Historical repository baseline (Phases A and B)
 

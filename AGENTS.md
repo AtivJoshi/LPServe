@@ -70,6 +70,11 @@ commit's own hash in its handoff. A post-commit rerun is needed only when code
 changed or a check depends on committed state, not merely because a commit was
 created. Preserve historical handoffs and hashes without rewriting history.
 
+Machine-generated run evidence (retained artifacts such as `summary.json`)
+records the tested revision, working-tree state, and file hashes. Handoffs
+link that evidence and omit commit-status bookkeeping (for example,
+"committed/not committed" or the final commit hash).
+
 This workflow grants no standing permission to stage, commit, or push. Obtain
 explicit authorization for those actions as before.
 

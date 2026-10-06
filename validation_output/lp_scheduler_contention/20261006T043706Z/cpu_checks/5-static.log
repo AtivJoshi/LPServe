@@ -1,0 +1,8 @@
+$ python -m py_compile tests/test_lp_scheduler.py scripts/check_lp_scheduler_contention_gpu.py
+exit_status=0
+$ git diff --check
+exit_status=0
+$ rg -n -i 'phase' scripts/check_lp_scheduler_contention_gpu.py
+exit_status=1
+$ git diff HEAD -- tests/test_lp_scheduler.py | grep '^+' | rg -n -i 'phase'
+exit_status=1

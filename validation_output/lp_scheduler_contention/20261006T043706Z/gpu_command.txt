@@ -1,0 +1,3 @@
+PYTHONPATH=/home/atjoshi_umass_edu/LPServe:/modules/uri_apps/software/Python/3.10.8-GCCcore-12.2.0/easybuild/python
+LP_CONTENTION_OUT=/home/atjoshi_umass_edu/LPServe/validation_output/lp_scheduler_contention/20261006T043706Z
+timeout 300s /home/atjoshi_umass_edu/LPServe/env/bin/python -B scripts/check_lp_scheduler_contention_gpu.py --output-dir /home/atjoshi_umass_edu/LPServe/validation_output/lp_scheduler_contention/20261006T043706Z > /home/atjoshi_umass_edu/LPServe/validation_output/lp_scheduler_contention/20261006T043706Z/console.log 2>&1

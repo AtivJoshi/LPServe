@@ -1,0 +1,837 @@
+{
+ "passed": true,
+ "failure": null,
+ "witnesses": {
+  "waiting_omitted": [
+   {
+    "step": 1,
+    "omitted": [
+     "A"
+    ],
+    "selected": [
+     "B",
+     "C"
+    ]
+   },
+   {
+    "step": 2,
+    "omitted": [
+     "A"
+    ],
+    "selected": [
+     "B",
+     "C"
+    ]
+   }
+  ],
+  "all_resident_boundaries": [
+   {
+    "step": 5,
+    "selected": [
+     "B",
+     "C"
+    ],
+    "omitted": [
+     "A"
+    ]
+   },
+   {
+    "step": 6,
+    "selected": [
+     "B",
+     "C"
+    ],
+    "omitted": [
+     "A"
+    ]
+   }
+  ],
+  "later_selected": [
+   {
+    "step": 7,
+    "requests": [
+     "A"
+    ]
+   },
+   {
+    "step": 8,
+    "requests": [
+     "A"
+    ]
+   },
+   {
+    "step": 9,
+    "requests": [
+     "A"
+    ]
+   },
+   {
+    "step": 10,
+    "requests": [
+     "A"
+    ]
+   }
+  ]
+ },
+ "command": [
+  "scripts/check_lp_scheduler_contention_gpu.py",
+  "--output-dir",
+  "/home/atjoshi_umass_edu/LPServe/validation_output/lp_scheduler_contention/20261006T043706Z"
+ ],
+ "provenance": {
+  "git_head": "c69cddec5f86d721f6ca2d7563c243774205910f",
+  "git_branch": "main",
+  "git_status_short": " M tests/test_lp_scheduler.py\n?? scripts/check_lp_scheduler_contention_gpu.py\n?? validation_output/lp_scheduler_contention/20261006T043706Z/cpu_checks/environment.txt\n?? validation_output/lp_scheduler_contention/20261006T043706Z/exact_id_characterization/README.md\n?? validation_output/lp_scheduler_contention/20261006T043706Z/exact_id_characterization/diverge.py\n?? validation_output/lp_scheduler_contention/20261006T043706Z/exact_id_characterization/diverge_12_runs.output\n?? validation_output/lp_scheduler_contention/20261006T043706Z/exact_id_characterization/trace_cpu.py\n?? validation_output/lp_scheduler_contention/20261006T043706Z/gpu_command.txt\n",
+  "git_status_ignored_in_scope": " M tests/test_lp_scheduler.py\n?? scripts/check_lp_scheduler_contention_gpu.py\n",
+  "git_diff_head_sha256": "45bc65a2083fdc4831a538f37bac9ac91bdc2d61c553682d971f44203464af3e",
+  "git_diff_head_stat": " tests/test_lp_scheduler.py | 295 +++++++++++++++++++++++++++++++++++++++++++++\n 1 file changed, 295 insertions(+)\n",
+  "file_sha256": {
+   "scripts/check_lp_scheduler_contention_gpu.py": "7addc0013f4d98ea57fa7dccf8676d4e0b64593800b59c0505eb78ef771f812f",
+   "scripts/check_lp_scheduler_gpu.py": "8d1423df0ad3052b0474679bac3c09014693331b44a53dca160d509613cf8591",
+   "tests/test_lp_scheduler.py": "6a312a5a10472b42b36a011651d8c817d9a22da01219cabb89f5bb0f9b82290a",
+   "sarathi/core/scheduler/lp_scheduler.py": "debfd4eca2225815d6c944b91d7c544b5af0e2fd8aaf4d5b645addd9cb2eb0c3",
+   "lp_relaxation_scheduler.py": "616f18d57eb10a1aa8d9f54b049335ba4f9c31f1ccce64e82c2d42dda665cdf3",
+   "lpserve_state_mapping.py": "7d95bf62e477716ea622654a047594214b9c4083fdd0921c4d4c6ccb34ecd2a7",
+   "lpserve_plan_execution.py": "e7f9b7310ae24688e19244f2ae0872c102976af609d0a0ec48867371f3f28912"
+  },
+  "executed_script_sha256": "7addc0013f4d98ea57fa7dccf8676d4e0b64593800b59c0505eb78ef771f812f",
+  "imported_helper_sha256": "8d1423df0ad3052b0474679bac3c09014693331b44a53dca160d509613cf8591",
+  "loaded_modules": "uri/main:ICU/75.1-GCCcore-13.3.0:nodejs/20.13.1-GCCcore-13.3.0:GCCcore/12.2.0:zlib/.1.2.12-GCCcore-12.2.0:binutils/.2.39-GCCcore-12.2.0:bzip2/.1.0.8-GCCcore-12.2.0:ncurses/.6.3-GCCcore-12.2.0:libreadline/.8.2-GCCcore-12.2.0:Tcl/.8.6.12-GCCcore-12.2.0:SQLite/.3.39.4-GCCcore-12.2.0:XZ/.5.2.7-GCCcore-12.2.0:GMP/.6.2.1-GCCcore-12.2.0:libffi/3.4.4-GCCcore-12.2.0:OpenSSL/1.1:Python/3.10.8-GCCcore-12.2.0:CUDA/12.1.1"
+ },
+ "environment": {
+  "hostname": "gpu051",
+  "slurm": {
+   "SLURM_JOB_ID": "65298930",
+   "SLURM_JOB_NODELIST": "gpu051",
+   "SLURM_JOB_PARTITION": "gpu-preempt",
+   "SLURM_STEP_ID": "4294967290"
+  },
+  "cuda_visible_devices": "0",
+  "gpu": "0, NVIDIA A16, GPU-b7192761-b009-1409-dfe0-541ef40add86, 595.91.07, 15356 MiB",
+  "torch_cuda": "12.1",
+  "python_executable": "/home/atjoshi_umass_edu/LPServe/env/bin/python",
+  "python_version": "3.10.8",
+  "virtual_env": "/home/atjoshi_umass_edu/LPServe/env",
+  "pythonpath": "/home/atjoshi_umass_edu/LPServe:/modules/uri_apps/software/Python/3.10.8-GCCcore-12.2.0/easybuild/python",
+  "versions": {
+   "torch": "2.3.0+cu121",
+   "transformers": "4.57.6",
+   "ray": "2.58.0",
+   "numpy": "2.2.6",
+   "scipy": "1.15.3",
+   "flashinfer": "0.2.0.post1+cu121torch2.3",
+   "vllm-flash-attn": "2.5.9",
+   "sarathi": "0.1.7",
+   "nvidia-ml-py": "13.595.45",
+   "huggingface-hub": "0.36.2",
+   "tokenizers": "0.22.2"
+  },
+  "git_head": "c69cddec5f86d721f6ca2d7563c243774205910f",
+  "git_status_short": "M tests/test_lp_scheduler.py\n?? scripts/check_lp_scheduler_contention_gpu.py\n?? validation_output/lp_scheduler_contention/20261006T043706Z/cpu_checks/environment.txt\n?? validation_output/lp_scheduler_contention/20261006T043706Z/exact_id_characterization/README.md\n?? validation_output/lp_scheduler_contention/20261006T043706Z/exact_id_characterization/diverge.py\n?? validation_output/lp_scheduler_contention/20261006T043706Z/exact_id_characterization/diverge_12_runs.output\n?? validation_output/lp_scheduler_contention/20261006T043706Z/exact_id_characterization/trace_cpu.py\n?? validation_output/lp_scheduler_contention/20261006T043706Z/gpu_command.txt",
+  "cwd": "/home/atjoshi_umass_edu/LPServe"
+ },
+ "config": {
+  "model": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+  "tokenizer": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+  "load_format": "dummy",
+  "requested_dtype": "float16",
+  "resolved_dtype": "torch.float16",
+  "model_assets": {
+   "cache_repo": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0",
+   "refs_main": "fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+   "hf_config_commit_hash": "fe8a4ea1ffedaf415f4da2f062534de366a451e6"
+  },
+  "attention_backend": "flash_attention",
+  "tensor_parallel_size": 1,
+  "pipeline_parallel_size": 1,
+  "max_model_len": 32,
+  "block_size": 16,
+  "gpu_memory_utilization": 0.5,
+  "seed": 42,
+  "trust_remote_code": true,
+  "tokenizer_mode": "auto",
+  "vocab_size": 32000,
+  "tokenizer_len": 32000,
+  "eos_token_id": 2,
+  "prompt_token_ids": {
+   "A": [
+    1000,
+    1001,
+    1002,
+    1003,
+    1004,
+    1005,
+    1006,
+    1007,
+    1008,
+    1009,
+    1010,
+    1011,
+    1012,
+    1013,
+    1014,
+    1015
+   ],
+   "B": [
+    2000,
+    2001,
+    2002,
+    2003,
+    2004,
+    2005,
+    2006,
+    2007,
+    2008,
+    2009,
+    2010,
+    2011,
+    2012,
+    2013,
+    2014,
+    2015
+   ],
+   "C": [
+    3000,
+    3001,
+    3002,
+    3003,
+    3004,
+    3005,
+    3006,
+    3007,
+    3008,
+    3009,
+    3010,
+    3011,
+    3012,
+    3013,
+    3014,
+    3015
+   ]
+  },
+  "prompt_tokens": {
+   "A": [
+    "ied",
+    "ER",
+    "\u2581stat",
+    "fig",
+    "me",
+    "\u2581von",
+    "\u2581inter",
+    "roid",
+    "ater",
+    "\u2581their",
+    "\u2581bet",
+    "\u2581ein",
+    "}\\",
+    "\">",
+    "\u2581sub",
+    "\u2581op"
+   ],
+   "B": [
+    "\u2581called",
+    "Item",
+    "ura",
+    "vec",
+    "eme",
+    "\u2581della",
+    "embre",
+    "urg",
+    "Se",
+    "\u2581request",
+    "ische",
+    "\u2581port",
+    "\u2581instead",
+    "=\\",
+    "\u2581\u0423",
+    "hor"
+   ],
+   "C": [
+    "anguage",
+    "\u2581total",
+    "ology",
+    "\u00e4t",
+    "\u2581\u0425",
+    "\u2581fre",
+    "\u2581ten",
+    "ideo",
+    "\u2581bes",
+    "true",
+    "Query",
+    "omm",
+    "\u2581Art",
+    "\u2581keep",
+    "\u2581University",
+    "reate"
+   ]
+  },
+  "sampling": {
+   "temperature": 0.0,
+   "max_tokens": 4,
+   "ignore_eos": true,
+   "stop": [],
+   "sampling_type": "GREEDY",
+   "same_params_for_all": true
+  },
+  "b_max": 96,
+  "c_max": 8,
+  "s_max": 2,
+  "max_num_seqs": 3,
+  "memory_reserve": 1,
+  "decode_memory_policy_id": "conservative_one_block_v1",
+  "utilities": {
+   "decode": 1.0,
+   "prefill_token": 1.0,
+   "preemption_penalty": 1.0
+  },
+  "numerical_policy": {
+   "policy_id": "lp_relaxation_mvp_v1",
+   "feasibility_tol": 1e-07,
+   "integrality_tol": 1e-06,
+   "objective_abs_tol": 1e-09,
+   "objective_rel_tol": 1e-09
+  },
+  "profiling_max_num_batched_tokens": 96,
+  "profiling_max_num_seqs": 3,
+  "metrics_mode": "enabled, all optional outputs off, never plotted",
+  "profiled_num_gpu_blocks": 15601,
+  "block_manager_total_blocks": 15601,
+  "watermark": 0.01,
+  "watermark_blocks": 156,
+  "free_blocks_before_requests": 15601,
+  "peak_blocks_in_use_bound": 6,
+  "max_nonempty_steps": 60,
+  "engine_init_seconds": 49.396
+ },
+ "seq_ids": {
+  "A": 0,
+  "B": 1,
+  "C": 2
+ },
+ "n_free": 15601,
+ "nonempty_steps": 10,
+ "finished_outputs": [
+  {
+   "seq_id": 2,
+   "prompt_token_ids": [
+    3000,
+    3001,
+    3002,
+    3003,
+    3004,
+    3005,
+    3006,
+    3007,
+    3008,
+    3009,
+    3010,
+    3011,
+    3012,
+    3013,
+    3014,
+    3015
+   ],
+   "token_ids": [
+    10123,
+    30925,
+    4974,
+    20646
+   ],
+   "text": "lica\u049a assert \u043f\u0440\u043e\u0434\u043e\u043b",
+   "finished": true,
+   "finish_reason": "length"
+  },
+  {
+   "seq_id": 1,
+   "prompt_token_ids": [
+    2000,
+    2001,
+    2002,
+    2003,
+    2004,
+    2005,
+    2006,
+    2007,
+    2008,
+    2009,
+    2010,
+    2011,
+    2012,
+    2013,
+    2014,
+    2015
+   ],
+   "token_ids": [
+    3591,
+    7027,
+    30481,
+    3049
+   ],
+   "text": "Result Great\u300cchn",
+   "finished": true,
+   "finish_reason": "length"
+  },
+  {
+   "seq_id": 0,
+   "prompt_token_ids": [
+    1000,
+    1001,
+    1002,
+    1003,
+    1004,
+    1005,
+    1006,
+    1007,
+    1008,
+    1009,
+    1010,
+    1011,
+    1012,
+    1013,
+    1014,
+    1015
+   ],
+   "token_ids": [
+    10935,
+    15928,
+    554,
+    21418
+   ],
+   "text": "osten invokeok distrito",
+   "finished": true,
+   "finish_reason": "length"
+  }
+ ],
+ "decisions": [
+  {
+   "step": 1,
+   "selected": [
+    "B",
+    "C"
+   ],
+   "omitted": [
+    "A"
+   ],
+   "plan": {
+    "A": [
+     0,
+     0,
+     0
+    ],
+    "B": [
+     8,
+     0,
+     0
+    ],
+    "C": [
+     8,
+     0,
+     0
+    ]
+   },
+   "emitted": [
+    [
+     1,
+     8
+    ],
+    [
+     2,
+     8
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     1,
+     15619
+    ],
+    [
+     2,
+     3747
+    ]
+   ],
+   "finished": []
+  },
+  {
+   "step": 2,
+   "selected": [
+    "B",
+    "C"
+   ],
+   "omitted": [
+    "A"
+   ],
+   "plan": {
+    "A": [
+     0,
+     0,
+     0
+    ],
+    "B": [
+     8,
+     0,
+     0
+    ],
+    "C": [
+     8,
+     0,
+     0
+    ]
+   },
+   "emitted": [
+    [
+     1,
+     8
+    ],
+    [
+     2,
+     8
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     1,
+     3591
+    ],
+    [
+     2,
+     10123
+    ]
+   ],
+   "finished": []
+  },
+  {
+   "step": 3,
+   "selected": [
+    "A",
+    "C"
+   ],
+   "omitted": [
+    "B"
+   ],
+   "plan": {
+    "A": [
+     8,
+     0,
+     0
+    ],
+    "B": [
+     0,
+     0,
+     0
+    ],
+    "C": [
+     0,
+     1,
+     0
+    ]
+   },
+   "emitted": [
+    [
+     0,
+     8
+    ],
+    [
+     2,
+     0
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     0,
+     1027
+    ],
+    [
+     2,
+     10123
+    ]
+   ],
+   "finished": []
+  },
+  {
+   "step": 4,
+   "selected": [
+    "A",
+    "C"
+   ],
+   "omitted": [
+    "B"
+   ],
+   "plan": {
+    "A": [
+     8,
+     0,
+     0
+    ],
+    "B": [
+     0,
+     0,
+     0
+    ],
+    "C": [
+     0,
+     1,
+     0
+    ]
+   },
+   "emitted": [
+    [
+     0,
+     8
+    ],
+    [
+     2,
+     0
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     0,
+     10935
+    ],
+    [
+     2,
+     30925
+    ]
+   ],
+   "finished": []
+  },
+  {
+   "step": 5,
+   "selected": [
+    "B",
+    "C"
+   ],
+   "omitted": [
+    "A"
+   ],
+   "plan": {
+    "A": [
+     0,
+     0,
+     0
+    ],
+    "B": [
+     0,
+     1,
+     0
+    ],
+    "C": [
+     0,
+     1,
+     0
+    ]
+   },
+   "emitted": [
+    [
+     1,
+     0
+    ],
+    [
+     2,
+     0
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     1,
+     3591
+    ],
+    [
+     2,
+     4974
+    ]
+   ],
+   "finished": []
+  },
+  {
+   "step": 6,
+   "selected": [
+    "B",
+    "C"
+   ],
+   "omitted": [
+    "A"
+   ],
+   "plan": {
+    "A": [
+     0,
+     0,
+     0
+    ],
+    "B": [
+     0,
+     1,
+     0
+    ],
+    "C": [
+     0,
+     1,
+     0
+    ]
+   },
+   "emitted": [
+    [
+     1,
+     0
+    ],
+    [
+     2,
+     0
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     1,
+     7027
+    ],
+    [
+     2,
+     20646
+    ]
+   ],
+   "finished": [
+    "C"
+   ]
+  },
+  {
+   "step": 7,
+   "selected": [
+    "A",
+    "B"
+   ],
+   "omitted": [],
+   "plan": {
+    "A": [
+     0,
+     1,
+     0
+    ],
+    "B": [
+     0,
+     1,
+     0
+    ]
+   },
+   "emitted": [
+    [
+     0,
+     0
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     0,
+     10935
+    ],
+    [
+     1,
+     30481
+    ]
+   ],
+   "finished": []
+  },
+  {
+   "step": 8,
+   "selected": [
+    "A",
+    "B"
+   ],
+   "omitted": [],
+   "plan": {
+    "A": [
+     0,
+     1,
+     0
+    ],
+    "B": [
+     0,
+     1,
+     0
+    ]
+   },
+   "emitted": [
+    [
+     0,
+     0
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     0,
+     15928
+    ],
+    [
+     1,
+     3049
+    ]
+   ],
+   "finished": [
+    "B"
+   ]
+  },
+  {
+   "step": 9,
+   "selected": [
+    "A"
+   ],
+   "omitted": [],
+   "plan": {
+    "A": [
+     0,
+     1,
+     0
+    ]
+   },
+   "emitted": [
+    [
+     0,
+     0
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     0,
+     554
+    ]
+   ],
+   "finished": []
+  },
+  {
+   "step": 10,
+   "selected": [
+    "A"
+   ],
+   "omitted": [],
+   "plan": {
+    "A": [
+     0,
+     1,
+     0
+    ]
+   },
+   "emitted": [
+    [
+     0,
+     0
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     0,
+     21418
+    ]
+   ],
+   "finished": [
+    "A"
+   ]
+  }
+ ]
+}

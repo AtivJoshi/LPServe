@@ -1,0 +1,266 @@
+diff --git a/tests/test_lp_scheduler.py b/tests/test_lp_scheduler.py
+index e8db5fe..ce27713 100644
+--- a/tests/test_lp_scheduler.py
++++ b/tests/test_lp_scheduler.py
+@@ -482,6 +482,261 @@ class LivePipelineTest(unittest.TestCase):
+         self.assertEqual(scheduler.num_running_batches, 0)
+         self.assertEqual(harness.central_tables(), harness.worker_tables())
+ 
++    def test_three_requests_contend_for_two_action_slots_until_completion(self):
++        # Case-specific: three 4-token requests, each limited to 4 generated
++        # tokens, with two scheduled actions per step and room for all three
++        # residents. Which tied request the solver selects is not asserted;
++        # only the per-step invariants and the contention witnesses are.
++        prompt_len, max_tokens, s_max, c_max, max_num_seqs = 4, 4, 2, 2, 3
++        harness = _Harness(
++            max_num_seqs=max_num_seqs, b_max=B_MAX, c_max=c_max, s_max=s_max,
++        )
++        scheduler = harness.scheduler
++        block_manager = scheduler.block_manager
++        seqs = {
++            seq_id: harness.add(seq_id, prompt_len, arrival_time=1.0 + seq_id,
++                                max_tokens=max_tokens)
++            for seq_id in range(3)
++        }
++        utility = lsm.RequestUtility(
++            DECODE_UTILITY, PREFILL_TOKEN_UTILITY, PREEMPTION_PENALTY,
++        )
++
++        def remaining_work():
++            return sum(
++                prompt_len - s.get_num_prompt_tokens_processed()
++                + max_tokens - s.get_output_len()
++                for s in seqs.values()
++            )
++
++        work_limit = remaining_work()
++        self.assertEqual(work_limit, 24)
++        waiting_omitted, all_resident_omitted, later_selected = [], [], []
++        steps = 0
++        while scheduler.has_unfinished_seqs():
++            self.assertLess(steps, work_limit, "termination guard reached")
++            now = 10.0 + steps
++            steps += 1
++
++            # Quiescent decision boundary with exact ownership.
++            unfinished = {k for k, s in seqs.items() if not s.is_finished()}
++            waiting_ids = [s.seq_id for s in scheduler.waiting]
++            running_ids = [s.seq_id for s in scheduler.running]
++            self.assertEqual(scheduler.scheduler_config.num_pipeline_stages, 1)
++            self.assertEqual(scheduler.num_running_batches, 0)
++            self.assertEqual(
++                sorted(waiting_ids + running_ids), sorted(unfinished),
++            )
++            for seq_id in waiting_ids:
++                self.assertEqual(seqs[seq_id].get_status(), SequenceStatus.WAITING)
++                self.assertNotIn(seq_id, block_manager.block_tables)
++            for seq_id in running_ids:
++                self.assertEqual(seqs[seq_id].get_status(), SequenceStatus.PAUSED)
++                self.assertIn(seq_id, block_manager.block_tables)
++            self.assertEqual(set(harness.engine_seqs.seq_map), unfinished)
++            self.assertEqual(set(harness.worker_seqs.seq_map), unfinished)
++            self.assertEqual(harness.central_tables(), harness.worker_tables())
++            before = {k: _seq_fingerprint(seqs[k]) for k in unfinished}
++            tables_before = harness.central_tables()
++            free_before = block_manager.get_num_free_gpu_blocks()
++            work_before = remaining_work()
++
++            harness.clock.reset_mock()
++            with _Spies() as spies:
++                outputs = harness.schedule(now)
++            self._assert_synchronous_pipeline(harness, spies, now, outputs)
++            snapshot = spies.calls[1][4]
++            result = spies.calls[2][2]
++            self.assertIsInstance(snapshot, lsm.StateSnapshot)
++            self.assertIsInstance(result, lrs.SchedulingSuccess)
++
++            # Mapped inputs match the supplied configuration and state.
++            problem = snapshot.lp_problem
++            self.assertEqual(
++                (problem.b_max, problem.c_max, problem.s_max),
++                (B_MAX, c_max, s_max),
++            )
++            self.assertEqual(
++                (snapshot.memory_reserve, snapshot.resident_limit,
++                 snapshot.decode_memory_policy_id, snapshot.free_physical_blocks,
++                 problem.m_free),
++                (MEMORY_RESERVE, max_num_seqs, DECODE_POLICY_ID, free_before,
++                 free_before),
++            )
++            self.assertIs(snapshot.numerical_policy, NUMERICAL_POLICY)
++            self.assertEqual(
++                sorted(r.raw_seq_id for r in snapshot.requests), sorted(unfinished),
++            )
++            for r in snapshot.requests:
++                self.assertEqual(r.utility, utility)
++            raw = {r.request_id: r.raw_seq_id for r in snapshot.requests}
++
++            # The complete integer plan matches the emitted actions.
++            plan = result.plan
++            self.assertEqual(
++                (plan.dominant_preemption_ids, plan.safety_preemption_ids), ((), ()),
++            )
++            selected = []
++            for d in plan.decisions:
++                self.assertEqual(d.preempt, 0)
++                self.assertFalse(d.prefill_tokens > 0 and d.decode)
++                if d.prefill_tokens > 0 or d.decode:
++                    selected.append(d)
++            selected.sort(key=lambda d: (0 if d.prefill_tokens > 0 else 1, d.order_key))
++            emitted = _emitted(outputs)
++            self.assertEqual(
++                emitted, [(raw[d.request_id], d.prefill_tokens) for d in selected],
++            )
++            self.assertEqual((outputs.ignored_seq_ids, outputs.preempted_seq_ids), ([], []))
++            ids = [seq_id for seq_id, _ in emitted]
++            self.assertEqual(len(ids), len(set(ids)))
++            self.assertTrue(1 <= len(ids) <= s_max)
++            chunks = [c for _, c in emitted]
++            prefill_flags = [c > 0 for c in chunks]
++            self.assertEqual(prefill_flags, sorted(prefill_flags, reverse=True))
++            prefill_ids = {k for k, c in emitted if c > 0}
++            decode_ids = {k for k, c in emitted if c == 0}
++            for seq_id, chunk in emitted:
++                remainder = prompt_len - before[seq_id][4]
++                if chunk > 0:
++                    self.assertLessEqual(chunk, min(remainder, c_max))
++                else:
++                    self.assertEqual(remainder, 0)
++                    self.assertIn(seq_id, running_ids)
++            self.assertEqual(outputs.num_batched_prompt_tokens, sum(chunks))
++            self.assertEqual(outputs.num_batched_output_tokens, len(decode_ids))
++            self.assertEqual(
++                outputs.num_batched_tokens, sum(chunks) + len(decode_ids),
++            )
++            self.assertLessEqual(outputs.num_batched_tokens, B_MAX)
++            self.assertLessEqual(len(scheduler.running), max_num_seqs)
++
++            # Scheduling mutation: native admissions/appends only, no progress.
++            tables_sched = harness.central_tables()
++            expected_free = free_before
++            for seq_id in unfinished:
++                seq = seqs[seq_id]
++                self.assertEqual(
++                    (seq.get_num_prompt_tokens_processed(), seq.get_output_len()),
++                    (before[seq_id][4], len(before[seq_id][3])),
++                )
++                if seq_id in prefill_ids and seq_id in waiting_ids:
++                    self.assertIn(seq, scheduler.running)
++                    self.assertEqual(
++                        len(tables_sched[seq_id]), len(seq.logical_token_blocks),
++                    )
++                    expected_free -= len(tables_sched[seq_id])
++                elif seq_id in decode_ids:
++                    gap = before[seq_id][6] - len(tables_before[seq_id])
++                    self.assertIn(gap, (0, 1))
++                    self.assertEqual(
++                        tables_sched[seq_id][:len(tables_before[seq_id])],
++                        tables_before[seq_id],
++                    )
++                    self.assertEqual(
++                        len(tables_sched[seq_id]), len(tables_before[seq_id]) + gap,
++                    )
++                    expected_free -= gap
++                else:
++                    self.assertEqual(
++                        tables_sched.get(seq_id), tables_before.get(seq_id),
++                    )
++            self.assertEqual(block_manager.get_num_free_gpu_blocks(), expected_free)
++
++            # Contention witnesses observed at this boundary.
++            omitted = sorted(unfinished - set(ids))
++            if any(k in waiting_ids for k in omitted):
++                waiting_omitted.append(steps)
++            if any(set(ids) & set(o) for _, o in all_resident_omitted):
++                later_selected.append(steps)
++            if len(running_ids) == 3 and all(before[k][5] for k in running_ids):
++                self.assertTrue(omitted)
++                all_resident_omitted.append((steps, omitted))
++
++            harness.replay(outputs)
++
++            # Completion advances only the selected requests.
++            self.assertEqual(scheduler.num_running_batches, 0)
++            freed = 0
++            for seq_id in unfinished:
++                seq = seqs[seq_id]
++                processed, outputs_before = before[seq_id][4], before[seq_id][3]
++                if seq_id in prefill_ids:
++                    chunk = dict(emitted)[seq_id]
++                    self.assertEqual(
++                        seq.get_num_prompt_tokens_processed(), processed + chunk,
++                    )
++                    self.assertEqual(
++                        seq.prompt_processing_finished, processed + chunk == prompt_len,
++                    )
++                    self.assertEqual(tuple(seq.output_token_ids), outputs_before)
++                elif seq_id in decode_ids:
++                    self.assertEqual(
++                        tuple(seq.output_token_ids), outputs_before + (SAMPLED_TOKEN,),
++                    )
++                    self.assertEqual(seq.get_num_prompt_tokens_processed(), processed)
++                else:
++                    self.assertEqual(_seq_fingerprint(seq), before[seq_id])
++                    self.assertIn(
++                        seq, scheduler.waiting if seq_id in waiting_ids
++                        else scheduler.running,
++                    )
++                    self.assertEqual(
++                        harness.central_tables().get(seq_id), tables_before.get(seq_id),
++                    )
++                if seq.is_finished():
++                    self.assertIn(seq_id, decode_ids)
++                    self.assertEqual(seq.get_status(), SequenceStatus.FINISHED_LENGTH_CAPPED)
++                    self.assertEqual(seq.get_output_len(), max_tokens)
++                    self.assertNotIn(seq, scheduler.waiting + scheduler.running)
++                    self.assertNotIn(seq_id, harness.central_tables())
++                    self.assertIsNone(harness.engine_seqs.get_seq(seq_id))
++                    self.assertIsNone(harness.worker_seqs.get_seq(seq_id))
++                    freed += len(tables_sched[seq_id])
++                else:
++                    self.assertEqual(seq.get_status(), SequenceStatus.PAUSED
++                                     if seq_id in ids or seq_id in running_ids
++                                     else SequenceStatus.WAITING)
++            self.assertEqual(
++                block_manager.get_num_free_gpu_blocks(), expected_free + freed,
++            )
++            self.assertEqual(harness.central_tables(), harness.worker_tables())
++            self.assertEqual(
++                work_before - remaining_work(), sum(chunks) + len(decode_ids),
++            )
++            self.assertGreaterEqual(work_before - remaining_work(), 1)
++
++        # Every required contention witness occurred.
++        self.assertTrue(waiting_omitted, "no eligible waiting request was omitted")
++        self.assertTrue(
++            all_resident_omitted,
++            "no boundary had three prompt-complete residents",
++        )
++        self.assertTrue(later_selected, "no omitted resident was later selected")
++
++        # All three finished; central and worker state drained.
++        for seq in seqs.values():
++            self.assertEqual(seq.get_status(), SequenceStatus.FINISHED_LENGTH_CAPPED)
++            self.assertEqual(seq.get_output_token_ids(), [SAMPLED_TOKEN] * max_tokens)
++        self.assertEqual((scheduler.waiting, scheduler.running), ([], []))
++        self.assertEqual(
++            (harness.engine_seqs.seq_map, harness.worker_seqs.seq_map), ({}, {}),
++        )
++        self.assertEqual((harness.central_tables(), harness.worker_tables()), ({}, {}))
++        for bm in (block_manager, harness.worker_seqs.block_manager):
++            self.assertEqual(bm.get_num_free_gpu_blocks(), NUM_GPU_BLOCKS)
++
++        # One ordinary idle call.
++        before = _fingerprint(scheduler)
++        iteration = scheduler._iteration_id
++        with _Spies() as spies:
++            outputs = harness.schedule(100.0)
++        self.assertTrue(outputs.has_no_output())
++        self.assertEqual(spies.calls, [])
++        self.assertEqual(scheduler._iteration_id, iteration + 1)
++        self.assertEqual(_fingerprint(scheduler), before)
++        self.assertEqual(harness.worker_tables(), {})
++
+ 
+ class PreMutationFailureTest(unittest.TestCase):
+     def _assert_failure(self, harness, now, expected_calls):

@@ -502,36 +502,6 @@ class LivePipelineTest(unittest.TestCase):
             DECODE_UTILITY, PREFILL_TOKEN_UTILITY, PREEMPTION_PENALTY,
         )
 
-        worker_manager = harness.worker_seqs.block_manager
-
-        def assert_pool_integrity(manager):
-            allocated = [b.block_number for t in manager.block_tables.values()
-                         for b in t]
-            free = [b.block_number
-                    for b in manager.gpu_allocator.free_blocks]
-            self.assertEqual(len(allocated), len(set(allocated)))
-            self.assertEqual(len(free), len(set(free)))
-            self.assertFalse(set(allocated) & set(free))
-            self.assertEqual(
-                sorted(allocated + free), list(range(NUM_GPU_BLOCKS)),
-            )
-
-        def assert_managers_agree():
-            # Physical block IDs are not compared: native frees iterate
-            # set(block_table), whose order follows object identity, so the
-            # two independent allocators can hand out different IDs.
-            central, worker = harness.central_tables(), harness.worker_tables()
-            self.assertEqual(
-                {k: len(v) for k, v in central.items()},
-                {k: len(v) for k, v in worker.items()},
-            )
-            self.assertEqual(
-                block_manager.get_num_free_gpu_blocks(),
-                worker_manager.get_num_free_gpu_blocks(),
-            )
-            assert_pool_integrity(block_manager)
-            assert_pool_integrity(worker_manager)
-
         def remaining_work():
             return sum(
                 prompt_len - s.get_num_prompt_tokens_processed()
@@ -565,10 +535,9 @@ class LivePipelineTest(unittest.TestCase):
                 self.assertIn(seq_id, block_manager.block_tables)
             self.assertEqual(set(harness.engine_seqs.seq_map), unfinished)
             self.assertEqual(set(harness.worker_seqs.seq_map), unfinished)
-            assert_managers_agree()
+            self.assertEqual(harness.central_tables(), harness.worker_tables())
             before = {k: _seq_fingerprint(seqs[k]) for k in unfinished}
             tables_before = harness.central_tables()
-            worker_tables_before = harness.worker_tables()
             free_before = block_manager.get_num_free_gpu_blocks()
             work_before = remaining_work()
 
@@ -715,14 +684,6 @@ class LivePipelineTest(unittest.TestCase):
                     self.assertEqual(
                         harness.central_tables().get(seq_id), tables_before.get(seq_id),
                     )
-                    self.assertEqual(
-                        harness.worker_tables().get(seq_id),
-                        worker_tables_before.get(seq_id),
-                    )
-                    self.assertEqual(
-                        _seq_fingerprint(harness.worker_seqs.get_seq(seq_id)),
-                        before[seq_id],
-                    )
                 if seq.is_finished():
                     self.assertIn(seq_id, decode_ids)
                     self.assertEqual(seq.get_status(), SequenceStatus.FINISHED_LENGTH_CAPPED)
@@ -739,7 +700,7 @@ class LivePipelineTest(unittest.TestCase):
             self.assertEqual(
                 block_manager.get_num_free_gpu_blocks(), expected_free + freed,
             )
-            assert_managers_agree()
+            self.assertEqual(harness.central_tables(), harness.worker_tables())
             self.assertEqual(
                 work_before - remaining_work(), sum(chunks) + len(decode_ids),
             )
@@ -762,9 +723,8 @@ class LivePipelineTest(unittest.TestCase):
             (harness.engine_seqs.seq_map, harness.worker_seqs.seq_map), ({}, {}),
         )
         self.assertEqual((harness.central_tables(), harness.worker_tables()), ({}, {}))
-        for bm in (block_manager, worker_manager):
+        for bm in (block_manager, harness.worker_seqs.block_manager):
             self.assertEqual(bm.get_num_free_gpu_blocks(), NUM_GPU_BLOCKS)
-            assert_pool_integrity(bm)
 
         # One ordinary idle call.
         before = _fingerprint(scheduler)

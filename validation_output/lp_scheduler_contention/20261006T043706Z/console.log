@@ -1,0 +1,61 @@
+`torch_dtype` is deprecated! Use `dtype` instead!
+WARNING 10-06 04:39:34 config.py:585] Casting torch.bfloat16 to torch.float16.
+environment: {
+ "hostname": "gpu051",
+ "slurm": {
+  "SLURM_JOB_ID": "65298930",
+  "SLURM_JOB_NODELIST": "gpu051",
+  "SLURM_JOB_PARTITION": "gpu-preempt",
+  "SLURM_STEP_ID": "4294967290"
+ },
+ "cuda_visible_devices": "0",
+ "gpu": "0, NVIDIA A16, GPU-b7192761-b009-1409-dfe0-541ef40add86, 595.91.07, 15356 MiB",
+ "torch_cuda": "12.1",
+ "python_executable": "/home/atjoshi_umass_edu/LPServe/env/bin/python",
+ "python_version": "3.10.8",
+ "virtual_env": "/home/atjoshi_umass_edu/LPServe/env",
+ "pythonpath": "/home/atjoshi_umass_edu/LPServe:/modules/uri_apps/software/Python/3.10.8-GCCcore-12.2.0/easybuild/python",
+ "versions": {
+  "torch": "2.3.0+cu121",
+  "transformers": "4.57.6",
+  "ray": "2.58.0",
+  "numpy": "2.2.6",
+  "scipy": "1.15.3",
+  "flashinfer": "0.2.0.post1+cu121torch2.3",
+  "vllm-flash-attn": "2.5.9",
+  "sarathi": "0.1.7",
+  "nvidia-ml-py": "13.595.45",
+  "huggingface-hub": "0.36.2",
+  "tokenizers": "0.22.2"
+ },
+ "git_head": "c69cddec5f86d721f6ca2d7563c243774205910f",
+ "git_status_short": "M tests/test_lp_scheduler.py\n?? scripts/check_lp_scheduler_contention_gpu.py\n?? validation_output/lp_scheduler_contention/20261006T043706Z/cpu_checks/environment.txt\n?? validation_output/lp_scheduler_contention/20261006T043706Z/exact_id_characterization/README.md\n?? validation_output/lp_scheduler_contention/20261006T043706Z/exact_id_characterization/diverge.py\n?? validation_output/lp_scheduler_contention/20261006T043706Z/exact_id_characterization/diverge_12_runs.output\n?? validation_output/lp_scheduler_contention/20261006T043706Z/exact_id_characterization/trace_cpu.py\n?? validation_output/lp_scheduler_contention/20261006T043706Z/gpu_command.txt",
+ "cwd": "/home/atjoshi_umass_edu/LPServe"
+}
+INFO 10-06 04:39:34 base_llm_engine.py:68] Initializing an LLM engine with config: model='TinyLlama/TinyLlama-1.1B-Chat-v1.0', tokenizer='TinyLlama/TinyLlama-1.1B-Chat-v1.0', tokenizer_mode=auto, revision=None, trust_remote_code=True, dtype=torch.float16, download_dir=None, load_format=dummy, tensor_parallel_size=1, pipeline_parallel_size=1, seed=42)
+2026-10-06 04:39:50,307	INFO worker.py:2024 -- Started a local Ray instance.
+INFO 10-06 04:40:03 base_llm_engine.py:146] Starting workers with resource mapping: [(None, 0)]
+INFO 10-06 04:40:03 base_llm_engine.py:189] Initializing workers with distributed init method: tcp://10.100.20.51:11281
+[36m(RayWorker pid=1637794)[0m INFO 10-06 04:40:19 base_worker.py:103] Worker 0 is using device 0
+[36m(RayWorker pid=1637794)[0m INFO 10-06 04:40:21 base_worker.py:122] Initializing worker 0 on device cuda:0, tensor parallel rank 0 and pipeline parallel rank 0.
+[36m(RayWorker pid=1637794)[0m INFO 10-06 04:40:22 base_worker.py:138] Model initialized on worker 0.
+INFO 10-06 04:40:24 base_llm_engine.py:242] # GPU blocks: 15601
+INFO 10-06 04:40:24 base_llm_engine.py:129] Scheduler initialised, block_manager has 15601 total blocks
+config: {"model": "TinyLlama/TinyLlama-1.1B-Chat-v1.0", "tokenizer": "TinyLlama/TinyLlama-1.1B-Chat-v1.0", "load_format": "dummy", "requested_dtype": "float16", "resolved_dtype": "torch.float16", "model_assets": {"cache_repo": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0", "refs_main": "fe8a4ea1ffedaf415f4da2f062534de366a451e6", "hf_config_commit_hash": "fe8a4ea1ffedaf415f4da2f062534de366a451e6"}, "attention_backend": "flash_attention", "tensor_parallel_size": 1, "pipeline_parallel_size": 1, "max_model_len": 32, "block_size": 16, "gpu_memory_utilization": 0.5, "seed": 42, "trust_remote_code": true, "tokenizer_mode": "auto", "vocab_size": 32000, "tokenizer_len": 32000, "eos_token_id": 2, "prompt_token_ids": {"A": [1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011, 1012, 1013, 1014, 1015], "B": [2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015], "C": [3000, 3001, 3002, 3003, 3004, 3005, 3006, 3007, 3008, 3009, 3010, 3011, 3012, 3013, 3014, 3015]}, "prompt_tokens": {"A": ["ied", "ER", "\u2581stat", "fig", "me", "\u2581von", "\u2581inter", "roid", "ater", "\u2581their", "\u2581bet", "\u2581ein", "}\\", "\">", "\u2581sub", "\u2581op"], "B": ["\u2581called", "Item", "ura", "vec", "eme", "\u2581della", "embre", "urg", "Se", "\u2581request", "ische", "\u2581port", "\u2581instead", "=\\", "\u2581\u0423", "hor"], "C": ["anguage", "\u2581total", "ology", "\u00e4t", "\u2581\u0425", "\u2581fre", "\u2581ten", "ideo", "\u2581bes", "true", "Query", "omm", "\u2581Art", "\u2581keep", "\u2581University", "reate"]}, "sampling": {"temperature": 0.0, "max_tokens": 4, "ignore_eos": true, "stop": [], "sampling_type": "GREEDY", "same_params_for_all": true}, "b_max": 96, "c_max": 8, "s_max": 2, "max_num_seqs": 3, "memory_reserve": 1, "decode_memory_policy_id": "conservative_one_block_v1", "utilities": {"decode": 1.0, "prefill_token": 1.0, "preemption_penalty": 1.0}, "numerical_policy": {"policy_id": "lp_relaxation_mvp_v1", "feasibility_tol": 1e-07, "integrality_tol": 1e-06, "objective_abs_tol": 1e-09, "objective_rel_tol": 1e-09}, "profiling_max_num_batched_tokens": 96, "profiling_max_num_seqs": 3, "metrics_mode": "enabled, all optional outputs off, never plotted", "profiled_num_gpu_blocks": 15601, "block_manager_total_blocks": 15601, "watermark": 0.01, "watermark_blocks": 156, "free_blocks_before_requests": 15601, "peak_blocks_in_use_bound": 6, "max_nonempty_steps": 60, "engine_init_seconds": 49.396}
+added A: seq_id 0, waiting [0]
+added B: seq_id 1, waiting [0, 1]
+added C: seq_id 2, waiting [0, 1, 2]
+step 1: plan {'A': [0, 0, 0], 'B': [8, 0, 0], 'C': [8, 0, 0]}, emitted [[1, 8], [2, 8]], omitted ['A'], sampler [[1, 15619], [2, 3747]], free {'before': 15601, 'sched': 15599, 'after': 15599}, work {'before': 60, 'after': 44}, finished []
+step 2: plan {'A': [0, 0, 0], 'B': [8, 0, 0], 'C': [8, 0, 0]}, emitted [[1, 8], [2, 8]], omitted ['A'], sampler [[1, 3591], [2, 10123]], free {'before': 15599, 'sched': 15599, 'after': 15599}, work {'before': 44, 'after': 28}, finished []
+step 3: plan {'A': [8, 0, 0], 'B': [0, 0, 0], 'C': [0, 1, 0]}, emitted [[0, 8], [2, 0]], omitted ['B'], sampler [[0, 1027], [2, 10123]], free {'before': 15599, 'sched': 15598, 'after': 15598}, work {'before': 28, 'after': 19}, finished []
+step 4: plan {'A': [8, 0, 0], 'B': [0, 0, 0], 'C': [0, 1, 0]}, emitted [[0, 8], [2, 0]], omitted ['B'], sampler [[0, 10935], [2, 30925]], free {'before': 15598, 'sched': 15597, 'after': 15597}, work {'before': 19, 'after': 10}, finished []
+step 5: plan {'A': [0, 0, 0], 'B': [0, 1, 0], 'C': [0, 1, 0]}, emitted [[1, 0], [2, 0]], omitted ['A'], sampler [[1, 3591], [2, 4974]], free {'before': 15597, 'sched': 15597, 'after': 15597}, work {'before': 10, 'after': 8}, finished []
+step 6: plan {'A': [0, 0, 0], 'B': [0, 1, 0], 'C': [0, 1, 0]}, emitted [[1, 0], [2, 0]], omitted ['A'], sampler [[1, 7027], [2, 20646]], free {'before': 15597, 'sched': 15596, 'after': 15598}, work {'before': 8, 'after': 6}, finished ['C']
+step 7: plan {'A': [0, 1, 0], 'B': [0, 1, 0]}, emitted [[0, 0], [1, 0]], omitted [], sampler [[0, 10935], [1, 30481]], free {'before': 15598, 'sched': 15598, 'after': 15598}, work {'before': 6, 'after': 4}, finished []
+step 8: plan {'A': [0, 1, 0], 'B': [0, 1, 0]}, emitted [[0, 0], [1, 0]], omitted [], sampler [[0, 15928], [1, 3049]], free {'before': 15598, 'sched': 15597, 'after': 15599}, work {'before': 4, 'after': 2}, finished ['B']
+step 9: plan {'A': [0, 1, 0]}, emitted [[0, 0]], omitted [], sampler [[0, 554]], free {'before': 15599, 'sched': 15599, 'after': 15599}, work {'before': 2, 'after': 1}, finished []
+step 10: plan {'A': [0, 1, 0]}, emitted [[0, 0]], omitted [], sampler [[0, 21418]], free {'before': 15599, 'sched': 15599, 'after': 15601}, work {'before': 1, 'after': 0}, finished ['A']
+idle: no outputs, calls ['schedule'], iteration 9 -> 10
+RESULT: PASS
+
+exit_status=0

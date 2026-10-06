@@ -1,0 +1,16 @@
+host=gpu051 job=65298930 date=2026-10-06T04:37:55Z
+python=/home/atjoshi_umass_edu/LPServe/env/bin/python Python 3.10.8
+VIRTUAL_ENV=/home/atjoshi_umass_edu/LPServe/env
+PYTHONPATH=/home/atjoshi_umass_edu/LPServe:/modules/uri_apps/software/Python/3.10.8-GCCcore-12.2.0/easybuild/python
+LOADEDMODULES=uri/main:ICU/75.1-GCCcore-13.3.0:nodejs/20.13.1-GCCcore-13.3.0:GCCcore/12.2.0:zlib/.1.2.12-GCCcore-12.2.0:binutils/.2.39-GCCcore-12.2.0:bzip2/.1.0.8-GCCcore-12.2.0:ncurses/.6.3-GCCcore-12.2.0:libreadline/.8.2-GCCcore-12.2.0:Tcl/.8.6.12-GCCcore-12.2.0:SQLite/.3.39.4-GCCcore-12.2.0:XZ/.5.2.7-GCCcore-12.2.0:GMP/.6.2.1-GCCcore-12.2.0:libffi/3.4.4-GCCcore-12.2.0:OpenSSL/1.1:Python/3.10.8-GCCcore-12.2.0:CUDA/12.1.1
+HEAD=c69cddec5f86d721f6ca2d7563c243774205910f
+ M tests/test_lp_scheduler.py
+?? scripts/check_lp_scheduler_contention_gpu.py
+?? validation_output/lp_scheduler_contention/20261006T043706Z/cpu_checks/environment.txt
+?? validation_output/lp_scheduler_contention/20261006T043706Z/exact_id_characterization/README.md
+?? validation_output/lp_scheduler_contention/20261006T043706Z/exact_id_characterization/diverge.py
+?? validation_output/lp_scheduler_contention/20261006T043706Z/exact_id_characterization/diverge_12_runs.output
+?? validation_output/lp_scheduler_contention/20261006T043706Z/exact_id_characterization/trace_cpu.py
+6a312a5a10472b42b36a011651d8c817d9a22da01219cabb89f5bb0f9b82290a  tests/test_lp_scheduler.py
+7addc0013f4d98ea57fa7dccf8676d4e0b64593800b59c0505eb78ef771f812f  scripts/check_lp_scheduler_contention_gpu.py
+8d1423df0ad3052b0474679bac3c09014693331b44a53dca160d509613cf8591  scripts/check_lp_scheduler_gpu.py

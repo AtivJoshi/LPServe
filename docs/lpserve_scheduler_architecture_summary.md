@@ -17,8 +17,13 @@ See `docs/project_status.md` and the integration handoff for the exercised
 replay/completion paths and provenance. A subsequent bounded single-request
 dummy-weight GPU milestone was accepted after review at `14a1535`; its exact
 script and run evidence are in `docs/handoffs/lp_scheduler_gpu_handoff.md`.
-Mixed-batch GPU correctness, general sampler correctness, and generation
-quality remain unverified.
+A bounded two-request greedy mixed-batch GPU check passed
+(`docs/handoffs/lp_scheduler_mixed_gpu_handoff.md`); its prior review
+recommended acceptance. A three-request contention workload passed its CPU
+case and one GPU run and awaits review
+(`docs/handoffs/lp_scheduler_contention_handoff.md`). General mixed-batch
+correctness, general sampler correctness, generation quality, and identical
+central/worker physical block IDs remain unverified.
 This status note does not repin or extend the historical Phase C audit.
 
 ## 2. High-level execution flow

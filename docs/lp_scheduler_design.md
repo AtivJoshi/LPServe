@@ -1095,6 +1095,16 @@ When the supported MVP path exercises and claims a cross-layer replay result,
 replay tests rather than output alone establish central/worker block equality.
 Other action combinations remain focused follow-up coverage under §15.4.
 
+**Clarification (2026-10-06, three-request contention milestone):** The
+contention CPU case checks central/worker allocated-request sets, per-request
+block counts, and free-block counts after every replay, plus independent pool
+integrity in each block manager. It does not establish identical physical
+block IDs: the inherited native free iterates `set(block_table)` in
+identity-hash order, so after a multi-block table is freed the two allocators
+can assign different IDs. Exact-ID equality is claimed only for the earlier
+focused cases that observed it, and this behavior is not repaired. See
+`docs/handoffs/lp_scheduler_contention_handoff.md`.
+
 **Execution and metadata order (D-21, approved 2026-10-05):** For the supported
 single-stage scope, the executor executes and emits all selected prefills
 first, then all selected decodes, each group ascending by the existing
@@ -1467,7 +1477,8 @@ Aggregate throughput or latency cannot establish scheduler correctness.
 
 Each phase handoff must record:
 
-- repository commit;
+- a reference to provenance-bearing run evidence (machine-generated records
+  of the tested revision, working-tree state, and file hashes);
 - environment and dependency changes;
 - tests run and their observed output;
 - behaviors actually verified;
