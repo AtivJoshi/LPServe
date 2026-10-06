@@ -226,6 +226,21 @@ class RunRequestsTest(unittest.TestCase):
             rli.run_requests(engine, PROMPTS[:1], ids, object())
         self.assertEqual(engine.step_calls, 0)
 
+    def test_rejects_prompt_and_token_list_count_mismatch(self):
+        cases = {"two prompts, one token list": (PROMPTS[:2], [[1]], 2, 1),
+                 "one prompt, two token lists": (PROMPTS[:1], [[1], [2]], 1,
+                                                 2)}
+        for name, (prompts, ids, n_prompts, n_ids) in cases.items():
+            with self.subTest(name):
+                engine = FakeEngine(finish_plan=[[0, 1]])
+                with self.assertRaisesRegex(
+                        rli.RunError, f"got {n_prompts} prompts but {n_ids} "
+                        "token lists"):
+                    rli.run_requests(engine, prompts, ids, object())
+                self.assertEqual(engine.order, [])
+                self.assertEqual(engine.seq_manager.seq_map, {})
+                self.assertEqual(engine.step_calls, 0)
+
 
 class CommandTest(unittest.TestCase):
 

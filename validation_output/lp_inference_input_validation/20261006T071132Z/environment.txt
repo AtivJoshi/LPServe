@@ -1,0 +1,60 @@
+date_utc=2026-10-06T07:11:36Z
+cwd=/home/atjoshi_umass_edu/LPServe
+hostname=gpu049
+SLURM_JOB_ID=65305994 SLURM_JOB_NODELIST=gpu049 SLURM_JOB_PARTITION=gpu-preempt
+which_python=/home/atjoshi_umass_edu/LPServe/env/bin/python
+Python 3.10.8
+VIRTUAL_ENV=/home/atjoshi_umass_edu/LPServe/env
+PYTHONPATH=/home/atjoshi_umass_edu/LPServe:/modules/uri_apps/software/Python/3.10.8-GCCcore-12.2.0/easybuild/python
+LOADEDMODULES=uri/main:ICU/75.1-GCCcore-13.3.0:nodejs/20.13.1-GCCcore-13.3.0:GCCcore/12.2.0:zlib/.1.2.12-GCCcore-12.2.0:binutils/.2.39-GCCcore-12.2.0:bzip2/.1.0.8-GCCcore-12.2.0:ncurses/.6.3-GCCcore-12.2.0:libreadline/.8.2-GCCcore-12.2.0:Tcl/.8.6.12-GCCcore-12.2.0:SQLite/.3.39.4-GCCcore-12.2.0:XZ/.5.2.7-GCCcore-12.2.0:GMP/.6.2.1-GCCcore-12.2.0:libffi/3.4.4-GCCcore-12.2.0:OpenSSL/1.1:Python/3.10.8-GCCcore-12.2.0:CUDA/12.1.1
+torch 2.3.0+cu121 transformers 4.57.6 ray 2.58.0
+git_branch=main
+git_head=2a51a1c537e83d4395558a8693481f554c885129
+git_status (untracked-files=all):
+ M scripts/run_lp_inference.py
+ M tests/test_run_lp_inference.py
+?? validation_output/lp_inference_input_validation/20261006T071132Z/environment.txt
+ignored in scope:
+ M tests/test_run_lp_inference.py
+git_diff_head_sha256=c372d363a99903595c6e4083856e286a24ada238bc2ed3c7f223bf16c6f5049a
+git_diff_head:
+diff --git a/scripts/run_lp_inference.py b/scripts/run_lp_inference.py
+index 5d5e23b..465f399 100644
+--- a/scripts/run_lp_inference.py
++++ b/scripts/run_lp_inference.py
+@@ -231,6 +231,9 @@ def run_requests(engine, prompts, prompt_ids, sampling_params, progress=None):
+     Exceptions from the engine propagate unchanged; the engine is not stepped
+     again after one.
+     """
++    if len(prompts) != len(prompt_ids):
++        raise RunError(f"got {len(prompts)} prompts but {len(prompt_ids)} "
++                       "token lists; their lengths must match")
+     progress = {} if progress is None else progress
+     index_of = progress.setdefault("seq_ids", {})
+     finished = progress.setdefault("finished", {})
+diff --git a/tests/test_run_lp_inference.py b/tests/test_run_lp_inference.py
+index cf7c681..ffbbc50 100644
+--- a/tests/test_run_lp_inference.py
++++ b/tests/test_run_lp_inference.py
+@@ -226,6 +226,21 @@ class RunRequestsTest(unittest.TestCase):
+             rli.run_requests(engine, PROMPTS[:1], ids, object())
+         self.assertEqual(engine.step_calls, 0)
+ 
++    def test_rejects_prompt_and_token_list_count_mismatch(self):
++        cases = {"two prompts, one token list": (PROMPTS[:2], [[1]], 2, 1),
++                 "one prompt, two token lists": (PROMPTS[:1], [[1], [2]], 1,
++                                                 2)}
++        for name, (prompts, ids, n_prompts, n_ids) in cases.items():
++            with self.subTest(name):
++                engine = FakeEngine(finish_plan=[[0, 1]])
++                with self.assertRaisesRegex(
++                        rli.RunError, f"got {n_prompts} prompts but {n_ids} "
++                        "token lists"):
++                    rli.run_requests(engine, prompts, ids, object())
++                self.assertEqual(engine.order, [])
++                self.assertEqual(engine.seq_manager.seq_map, {})
++                self.assertEqual(engine.step_calls, 0)
++
+ 
+ class CommandTest(unittest.TestCase):
+ 

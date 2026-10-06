@@ -263,3 +263,28 @@ In `validation_output/lp_inference/20261006T064204Z/`:
 
 OPEN decisions: none resolved; all values are scoped provisional inputs. No
 documented contract changed.
+
+## Follow-up (2026-10-06): prompt/token-list count check
+
+`run_requests` paired prompts with token lists using `zip`, which would
+silently drop items if the two lists had different lengths. It now checks
+that the lengths match before submitting any request, and otherwise raises
+`RunError("got N prompts but M token lists; …")`. Valid-input behavior is
+unchanged. `main` always passes lists of equal length, so the earlier GPU
+run's path is not affected. That GPU evidence remains evidence for the
+originally tested code only; no new GPU run was performed.
+
+A new regression test, `test_rejects_prompt_and_token_list_count_mismatch`,
+checks two cases: two prompts with one token list, and one prompt with two
+token lists. Each case raises the error with no request submitted and no
+step taken. CPU checks on `gpu049` (job `65305994`) at base `2a51a1c` plus
+the working-tree diff:
+
+- `test_run_lp_inference.py`: Ran 18, OK.
+- `py_compile` on both files: exit 0.
+- `git diff --check`: exit 0.
+- `rg -i phase` on both files: no matches.
+
+Evidence:
+`validation_output/lp_inference_input_validation/20261006T071132Z/`
+(environment, diff, logs, final file hashes).

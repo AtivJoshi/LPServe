@@ -231,6 +231,9 @@ def run_requests(engine, prompts, prompt_ids, sampling_params, progress=None):
     Exceptions from the engine propagate unchanged; the engine is not stepped
     again after one.
     """
+    if len(prompts) != len(prompt_ids):
+        raise RunError(f"got {len(prompts)} prompts but {len(prompt_ids)} "
+                       "token lists; their lengths must match")
     progress = {} if progress is None else progress
     index_of = progress.setdefault("seq_ids", {})
     finished = progress.setdefault("finished", {})
