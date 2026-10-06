@@ -1,0 +1,60 @@
+$ python -B scripts/run_lp_inference.py --help
+usage: run_lp_inference.py [-h] --model-path MODEL_PATH --prompts-file
+                           PROMPTS_FILE --output-dir OUTPUT_DIR
+
+Run one to three text prompts through LPServe's registered LPScheduler.
+
+options:
+  -h, --help            show this help message and exit
+  --model-path MODEL_PATH
+                        existing local TinyLlama snapshot directory (model and
+                        tokenizer)
+  --prompts-file PROMPTS_FILE
+                        JSON array of 1 to 3 nonempty strings
+  --output-dir OUTPUT_DIR
+                        directory for results.json and summary.json; must not
+                        already hold them
+
+Usage (from the repository root, with the root on PYTHONPATH so the Ray
+worker can import the LP modules):
+
+    python -B scripts/run_lp_inference.py \
+        --model-path <existing local snapshot> \
+        --prompts-file <JSON file> \
+        --output-dir <new results directory>
+
+The prompts file is a JSON array of one to three nonempty strings. Each string
+is used exactly as given: no chat template, no trimming. Input position is the
+user-facing request identifier; ``results.json`` maps it to the engine's
+sequence ID. Prompts are encoded with the engine tokenizer's ``encode`` (the
+same call ``BaseLLMEngine.add_request`` makes); every prompt must encode to at
+least one token and leave room for the output tokens within the model length.
+Nothing is truncated or adjusted.
+
+Fixed provisional configuration (scoped to this program's first version, not
+research policy or a guarantee for other workloads; saved in summary.json):
+
+- Model and tokenizer: the given local TinyLlama/TinyLlama-1.1B-Chat-v1.0
+  snapshot, real weights (load_format "auto"), float16, flash_attention,
+  tokenizer mode "auto", trust_remote_code True.
+- Tensor and pipeline parallelism 1; seed 42; model length 32; block size 16;
+  GPU memory utilization 0.5.
+- LP scheduler: resident limit 3, b_max 96, c_max 8, s_max 2, planning reserve
+  1 block, decode charge conservative_one_block_v1, decode/prefill-token
+  utility and preemption penalty 1/1/1, numerical policy lp_relaxation_mvp_v1
+  (tolerances 1e-7, 1e-6, 1e-9, 1e-9).
+- Greedy sampling: temperature 0, 4 output tokens, ignore_eos True, no stop
+  strings.
+- Metrics: enabled mode with every optional output off; never plotted.
+
+All requests are submitted before the first step. A scheduling or execution
+failure stops the run (no retry, fallback, or engine reuse); selected
+preemption is unsupported by the LP executor and fails visibly. Exit status is
+0 on success, 1 on a run failure (summary.json records it), and 2 on invalid
+arguments or input (nothing is run or written).
+exit_status=0
+$ python -B scripts/run_lp_inference.py (no arguments)
+usage: run_lp_inference.py [-h] --model-path MODEL_PATH --prompts-file
+                           PROMPTS_FILE --output-dir OUTPUT_DIR
+run_lp_inference.py: error: the following arguments are required: --model-path, --prompts-file, --output-dir
+exit_status=2

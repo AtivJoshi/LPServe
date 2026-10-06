@@ -1,0 +1,790 @@
+{
+ "main_argv": [
+  "--model-path",
+  "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+  "--prompts-file",
+  "/home/atjoshi_umass_edu/LPServe/validation_output/lp_inference/20261006T064204Z/prompts.json",
+  "--output-dir",
+  "/home/atjoshi_umass_edu/LPServe/validation_output/lp_inference/20261006T064204Z/run"
+ ],
+ "driver_argv": [
+  "/home/atjoshi_umass_edu/LPServe/env/bin/python",
+  "/home/atjoshi_umass_edu/LPServe/validation_output/lp_inference/20261006T064204Z/validate_run.py",
+  "--model-path",
+  "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+  "--prompts-file",
+  "/home/atjoshi_umass_edu/LPServe/validation_output/lp_inference/20261006T064204Z/prompts.json",
+  "--output-dir",
+  "/home/atjoshi_umass_edu/LPServe/validation_output/lp_inference/20261006T064204Z/run",
+  "--driver-dir",
+  "/home/atjoshi_umass_edu/LPServe/validation_output/lp_inference/20261006T064204Z"
+ ],
+ "driver_sha256": "41c588111b45e3fec662e612d5363b3b180f57dfb5e0ab0b980d29f7874d3720",
+ "program_exit_status": 0,
+ "checks_passed": true,
+ "failure": null,
+ "engine_facts": {
+  "scheduler_type": "LPScheduler",
+  "scheduler_is_lp": true,
+  "model": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+  "tokenizer": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+  "load_format": "auto",
+  "dtype": "torch.float16",
+  "max_model_len": 32,
+  "seed": 42,
+  "attention_backend": "flash_attention",
+  "tokenizer_mode": "auto",
+  "trust_remote_code": true,
+  "hf_config_commit_hash": "fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+  "block_size": 16,
+  "gpu_memory_utilization": 0.5,
+  "tensor_parallel_size": 1,
+  "pipeline_parallel_size": 1,
+  "scheduler_config": {
+   "max_num_seqs": 3,
+   "b_max": 96,
+   "c_max": 8,
+   "s_max": 2,
+   "memory_reserve": 1,
+   "decode_memory_policy_id": "conservative_one_block_v1",
+   "decode_utility": 1.0,
+   "prefill_token_utility": 1.0,
+   "preemption_penalty": 1.0,
+   "num_pipeline_stages": 1
+  },
+  "numerical_policy": {
+   "policy_id": "lp_relaxation_mvp_v1",
+   "feasibility_tol": 1e-07,
+   "integrality_tol": 1e-06,
+   "objective_abs_tol": 1e-09,
+   "objective_rel_tol": 1e-09
+  },
+  "metrics": {
+   "write_metrics": true,
+   "enable_request_outputs": false,
+   "enable_chrome_trace": false
+  },
+  "num_total_gpu_blocks": 15601,
+  "watermark_blocks": 156
+ },
+ "n_free": 15601,
+ "seq_ids": {
+  "0": 0,
+  "1": 1,
+  "2": 2
+ },
+ "prompt_lens": {
+  "0": 9,
+  "1": 9,
+  "2": 9
+ },
+ "sampling": {
+  "0": {
+   "temperature": 0.0,
+   "max_tokens": 4,
+   "ignore_eos": true,
+   "stop": [],
+   "sampling_type": "GREEDY"
+  },
+  "1": {
+   "temperature": 0.0,
+   "max_tokens": 4,
+   "ignore_eos": true,
+   "stop": [],
+   "sampling_type": "GREEDY"
+  },
+  "2": {
+   "temperature": 0.0,
+   "max_tokens": 4,
+   "ignore_eos": true,
+   "stop": [],
+   "sampling_type": "GREEDY"
+  }
+ },
+ "native_finished_outputs": [
+  {
+   "seq_id": 1,
+   "prompt_token_ids": [
+    1,
+    20355,
+    915,
+    920,
+    17251,
+    7190,
+    297,
+    27091,
+    29889
+   ],
+   "token_ids": [
+    2,
+    29871,
+    13,
+    29966
+   ],
+   "text": ". \n<",
+   "finished": true,
+   "finish_reason": "length"
+  },
+  {
+   "seq_id": 2,
+   "prompt_token_ids": [
+    1,
+    12027,
+    7420,
+    2020,
+    2305,
+    817,
+    304,
+    8709,
+    29889
+   ],
+   "token_ids": [
+    2,
+    29871,
+    13,
+    29966
+   ],
+   "text": ". \n<",
+   "finished": true,
+   "finish_reason": "length"
+  },
+  {
+   "seq_id": 0,
+   "prompt_token_ids": [
+    1,
+    12027,
+    7420,
+    2020,
+    18577,
+    817,
+    6575,
+    4366,
+    29889
+   ],
+   "token_ids": [
+    2,
+    29871,
+    13,
+    29966
+   ],
+   "text": ". \n<",
+   "finished": true,
+   "finish_reason": "length"
+  }
+ ],
+ "nonempty_steps": 11,
+ "decisions": [
+  {
+   "step": 1,
+   "emitted": [
+    [
+     1,
+     8
+    ],
+    [
+     2,
+     8
+    ]
+   ],
+   "selected": [
+    "1",
+    "2"
+   ],
+   "omitted": [
+    "0"
+   ],
+   "plan": {
+    "0": [
+     0,
+     0,
+     0
+    ],
+    "1": [
+     8,
+     0,
+     0
+    ],
+    "2": [
+     8,
+     0,
+     0
+    ]
+   },
+   "sampler_outputs": [
+    [
+     1,
+     322
+    ],
+    [
+     2,
+     322
+    ]
+   ],
+   "free": {
+    "before": 15601,
+    "sched": 15599,
+    "after": 15599
+   },
+   "work": {
+    "before": 39,
+    "after": 23
+   },
+   "finished": []
+  },
+  {
+   "step": 2,
+   "emitted": [
+    [
+     0,
+     8
+    ],
+    [
+     2,
+     1
+    ]
+   ],
+   "selected": [
+    "0",
+    "2"
+   ],
+   "omitted": [
+    "1"
+   ],
+   "plan": {
+    "0": [
+     8,
+     0,
+     0
+    ],
+    "1": [
+     0,
+     0,
+     0
+    ],
+    "2": [
+     1,
+     0,
+     0
+    ]
+   },
+   "sampler_outputs": [
+    [
+     0,
+     304
+    ],
+    [
+     2,
+     2
+    ]
+   ],
+   "free": {
+    "before": 15599,
+    "sched": 15598,
+    "after": 15598
+   },
+   "work": {
+    "before": 23,
+    "after": 14
+   },
+   "finished": []
+  },
+  {
+   "step": 3,
+   "emitted": [
+    [
+     0,
+     1
+    ],
+    [
+     1,
+     1
+    ]
+   ],
+   "selected": [
+    "0",
+    "1"
+   ],
+   "omitted": [
+    "2"
+   ],
+   "plan": {
+    "0": [
+     1,
+     0,
+     0
+    ],
+    "1": [
+     1,
+     0,
+     0
+    ],
+    "2": [
+     0,
+     0,
+     0
+    ]
+   },
+   "sampler_outputs": [
+    [
+     0,
+     2
+    ],
+    [
+     1,
+     2
+    ]
+   ],
+   "free": {
+    "before": 15598,
+    "sched": 15598,
+    "after": 15598
+   },
+   "work": {
+    "before": 14,
+    "after": 12
+   },
+   "finished": []
+  },
+  {
+   "step": 4,
+   "emitted": [
+    [
+     1,
+     0
+    ],
+    [
+     2,
+     0
+    ]
+   ],
+   "selected": [
+    "1",
+    "2"
+   ],
+   "omitted": [
+    "0"
+   ],
+   "plan": {
+    "0": [
+     0,
+     0,
+     0
+    ],
+    "1": [
+     0,
+     1,
+     0
+    ],
+    "2": [
+     0,
+     1,
+     0
+    ]
+   },
+   "sampler_outputs": [
+    [
+     1,
+     2
+    ],
+    [
+     2,
+     2
+    ]
+   ],
+   "free": {
+    "before": 15598,
+    "sched": 15598,
+    "after": 15598
+   },
+   "work": {
+    "before": 12,
+    "after": 10
+   },
+   "finished": []
+  },
+  {
+   "step": 5,
+   "emitted": [
+    [
+     1,
+     0
+    ],
+    [
+     2,
+     0
+    ]
+   ],
+   "selected": [
+    "1",
+    "2"
+   ],
+   "omitted": [
+    "0"
+   ],
+   "plan": {
+    "0": [
+     0,
+     0,
+     0
+    ],
+    "1": [
+     0,
+     1,
+     0
+    ],
+    "2": [
+     0,
+     1,
+     0
+    ]
+   },
+   "sampler_outputs": [
+    [
+     1,
+     29871
+    ],
+    [
+     2,
+     29871
+    ]
+   ],
+   "free": {
+    "before": 15598,
+    "sched": 15598,
+    "after": 15598
+   },
+   "work": {
+    "before": 10,
+    "after": 8
+   },
+   "finished": []
+  },
+  {
+   "step": 6,
+   "emitted": [
+    [
+     1,
+     0
+    ],
+    [
+     2,
+     0
+    ]
+   ],
+   "selected": [
+    "1",
+    "2"
+   ],
+   "omitted": [
+    "0"
+   ],
+   "plan": {
+    "0": [
+     0,
+     0,
+     0
+    ],
+    "1": [
+     0,
+     1,
+     0
+    ],
+    "2": [
+     0,
+     1,
+     0
+    ]
+   },
+   "sampler_outputs": [
+    [
+     1,
+     13
+    ],
+    [
+     2,
+     13
+    ]
+   ],
+   "free": {
+    "before": 15598,
+    "sched": 15598,
+    "after": 15598
+   },
+   "work": {
+    "before": 8,
+    "after": 6
+   },
+   "finished": []
+  },
+  {
+   "step": 7,
+   "emitted": [
+    [
+     1,
+     0
+    ],
+    [
+     2,
+     0
+    ]
+   ],
+   "selected": [
+    "1",
+    "2"
+   ],
+   "omitted": [
+    "0"
+   ],
+   "plan": {
+    "0": [
+     0,
+     0,
+     0
+    ],
+    "1": [
+     0,
+     1,
+     0
+    ],
+    "2": [
+     0,
+     1,
+     0
+    ]
+   },
+   "sampler_outputs": [
+    [
+     1,
+     29966
+    ],
+    [
+     2,
+     29966
+    ]
+   ],
+   "free": {
+    "before": 15598,
+    "sched": 15598,
+    "after": 15600
+   },
+   "work": {
+    "before": 6,
+    "after": 4
+   },
+   "finished": [
+    "1",
+    "2"
+   ]
+  },
+  {
+   "step": 8,
+   "emitted": [
+    [
+     0,
+     0
+    ]
+   ],
+   "selected": [
+    "0"
+   ],
+   "omitted": [],
+   "plan": {
+    "0": [
+     0,
+     1,
+     0
+    ]
+   },
+   "sampler_outputs": [
+    [
+     0,
+     2
+    ]
+   ],
+   "free": {
+    "before": 15600,
+    "sched": 15600,
+    "after": 15600
+   },
+   "work": {
+    "before": 4,
+    "after": 3
+   },
+   "finished": []
+  },
+  {
+   "step": 9,
+   "emitted": [
+    [
+     0,
+     0
+    ]
+   ],
+   "selected": [
+    "0"
+   ],
+   "omitted": [],
+   "plan": {
+    "0": [
+     0,
+     1,
+     0
+    ]
+   },
+   "sampler_outputs": [
+    [
+     0,
+     29871
+    ]
+   ],
+   "free": {
+    "before": 15600,
+    "sched": 15600,
+    "after": 15600
+   },
+   "work": {
+    "before": 3,
+    "after": 2
+   },
+   "finished": []
+  },
+  {
+   "step": 10,
+   "emitted": [
+    [
+     0,
+     0
+    ]
+   ],
+   "selected": [
+    "0"
+   ],
+   "omitted": [],
+   "plan": {
+    "0": [
+     0,
+     1,
+     0
+    ]
+   },
+   "sampler_outputs": [
+    [
+     0,
+     13
+    ]
+   ],
+   "free": {
+    "before": 15600,
+    "sched": 15600,
+    "after": 15600
+   },
+   "work": {
+    "before": 2,
+    "after": 1
+   },
+   "finished": []
+  },
+  {
+   "step": 11,
+   "emitted": [
+    [
+     0,
+     0
+    ]
+   ],
+   "selected": [
+    "0"
+   ],
+   "omitted": [],
+   "plan": {
+    "0": [
+     0,
+     1,
+     0
+    ]
+   },
+   "sampler_outputs": [
+    [
+     0,
+     29966
+    ]
+   ],
+   "free": {
+    "before": 15600,
+    "sched": 15600,
+    "after": 15601
+   },
+   "work": {
+    "before": 1,
+    "after": 0
+   },
+   "finished": [
+    "0"
+   ]
+  }
+ ],
+ "final_state": {
+  "iteration_id": 10,
+  "num_running_batches": 0,
+  "num_pipeline_stages": 1,
+  "waiting": [],
+  "running": [],
+  "free_blocks": 15601,
+  "block_tables": {},
+  "engine_seq_ids": [],
+  "num_unfinished": 0,
+  "requests": {
+   "0": {
+    "seq_id": 0,
+    "status": "FINISHED_LENGTH_CAPPED",
+    "prompt_tokens_processed": 9,
+    "prompt_processing_finished": true,
+    "generated": 4,
+    "output_token_ids": [
+     2,
+     29871,
+     13,
+     29966
+    ],
+    "logical_blocks": 1,
+    "physical_blocks": 0,
+    "block_ids": null,
+    "is_finished": true
+   },
+   "1": {
+    "seq_id": 1,
+    "status": "FINISHED_LENGTH_CAPPED",
+    "prompt_tokens_processed": 9,
+    "prompt_processing_finished": true,
+    "generated": 4,
+    "output_token_ids": [
+     2,
+     29871,
+     13,
+     29966
+    ],
+    "logical_blocks": 1,
+    "physical_blocks": 0,
+    "block_ids": null,
+    "is_finished": true
+   },
+   "2": {
+    "seq_id": 2,
+    "status": "FINISHED_LENGTH_CAPPED",
+    "prompt_tokens_processed": 9,
+    "prompt_processing_finished": true,
+    "generated": 4,
+    "output_token_ids": [
+     2,
+     29871,
+     13,
+     29966
+    ],
+    "logical_blocks": 1,
+    "physical_blocks": 0,
+    "block_ids": null,
+    "is_finished": true
+   }
+  }
+ }
+}

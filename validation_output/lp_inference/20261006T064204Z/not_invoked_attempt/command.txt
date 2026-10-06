@@ -1,0 +1,6 @@
+date_utc=2026-10-06T06:48:38Z host=gpu049 SLURM_JOB_ID=65305994
+cwd=/home/atjoshi_umass_edu/LPServe
+PYTHONPATH=/home/atjoshi_umass_edu/LPServe:/modules/uri_apps/software/Python/3.10.8-GCCcore-12.2.0/easybuild/python
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+which_python=/home/atjoshi_umass_edu/LPServe/env/bin/python
+command=timeout 300s python -B /home/atjoshi_umass_edu/LPServe/validation_output/lp_inference/20261006T064204Z/validate_run.py --model-path /home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6 --prompts-file /home/atjoshi_umass_edu/LPServe/validation_output/lp_inference/20261006T064204Z/prompts.json --output-dir /home/atjoshi_umass_edu/LPServe/validation_output/lp_inference/20261006T064204Z/run --driver-dir /home/atjoshi_umass_edu/LPServe/validation_output/lp_inference/20261006T064204Z

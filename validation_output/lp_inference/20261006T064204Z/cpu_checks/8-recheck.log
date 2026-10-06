@@ -1,0 +1,40 @@
+recheck after docstring-only edit; date_utc=2026-10-06T06:47:56Z
+3a175845dc616bde4d570c575c44eaf8fdc7d52240166b6eb745ed5161e37080  scripts/run_lp_inference.py
+b3ffea07d3a2642c772776ae398a9a4a2fc88a2a89c0779dbaffee5835bf6819  tests/test_run_lp_inference.py
+41c588111b45e3fec662e612d5363b3b180f57dfb5e0ab0b980d29f7874d3720  validation_output/lp_inference/20261006T064204Z/validate_run.py
+$ python -B -m unittest discover -s tests -p 'test_run_lp_inference.py' -v
+test_complete_command_path (test_run_lp_inference.CommandTest) ... ok
+test_existing_summary_rejected (test_run_lp_inference.CommandTest) ... ok
+test_failure_writes_summary_and_no_results (test_run_lp_inference.CommandTest) ... ok
+test_invalid_input_rejected_before_engine (test_run_lp_inference.CommandTest) ... ok
+test_overlong_prompt_fails_before_any_request (test_run_lp_inference.CommandTest) ... ok
+test_length_bounds (test_run_lp_inference.EncodePromptsTest) ... ok
+test_rejects_zero_tokens (test_run_lp_inference.EncodePromptsTest) ... ok
+test_import_starts_nothing (test_run_lp_inference.ImportSafetyTest) ... ok
+test_accepts_one_to_three_strings_unchanged (test_run_lp_inference.ReadPromptsTest) ... ok
+test_rejects_malformed_input (test_run_lp_inference.ReadPromptsTest) ... ok
+test_all_requests_added_before_first_step (test_run_lp_inference.RunRequestsTest) ... ok
+test_completion_guard_stops_stalled_run (test_run_lp_inference.RunRequestsTest) ... ok
+test_failure_propagates_without_retry (test_run_lp_inference.RunRequestsTest) ... ok
+test_rejects_duplicate_finished_output (test_run_lp_inference.RunRequestsTest) ... ok
+test_rejects_engine_encoding_mismatch (test_run_lp_inference.RunRequestsTest) ... ok
+test_rejects_unknown_finished_output (test_run_lp_inference.RunRequestsTest) ... ok
+test_results_in_input_order_when_finished_out_of_order (test_run_lp_inference.RunRequestsTest) ... ok
+
+----------------------------------------------------------------------
+Ran 17 tests in 1.091s
+
+OK
+exit_status=0
+$ python -B -m py_compile scripts/run_lp_inference.py tests/test_run_lp_inference.py <driver>
+exit_status=0
+$ python -B scripts/run_lp_inference.py --help | tail -4
+preemption is unsupported by the LP executor and fails visibly. Exit status is
+0 on success; 1 on a run failure, including a prompt that fails the token
+checks (summary.json records it); and 2 on invalid arguments or a malformed
+prompts file (nothing is run or written).
+exit_status=0
+$ git diff --check
+exit_status=0
+$ rg -n -i phase <new python files>
+exit_status=1

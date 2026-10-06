@@ -1,0 +1,8 @@
+Shell-wrapper error, 2026-10-06T06:48:38Z: the GPU command was never executed.
+The "before" Ray-state block ended with `ls -d /tmp/ray`, which exited 2
+because /tmp/ray did not exist; the block was chained with `&&`, so the
+validation command was skipped. console.log's "exit_status=2" is that ls
+status. No Python process started, no run/ directory or driver artifacts were
+created, and no engine or Ray runtime was started. The pgrep lines in the
+ray_state files match only the wrapper shell's own command string, not Ray
+processes. Files kept unchanged for provenance.

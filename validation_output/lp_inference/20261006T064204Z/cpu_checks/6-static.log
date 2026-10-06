@@ -1,0 +1,6 @@
+$ python -B -m py_compile scripts/run_lp_inference.py tests/test_run_lp_inference.py
+exit_status=0
+$ git diff --check
+exit_status=0
+$ rg -n -i 'phase|\bstage [a-h]\b' scripts/run_lp_inference.py tests/test_run_lp_inference.py
+exit_status=1

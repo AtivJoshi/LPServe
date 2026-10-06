@@ -1,0 +1,14 @@
+$ python -B -m unittest discover -s tests -p 'test_lpserve_state_mapping.py' -v
+test_future_only_universe_is_mapping_failure (test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_iteration_snapshot_id_and_plan_identity_check (test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_malformed_arrival_time_is_rejected (test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_malformed_utilities_return_mapping_failure (test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_orphan_block_table_is_rejected (test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_snapshot_is_independent_of_later_utility_changes (test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_supported_mapping_and_nonmutation (test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.079s
+
+OK
+exit_status=0

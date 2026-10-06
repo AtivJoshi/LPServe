@@ -1,0 +1,29 @@
+cwd=/home/atjoshi_umass_edu/LPServe
+date_utc=2026-10-06T06:42:08Z
+hostname=gpu049
+SLURM_JOB_ID=65305994 SLURM_JOB_NODELIST=gpu049 SLURM_JOB_PARTITION=gpu-preempt
+CUDA_VISIBLE_DEVICES=0
+which_python=/home/atjoshi_umass_edu/LPServe/env/bin/python
+Python 3.10.8
+VIRTUAL_ENV=/home/atjoshi_umass_edu/LPServe/env
+PYTHONPATH=/home/atjoshi_umass_edu/LPServe:/modules/uri_apps/software/Python/3.10.8-GCCcore-12.2.0/easybuild/python
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+LOADEDMODULES=uri/main:ICU/75.1-GCCcore-13.3.0:nodejs/20.13.1-GCCcore-13.3.0:GCCcore/12.2.0:zlib/.1.2.12-GCCcore-12.2.0:binutils/.2.39-GCCcore-12.2.0:bzip2/.1.0.8-GCCcore-12.2.0:ncurses/.6.3-GCCcore-12.2.0:libreadline/.8.2-GCCcore-12.2.0:Tcl/.8.6.12-GCCcore-12.2.0:SQLite/.3.39.4-GCCcore-12.2.0:XZ/.5.2.7-GCCcore-12.2.0:GMP/.6.2.1-GCCcore-12.2.0:libffi/3.4.4-GCCcore-12.2.0:OpenSSL/1.1:Python/3.10.8-GCCcore-12.2.0:CUDA/12.1.1
+0, NVIDIA A16, GPU-07228a4a-f06f-c9af-92a0-ed30e030c387, 595.91.07, 15356 MiB, 0 MiB
+torch 2.3.0+cu121 cuda 12.1 transformers 4.57.6 ray 2.58.0
+git_branch=main
+git_head=82c019a626dad5faade1f6c8f50071678792a4eb
+git_status:
+?? scripts/run_lp_inference.py
+?? validation_output/lp_inference/20261006T064204Z/cpu_checks/environment.txt
+ignored in scope:
+!! tests/test_run_lp_inference.py
+sha256:
+447efb96323c13dd5b61ec3985069da0fc58ff7295aab5b3f9b5acbe4a77ef61  scripts/run_lp_inference.py
+b3ffea07d3a2642c772776ae398a9a4a2fc88a2a89c0779dbaffee5835bf6819  tests/test_run_lp_inference.py
+debfd4eca2225815d6c944b91d7c544b5af0e2fd8aaf4d5b645addd9cb2eb0c3  sarathi/core/scheduler/lp_scheduler.py
+616f18d57eb10a1aa8d9f54b049335ba4f9c31f1ccce64e82c2d42dda665cdf3  lp_relaxation_scheduler.py
+7d95bf62e477716ea622654a047594214b9c4083fdd0921c4d4c6ccb34ecd2a7  lpserve_state_mapping.py
+e7f9b7310ae24688e19244f2ae0872c102976af609d0a0ec48867371f3f28912  lpserve_plan_execution.py
+301f11f55ce19b08728df9f238b675916ee6d2c94373645dc72ccc348516f69c  sarathi/engine/base_llm_engine.py
+6069257709b2270844c6a7b2909461692396647211132307a94137aefa3bffb8  sarathi/config.py
