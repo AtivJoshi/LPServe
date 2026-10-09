@@ -1,28 +1,32 @@
-# Writing project instructions
+# LPServe mathematical writeup: editing instructions
 
-[GENERIC — KEEP] Read `WRITING_GUIDELINES.md` before drafting, editing, or reviewing; read `EDITING.md` for current assignments and accepted decisions. Explicit user instructions take precedence; explicit project settings override reusable defaults. Flag unresolved conflicts. These files govern writing tasks, not unrelated work.
+Read `WRITING_GUIDELINES.md` before drafting, editing, or reviewing; read `EDITING.md` for the current assignment and accepted decisions. Explicit user instructions take precedence. These files govern writing in `docs/math`, alongside the repository's `AGENTS.md` and `PROJECT_GUIDE.md`.
 
-[GENERIC — KEEP] To start a project: copy these three files, fill the settings below, and initialize `EDITING.md`. Bracketed placeholders are unset, not permissions; ask only when an unset choice blocks the assigned task. Keep reusable rules in the guidelines and evolving decisions in the editing record.
+## Project settings
 
-## Project settings [CUSTOMIZE]
+- **Entry point:** `docs/math/main-llm-serving.tex`; follow active TeX dependencies only as needed for the assigned passages. The mathematical source governs mathematical claims.
+- **Goal and scope:** make the mathematical and algorithmic exposition concise, terse, and easy to follow. Focus on `sec:general_formulations` and `sec:hierarchical_scheduling`. Minor edits elsewhere are allowed only to maintain consistency with edits in these sections; identify their purpose.
+- **Prose:** use simple, direct sentences and familiar words. Split long sentences with nested clauses; make the logical connections explicit. Keep technical terms when needed for precision and define them at first use. Prefer clarity over packing more information into fewer words.
+- **Current authorization:** customize these Markdown rules first. Do not read or edit TeX during this setup batch. Subsequent manuscript work follows the user's next assignment.
+- **Style benchmark:** the saved, pre-edit working-tree version of the two target sections, including the author's uncommitted changes. Preserve its mathematical register and useful terminology, but treat verbosity, repetition, and organization as candidates for improvement. Retain a pre-edit snapshot outside the tracked manuscript before the first TeX edit; do not use committed HEAD as a substitute for the author's current draft.
+- **Terminology benchmark:** existing definitions and notation in the active mathematical source. Preserve distinctions between formulations, relaxations, heuristics, algorithms, and guarantees. Flag undefined or inconsistent terms; do not invent a replacement conceptual framework.
+- **Protected meaning:** objectives, feasible sets, assumptions, variable domains, algorithm steps, guarantees, qualifications, citations, and dependencies. Editorial compression is allowed when it preserves these. Changes to mathematical meaning, deletion of a distinct idea, and major reorganization require an explicit accepted proposal. Preserve unrelated author changes and inactive/commented drafts unless assigned.
+- **Idea selection:** investigate the author's suspected redundancy and half-formed, unhelpful, or irrelevant ideas. Treat these as review questions, not established findings. For each proposed removal, explain what it contributes, whether another passage covers it, and what would be lost. Do not silently complete an unfinished idea or delete it because it is difficult to explain.
+- **Length / venue:** no numerical length or venue requirement supplied. Reduce repetition and unnecessary exposition; retain what a reader needs to reconstruct the mathematics and algorithm. Do not impose an arbitrary reduction target.
+- **Bibliography:** author-maintained `docs/math/references.bib`; reuse existing verified keys, preserve attribution, and flag unsupported claims. No bibliography or citation-infrastructure edits. Checksum the bibliography before and after TeX editing batches; refresh the baseline after author edits. No bibliography check is needed for Markdown-only setup.
+- **Review cadence:** small, coherent batches. Once manuscript editing is assigned, ordinary wording edits and removal of exact repetition may proceed within scope. Present a concrete proposal before changing meaning, deleting distinct ideas, introducing substantive terminology, changing labels, or making major moves. Batch related decisions; do not ask again for accepted changes.
+- **Source access:** consult implementation code only when the user asks or it is strictly necessary to settle an implementation-dependent claim. State the concrete need first and inspect only relevant sources. Do not broaden a mathematical editing task into an implementation audit or restrict the paper to the current implementation milestone.
+- **Authority:** `lp_scheduler_design.md` governs implementation requirements; the architecture audit is descriptive evidence; `project_status.md` is chronology. None overrides the mathematical source for mathematical meaning. Do not resolve OPEN decisions or bypass BLOCKERs implicitly. Flag consequential implementation-document follow-ups without editing those documents in this scope.
+- **Verification:** saved-source and diff checks are authorized. No compilation or rendered PDF review during Markdown setup. Before a later TeX batch, establish the appropriate build and output from the manuscript setup or author instructions; no build command is assumed here. A source review is not a compilation, proof, or executed algorithm validation.
+- **Records:** update `EDITING.md` after a completed coherent batch or explicit decision. Keep a current summary, deduplicate unresolved findings, and distinguish author reports, assistant findings, and accepted changes. Do not create duplicate logs or routine handoffs.
+- **Ownership / handoffs:** assistant owns the assigned Markdown batch; author owns the existing TeX changes. During subsequent editing, one writer per file; reread saved passages and preserve concurrent author work. No delegation, commits, pushes, or publication authorized.
 
-Replace placeholders; change defaults deliberately. Use `none` or `not applicable` where appropriate.
+## Project exceptions to reusable guidelines
 
-- Entry point / active source files: [paths]
-- Mode and scope: [editing / new drafting / read-only audit; allowed sections and substantive changes]
-- Style benchmark: [saved draft or reference path/version; for new drafting, reference or desired register]
-- Terminology benchmark: [saved draft/reference path/version, or approved definitions for new drafting]
-- Fixed decisions / protected material: [title, claims, sections, tables, figures, etc.; or none]
-- Length / venue requirements: [limit, excluded material, required main-text content; or none]
-- Bibliography policy: author-maintained; existing verified keys reusable; no bibliography edits. [Change if assistant edits are permitted; identify files.]
-- Bibliography integrity: checksum protected bibliography files before/after editing; refresh after author edits. [Change or disable if unnecessary.]
-- Review cadence: small batches; continue authorized work; seek approval for substantive changes, new labels, and major moves. [Change if each batch requires review.]
-- Build / PDF review: explicit permission required. [Change to authorized checks if desired.]
-- Build command / current output: [command and output path; or not applicable]
-- Records: update `EDITING.md` after each completed batch and explicit decision; deduplicate unresolved findings. [Change cadence if desired.]
-- Handoffs: none by default. [If enabled, specify coordinator, read-only/write assignments, and brief/result location; one writer per file.]
-- Project exceptions to guidelines: none. [Name the rule, exception, and rationale if needed.]
+- **Style preservation:** concision and simple prose take precedence over matching existing verbosity, difficult wording, or sentence structure. Preserve meaning and effective prose; rewrite an unwieldy passage when local trimming is insufficient.
+- **Smallest effective revision:** assess repetition across both target sections, not only sentence by sentence. Keep one complete account of a shared idea and use a short pointer where needed. Preserve distinct assumptions, purposes, or algorithmic differences; propose substantial moves before applying them.
+- **Scope of review:** examine formulation-to-algorithm consistency within the target sections and their necessary dependencies. Flag encountered issues elsewhere; do not imply a whole-paper audit.
 
-## First task [CUSTOMIZE]
+## First manuscript task
 
-Set the assignment and file owner in `EDITING.md`. Request broader consistency audits explicitly at chosen milestones; ordinary editing flags encountered issues without implying whole-document coverage.
+After this setup and the user's next assignment, read the two target sections and necessary context. Identify repeated ideas, distinct contributions, and incomplete arguments before proposing consolidation or removal. Do not assume either section's role or any idea's relevance before inspecting the source. Record only actionable findings and decisions in `EDITING.md`.

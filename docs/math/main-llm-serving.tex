@@ -1279,7 +1279,7 @@ Let $t_i^{\text{arrive}}$ be the original arrival timestamp of a request. Native
 
 Because the scale of $\alpha$ and $\gamma$ vastly dominate any feasible shadow price $\boldsymbol{\lambda}^*$, the slow path becomes functionally irrelevant—the magnitude of the physical resource penalties is mathematically dwarfed by the utility weights. If one executes Algorithm~\ref{alg:fast_path_main} with these specific degenerate weights, the $\mathcal{O}(N \log N)$ sort strictly separates the queues: all Decode actions cluster at the absolute top of the list, followed directly by the oldest valid Prefill actions. The Preempt state is entirely avoided unless mathematically forced by an imminent Out-Of-Memory error (where $\lambda_M^* \to \infty$). Thus, the exact operational execution of `vllm.core.scheduler` is rigorously reproduced by this generalized greedy Lagrangian heuristic.
 
-\section{Future Work: Future Work: Predictive Formulations and Generalizations}
+\section{Future Work: Predictive Formulations and Generalizations}
 \label{sec:future_work}
 
 The mathematical formulations and hierarchical solvers discussed in the preceding sections are inherently myopic; they optimize execution strictly for the immediate next iteration step $t$. However, real-world LLM inference is governed by highly stochastic, heavy-tailed token generation lengths and delayed physical constraints (such as cluster-level memory fragmentation or hardware thermal limits). By optimizing purely for the current step, a myopic scheduler cannot anticipate future out-of-memory events or hardware saturation. Consequently, our future work seeks to generalize the myopic ILP into a Receding Horizon, or Model Predictive Control (MPC), formulation to capture these temporal dynamics.

@@ -1,9 +1,10 @@
 # Writing guidelines
 
-[GENERIC — KEEP] All rules below are reusable. Apply them when relevant to the document and task. Put project settings and explicit exceptions in `AGENTS.md`, not here.
+All rules below are reusable. Apply them when relevant to the document and task. Put project settings and explicit exceptions in `AGENTS.md`, not here.
 
 ## Voice and terminology
 
+- Use simple, direct prose. Prefer familiar words and concrete verbs. Split long sentences with nested clauses into shorter sentences, usually with one main claim each; keep conditions and logical connections explicit. Retain necessary technical terms and define them at first use. Do not compress prose so much that the reader must reconstruct the argument.
 - Use the designated saved draft as the style benchmark; match nearby active prose and section-specific variation before applying generic preferences. Compare against the pre-edit benchmark to prevent gradual style drift.
 - Make the smallest effective revision; retain working sentences, technical density, sentence structure, academic register, caution, first-person framing, and useful transitions. Avoid promotional language, invented stylistic labels, stock transitions, and forced uniformity.
 - Preserve established technical vocabulary and meaning in the same context. A word appearing elsewhere in the benchmark does not justify using it for a different concept. Neutral paraphrases and ordinary grammar changes may proceed.
@@ -26,6 +27,9 @@
 
 - Preserve useful local structure rather than imposing a template: introduction—problem, limitations, method, contributions; background—concepts before notation, definitions near equations; method—sequential exposition, formal statements, assumptions, interpretations; experiments—questions, setup, comparisons, measured observations; related work—cited distinctions by approach; conclusion—qualified synthesis without new claims.
 - Reduce repetition first. Keep the central argument, essential assumptions, method, strongest evidence, and necessary limitations understandable from the main text.
+- Compare repeated ideas by their assumptions, mathematical content, algorithm steps, and purpose. Consolidate equivalent accounts; retain differences that affect the method or interpretation. Give each idea one complete explanation and use short cross-references for later uses.
+- State definitions and assumptions before the formulation or procedure that needs them. Explain the role of an equation or algorithm without paraphrasing every symbol or step. Retain interpretation that adds information.
+- Separate core arguments from speculative or incomplete extensions. Propose removal or deferral when a passage has no clear role; explain what would be lost rather than silently repairing or discarding the idea.
 - Propose substantial restructuring or appendix moves before making them unless already authorized. Preserve definitions, citations, labels, and pointers; check for existing appendix coverage before duplicating detail.
 - Respect required main-text material. Do not manipulate venue formatting or anonymity settings to meet a page limit.
 
