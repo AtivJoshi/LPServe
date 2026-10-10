@@ -100,9 +100,9 @@ def _config(**overrides):
     return LPSchedulerConfig(**values)
 
 
-def _cache_config():
+def _cache_config(num_gpu_blocks=NUM_GPU_BLOCKS):
     cache_config = CacheConfig(block_size=BLOCK_SIZE, gpu_memory_utilization=0.9)
-    cache_config.num_gpu_blocks = NUM_GPU_BLOCKS
+    cache_config.num_gpu_blocks = num_gpu_blocks
     return cache_config
 
 
@@ -123,9 +123,10 @@ class _Harness:
     scheduler's sequence objects, and a worker sequence manager holding
     separate copies, replayed in the engine's single-stage order."""
 
-    def __init__(self, **config_overrides):
+    def __init__(self, num_gpu_blocks=NUM_GPU_BLOCKS, **config_overrides):
+        # One cache configuration builds both the central and worker pools.
         self.scheduler_config = _config(**config_overrides)
-        cache_config = _cache_config()
+        cache_config = _cache_config(num_gpu_blocks)
         self.scheduler = SchedulerRegistry.get(
             SchedulerType.LP, self.scheduler_config, cache_config,
         )
@@ -776,6 +777,201 @@ class LivePipelineTest(unittest.TestCase):
         self.assertEqual(scheduler._iteration_id, iteration + 1)
         self.assertEqual(_fingerprint(scheduler), before)
         self.assertEqual(harness.worker_tables(), {})
+
+
+class LivePreemptionTest(unittest.TestCase):
+    # Case-specific provisional inputs: a 4-block pool in both managers,
+    # one resident, one scheduled action, no planning reserve, decode
+    # utility 10, prefill-token utility 1, and preemption penalty 1. The
+    # harness gives request A (ID 0) prompt tokens 0..4 and B (ID 1) 0..11.
+    POOL = 4
+    CONFIG = dict(
+        max_num_seqs=1, b_max=4, c_max=4, s_max=1, memory_reserve=0,
+        decode_utility=10.0, prefill_token_utility=1.0, preemption_penalty=1.0,
+    )
+    PROMPT_A = list(range(5))
+    PROMPT_B = list(range(12))
+
+    _assert_synchronous_pipeline = LivePipelineTest._assert_synchronous_pipeline
+
+    def _add(self, harness, seq_id, prompt, arrival_time):
+        seq = harness.add(seq_id, len(prompt), arrival_time, max_tokens=1)
+        self.assertEqual(seq.prompt_token_ids, prompt)
+        return seq
+
+    def _assert_managers_agree(self, harness):
+        # Allocated sets, per-request counts, and free counts agree; physical
+        # IDs can differ after inherited set-order frees and are not compared.
+        central, worker = harness.central_tables(), harness.worker_tables()
+        self.assertEqual(
+            {k: len(v) for k, v in central.items()},
+            {k: len(v) for k, v in worker.items()},
+        )
+        for manager in (harness.scheduler.block_manager,
+                        harness.worker_seqs.block_manager):
+            allocated = [b.block_number for t in manager.block_tables.values()
+                         for b in t]
+            free = [b.block_number for b in manager.gpu_allocator.free_blocks]
+            self.assertEqual(sorted(allocated + free), list(range(self.POOL)))
+            self.assertEqual(
+                manager.get_num_free_gpu_blocks(),
+                self.POOL - sum(len(v) for v in central.values()),
+            )
+
+    def test_solver_selected_preemption_is_recomputed_to_completion(self):
+        harness = _Harness(num_gpu_blocks=self.POOL, **self.CONFIG)
+        scheduler = harness.scheduler
+        worker_manager = harness.worker_seqs.block_manager
+        a = self._add(harness, 0, self.PROMPT_A, arrival_time=1.0)
+        worker_a = harness.worker_seqs.get_seq(0)
+
+        # A alone: a 4-token admission allocating its full 2-block context.
+        self.assertEqual(_emitted(harness.step(1.0)), [(0, 4)])
+        for copy_ in (a, worker_a):
+            self.assertEqual(copy_.get_status(), SequenceStatus.PAUSED)
+            self.assertEqual(copy_.get_num_prompt_tokens_processed(), 4)
+            self.assertEqual(copy_.get_output_len(), 0)
+        self.assertEqual(len(harness.central_tables()[0]), 2)
+        self._assert_managers_agree(harness)
+        self.assertEqual(scheduler.block_manager.get_num_free_gpu_blocks(), 2)
+        self.assertEqual(worker_manager.get_num_free_gpu_blocks(), 2)
+
+        b = self._add(harness, 1, self.PROMPT_B, arrival_time=2.0)
+        worker_b = harness.worker_seqs.get_seq(1)
+
+        # Boundary: the real mapper, solver, and extraction select A's
+        # preemption and B's 4-token admission.
+        harness.clock.reset_mock()
+        with _Spies() as spies:
+            outputs = harness.schedule(2.0)
+        self._assert_synchronous_pipeline(harness, spies, 2.0, outputs)
+        snapshot, result = spies.calls[1][4], spies.calls[2][2]
+        problem = snapshot.lp_problem
+        self.assertEqual(problem.legal_preemption_ids, frozenset({"0"}))
+        self.assertEqual((problem.m_free, problem.w), (2, 0))
+        requests = {r.request_id: r for r in problem.requests}
+        self.assertEqual(requests["0"].preemption_recovery, 2)
+        self.assertEqual(requests["1"].prefill_fixed_charge, 3)
+        relaxed = {d.request_id: d for d in result.relaxed.decisions}
+        tol = NUMERICAL_POLICY.feasibility_tol
+        for rid, values in (("0", (0, 0, 0, 0.5)), ("1", (4, 0, 1, 0))):
+            d = relaxed[rid]
+            for got, want in zip((d.x, d.y, d.prefill_indicator, d.z), values):
+                self.assertAlmostEqual(got, want, delta=tol)
+        self.assertAlmostEqual(
+            result.relaxed.normalized_objective, 3.5, delta=tol,
+        )
+        self.assertEqual(
+            [(d.request_id, d.prefill_tokens, d.decode, d.preempt)
+             for d in result.plan.decisions],
+            [("0", 0, 0, 1), ("1", 4, 0, 0)],
+        )
+        self.assertEqual(result.plan.dominant_preemption_ids, ("0",))
+        self.assertEqual(result.plan.safety_preemption_ids, ())
+        self.assertEqual(outputs.preempted_seq_ids, [0])
+        self.assertEqual(_emitted(outputs), [(1, 4)])
+
+        # Central execution: A freed and returned to waiting with its state
+        # untouched until replay; B admitted with its full 3-block context.
+        self.assertEqual(scheduler.waiting, [a])
+        self.assertEqual(scheduler.running, [b])
+        self.assertEqual(a.get_status(), SequenceStatus.PAUSED)
+        self.assertEqual(a.get_num_prompt_tokens_processed(), 4)
+        self.assertEqual(set(harness.central_tables()), {1})
+        self.assertEqual(len(harness.central_tables()[1]), 3)
+        self.assertEqual(scheduler.block_manager.get_num_free_gpu_blocks(), 1)
+        self.assertEqual(set(harness.worker_tables()), {0})
+
+        # Worker replay frees A's local blocks before allocating B's.
+        worker_calls = []
+        real_free, real_allocate = worker_manager.free, worker_manager.allocate
+
+        def free(seq):
+            worker_calls.append(("free", seq.seq_id))
+            real_free(seq)
+
+        def allocate(seq):
+            worker_calls.append(("allocate", seq.seq_id))
+            real_allocate(seq)
+
+        with mock.patch.object(worker_manager, "free", free), \
+                mock.patch.object(worker_manager, "allocate", allocate):
+            harness.replay(outputs)
+        self.assertEqual(worker_calls, [("free", 0), ("allocate", 1)])
+
+        # Central and worker replay reset A for recomputation from prompt
+        # token zero; no generated tokens existed, so the prompt is intact.
+        for copy_ in (a, worker_a):
+            self.assertEqual(copy_.get_status(), SequenceStatus.WAITING)
+            self.assertEqual(copy_.get_num_prompt_tokens_processed(), 0)
+            self.assertFalse(copy_.prompt_processing_finished)
+            self.assertEqual(copy_.prompt_token_ids, self.PROMPT_A)
+            self.assertEqual(copy_.get_output_len(), 0)
+        for copy_ in (b, worker_b):
+            self.assertEqual(copy_.get_num_prompt_tokens_processed(), 4)
+        self.assertEqual(scheduler.waiting, [a])
+        self.assertEqual(scheduler.running, [b])
+        self._assert_managers_agree(harness)
+
+        # Remaining decisions until completion, bounded by remaining work.
+        a_snapshots, a_admission, finished_order = [], None, []
+        seqs = {0: a, 1: b}
+        step_limit = 19  # B: 8 prompt + 1 decode; A: 5 prompt + 1 decode
+        for step in range(step_limit + 1):
+            self.assertLess(step, step_limit, "termination guard reached")
+            if not scheduler.has_unfinished_seqs():
+                break
+            now = 3.0 + step
+            waiting_before = list(scheduler.waiting)
+            processed_before = {
+                k: s.get_num_prompt_tokens_processed() for k, s in seqs.items()
+            }
+            harness.clock.reset_mock()
+            with _Spies() as spies:
+                outputs = harness.schedule(now)
+            self._assert_synchronous_pipeline(harness, spies, now, outputs)
+            for r in spies.calls[1][4].requests:
+                if r.raw_seq_id == 0:
+                    a_snapshots.append(r)
+            self.assertEqual(outputs.preempted_seq_ids, [])
+            (emitted,) = _emitted(outputs)
+            if emitted[0] == 0 and a in waiting_before:
+                a_admission = (emitted[1], processed_before[0],
+                               len(harness.central_tables()[0]))
+            harness.replay(outputs)
+            self._assert_managers_agree(harness)
+            for seq_id, seq in seqs.items():
+                if seq.is_finished() and seq_id not in finished_order:
+                    finished_order.append(seq_id)
+
+        # Later mapping saw A waiting and unallocated, with its full-context
+        # admission charge.
+        self.assertEqual(a_snapshots[0].ownership, lsm.OWNERSHIP_WAITING)
+        self.assertEqual(a_snapshots[0].physical_block_count, 0)
+        self.assertEqual(a_snapshots[0].prompt_tokens_processed, 0)
+        self.assertEqual(a_snapshots[0].prefill_fixed_charge, 2)
+        # Readmission from prompt token zero with the full 2-block context.
+        self.assertEqual(a_admission, (4, 0, 2))
+        self.assertEqual(finished_order, [1, 0])
+        for seq, prompt in ((a, self.PROMPT_A), (b, self.PROMPT_B)):
+            self.assertEqual(seq.get_status(), SequenceStatus.FINISHED_LENGTH_CAPPED)
+            self.assertEqual(seq.get_output_token_ids(), [SAMPLED_TOKEN])
+            self.assertEqual(seq.prompt_token_ids, prompt)
+        self.assertEqual((scheduler.waiting, scheduler.running), ([], []))
+        self.assertEqual(
+            (harness.engine_seqs.seq_map, harness.worker_seqs.seq_map), ({}, {}),
+        )
+        self.assertEqual((harness.central_tables(), harness.worker_tables()), ({}, {}))
+        for manager in (scheduler.block_manager, worker_manager):
+            self.assertEqual(manager.get_num_free_gpu_blocks(), self.POOL)
+
+        # One ordinary idle call.
+        before = _fingerprint(scheduler)
+        with _Spies() as spies:
+            outputs = harness.schedule(100.0)
+        self.assertTrue(outputs.has_no_output())
+        self.assertEqual(spies.calls, [])
+        self.assertEqual(_fingerprint(scheduler), before)
 
 
 class PreMutationFailureTest(unittest.TestCase):

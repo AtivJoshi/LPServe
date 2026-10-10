@@ -1,0 +1,2444 @@
+[
+ {
+  "event": "submit",
+  "seq_id": 0,
+  "prompt_token_ids": [
+   0,
+   1,
+   2,
+   3,
+   4
+  ],
+  "arrival_time": 1.0,
+  "max_tokens": 1,
+  "ignore_eos": true
+ },
+ {
+  "step": 0,
+  "now": 1.0,
+  "iteration_id": 0,
+  "before": {
+   "waiting": [
+    0
+   ],
+   "running": [],
+   "central_tables": {},
+   "worker_tables": {},
+   "central_free": 4,
+   "worker_free": 4,
+   "central_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    }
+   },
+   "worker_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    }
+   }
+  },
+  "calls": [
+   "utilities",
+   "map",
+   "solve",
+   "execute"
+  ],
+  "snapshot": {
+   "snapshot_id": "0",
+   "m_free": 4,
+   "w": 0,
+   "b_max": 4,
+   "c_max": 4,
+   "s_max": 1,
+   "legal_preemption_ids": [],
+   "requests": [
+    {
+     "request_id": "0",
+     "ownership": "waiting",
+     "status": "WAITING",
+     "prompt_len": 5,
+     "prompt_tokens_processed": 0,
+     "physical_block_count": 0,
+     "prefill_fixed_charge": 2,
+     "decode_charge": 0,
+     "preemption_eligible": false,
+     "preemption_recovery": 0
+    }
+   ]
+  },
+  "relaxed": {
+   "decisions": [
+    {
+     "request_id": "0",
+     "x": 4.0,
+     "y": 0.0,
+     "prefill_indicator": 1.0,
+     "z": 0.0
+    }
+   ],
+   "normalized_objective": 4.0,
+   "projection_count": 0
+  },
+  "plan": {
+   "decisions": [
+    {
+     "request_id": "0",
+     "prefill_tokens": 4,
+     "decode": 0,
+     "preempt": 0
+    }
+   ],
+   "dominant_preemption_ids": [],
+   "safety_preemption_ids": [],
+   "fractional_request_count": 0,
+   "objective": 4.0
+  },
+  "outputs": {
+   "preempted_seq_ids": [],
+   "ignored_seq_ids": [],
+   "scheduled": [
+    [
+     0,
+     4
+    ]
+   ]
+  },
+  "after_execution": {
+   "waiting": [],
+   "running": [
+    0
+   ],
+   "central_tables": {
+    "0": [
+     3,
+     2
+    ]
+   },
+   "worker_tables": {},
+   "central_free": 2,
+   "worker_free": 4,
+   "central_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    }
+   },
+   "worker_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    }
+   }
+  },
+  "worker_block_calls_during_replay": [
+   [
+    "allocate",
+    0
+   ]
+  ],
+  "after_replay": {
+   "waiting": [],
+   "running": [
+    0
+   ],
+   "central_tables": {
+    "0": [
+     3,
+     2
+    ]
+   },
+   "worker_tables": {
+    "0": [
+     3,
+     2
+    ]
+   },
+   "central_free": 2,
+   "worker_free": 2,
+   "central_seqs": {
+    "0": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 4,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    }
+   },
+   "worker_seqs": {
+    "0": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 4,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    }
+   }
+  }
+ },
+ {
+  "event": "submit",
+  "seq_id": 1,
+  "prompt_token_ids": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11
+  ],
+  "arrival_time": 2.0,
+  "max_tokens": 1,
+  "ignore_eos": true
+ },
+ {
+  "step": 1,
+  "now": 2.0,
+  "iteration_id": 1,
+  "before": {
+   "waiting": [
+    1
+   ],
+   "running": [
+    0
+   ],
+   "central_tables": {
+    "0": [
+     3,
+     2
+    ]
+   },
+   "worker_tables": {
+    "0": [
+     3,
+     2
+    ]
+   },
+   "central_free": 2,
+   "worker_free": 2,
+   "central_seqs": {
+    "0": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 4,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    },
+    "1": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 3
+    }
+   },
+   "worker_seqs": {
+    "0": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 4,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    },
+    "1": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 3
+    }
+   }
+  },
+  "calls": [
+   "utilities",
+   "map",
+   "solve",
+   "execute"
+  ],
+  "snapshot": {
+   "snapshot_id": "1",
+   "m_free": 2,
+   "w": 0,
+   "b_max": 4,
+   "c_max": 4,
+   "s_max": 1,
+   "legal_preemption_ids": [
+    "0"
+   ],
+   "requests": [
+    {
+     "request_id": "0",
+     "ownership": "running",
+     "status": "PAUSED",
+     "prompt_len": 5,
+     "prompt_tokens_processed": 4,
+     "physical_block_count": 2,
+     "prefill_fixed_charge": 0,
+     "decode_charge": 0,
+     "preemption_eligible": true,
+     "preemption_recovery": 2
+    },
+    {
+     "request_id": "1",
+     "ownership": "waiting",
+     "status": "WAITING",
+     "prompt_len": 12,
+     "prompt_tokens_processed": 0,
+     "physical_block_count": 0,
+     "prefill_fixed_charge": 3,
+     "decode_charge": 0,
+     "preemption_eligible": false,
+     "preemption_recovery": 0
+    }
+   ]
+  },
+  "relaxed": {
+   "decisions": [
+    {
+     "request_id": "0",
+     "x": -0.0,
+     "y": 0.0,
+     "prefill_indicator": -0.0,
+     "z": 0.5
+    },
+    {
+     "request_id": "1",
+     "x": 4.0,
+     "y": 0.0,
+     "prefill_indicator": 1.0,
+     "z": 0.0
+    }
+   ],
+   "normalized_objective": 3.5,
+   "projection_count": 0
+  },
+  "plan": {
+   "decisions": [
+    {
+     "request_id": "0",
+     "prefill_tokens": 0,
+     "decode": 0,
+     "preempt": 1
+    },
+    {
+     "request_id": "1",
+     "prefill_tokens": 4,
+     "decode": 0,
+     "preempt": 0
+    }
+   ],
+   "dominant_preemption_ids": [
+    "0"
+   ],
+   "safety_preemption_ids": [],
+   "fractional_request_count": 1,
+   "objective": 3.0
+  },
+  "outputs": {
+   "preempted_seq_ids": [
+    0
+   ],
+   "ignored_seq_ids": [],
+   "scheduled": [
+    [
+     1,
+     4
+    ]
+   ]
+  },
+  "after_execution": {
+   "waiting": [
+    0
+   ],
+   "running": [
+    1
+   ],
+   "central_tables": {
+    "1": [
+     3,
+     2,
+     1
+    ]
+   },
+   "worker_tables": {
+    "0": [
+     3,
+     2
+    ]
+   },
+   "central_free": 1,
+   "worker_free": 2,
+   "central_seqs": {
+    "0": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 4,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    },
+    "1": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 3
+    }
+   },
+   "worker_seqs": {
+    "0": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 4,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    },
+    "1": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 3
+    }
+   }
+  },
+  "worker_block_calls_during_replay": [
+   [
+    "free",
+    0
+   ],
+   [
+    "allocate",
+    1
+   ]
+  ],
+  "after_replay": {
+   "waiting": [
+    0
+   ],
+   "running": [
+    1
+   ],
+   "central_tables": {
+    "1": [
+     3,
+     2,
+     1
+    ]
+   },
+   "worker_tables": {
+    "1": [
+     2,
+     3,
+     1
+    ]
+   },
+   "central_free": 1,
+   "worker_free": 1,
+   "central_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    },
+    "1": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "prompt_tokens_processed": 4,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 3
+    }
+   },
+   "worker_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    },
+    "1": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "prompt_tokens_processed": 4,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 3
+    }
+   }
+  }
+ },
+ {
+  "step": 2,
+  "now": 3.0,
+  "iteration_id": 2,
+  "before": {
+   "waiting": [
+    0
+   ],
+   "running": [
+    1
+   ],
+   "central_tables": {
+    "1": [
+     3,
+     2,
+     1
+    ]
+   },
+   "worker_tables": {
+    "1": [
+     2,
+     3,
+     1
+    ]
+   },
+   "central_free": 1,
+   "worker_free": 1,
+   "central_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    },
+    "1": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "prompt_tokens_processed": 4,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 3
+    }
+   },
+   "worker_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    },
+    "1": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "prompt_tokens_processed": 4,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 3
+    }
+   }
+  },
+  "calls": [
+   "utilities",
+   "map",
+   "solve",
+   "execute"
+  ],
+  "snapshot": {
+   "snapshot_id": "2",
+   "m_free": 1,
+   "w": 0,
+   "b_max": 4,
+   "c_max": 4,
+   "s_max": 1,
+   "legal_preemption_ids": [
+    "1"
+   ],
+   "requests": [
+    {
+     "request_id": "0",
+     "ownership": "waiting",
+     "status": "WAITING",
+     "prompt_len": 5,
+     "prompt_tokens_processed": 0,
+     "physical_block_count": 0,
+     "prefill_fixed_charge": 2,
+     "decode_charge": 0,
+     "preemption_eligible": false,
+     "preemption_recovery": 0
+    },
+    {
+     "request_id": "1",
+     "ownership": "running",
+     "status": "PAUSED",
+     "prompt_len": 12,
+     "prompt_tokens_processed": 4,
+     "physical_block_count": 3,
+     "prefill_fixed_charge": 0,
+     "decode_charge": 0,
+     "preemption_eligible": true,
+     "preemption_recovery": 3
+    }
+   ]
+  },
+  "relaxed": {
+   "decisions": [
+    {
+     "request_id": "0",
+     "x": 0.0,
+     "y": 0.0,
+     "prefill_indicator": 0.0,
+     "z": 0.0
+    },
+    {
+     "request_id": "1",
+     "x": 4.0,
+     "y": 0.0,
+     "prefill_indicator": 1.0,
+     "z": 0.0
+    }
+   ],
+   "normalized_objective": 4.0,
+   "projection_count": 0
+  },
+  "plan": {
+   "decisions": [
+    {
+     "request_id": "0",
+     "prefill_tokens": 0,
+     "decode": 0,
+     "preempt": 0
+    },
+    {
+     "request_id": "1",
+     "prefill_tokens": 4,
+     "decode": 0,
+     "preempt": 0
+    }
+   ],
+   "dominant_preemption_ids": [],
+   "safety_preemption_ids": [],
+   "fractional_request_count": 0,
+   "objective": 4.0
+  },
+  "outputs": {
+   "preempted_seq_ids": [],
+   "ignored_seq_ids": [],
+   "scheduled": [
+    [
+     1,
+     4
+    ]
+   ]
+  },
+  "after_execution": {
+   "waiting": [
+    0
+   ],
+   "running": [
+    1
+   ],
+   "central_tables": {
+    "1": [
+     3,
+     2,
+     1
+    ]
+   },
+   "worker_tables": {
+    "1": [
+     2,
+     3,
+     1
+    ]
+   },
+   "central_free": 1,
+   "worker_free": 1,
+   "central_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    },
+    "1": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "prompt_tokens_processed": 4,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 3
+    }
+   },
+   "worker_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    },
+    "1": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "prompt_tokens_processed": 4,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 3
+    }
+   }
+  },
+  "worker_block_calls_during_replay": [],
+  "after_replay": {
+   "waiting": [
+    0
+   ],
+   "running": [
+    1
+   ],
+   "central_tables": {
+    "1": [
+     3,
+     2,
+     1
+    ]
+   },
+   "worker_tables": {
+    "1": [
+     2,
+     3,
+     1
+    ]
+   },
+   "central_free": 1,
+   "worker_free": 1,
+   "central_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    },
+    "1": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "prompt_tokens_processed": 8,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 3
+    }
+   },
+   "worker_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    },
+    "1": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "prompt_tokens_processed": 8,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 3
+    }
+   }
+  }
+ },
+ {
+  "step": 3,
+  "now": 4.0,
+  "iteration_id": 3,
+  "before": {
+   "waiting": [
+    0
+   ],
+   "running": [
+    1
+   ],
+   "central_tables": {
+    "1": [
+     3,
+     2,
+     1
+    ]
+   },
+   "worker_tables": {
+    "1": [
+     2,
+     3,
+     1
+    ]
+   },
+   "central_free": 1,
+   "worker_free": 1,
+   "central_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    },
+    "1": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "prompt_tokens_processed": 8,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 3
+    }
+   },
+   "worker_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    },
+    "1": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "prompt_tokens_processed": 8,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 3
+    }
+   }
+  },
+  "calls": [
+   "utilities",
+   "map",
+   "solve",
+   "execute"
+  ],
+  "snapshot": {
+   "snapshot_id": "3",
+   "m_free": 1,
+   "w": 0,
+   "b_max": 4,
+   "c_max": 4,
+   "s_max": 1,
+   "legal_preemption_ids": [
+    "1"
+   ],
+   "requests": [
+    {
+     "request_id": "0",
+     "ownership": "waiting",
+     "status": "WAITING",
+     "prompt_len": 5,
+     "prompt_tokens_processed": 0,
+     "physical_block_count": 0,
+     "prefill_fixed_charge": 2,
+     "decode_charge": 0,
+     "preemption_eligible": false,
+     "preemption_recovery": 0
+    },
+    {
+     "request_id": "1",
+     "ownership": "running",
+     "status": "PAUSED",
+     "prompt_len": 12,
+     "prompt_tokens_processed": 8,
+     "physical_block_count": 3,
+     "prefill_fixed_charge": 0,
+     "decode_charge": 0,
+     "preemption_eligible": true,
+     "preemption_recovery": 3
+    }
+   ]
+  },
+  "relaxed": {
+   "decisions": [
+    {
+     "request_id": "0",
+     "x": 0.0,
+     "y": 0.0,
+     "prefill_indicator": 0.0,
+     "z": 0.0
+    },
+    {
+     "request_id": "1",
+     "x": 4.0,
+     "y": 0.0,
+     "prefill_indicator": 1.0,
+     "z": 0.0
+    }
+   ],
+   "normalized_objective": 4.0,
+   "projection_count": 0
+  },
+  "plan": {
+   "decisions": [
+    {
+     "request_id": "0",
+     "prefill_tokens": 0,
+     "decode": 0,
+     "preempt": 0
+    },
+    {
+     "request_id": "1",
+     "prefill_tokens": 4,
+     "decode": 0,
+     "preempt": 0
+    }
+   ],
+   "dominant_preemption_ids": [],
+   "safety_preemption_ids": [],
+   "fractional_request_count": 0,
+   "objective": 4.0
+  },
+  "outputs": {
+   "preempted_seq_ids": [],
+   "ignored_seq_ids": [],
+   "scheduled": [
+    [
+     1,
+     4
+    ]
+   ]
+  },
+  "after_execution": {
+   "waiting": [
+    0
+   ],
+   "running": [
+    1
+   ],
+   "central_tables": {
+    "1": [
+     3,
+     2,
+     1
+    ]
+   },
+   "worker_tables": {
+    "1": [
+     2,
+     3,
+     1
+    ]
+   },
+   "central_free": 1,
+   "worker_free": 1,
+   "central_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    },
+    "1": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "prompt_tokens_processed": 8,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 3
+    }
+   },
+   "worker_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    },
+    "1": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "prompt_tokens_processed": 8,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 3
+    }
+   }
+  },
+  "worker_block_calls_during_replay": [],
+  "after_replay": {
+   "waiting": [
+    0
+   ],
+   "running": [
+    1
+   ],
+   "central_tables": {
+    "1": [
+     3,
+     2,
+     1
+    ]
+   },
+   "worker_tables": {
+    "1": [
+     2,
+     3,
+     1
+    ]
+   },
+   "central_free": 1,
+   "worker_free": 1,
+   "central_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    },
+    "1": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "prompt_tokens_processed": 12,
+     "prompt_processing_finished": true,
+     "output_token_ids": [],
+     "logical_blocks": 3
+    }
+   },
+   "worker_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    },
+    "1": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "prompt_tokens_processed": 12,
+     "prompt_processing_finished": true,
+     "output_token_ids": [],
+     "logical_blocks": 3
+    }
+   }
+  }
+ },
+ {
+  "step": 4,
+  "now": 5.0,
+  "iteration_id": 4,
+  "before": {
+   "waiting": [
+    0
+   ],
+   "running": [
+    1
+   ],
+   "central_tables": {
+    "1": [
+     3,
+     2,
+     1
+    ]
+   },
+   "worker_tables": {
+    "1": [
+     2,
+     3,
+     1
+    ]
+   },
+   "central_free": 1,
+   "worker_free": 1,
+   "central_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    },
+    "1": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "prompt_tokens_processed": 12,
+     "prompt_processing_finished": true,
+     "output_token_ids": [],
+     "logical_blocks": 3
+    }
+   },
+   "worker_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    },
+    "1": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "prompt_tokens_processed": 12,
+     "prompt_processing_finished": true,
+     "output_token_ids": [],
+     "logical_blocks": 3
+    }
+   }
+  },
+  "calls": [
+   "utilities",
+   "map",
+   "solve",
+   "execute"
+  ],
+  "snapshot": {
+   "snapshot_id": "4",
+   "m_free": 1,
+   "w": 0,
+   "b_max": 4,
+   "c_max": 4,
+   "s_max": 1,
+   "legal_preemption_ids": [
+    "1"
+   ],
+   "requests": [
+    {
+     "request_id": "0",
+     "ownership": "waiting",
+     "status": "WAITING",
+     "prompt_len": 5,
+     "prompt_tokens_processed": 0,
+     "physical_block_count": 0,
+     "prefill_fixed_charge": 2,
+     "decode_charge": 0,
+     "preemption_eligible": false,
+     "preemption_recovery": 0
+    },
+    {
+     "request_id": "1",
+     "ownership": "running",
+     "status": "PAUSED",
+     "prompt_len": 12,
+     "prompt_tokens_processed": 12,
+     "physical_block_count": 3,
+     "prefill_fixed_charge": 0,
+     "decode_charge": 1,
+     "preemption_eligible": true,
+     "preemption_recovery": 3
+    }
+   ]
+  },
+  "relaxed": {
+   "decisions": [
+    {
+     "request_id": "0",
+     "x": -0.0,
+     "y": 0.0,
+     "prefill_indicator": -0.0,
+     "z": 0.0
+    },
+    {
+     "request_id": "1",
+     "x": -0.0,
+     "y": 1.0,
+     "prefill_indicator": 0.0,
+     "z": -0.0
+    }
+   ],
+   "normalized_objective": 10.0,
+   "projection_count": 0
+  },
+  "plan": {
+   "decisions": [
+    {
+     "request_id": "0",
+     "prefill_tokens": 0,
+     "decode": 0,
+     "preempt": 0
+    },
+    {
+     "request_id": "1",
+     "prefill_tokens": 0,
+     "decode": 1,
+     "preempt": 0
+    }
+   ],
+   "dominant_preemption_ids": [],
+   "safety_preemption_ids": [],
+   "fractional_request_count": 0,
+   "objective": 10.0
+  },
+  "outputs": {
+   "preempted_seq_ids": [],
+   "ignored_seq_ids": [],
+   "scheduled": [
+    [
+     1,
+     0
+    ]
+   ]
+  },
+  "after_execution": {
+   "waiting": [
+    0
+   ],
+   "running": [
+    1
+   ],
+   "central_tables": {
+    "1": [
+     3,
+     2,
+     1
+    ]
+   },
+   "worker_tables": {
+    "1": [
+     2,
+     3,
+     1
+    ]
+   },
+   "central_free": 1,
+   "worker_free": 1,
+   "central_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    },
+    "1": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "prompt_tokens_processed": 12,
+     "prompt_processing_finished": true,
+     "output_token_ids": [],
+     "logical_blocks": 3
+    }
+   },
+   "worker_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    },
+    "1": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "prompt_tokens_processed": 12,
+     "prompt_processing_finished": true,
+     "output_token_ids": [],
+     "logical_blocks": 3
+    }
+   }
+  },
+  "worker_block_calls_during_replay": [
+   [
+    "free",
+    1
+   ]
+  ],
+  "after_replay": {
+   "waiting": [
+    0
+   ],
+   "running": [],
+   "central_tables": {},
+   "worker_tables": {},
+   "central_free": 4,
+   "worker_free": 4,
+   "central_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    }
+   },
+   "worker_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    }
+   }
+  }
+ },
+ {
+  "step": 5,
+  "now": 6.0,
+  "iteration_id": 5,
+  "before": {
+   "waiting": [
+    0
+   ],
+   "running": [],
+   "central_tables": {},
+   "worker_tables": {},
+   "central_free": 4,
+   "worker_free": 4,
+   "central_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    }
+   },
+   "worker_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    }
+   }
+  },
+  "calls": [
+   "utilities",
+   "map",
+   "solve",
+   "execute"
+  ],
+  "snapshot": {
+   "snapshot_id": "5",
+   "m_free": 4,
+   "w": 0,
+   "b_max": 4,
+   "c_max": 4,
+   "s_max": 1,
+   "legal_preemption_ids": [],
+   "requests": [
+    {
+     "request_id": "0",
+     "ownership": "waiting",
+     "status": "WAITING",
+     "prompt_len": 5,
+     "prompt_tokens_processed": 0,
+     "physical_block_count": 0,
+     "prefill_fixed_charge": 2,
+     "decode_charge": 0,
+     "preemption_eligible": false,
+     "preemption_recovery": 0
+    }
+   ]
+  },
+  "relaxed": {
+   "decisions": [
+    {
+     "request_id": "0",
+     "x": 4.0,
+     "y": 0.0,
+     "prefill_indicator": 1.0,
+     "z": 0.0
+    }
+   ],
+   "normalized_objective": 4.0,
+   "projection_count": 0
+  },
+  "plan": {
+   "decisions": [
+    {
+     "request_id": "0",
+     "prefill_tokens": 4,
+     "decode": 0,
+     "preempt": 0
+    }
+   ],
+   "dominant_preemption_ids": [],
+   "safety_preemption_ids": [],
+   "fractional_request_count": 0,
+   "objective": 4.0
+  },
+  "outputs": {
+   "preempted_seq_ids": [],
+   "ignored_seq_ids": [],
+   "scheduled": [
+    [
+     0,
+     4
+    ]
+   ]
+  },
+  "after_execution": {
+   "waiting": [],
+   "running": [
+    0
+   ],
+   "central_tables": {
+    "0": [
+     1,
+     3
+    ]
+   },
+   "worker_tables": {},
+   "central_free": 2,
+   "worker_free": 4,
+   "central_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    }
+   },
+   "worker_seqs": {
+    "0": {
+     "status": "WAITING",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 0,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    }
+   }
+  },
+  "worker_block_calls_during_replay": [
+   [
+    "allocate",
+    0
+   ]
+  ],
+  "after_replay": {
+   "waiting": [],
+   "running": [
+    0
+   ],
+   "central_tables": {
+    "0": [
+     1,
+     3
+    ]
+   },
+   "worker_tables": {
+    "0": [
+     2,
+     3
+    ]
+   },
+   "central_free": 2,
+   "worker_free": 2,
+   "central_seqs": {
+    "0": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 4,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    }
+   },
+   "worker_seqs": {
+    "0": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 4,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    }
+   }
+  }
+ },
+ {
+  "step": 6,
+  "now": 7.0,
+  "iteration_id": 6,
+  "before": {
+   "waiting": [],
+   "running": [
+    0
+   ],
+   "central_tables": {
+    "0": [
+     1,
+     3
+    ]
+   },
+   "worker_tables": {
+    "0": [
+     2,
+     3
+    ]
+   },
+   "central_free": 2,
+   "worker_free": 2,
+   "central_seqs": {
+    "0": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 4,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    }
+   },
+   "worker_seqs": {
+    "0": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 4,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    }
+   }
+  },
+  "calls": [
+   "utilities",
+   "map",
+   "solve",
+   "execute"
+  ],
+  "snapshot": {
+   "snapshot_id": "6",
+   "m_free": 2,
+   "w": 0,
+   "b_max": 4,
+   "c_max": 4,
+   "s_max": 1,
+   "legal_preemption_ids": [
+    "0"
+   ],
+   "requests": [
+    {
+     "request_id": "0",
+     "ownership": "running",
+     "status": "PAUSED",
+     "prompt_len": 5,
+     "prompt_tokens_processed": 4,
+     "physical_block_count": 2,
+     "prefill_fixed_charge": 0,
+     "decode_charge": 0,
+     "preemption_eligible": true,
+     "preemption_recovery": 2
+    }
+   ]
+  },
+  "relaxed": {
+   "decisions": [
+    {
+     "request_id": "0",
+     "x": 1.0,
+     "y": 0.0,
+     "prefill_indicator": 1.0,
+     "z": 0.0
+    }
+   ],
+   "normalized_objective": 1.0,
+   "projection_count": 0
+  },
+  "plan": {
+   "decisions": [
+    {
+     "request_id": "0",
+     "prefill_tokens": 1,
+     "decode": 0,
+     "preempt": 0
+    }
+   ],
+   "dominant_preemption_ids": [],
+   "safety_preemption_ids": [],
+   "fractional_request_count": 0,
+   "objective": 1.0
+  },
+  "outputs": {
+   "preempted_seq_ids": [],
+   "ignored_seq_ids": [],
+   "scheduled": [
+    [
+     0,
+     1
+    ]
+   ]
+  },
+  "after_execution": {
+   "waiting": [],
+   "running": [
+    0
+   ],
+   "central_tables": {
+    "0": [
+     1,
+     3
+    ]
+   },
+   "worker_tables": {
+    "0": [
+     2,
+     3
+    ]
+   },
+   "central_free": 2,
+   "worker_free": 2,
+   "central_seqs": {
+    "0": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 4,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    }
+   },
+   "worker_seqs": {
+    "0": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 4,
+     "prompt_processing_finished": false,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    }
+   }
+  },
+  "worker_block_calls_during_replay": [],
+  "after_replay": {
+   "waiting": [],
+   "running": [
+    0
+   ],
+   "central_tables": {
+    "0": [
+     1,
+     3
+    ]
+   },
+   "worker_tables": {
+    "0": [
+     2,
+     3
+    ]
+   },
+   "central_free": 2,
+   "worker_free": 2,
+   "central_seqs": {
+    "0": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 5,
+     "prompt_processing_finished": true,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    }
+   },
+   "worker_seqs": {
+    "0": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 5,
+     "prompt_processing_finished": true,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    }
+   }
+  }
+ },
+ {
+  "step": 7,
+  "now": 8.0,
+  "iteration_id": 7,
+  "before": {
+   "waiting": [],
+   "running": [
+    0
+   ],
+   "central_tables": {
+    "0": [
+     1,
+     3
+    ]
+   },
+   "worker_tables": {
+    "0": [
+     2,
+     3
+    ]
+   },
+   "central_free": 2,
+   "worker_free": 2,
+   "central_seqs": {
+    "0": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 5,
+     "prompt_processing_finished": true,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    }
+   },
+   "worker_seqs": {
+    "0": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 5,
+     "prompt_processing_finished": true,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    }
+   }
+  },
+  "calls": [
+   "utilities",
+   "map",
+   "solve",
+   "execute"
+  ],
+  "snapshot": {
+   "snapshot_id": "7",
+   "m_free": 2,
+   "w": 0,
+   "b_max": 4,
+   "c_max": 4,
+   "s_max": 1,
+   "legal_preemption_ids": [
+    "0"
+   ],
+   "requests": [
+    {
+     "request_id": "0",
+     "ownership": "running",
+     "status": "PAUSED",
+     "prompt_len": 5,
+     "prompt_tokens_processed": 5,
+     "physical_block_count": 2,
+     "prefill_fixed_charge": 0,
+     "decode_charge": 1,
+     "preemption_eligible": true,
+     "preemption_recovery": 2
+    }
+   ]
+  },
+  "relaxed": {
+   "decisions": [
+    {
+     "request_id": "0",
+     "x": -0.0,
+     "y": 1.0,
+     "prefill_indicator": 0.0,
+     "z": 0.0
+    }
+   ],
+   "normalized_objective": 10.0,
+   "projection_count": 0
+  },
+  "plan": {
+   "decisions": [
+    {
+     "request_id": "0",
+     "prefill_tokens": 0,
+     "decode": 1,
+     "preempt": 0
+    }
+   ],
+   "dominant_preemption_ids": [],
+   "safety_preemption_ids": [],
+   "fractional_request_count": 0,
+   "objective": 10.0
+  },
+  "outputs": {
+   "preempted_seq_ids": [],
+   "ignored_seq_ids": [],
+   "scheduled": [
+    [
+     0,
+     0
+    ]
+   ]
+  },
+  "after_execution": {
+   "waiting": [],
+   "running": [
+    0
+   ],
+   "central_tables": {
+    "0": [
+     1,
+     3
+    ]
+   },
+   "worker_tables": {
+    "0": [
+     2,
+     3
+    ]
+   },
+   "central_free": 2,
+   "worker_free": 2,
+   "central_seqs": {
+    "0": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 5,
+     "prompt_processing_finished": true,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    }
+   },
+   "worker_seqs": {
+    "0": {
+     "status": "PAUSED",
+     "prompt_token_ids": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     "prompt_tokens_processed": 5,
+     "prompt_processing_finished": true,
+     "output_token_ids": [],
+     "logical_blocks": 2
+    }
+   }
+  },
+  "worker_block_calls_during_replay": [
+   [
+    "free",
+    0
+   ]
+  ],
+  "after_replay": {
+   "waiting": [],
+   "running": [],
+   "central_tables": {},
+   "worker_tables": {},
+   "central_free": 4,
+   "worker_free": 4,
+   "central_seqs": {},
+   "worker_seqs": {}
+  }
+ },
+ {
+  "event": "idle",
+  "now": 100.0,
+  "iteration_id": 8,
+  "calls": [],
+  "has_no_output": true,
+  "after": {
+   "waiting": [],
+   "running": [],
+   "central_tables": {},
+   "worker_tables": {},
+   "central_free": 4,
+   "worker_free": 4,
+   "central_seqs": {},
+   "worker_seqs": {}
+  }
+ }
+]

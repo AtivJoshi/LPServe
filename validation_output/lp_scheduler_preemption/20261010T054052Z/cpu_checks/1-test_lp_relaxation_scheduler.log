@@ -1,0 +1,12 @@
+$ python -B -m unittest discover -s tests -p 'test_lp_relaxation_scheduler.py' -v
+test_fractional_prefill (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_main_smoke (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_mixed_case_and_tied_extraction (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_visible_infeasibility (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_zero_zero_execution_tie_is_no_action (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.011s
+
+OK
+exit_status=0

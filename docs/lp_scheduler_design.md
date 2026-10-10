@@ -1061,7 +1061,7 @@ Prevalidation reduces risk, not non-atomicity.
 | Unallocated prefill | Waiting/arrived/unfinished/prompt-incomplete; full allocation and resident slot; move ownership once, allocate full logical context, emit `SequenceScheduleMetadata` with positive `prompt_chunk_len=\hat x_i`. | Admission cost is independent of chunk length. |
 | Resident prefill | Verify allocation, $a_i^P=0$, positive remainder, and ownership; no new admission; emit positive `prompt_chunk_len` metadata. | Verify zero allocation in integration tests. |
 | Decode | Verify prompt completion, resident allocation/status, and append feasibility; append in metadata order; emit `prompt_chunk_len=0`. | $c_i^D$ is the pre-action gap. |
-| Preemption | Remove resident owner once, free central blocks, native-return to waiting, emit `preempted_seq_ids`, replay `reset_for_recompute()`/local frees. | MVP compatibility mode: use the native path without repairing its inherited limitations; reject a control-only plan before mutation. |
+| Preemption | Remove resident owner once, free central blocks, native-return to waiting, emit `preempted_seq_ids`, replay `reset_for_recompute()`/local frees. | MVP compatibility mode: use the native path without repairing its inherited limitations; reject a control-only plan before mutation. Executed since 2026-10-10 for the subset below (native preemption execution). |
 | Do nothing | No request, queue, block, or batch-state mutation and no execution entry. | With no running request and an empty or not-yet-arrived waiting head, the live scheduler returns an ordinary empty `SchedulerOutputs` before mapping (D-18). The inherited scheduler iteration counter still advances. With arrived work present, a plan with no prefill or decode action fails `no_progress` before execution mutation. |
 
 Central and workers use one replay-compatible deterministic order: validated
@@ -1152,14 +1152,73 @@ exceptions propagate under D-20. The executor does not change
 `_iteration_id` or `num_running_batches`, and leaves status transitions and
 prompt progress to replay and completion.
 
-Runtime preemption and prompt-ignore controls are not executed by this
-executor. A plan that combines execution actions with any selected preemption
-fails precommit validation as `unsupported_preemption`; an all-zero or
+*Superseded 2026-10-10 by native preemption execution below:* the initial
+subset did not execute runtime preemption and rejected execution plus any
+selected preemption as `unsupported_preemption`.
+
+Prompt-ignore controls are not executed by this executor. An all-zero or
 preempt-only plan fails as `no_progress`. Selected preemptions are never
-removed and no action is forced. Successful output carries empty ignored and
-preempted lists. This deferral does not change mathematical eligibility, the
-legal-preemption set, or extraction. Live `LPScheduler` integration, ordinary
-idle handling, and D-17 exception conversion are not part of the executor.
+removed and no action is forced. Successful output carries an empty ignored
+list. Live `LPScheduler` integration, ordinary idle handling, and D-17
+exception conversion are not part of the executor.
+
+**Native preemption execution (approved 2026-10-10):** In the same
+single-stage synchronous subset (one pipeline stage, zero batches in flight,
+no overlapping state-changing calls), the executor runs every selected,
+legally eligible resident preemption in a plan that also selects at least
+one prefill or decode. It neither caps the number of victims nor requires a
+victim to have generated no tokens; eligibility is the mapper's legal
+preemption set (§4.4) and is not narrowed. The `unsupported_preemption`
+category no longer exists.
+
+- *Victim and control order.* All victims are gathered from the plan,
+  whether extraction marked them dominant, safety, or integral. The executor
+  calls the inherited `_preempt` once per victim in ascending `order_key`,
+  before any scheduled action, and emits `preempted_seq_ids` in that order.
+  `_preempt` inserts each victim at index 0 of `waiting`, so several victims
+  end at the waiting front in reverse call order. This effect is approved;
+  native insertion is not changed and no queue reordering is added.
+- *Prevalidation.* Before the first mutation, each victim must be a mapped
+  resident in the legal preemption set and must currently be owned by
+  `running`, `PAUSED` (native executing), arrived, unfinished, allocated,
+  and prompt-consistent. Its recovery is the length of its current physical
+  block table, which the supported non-sharing manager frees in full. A
+  table that repeats a block, or shares one with another selected victim,
+  fails as `preemption_recovery`; recovery is never taken from the planning
+  coefficient alone. Each victim credits its recovery to the temporary
+  free-block count and removes one resident slot. Every scheduled action is
+  then checked in execution order against that account: admissions consume
+  their full initial allocation and a resident slot and must leave the
+  native watermark; decodes need a free block even at gap zero and consume
+  only the actual gap; resident prefills keep their allocation. A later
+  infeasible action rejects the whole plan before even the first victim is
+  freed. Rejections follow D-17 unchanged.
+- *Mutation and replay.* Each victim is removed from `running` once, then
+  `_preempt` frees its central blocks and inserts it into `waiting`. The
+  executor does not reset the sequence. Prefills and then decodes follow
+  (D-21). Central replay of the preempted ID calls `reset_for_recompute()`
+  before scheduled actions; worker replay resets its separate copy and frees
+  its local blocks before the scheduled allocation/append. A later mapping
+  sees the victim as waiting and unallocated, so normal admission allocates
+  its full current context and recomputes from prompt token zero.
+- *Final checks.* Besides the resident-limit and scheduled-entry checks,
+  emitted `preempted_seq_ids` must equal the validated victim order and the
+  ignored list must be empty. After the first mutation, D-20 applies.
+- *Evidence boundary.* Focused executor tests cover single and multiple
+  victims, including a victim with generated tokens, through hand-constructed
+  validated plans. The live CPU case
+  (`docs/handoffs/lp_scheduler_preemption_handoff.md`) has the real solver
+  select the preemption of a partial-prefill resident that has generated no
+  tokens, then replays, recomputes, and completes it. Interruption after
+  generation is allowed at runtime but not yet validated; §§16.1–16.2 apply
+  to it unchanged.
+- *Scoped inputs.* The live CPU case uses block size 4, a 4-block pool in
+  central and worker managers, `max_model_len=32`, resident limit 1,
+  `b_max=4`, `c_max=4`, `s_max=1`, reserve 0, `conservative_one_block_v1`,
+  uniform prefill-token utility 1, decode utility 10, preemption penalty 1,
+  and `lp_relaxation_mvp_v1`. These are provisional test inputs. D-03 (the
+  preemption penalty policy) remains OPEN; runtime preemption runs only with
+  an explicitly configured penalty.
 
 Ordinary future-only or completely empty scheduling is decided by the
 live `LPScheduler` before the mapper is invoked. It follows the inherited
@@ -1209,9 +1268,10 @@ and `LPSchedulingError`.
   reserve 1, `conservative_one_block_v1`, uniform utilities
   $\alpha=\beta=\gamma=1$, and the accepted numerical policy (§§10.1, 11.2).
   These are provisional plumbing inputs only; D-01–D-07, D-09, and D-10 remain
-  OPEN. A positive penalty does not prevent a selected preemption, which the
-  executor still rejects; resident and native memory gates may reject a
-  mathematically valid plan.
+  OPEN. A positive penalty does not prevent a selected preemption; the
+  executor originally rejected it and, since 2026-10-10, executes it under
+  native preemption execution above. Resident and native memory gates may
+  reject a mathematically valid plan.
 - *Utilities.* For a non-idle decision the scheduler builds
   `Mapping[int, RequestUtility]` with the configured uniform triple for every
   owned request with `arrival_time <= now` that is not finished. There is no
@@ -1446,6 +1506,17 @@ decision with an unselected resident, real mapping, mathematical, physical
 (resident capacity), and `no_progress` failures raised as `LPSchedulingError`,
 the unsupported-entry guard, and a post-mutation failure that propagates.
 
+Native preemption traceability (2026-10-10):
+`tests/test_lpserve_plan_execution.py` covers recovery before the admission
+it enables, multiple victims in ascending call/control order with reversed
+waiting-front order, zero-mutation rejection of a later victim, of malformed
+recovery, and of an admission that fails after full recovery, control-only
+`no_progress` with no `_preempt` call, and an exception after a native
+preemption. `tests/test_lp_scheduler.py`
+(`LivePreemptionTest.test_solver_selected_preemption_is_recomputed_to_completion`)
+covers the solver-selected live case through central/worker replay,
+recomputation, completion, and idle.
+
 Add direct focused regressions only when a currently supported action breaks.
 Preemption, mixed batches, decode marginal-block variants, worker
 block-table equality, and ownership corner cases are not mandatory initial
@@ -1617,7 +1688,7 @@ generation quality and changes no mathematical, execution, or failure contract.
 | D-18 | **RESOLVED for the single-stage MVP** — ordinary future-only or completely empty scheduling is handled by the live `LPScheduler` before mapper invocation: when `running` is empty and `waiting` is empty or its head has `arrival_time > now`, the scheduler returns an ordinary empty `SchedulerOutputs` without mapping, LP construction, solving, extraction, precommit validation, or execution. This inherits the audited schedulers' waiting-order and future-request-validity assumptions and adds no separate validation subsystem. It also inherits `BaseScheduler.schedule()` bookkeeping: `_iteration_id` advances and supplies the output ID, while waiting/running ownership, sequence status and progress, block state, and `num_running_batches` remain unchanged. The mapper accepts only a nonempty arrived universe; an empty arrived universe reaching direct mapping is a `MappingFailure`. Future requests may still be filtered from a mixed nonempty snapshot. If the arrived universe is nonempty and a successfully validated plan contains no positive prefill or decode action, including an all-zero or preempt-only plan, precommit validation returns `no_progress` before execution mutation and the top-level scheduler applies D-17. No retry, forced action, alternate policy, or mathematical-layer change is added. | §§12.1, 13, 14.2, 15.4; D-20 covers failures after execution mutation |
 | D-19 | **RESOLVED for the single-stage MVP; simplification approved 2026-10-04** — the same engine receives no overlapping state-changing public calls; mapping begins with one pipeline stage and zero running batches; and mapping through execution is synchronous within one scheduler decision call. This contract supplies state stability. The snapshot ID (the scheduler iteration number, §9.2) associates the problem and plan but is not a lock or proof of unchanged state. Phase F checks problem/plan identity and fully validates the complete plan against current state immediately before mutation, including combined native memory feasibility in execution order. It does not separately compare live fields with the earlier snapshot or rebuild the mapper for comparison. Identity mismatch or failed prevalidation is a zero-mutation precommit failure followed by the D-17 fail-stop response. The separate comparison's detection of unexpected contract-violating state changes is relinquished. No new lock, version, reservation, or layer-local retry subsystem is required. Pipeline mode and concurrent public calls remain unsupported. | §§12.2, 12.6, 13, 14.2–14.3; focused tests §§15.3–15.4; D-24 remains OPEN |
 | D-20 | **RESOLVED for the single-stage MVP** — Phase F fully prevalidates before mutation and then uses native LPServe operations. Any exception after the first mutation propagates and terminates the run; potentially divergent scheduler, engine, sequence-manager, and worker state is not reused. The MVP adds no rollback, retry, alternate-policy fallback, partial output, recovery, or transaction mechanism. Known control-only output shapes, including preempt-only plans, are rejected before mutation under D-17 rather than sent through this destructive path. | §§13, 14.4, 16.3, 16.5; focused tests §15.4; D-24 remains OPEN |
-| D-21 | **RESOLVED for the single-stage MVP (approved 2026-10-05)** — execute and emit all selected prefills first, then all selected decodes, each ascending by existing `order_key`; central native operations and emitted metadata share this order. Built as a separate ordered action list; the accepted plan, its selected actions, and chunk sizes are unchanged. Rationale: matches prompt-first physical input packing and gives a deterministic within-group order. Inherited mixed-batch/sampler limitations remain under §16.4 and D-25. | §13; focused test `tests/test_lpserve_plan_execution.py` (`test_mixed_output_is_prompt_first_in_native_execution_order`) |
+| D-21 | **RESOLVED for the single-stage MVP (approved 2026-10-05)** — execute and emit all selected prefills first, then all selected decodes, each ascending by existing `order_key`; central native operations and emitted metadata share this order. Built as a separate ordered action list; the accepted plan, its selected actions, and chunk sizes are unchanged. Rationale: matches prompt-first physical input packing and gives a deterministic within-group order. Inherited mixed-batch/sampler limitations remain under §16.4 and D-25. *Extended 2026-10-10:* all selected victims are preempted before any scheduled action, ascending by `order_key`, and `preempted_seq_ids` uses that order; native front insertion leaves them in `waiting` in reverse call order (§13, native preemption execution). | §13; focused test `tests/test_lpserve_plan_execution.py` (`test_mixed_output_is_prompt_first_in_native_execution_order`) |
 | D-25 | **RESOLVED** — MVP compatibility mode reuses existing LPServe/SLAI behavior, including native recomputation preemption, without repairing inherited framework defects. Material inherited limitations are documented; only issues that block the selected MVP path require action. | §§2.4, 4.4, 13, 16 |
 
 D-13 provides no basic/extreme-point or fractional-count guarantee; its
@@ -1634,7 +1705,7 @@ candidate is a hidden default.
 |---|---|---|---|
 | D-01 | Decode utility $\alpha_i(t)$ | Responsiveness, age, fairness, SLO urgency, or another documented objective | Before end-to-end policy behavior is evaluated |
 | D-02 | Prefill utility $\beta_i(t)$ | Progress, age, fairness, SLO urgency, or another documented objective | Before end-to-end policy behavior is evaluated |
-| D-03 | Preemption penalty $\gamma_i(t)$ | Explicit restart/recomputation penalty policy | Before runtime preemption is enabled |
+| D-03 | Preemption penalty $\gamma_i(t)$ | Explicit restart/recomputation penalty policy | Before runtime preemption is enabled. Runtime preemption was enabled on 2026-10-10 (§13) with $\gamma$ only as an explicit scoped provisional input (uniform 1 in the CPU evidence); the policy remains OPEN and must be resolved before preemption behavior is evaluated as policy |
 | D-04 | Utility domains and scaling | No canonical normalization in sources | Before solver tests using final utilities |
 | D-05 | $B_{\max}$ binding | Explicit combined token budget; Sarathi/SLAI-like fields are candidates | Before Phase E completion |
 | D-06 | $C_{\max}$ binding | Fixed chunk, dynamic chunk, or explicit new configuration | Before Phase E completion |

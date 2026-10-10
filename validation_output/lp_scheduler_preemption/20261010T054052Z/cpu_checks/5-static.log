@@ -1,0 +1,10 @@
+$ python -B -m py_compile lpserve_plan_execution.py tests/test_lpserve_plan_execution.py tests/test_lp_scheduler.py
+exit_status=0
+$ python -B -m py_compile validation_output/lp_scheduler_preemption/20261010T054052Z/trace_live_preemption.py
+exit_status=0
+$ git diff --check -- lpserve_plan_execution.py tests/test_lpserve_plan_execution.py tests/test_lp_scheduler.py docs/lp_scheduler_design.md
+exit_status=0
+$ git diff -U0 HEAD -- lpserve_plan_execution.py tests/test_lpserve_plan_execution.py tests/test_lp_scheduler.py | grep -E '^\+' | grep -niE 'phase|\b(stage|step) [A-H]\b'   # added Python lines; expect no match (exit 1)
+exit_status=1
+$ grep -niE 'phase' validation_output/lp_scheduler_preemption/20261010T054052Z/trace_live_preemption.py   # expect no match (exit 1)
+exit_status=1

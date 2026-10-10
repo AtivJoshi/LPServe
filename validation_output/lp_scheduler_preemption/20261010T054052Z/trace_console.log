@@ -1,0 +1,4 @@
+$ python -B validation_output/lp_scheduler_preemption/20261010T054052Z/trace_live_preemption.py validation_output/lp_scheduler_preemption/20261010T054052Z
+INFO 10-10 05:52:58 metrics_store.py:72] MetricsStore disabled
+{"checks": {"boundary_prediction": true, "boundary_extraction": true, "worker_free_before_allocate": true, "central_reset_for_recompute": true, "all_finished_and_drained": true, "final_idle_no_pipeline_calls": true}, "passed": true, "scheduled_by_step": [[[0, 4]], [[1, 4]], [[1, 4]], [[1, 4]], [[1, 0]], [[0, 4]], [[0, 1]], [[0, 0]]], "preempted_by_step": [[], [0], [], [], [], [], [], []]}
+exit_status=0

@@ -1,0 +1,54 @@
+2026-10-10T05:50:52Z
+$ hostname --fqdn
+gpu052.unity.rc.umass.edu
+SLURM_JOB_ID=65493676
+CUDA_VISIBLE_DEVICES=0
+$ module -t list
+uri/main
+ICU/75.1-GCCcore-13.3.0
+nodejs/20.13.1-GCCcore-13.3.0
+GCCcore/12.2.0
+binutils/.2.39-GCCcore-12.2.0 <H>
+bzip2/.1.0.8-GCCcore-12.2.0 <H>
+zlib/.1.2.12-GCCcore-12.2.0 <H>
+libreadline/.8.2-GCCcore-12.2.0 <H>
+ncurses/.6.3-GCCcore-12.2.0 <H>
+Tcl/.8.6.12-GCCcore-12.2.0 <H>
+SQLite/.3.39.4-GCCcore-12.2.0 <H>
+XZ/.5.2.7-GCCcore-12.2.0 <H>
+GMP/.6.2.1-GCCcore-12.2.0 <H>
+libffi/3.4.4-GCCcore-12.2.0
+OpenSSL/1.1
+CUDA/12.1.1
+Python/3.10.8-GCCcore-12.2.0
+$ git branch --show-current
+main
+$ git rev-parse HEAD
+d7e0c7d5d6f883b2fecd88455bcee594a411d8d1
+$ git status --short --untracked-files=all
+ M docs/lp_scheduler_design.md
+ M lpserve_plan_execution.py
+ M tests/test_lp_scheduler.py
+ M tests/test_lpserve_plan_execution.py
+?? validation_output/lp_scheduler_preemption/20261010T054052Z/cpu_checks/environment.txt
+?? validation_output/lp_scheduler_preemption/20261010T054052Z/trace_live_preemption.py
+$ python -c ...versions
+/home/atjoshi_umass_edu/LPServe/env/bin/python
+3.10.8 (main, Oct 23 2023, 13:48:55) [GCC 12.2.0]
+numpy 2.2.6
+scipy 1.15.3
+torch 2.3.0+cu121
+PYTHONPATH=/home/atjoshi_umass_edu/LPServe:/modules/uri_apps/software/Python/3.10.8-GCCcore-12.2.0/easybuild/python
+$ sha256sum (tested files)
+b396e7f529c59527b2174536cc3f924b2faf4adf030de3aec2cc9e7355f0e4cd  lpserve_plan_execution.py
+7d95bf62e477716ea622654a047594214b9c4083fdd0921c4d4c6ccb34ecd2a7  lpserve_state_mapping.py
+616f18d57eb10a1aa8d9f54b049335ba4f9c31f1ccce64e82c2d42dda665cdf3  lp_relaxation_scheduler.py
+debfd4eca2225815d6c944b91d7c544b5af0e2fd8aaf4d5b645addd9cb2eb0c3  sarathi/core/scheduler/lp_scheduler.py
+4c2e9ee24d7785c1abd0d82712e739164bdef8d4a43913bc70259455f3027d37  tests/test_lpserve_plan_execution.py
+1f65b98afc4605d0b09610ab3b4b2030034b38afae3c5e34f8416736c843ff01  tests/test_lp_scheduler.py
+88ff7cd75c9636a960a7a5bdee26e64a6d607a7182f45c72d5aee553dd1819a8  tests/test_lp_relaxation_scheduler.py
+45b9bd69a1989dacf5ec0e62e95db434420dd81f45395fbd7161b0d6d7ed7fe2  tests/test_lpserve_state_mapping.py
+c4867ffc3746b3f145af3e18d61392b8101f32e9d74f293004d9c461fbc71df2  docs/lp_scheduler_design.md
+355acee3536358c96d3d802e9aa7e8f0c9e4b70fd63fbb2efb4e5c481616b320  validation_output/lp_scheduler_preemption/20261010T054052Z/trace_live_preemption.py
+$ git diff HEAD | sha256sum
+3f50cb923478376aa8f158b6593ae5d553f8f0fb3da6ce52ebddf52e44349376  -

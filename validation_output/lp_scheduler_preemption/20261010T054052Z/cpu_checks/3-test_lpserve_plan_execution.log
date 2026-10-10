@@ -1,0 +1,20 @@
+$ python -B -m unittest discover -s tests -p 'test_lpserve_plan_execution.py' -v
+test_admission_and_resident_prefill_through_mapper_and_solver (test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_append_gate_rejects_gap_zero_decode_without_free_block (test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_combined_memory_rejection_with_native_watermark (test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_compact_precommit_rejections (test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_control_only_plans_fail_progress_gate (test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_decode_with_block_gap_zero_and_one (test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_exception_after_native_preemption_propagates (test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_malformed_nested_records_return_failure (test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_mixed_output_is_prompt_first_in_native_execution_order (test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_multiple_victims_use_ascending_native_and_control_order (test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_post_mutation_exception_propagates_without_recovery (test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_preemption_recovery_enables_admission (test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_preemption_rejections_have_zero_mutation (test_lpserve_plan_execution.PlanExecutionTest) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.053s
+
+OK
+exit_status=0

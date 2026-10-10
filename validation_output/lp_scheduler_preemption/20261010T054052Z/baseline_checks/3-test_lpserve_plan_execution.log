@@ -1,0 +1,16 @@
+$ python -B -m unittest discover -s tests -p 'test_lpserve_plan_execution.py' -v
+test_admission_and_resident_prefill_through_mapper_and_solver (test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_append_gate_rejects_gap_zero_decode_without_free_block (test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_combined_memory_rejection_with_native_watermark (test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_compact_precommit_rejections (test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_decode_with_block_gap_zero_and_one (test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_malformed_nested_records_return_failure (test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_mixed_output_is_prompt_first_in_native_execution_order (test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_no_progress_and_selected_preemption_gate (test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_post_mutation_exception_propagates_without_recovery (test_lpserve_plan_execution.PlanExecutionTest) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.043s
+
+OK
+exit_status=0

@@ -58,11 +58,14 @@ class _SchedulerHolder:
 
     _allocate = BaseScheduler._allocate
     _append_slot = BaseScheduler._append_slot
+    _free_seq = BaseScheduler._free_seq
+    _preempt = BaseScheduler._preempt
 
-    def __init__(self, watermark=DEFAULT_WATERMARK):
+    def __init__(self, watermark=DEFAULT_WATERMARK,
+                 num_gpu_blocks=NUM_GPU_BLOCKS):
         self.scheduler_config = _ConfigHolder()
         self.block_manager = VLLMBlockSpaceManager(
-            BLOCK_SIZE, NUM_GPU_BLOCKS, MAX_MODEL_LEN, watermark=watermark,
+            BLOCK_SIZE, num_gpu_blocks, MAX_MODEL_LEN, watermark=watermark,
         )
         self._iteration_id = ITERATION_ID
         self.num_running_batches = 0
@@ -256,6 +259,55 @@ def _build_mixed_case():
     _add_waiting(holder, 1, 6)
     _add_resident(holder, 2, 6, processed=2)
     return holder
+
+
+# Two victims for one plan: partial-prefill resident 1 (2 blocks) and
+# decode-ready resident 3 with two generated tokens (1 block, gap one).
+# Resident 2 continues its prefill, waiting 0 needs a 4-block admission, and
+# future waiting 4 is omitted. 5 of 10 blocks are free before recovery.
+VICTIM_UTILITIES = _utilities(
+    r0=(0.0, 1.0, 1.0), r1=(0.0, 1.0, 1.0), r2=(0.0, 1.0, 1.0),
+    r3=(1.0, 0.0, 1.0),
+)
+VICTIM_PLAN = {
+    "0": (4, 0, 0), "1": (0, 0, 1), "2": (4, 0, 0), "3": (0, 0, 1),
+}
+
+
+def _build_victim_case():
+    holder = _SchedulerHolder()
+    _add_waiting(holder, 0, 16)
+    _add_resident(holder, 1, 8, processed=4)
+    _add_resident(holder, 2, 6, processed=2)
+    _add_resident(holder, 3, 4, processed=4, num_output_tokens=2)
+    _add_waiting(holder, 4, 4, arrival_time=SNAPSHOT_TIME + 1.0)
+    return holder
+
+
+def _victim_case_with_plan():
+    """Mapped victim case with the hand-constructed ``VICTIM_PLAN``, checked
+    by the accepted integer-plan validator. Not live-selection evidence."""
+    holder = _build_victim_case()
+    snapshot, result = _map_and_solve(holder, VICTIM_UTILITIES)
+    result = _with_plan(snapshot.lp_problem, result, VICTIM_PLAN)
+    assert lrs.validate_integer_plan(
+        snapshot.lp_problem, result.plan,
+    ) is result.plan
+    return holder, snapshot, result
+
+
+def _record_native_calls(holder, calls):
+    """Patch the inherited native helpers to record their call order."""
+    patches = []
+    for name in ("_preempt", "_allocate", "_append_slot"):
+        real = getattr(holder, name)
+
+        def record(seq, _name=name, _real=real):
+            calls.append((_name, seq.seq_id))
+            _real(seq)
+
+        patches.append(mock.patch.object(holder, name, side_effect=record))
+    return patches
 
 
 class PlanExecutionTest(unittest.TestCase):
@@ -524,15 +576,13 @@ class PlanExecutionTest(unittest.TestCase):
                     else "precommit_validation",
                 )
 
-    def test_no_progress_and_selected_preemption_gate(self):
+    def test_control_only_plans_fail_progress_gate(self):
         cases = {
-            "all_zero": ({}, "no_progress"),
-            "preempt_only": ({"2": (0, 0, 1)}, "no_progress"),
-            "execution_with_preemption": (
-                {"0": (4, 0, 0), "2": (0, 0, 1)}, "unsupported_preemption",
-            ),
+            "all_zero": {},
+            "preempt_only": {"2": (0, 0, 1)},
+            "multiple_preempt_only": {"1": (0, 0, 1), "2": (0, 0, 1)},
         }
-        for name, (actions, category) in cases.items():
+        for name, actions in cases.items():
             with self.subTest(name):
                 holder = _build_case_one()
                 snapshot, result = _map_and_solve(holder, CASE_ONE_UTILITIES)
@@ -543,12 +593,164 @@ class PlanExecutionTest(unittest.TestCase):
                     result.plan,
                 )
                 before = _fingerprint(holder)
-                failure = lpe.execute_plan(holder, snapshot, result)
+                with mock.patch.object(
+                    holder, "_preempt", wraps=holder._preempt,
+                ) as preempt_spy:
+                    failure = lpe.execute_plan(holder, snapshot, result)
+                preempt_spy.assert_not_called()
+                self.assertEqual(_fingerprint(holder), before)
+                self.assertIsInstance(failure, lrs.Failure)
+                self.assertEqual(failure.stage, "precommit_validation")
+                self.assertEqual(failure.category, "no_progress")
+                self.assertEqual(failure.problem_id, str(ITERATION_ID))
+
+    def test_preemption_recovery_enables_admission(self):
+        # Pool of 6 blocks: victim 0 holds 2, omitted decode-ready resident 1
+        # holds 1, so 3 are free. Waiting 2 needs a 4-block admission, which
+        # fits only after the victim's blocks are recovered.
+        holder = _SchedulerHolder(num_gpu_blocks=6)
+        victim = _add_resident(holder, 0, 8, processed=4)
+        omitted = _add_resident(holder, 1, 4, processed=4)
+        admitted = _add_waiting(holder, 2, 16)
+        future = _add_waiting(holder, 3, 4, arrival_time=SNAPSHOT_TIME + 1.0)
+        utilities = _utilities(
+            r0=(0.0, 1.0, 1.0), r1=(1.0, 0.0, 1.0), r2=(0.0, 1.0, 1.0),
+        )
+        snapshot, result = _map_and_solve(holder, utilities)
+        result = _with_plan(
+            snapshot.lp_problem, result, {"0": (0, 0, 1), "2": (4, 0, 0)},
+        )
+        # Planning memory with reserve 1: 4 - 2 <= 3 - 1.
+        self.assertIs(
+            lrs.validate_integer_plan(snapshot.lp_problem, result.plan),
+            result.plan,
+        )
+        block_manager = holder.block_manager
+        self.assertEqual(block_manager.get_num_free_gpu_blocks(), 3)
+        self.assertFalse(block_manager.can_allocate(admitted))
+        seqs = (victim, omitted, admitted, future)
+        before = [_seq_fingerprint(s) for s in seqs]
+        omitted_table = _table(holder, 1)
+
+        calls = []
+        patches = _record_native_calls(holder, calls)
+        with patches[0], patches[1], patches[2]:
+            outputs = lpe.execute_plan(holder, snapshot, result)
+
+        self.assertIsInstance(outputs, SchedulerOutputs)
+        self.assertEqual(outputs.id, ITERATION_ID)
+        # Recovery happens before the admission it enables.
+        self.assertEqual(calls, [("_preempt", 0), ("_allocate", 2)])
+        self.assertEqual(outputs.preempted_seq_ids, [0])
+        self.assertEqual(outputs.ignored_seq_ids, [])
+        self.assertEqual(_emitted(outputs), [(2, 4)])
+        self.assertEqual(outputs.num_batched_tokens, 4)
+
+        # Complete queue transitions: the victim is removed from running
+        # once and inserted at the waiting front; the admission moves once.
+        self.assertEqual(
+            [id(s) for s in holder.waiting], [id(victim), id(future)],
+        )
+        self.assertEqual(
+            [id(s) for s in holder.running], [id(omitted), id(admitted)],
+        )
+        # Block changes: 3 free + 2 recovered - 4 admitted.
+        self.assertNotIn(0, block_manager.block_tables)
+        self.assertEqual(len(_table(holder, 2)), 4)
+        self.assertEqual(_table(holder, 1), omitted_table)
+        self.assertEqual(set(block_manager.block_tables), {1, 2})
+        self.assertEqual(block_manager.get_num_free_gpu_blocks(), 1)
+        # Status, progress, and the recomputation reset are left to replay.
+        self.assertEqual([_seq_fingerprint(s) for s in seqs], before)
+        self.assertEqual(victim.get_status(), SequenceStatus.PAUSED)
+        self.assertEqual(holder.num_running_batches, 0)
+
+    def test_multiple_victims_use_ascending_native_and_control_order(self):
+        holder, snapshot, result = _victim_case_with_plan()
+        seqs = {s.seq_id: s for s in holder.waiting + holder.running}
+        before = {k: _seq_fingerprint(s) for k, s in seqs.items()}
+        table_2 = _table(holder, 2)
+        self.assertEqual(
+            (len(_table(holder, 1)), len(_table(holder, 3))), (2, 1),
+        )
+        self.assertEqual(holder.block_manager.get_num_free_gpu_blocks(), 5)
+
+        calls = []
+        patches = _record_native_calls(holder, calls)
+        with patches[0], patches[1], patches[2]:
+            outputs = lpe.execute_plan(holder, snapshot, result)
+
+        self.assertIsInstance(outputs, SchedulerOutputs)
+        # Every selected victim, ascending by order_key, before any action;
+        # no victim cap. Victim 3 has generated tokens.
+        self.assertEqual(
+            calls, [("_preempt", 1), ("_preempt", 3), ("_allocate", 0)],
+        )
+        self.assertEqual(outputs.preempted_seq_ids, [1, 3])
+        self.assertEqual(_emitted(outputs), [(0, 4), (2, 4)])
+        # Native front insertion leaves the victims in reverse call order.
+        self.assertEqual([s.seq_id for s in holder.waiting], [3, 1, 4])
+        self.assertEqual([s.seq_id for s in holder.running], [2, 0])
+        for seq_id in (1, 3):
+            self.assertIs(
+                [s for s in holder.waiting if s.seq_id == seq_id][0],
+                seqs[seq_id],
+            )
+            self.assertNotIn(seq_id, holder.block_manager.block_tables)
+        # 5 free + 3 recovered - 4 admitted; the resident prefill keeps its
+        # allocation.
+        self.assertEqual(_table(holder, 2), table_2)
+        self.assertEqual(len(_table(holder, 0)), 4)
+        self.assertEqual(holder.block_manager.get_num_free_gpu_blocks(), 4)
+        for seq_id, fingerprint in before.items():
+            self.assertEqual(_seq_fingerprint(seqs[seq_id]), fingerprint)
+
+    def test_preemption_rejections_have_zero_mutation(self):
+        def hold_free_blocks(h):
+            # Current state differs from the snapshot: every free block is
+            # held elsewhere. Recovering both victims (3 blocks) would
+            # succeed natively, but the later 4-block admission cannot fit.
+            allocator = h.block_manager.gpu_allocator
+            for _ in range(allocator.get_num_free_blocks()):
+                allocator.allocate()
+
+        def later_victim_finished(h):
+            # Victim 1 is valid; victim 3 is checked after it and fails.
+            [seq] = [s for s in h.running if s.seq_id == 3]
+            seq.set_status(SequenceStatus.FINISHED_STOPPED)
+
+        def repeated_victim_block(h):
+            table = h.block_manager.block_tables[3]
+            table.append(table[0])
+
+        cases = {
+            "admission_after_recovery": (
+                hold_free_blocks, "admission_gate", "seq_id 0: admission "
+                "needs 4 blocks with 3 free",
+            ),
+            "later_victim_ineligible": (
+                later_victim_finished, "ineligible_action", "seq_id 3",
+            ),
+            "malformed_recovery": (
+                repeated_victim_block, "preemption_recovery", "seq_id 3",
+            ),
+        }
+        for name, (perturb, category, reason) in cases.items():
+            with self.subTest(name):
+                holder, snapshot, result = _victim_case_with_plan()
+                perturb(holder)
+                before = _fingerprint(holder)
+                calls = []
+                patches = _record_native_calls(holder, calls)
+                with patches[0], patches[1], patches[2]:
+                    failure = lpe.execute_plan(holder, snapshot, result)
+                self.assertEqual(calls, [])
                 self.assertEqual(_fingerprint(holder), before)
                 self.assertIsInstance(failure, lrs.Failure)
                 self.assertEqual(failure.stage, "precommit_validation")
                 self.assertEqual(failure.category, category)
                 self.assertEqual(failure.problem_id, str(ITERATION_ID))
+                self.assertIn(reason, failure.reason)
 
     def test_malformed_nested_records_return_failure(self):
         cases = {
@@ -601,6 +803,40 @@ class PlanExecutionTest(unittest.TestCase):
         self.assertEqual(holder.waiting, [])
         self.assertEqual([s.seq_id for s in holder.running], [0, 2])
         self.assertNotIn(1, holder.block_manager.block_tables)
+        # The mutated fixture is discarded, not reused.
+        del holder
+
+    def test_exception_after_native_preemption_propagates(self):
+        holder, snapshot, result = _victim_case_with_plan()
+        real_preempt = holder._preempt
+        preempted = []
+
+        # Test double: the second native preemption raises after the first
+        # victim has already been freed and moved to waiting.
+        def preempt(seq):
+            preempted.append(seq.seq_id)
+            if len(preempted) == 2:
+                raise RuntimeError("induced preemption failure")
+            real_preempt(seq)
+
+        with mock.patch.object(holder, "_preempt", side_effect=preempt), \
+                mock.patch.object(
+                    holder, "_allocate", wraps=holder._allocate,
+                ) as allocate_spy, \
+                mock.patch.object(
+                    holder, "_append_slot", wraps=holder._append_slot,
+                ) as append_spy:
+            with self.assertRaisesRegex(RuntimeError, "induced preemption"):
+                lpe.execute_plan(holder, snapshot, result)
+
+        # No later action ran and nothing was restored: victim 1 is freed and
+        # waiting; victim 3 left running but kept its blocks.
+        self.assertEqual(preempted, [1, 3])
+        allocate_spy.assert_not_called()
+        append_spy.assert_not_called()
+        self.assertEqual([s.seq_id for s in holder.waiting], [1, 0, 4])
+        self.assertEqual([s.seq_id for s in holder.running], [2])
+        self.assertEqual(set(holder.block_manager.block_tables), {2, 3})
         # The mutated fixture is discarded, not reused.
         del holder
 

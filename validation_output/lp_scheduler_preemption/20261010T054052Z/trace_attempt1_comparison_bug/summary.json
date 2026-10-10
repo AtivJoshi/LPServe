@@ -1,0 +1,218 @@
+{
+ "provenance": {
+  "head": "d7e0c7d5d6f883b2fecd88455bcee594a411d8d1",
+  "branch": "main",
+  "git_status_short": [
+   " M docs/lp_scheduler_design.md",
+   " M lpserve_plan_execution.py",
+   " M tests/test_lp_scheduler.py",
+   " M tests/test_lpserve_plan_execution.py",
+   "?? validation_output/lp_scheduler_preemption/20261010T054052Z/cpu_checks/environment.txt",
+   "?? validation_output/lp_scheduler_preemption/20261010T054052Z/decision_trace.json",
+   "?? validation_output/lp_scheduler_preemption/20261010T054052Z/trace_live_preemption.py"
+  ],
+  "tracked_diff_sha256": "3f50cb923478376aa8f158b6593ae5d553f8f0fb3da6ce52ebddf52e44349376",
+  "file_sha256": {
+   "lpserve_plan_execution.py": "b396e7f529c59527b2174536cc3f924b2faf4adf030de3aec2cc9e7355f0e4cd",
+   "lpserve_state_mapping.py": "7d95bf62e477716ea622654a047594214b9c4083fdd0921c4d4c6ccb34ecd2a7",
+   "lp_relaxation_scheduler.py": "616f18d57eb10a1aa8d9f54b049335ba4f9c31f1ccce64e82c2d42dda665cdf3",
+   "sarathi/core/scheduler/lp_scheduler.py": "debfd4eca2225815d6c944b91d7c544b5af0e2fd8aaf4d5b645addd9cb2eb0c3",
+   "tests/test_lpserve_plan_execution.py": "4c2e9ee24d7785c1abd0d82712e739164bdef8d4a43913bc70259455f3027d37",
+   "tests/test_lp_scheduler.py": "1f65b98afc4605d0b09610ab3b4b2030034b38afae3c5e34f8416736c843ff01",
+   "docs/lp_scheduler_design.md": "c4867ffc3746b3f145af3e18d61392b8101f32e9d74f293004d9c461fbc71df2",
+   "validation_output/lp_scheduler_preemption/20261010T054052Z/trace_live_preemption.py": "355acee3536358c96d3d802e9aa7e8f0c9e4b70fd63fbb2efb4e5c481616b320"
+  }
+ },
+ "environment": {
+  "host": "gpu052.unity.rc.umass.edu",
+  "slurm_job_id": "65493676",
+  "loaded_modules": "uri/main:ICU/75.1-GCCcore-13.3.0:nodejs/20.13.1-GCCcore-13.3.0:GCCcore/12.2.0:binutils/.2.39-GCCcore-12.2.0:bzip2/.1.0.8-GCCcore-12.2.0:zlib/.1.2.12-GCCcore-12.2.0:libreadline/.8.2-GCCcore-12.2.0:ncurses/.6.3-GCCcore-12.2.0:Tcl/.8.6.12-GCCcore-12.2.0:SQLite/.3.39.4-GCCcore-12.2.0:XZ/.5.2.7-GCCcore-12.2.0:GMP/.6.2.1-GCCcore-12.2.0:libffi/3.4.4-GCCcore-12.2.0:OpenSSL/1.1:CUDA/12.1.1:Python/3.10.8-GCCcore-12.2.0",
+  "python": "/home/atjoshi_umass_edu/LPServe/env/bin/python",
+  "python_version": "3.10.8",
+  "scipy": "1.15.3"
+ },
+ "inputs": {
+  "block_size": 4,
+  "num_gpu_blocks_central_and_worker": 4,
+  "max_model_len": 32,
+  "max_num_seqs": 1,
+  "b_max": 4,
+  "c_max": 4,
+  "s_max": 1,
+  "memory_reserve": 0,
+  "decode_utility": 10.0,
+  "prefill_token_utility": 1.0,
+  "preemption_penalty": 1.0,
+  "decode_memory_policy_id": "conservative_one_block_v1",
+  "numerical_policy": {
+   "policy_id": "lp_relaxation_mvp_v1",
+   "feasibility_tol": 1e-07,
+   "integrality_tol": 1e-06,
+   "objective_abs_tol": 1e-09,
+   "objective_rel_tol": 1e-09
+  },
+  "sampled_token": 7,
+  "requests": [
+   {
+    "event": "submit",
+    "seq_id": 0,
+    "prompt_token_ids": [
+     0,
+     1,
+     2,
+     3,
+     4
+    ],
+    "arrival_time": 1.0,
+    "max_tokens": 1,
+    "ignore_eos": true
+   },
+   {
+    "event": "submit",
+    "seq_id": 1,
+    "prompt_token_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11
+    ],
+    "arrival_time": 2.0,
+    "max_tokens": 1,
+    "ignore_eos": true
+   }
+  ]
+ },
+ "witnesses": {
+  "boundary_relaxed_a_z": 0.5,
+  "boundary_relaxed_b": [
+   4.0,
+   0.0,
+   1.0,
+   0.0
+  ],
+  "boundary_objective": 3.5,
+  "boundary_plan": {
+   "decisions": [
+    {
+     "request_id": "0",
+     "prefill_tokens": 0,
+     "decode": 0,
+     "preempt": 1
+    },
+    {
+     "request_id": "1",
+     "prefill_tokens": 4,
+     "decode": 0,
+     "preempt": 0
+    }
+   ],
+   "dominant_preemption_ids": [
+    "0"
+   ],
+   "safety_preemption_ids": [],
+   "fractional_request_count": 1,
+   "objective": 3.0
+  },
+  "boundary_outputs": {
+   "preempted_seq_ids": [
+    0
+   ],
+   "ignored_seq_ids": [],
+   "scheduled": [
+    [
+     1,
+     4
+    ]
+   ]
+  },
+  "boundary_worker_block_calls": [
+   [
+    "free",
+    0
+   ],
+   [
+    "allocate",
+    1
+   ]
+  ],
+  "scheduled_by_step": [
+   [
+    [
+     0,
+     4
+    ]
+   ],
+   [
+    [
+     1,
+     4
+    ]
+   ],
+   [
+    [
+     1,
+     4
+    ]
+   ],
+   [
+    [
+     1,
+     4
+    ]
+   ],
+   [
+    [
+     1,
+     0
+    ]
+   ],
+   [
+    [
+     0,
+     4
+    ]
+   ],
+   [
+    [
+     0,
+     1
+    ]
+   ],
+   [
+    [
+     0,
+     0
+    ]
+   ]
+  ],
+  "preempted_by_step": [
+   [],
+   [
+    0
+   ],
+   [],
+   [],
+   [],
+   [],
+   [],
+   []
+  ]
+ },
+ "checks": {
+  "boundary_prediction": true,
+  "boundary_extraction": false,
+  "worker_free_before_allocate": true,
+  "central_reset_for_recompute": true,
+  "all_finished_and_drained": true,
+  "final_idle_no_pipeline_calls": true
+ },
+ "passed": false
+}

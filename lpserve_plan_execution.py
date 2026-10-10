@@ -8,22 +8,26 @@ executes the supported actions through inherited LPServe operations and
 returns matching native ``SchedulerOutputs`` (docs/lp_scheduler_design.md
 sections 12.6, 13, and 14).
 
-Supported actions (the initial executor subset recorded in the design):
+Supported actions (the executor subset recorded in the design):
 
 - admission of an unallocated waiting request with a positive prompt chunk;
 - continuation of a resident partial prefill without new allocation;
 - one decode for a prompt-complete resident;
-- any combination of these in one prompt-first mixed output.
+- native recomputation preemption of every selected legal resident victim,
+  when the plan also selects at least one prefill or decode;
+- any combination of these in one output.
 
-Selected preemption and prompt-ignore controls are not executed. A plan with
-no prefill or decode action (all-zero or preempt-only) returns category
-``no_progress``; a plan combining execution with selected preemption is
-rejected as unsupported. Both rejections occur before mutation and leave the
-mathematical plan unchanged.
+Prompt-ignore controls are not executed. A plan with no prefill or decode
+action (all-zero or preempt-only) returns category ``no_progress`` before
+mutation and leaves the mathematical plan unchanged.
 
-Execution and emitted metadata order (D-21): all selected prefills first, then
-all selected decodes, each group ascending by ``order_key``. This order changes
-neither selected actions nor chunk sizes.
+Order: all selected victims are preempted first, ascending by ``order_key``,
+and ``preempted_seq_ids`` uses that order. The inherited ``_preempt`` inserts
+each victim at the front of ``waiting``, so several victims end there in
+reverse call order. Then all selected prefills, then all selected decodes,
+each group ascending by ``order_key`` (D-21). This order changes neither
+selected actions nor chunk sizes. Memory recovered from victims is credited
+before the scheduled actions are checked.
 
 Failure behavior:
 
@@ -36,8 +40,9 @@ Failure behavior:
 
 The executor neither invokes the mapper or solver nor increments
 ``_iteration_id`` or ``num_running_batches``; inherited live scheduling owns
-that bookkeeping. Sequence status transitions and prompt progress are left to
-existing engine replay and step completion.
+that bookkeeping. Sequence status transitions, prompt progress, and the
+recomputation reset of a preempted sequence are left to existing engine
+replay and step completion.
 """
 
 from __future__ import annotations
@@ -58,7 +63,6 @@ CATEGORY_MALFORMED_INPUT = "malformed_input"
 CATEGORY_SNAPSHOT_MISMATCH = "snapshot_mismatch"
 CATEGORY_UNSUPPORTED_STATE = "unsupported_state"
 CATEGORY_NO_PROGRESS = "no_progress"
-CATEGORY_UNSUPPORTED_PREEMPTION = "unsupported_preemption"
 CATEGORY_OWNERSHIP_MISMATCH = "ownership_mismatch"
 CATEGORY_INELIGIBLE_ACTION = "ineligible_action"
 CATEGORY_CHUNK_BOUND = "chunk_bound"
@@ -66,6 +70,7 @@ CATEGORY_OVERLENGTH_ADMISSION = "overlength_admission"
 CATEGORY_RESIDENT_CAPACITY = "resident_capacity"
 CATEGORY_ADMISSION_GATE = "admission_gate"
 CATEGORY_APPEND_GATE = "append_gate"
+CATEGORY_PREEMPTION_RECOVERY = "preemption_recovery"
 
 ACTION_ADMISSION = "admission"
 ACTION_RESIDENT_PREFILL = "resident_prefill"
@@ -91,21 +96,22 @@ def execute_plan(scheduler, snapshot, result):
     ``num_running_batches``, ``scheduler_config`` (``num_pipeline_stages``,
     ``max_num_seqs``, ``max_model_len``), and ``block_manager``. Only after
     complete prevalidation does it mutate, through native list operations and
-    the inherited ``_allocate``/``_append_slot`` helpers.
+    the inherited ``_preempt``/``_allocate``/``_append_slot`` helpers.
     """
     snapshot_id = getattr(snapshot, "snapshot_id", None)
     if not isinstance(snapshot_id, str):
         snapshot_id = None
     try:
-        actions = _validate_before_mutation(scheduler, snapshot, result)
+        validated = _validate_before_mutation(scheduler, snapshot, result)
     except _PrecommitError as err:
         return lrs.Failure(
             snapshot_id, STAGE_PRECOMMIT_VALIDATION, err.category, err.reason,
         )
-    if isinstance(actions, lrs.Failure):
-        return actions
+    if isinstance(validated, lrs.Failure):
+        return validated
+    victims, actions = validated
     # Execution mutation begins here. Exceptions propagate unhandled.
-    return _execute(scheduler, snapshot, actions)
+    return _execute(scheduler, snapshot, victims, actions)
 
 
 # ---------------------------------------------------------------------------
@@ -114,8 +120,8 @@ def execute_plan(scheduler, snapshot, result):
 
 
 def _validate_before_mutation(scheduler, snapshot, result):
-    """Return the ordered action list, a plan-validation ``Failure``, or raise
-    ``_PrecommitError``. Reads state only."""
+    """Return the ordered victim and action lists, a plan-validation
+    ``Failure``, or raise ``_PrecommitError``. Reads state only."""
     _require(
         isinstance(snapshot, lsm.StateSnapshot), CATEGORY_MALFORMED_INPUT,
         f"snapshot must be a StateSnapshot, got {type(snapshot).__name__}",
@@ -207,12 +213,6 @@ def _validate_before_mutation(scheduler, snapshot, result):
         "the validated plan selects no prefill or decode action "
         f"(selected preemptions: {preempt_ids})",
     )
-    _require(
-        not preempt_ids, CATEGORY_UNSUPPORTED_PREEMPTION,
-        f"the plan selects preemption of {preempt_ids} together with "
-        "execution actions; runtime preemption is not supported by this "
-        "executor",
-    )
 
     # Snapshot request records must associate one-to-one with the problem.
     snap_by_id = {}
@@ -262,6 +262,45 @@ def _validate_before_mutation(scheduler, snapshot, result):
     free_blocks = block_manager.get_num_free_gpu_blocks()
     watermark_blocks = block_manager.watermark_blocks
     resident_count = len(scheduler.running)
+
+    # Every selected victim, whether extraction marked it dominant or safety,
+    # ascending by order_key. Each is credited with its actual physical table,
+    # which the native non-sharing manager frees in full, and releases one
+    # resident slot before any scheduled action is checked.
+    victims = []
+    recovered = set()
+    for decision in sorted(
+        (d for d in plan.decisions if d.preempt), key=lambda d: d.order_key,
+    ):
+        snap = snap_by_id[decision.request_id]
+        rid = snap.raw_seq_id
+        _require(
+            snap.ownership == lsm.OWNERSHIP_RUNNING
+            and snap.preemption_eligible
+            and decision.request_id in problem.legal_preemption_ids,
+            CATEGORY_INELIGIBLE_ACTION,
+            f"seq_id {rid}: preemption selected for a request that is not a "
+            "mapped legal resident",
+        )
+        seq = _check_current_request(
+            owners, snap, snapshot.snapshot_time, block_manager,
+        )
+        _require(
+            seq.is_executing(), CATEGORY_INELIGIBLE_ACTION,
+            f"seq_id {rid}: preemption requires a native executing status",
+        )
+        table = block_manager.get_block_table(seq)
+        _require(
+            len(set(table)) == len(table) and not recovered.intersection(table),
+            CATEGORY_PREEMPTION_RECOVERY,
+            f"seq_id {rid}: physical block table {table} repeats a block or "
+            "shares one with another selected victim",
+        )
+        recovered.update(table)
+        free_blocks += len(table)
+        resident_count -= 1
+        victims.append(seq)
+
     actions = []
     for decision in selected:
         snap = snap_by_id[decision.request_id]
@@ -350,7 +389,7 @@ def _validate_before_mutation(scheduler, snapshot, result):
             free_blocks -= gap
             kind = ACTION_DECODE
         actions.append((kind, seq, chunk))
-    return actions
+    return victims, actions
 
 
 def _check_current_request(owners, snap, decision_time, block_manager):
@@ -412,9 +451,17 @@ def _block_gap(block_manager, seq):
 # ---------------------------------------------------------------------------
 
 
-def _execute(scheduler, snapshot, actions):
+def _execute(scheduler, snapshot, victims, actions):
     waiting = scheduler.waiting
     running = scheduler.running
+    # Native preemption frees central blocks and inserts at the waiting
+    # front. The sequence keeps its status here; replay of the emitted
+    # preempted ID resets it for recomputation and frees worker blocks.
+    preempted = []
+    for seq in victims:
+        running.pop(_index_by_identity(running, seq))
+        scheduler._preempt(seq)
+        preempted.append(seq.seq_id)
     metadata = []
     for kind, seq, chunk in actions:
         if kind == ACTION_ADMISSION:
@@ -430,7 +477,7 @@ def _execute(scheduler, snapshot, actions):
     outputs = SchedulerOutputs(
         id=scheduler._iteration_id,
         ignored_seq_ids=[],
-        preempted_seq_ids=[],
+        preempted_seq_ids=preempted,
         scheduled_seq_metadata_list=metadata,
     )
 
@@ -451,8 +498,13 @@ def _execute(scheduler, snapshot, actions):
             f"emitted scheduled entries {emitted} differ from the validated "
             f"ordered actions {expected}"
         )
-    if outputs.ignored_seq_ids or outputs.preempted_seq_ids:
-        raise RuntimeError("emitted control lists must be empty")
+    expected_victims = [seq.seq_id for seq in victims]
+    if outputs.ignored_seq_ids or outputs.preempted_seq_ids != expected_victims:
+        raise RuntimeError(
+            f"emitted controls (ignored {outputs.ignored_seq_ids}, preempted "
+            f"{outputs.preempted_seq_ids}) differ from the validated victims "
+            f"{expected_victims}"
+        )
     problem = snapshot.lp_problem
     if (
         outputs.num_batched_prompt_tokens + outputs.num_batched_output_tokens
