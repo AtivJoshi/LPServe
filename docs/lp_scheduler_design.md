@@ -1210,8 +1210,23 @@ category no longer exists.
   (`docs/handoffs/lp_scheduler_preemption_handoff.md`) has the real solver
   select the preemption of a partial-prefill resident that has generated no
   tokens, then replays, recomputes, and completes it. Interruption after
-  generation is allowed at runtime but not yet validated; §§16.1–16.2 apply
-  to it unchanged.
+  generation is allowed at runtime; §§16.1–16.2 apply to it unchanged.
+  *Validated 2026-10-10 for one bounded case only*
+  (`docs/handoffs/lp_scheduler_decode_preemption_reference_handoff.md`):
+  the real solver preempts a single victim A after its first generated
+  token to admit B; B finishes; A's expanded context (original prompt plus
+  that token, once) is readmitted, recomputed from token zero, decodes twice,
+  and finishes. It passed live on CPU and on one GPU with real TinyLlama
+  weights, where A's cumulative history and B's token equaled uninterrupted
+  `VLLMScheduler` references. As inherited (§16.1), LP A asked for 2 tokens
+  but generated 3 cumulatively (the reference asked for 3), and A's final
+  output IDs hold only the 2 post-reset tokens (§16.2). Scoped inputs were
+  fixed per-request utilities (A decode 40, prefill-token 1, penalty 1;
+  B decode 40, prefill-token 20, penalty 1), supplied by a validation-only
+  override of the utility-building method. This case does not establish
+  corrected generation caps or output/text semantics, repeated preemption,
+  multiple victims, block growth during generation, arbitrary workloads,
+  fairness, pipeline support, or performance.
 - *Scoped inputs.* The live CPU case uses block size 4, a 4-block pool in
   central and worker managers, `max_model_len=32`, resident limit 1,
   `b_max=4`, `c_max=4`, `s_max=1`, reserve 0, `conservative_one_block_v1`,
@@ -1516,6 +1531,12 @@ preemption. `tests/test_lp_scheduler.py`
 (`LivePreemptionTest.test_solver_selected_preemption_is_recomputed_to_completion`)
 covers the solver-selected live case through central/worker replay,
 recomputation, completion, and idle.
+`LiveDecodePreemptionTest.test_decode_preemption_recomputes_expanded_context_to_completion`
+covers the same path for a victim with one generated token, including the
+expanded prompt, cumulative token history, and per-epoch output lists. The
+real-weight GPU comparison is
+`scripts/check_lp_scheduler_decode_preemption_reference_gpu.py`, with CPU
+tests in `tests/test_check_lp_scheduler_decode_preemption_reference_gpu.py`.
 
 Add direct focused regressions only when a currently supported action breaks.
 Preemption, mixed batches, decode marginal-block variants, worker

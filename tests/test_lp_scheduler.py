@@ -156,23 +156,25 @@ class _Harness:
         with mock.patch.object(lp_scheduler, "time", self.clock):
             return self.scheduler.schedule()
 
-    def replay(self, outputs):
+    def replay(self, outputs, sample=None):
         """Engine replay, worker replay/completion with synthetic sampler
         output (one entry per scheduled entry, in order, including prefill
-        entries), then central and scheduler completion."""
+        entries), then central and scheduler completion. ``sample`` maps a
+        scheduled metadata entry to its token; by default every entry gets
+        ``SAMPLED_TOKEN``."""
         self.engine_seqs.on_schedule(outputs)
         self.worker_seqs.on_schedule(outputs)
         sampler_outputs = [
-            SamplerOutput(m.seq_id, SAMPLED_TOKEN)
+            SamplerOutput(m.seq_id, SAMPLED_TOKEN if sample is None else sample(m))
             for m in outputs.scheduled_seq_metadata_list
         ]
         self.worker_seqs.on_step_completed(outputs, sampler_outputs)
         self.engine_seqs.on_step_completed(outputs, sampler_outputs)
         self.scheduler.on_step_completed()
 
-    def step(self, now):
+    def step(self, now, sample=None):
         outputs = self.schedule(now)
-        self.replay(outputs)
+        self.replay(outputs, sample)
         return outputs
 
     def central_tables(self):
@@ -972,6 +974,376 @@ class LivePreemptionTest(unittest.TestCase):
         self.assertTrue(outputs.has_no_output())
         self.assertEqual(spies.calls, [])
         self.assertEqual(_fingerprint(scheduler), before)
+
+
+class LiveDecodePreemptionTest(unittest.TestCase):
+    # Case-specific provisional inputs: a 4-block pool in both managers,
+    # max_model_len 16, one resident, one scheduled action, and no planning
+    # reserve. Utilities are fixed per request for this case only (D-03
+    # remains OPEN): A decode 40, prefill-token 1, penalty 1; B decode 40,
+    # prefill-token 20, penalty 1. The configured uniform triple is A's; a
+    # validation-only override of _build_utilities supplies B's.
+    POOL = 4
+    CONFIG = dict(
+        max_num_seqs=1, max_model_len=16, b_max=4, c_max=4, s_max=1,
+        memory_reserve=0, decode_utility=40.0, prefill_token_utility=1.0,
+        preemption_penalty=1.0,
+    )
+    A, B = 0, 1  # raw seq IDs for requests A and B
+    UTILITIES = {
+        A: lsm.RequestUtility(40.0, 1.0, 1.0),
+        B: lsm.RequestUtility(40.0, 20.0, 1.0),
+    }
+    PROMPT_A = list(range(5))
+    PROMPT_B = list(range(12))
+    MAX_TOKENS = {A: 2, B: 1}
+    # Distinct synthetic decode tokens in completion order. Every prefill
+    # entry samples PREFILL_SAMPLE, which native completion must discard.
+    DECODE_TOKENS = {A: [101, 102, 103], B: [201]}
+    PREFILL_SAMPLE = 900
+    # Each nonempty step: emitted preempted IDs, emitted (seq_id, chunk), and
+    # (prompt tokens processed, output token IDs) per unfinished request
+    # after replay.
+    EXPECTED = [
+        ([], [(A, 4)], {A: (4, [])}),
+        ([], [(A, 1)], {A: (5, [])}),
+        ([], [(A, 0)], {A: (5, [101])}),
+        ([A], [(B, 4)], {A: (0, []), B: (4, [])}),
+        ([], [(B, 4)], {A: (0, []), B: (8, [])}),
+        ([], [(B, 4)], {A: (0, []), B: (12, [])}),
+        ([], [(B, 0)], {A: (0, [])}),
+        ([], [(A, 4)], {A: (4, [])}),
+        ([], [(A, 2)], {A: (6, [])}),
+        ([], [(A, 0)], {A: (6, [102])}),
+        ([], [(A, 0)], {}),
+    ]
+    BOUNDARY_STEP = 3
+    READMISSION_STEP = 7
+
+    _assert_synchronous_pipeline = LivePipelineTest._assert_synchronous_pipeline
+    _assert_managers_agree = LivePreemptionTest._assert_managers_agree
+
+    def _fixed_utilities(self):
+        """Validation-only: give exactly the arrived, unfinished raw IDs that
+        the real method selects their fixed A/B triple. The mapper still
+        validates the exact key set and copies the values immutably."""
+        real = LPScheduler._build_utilities
+        fixed = self.UTILITIES
+
+        def build(scheduler, now):
+            return {seq_id: fixed[seq_id] for seq_id in real(scheduler, now)}
+
+        return mock.patch.object(LPScheduler, "_build_utilities", build)
+
+    def _state(self, harness):
+        """Primitive central/worker state at a step boundary, for the trace."""
+        def seqs(manager):
+            return {k: _seq_fingerprint(s) for k, s in manager.seq_map.items()}
+        scheduler = harness.scheduler
+        return dict(
+            iteration_id=scheduler._iteration_id,
+            waiting=[s.seq_id for s in scheduler.waiting],
+            running=[s.seq_id for s in scheduler.running],
+            central_seqs=seqs(harness.engine_seqs),
+            worker_seqs=seqs(harness.worker_seqs),
+            central_tables=harness.central_tables(),
+            worker_tables=harness.worker_tables(),
+            central_free=scheduler.block_manager.get_num_free_gpu_blocks(),
+            worker_free=harness.worker_seqs.block_manager.get_num_free_gpu_blocks(),
+        )
+
+    def test_decode_preemption_recomputes_expanded_context_to_completion(self):
+        real_build_utilities = LPScheduler._build_utilities
+        with self._fixed_utilities():
+            self._run_case()
+        self.assertIs(LPScheduler._build_utilities, real_build_utilities)
+
+    def _run_case(self):
+        A, B = self.A, self.B
+        harness = _Harness(num_gpu_blocks=self.POOL, **self.CONFIG)
+        scheduler = harness.scheduler
+        central_manager = scheduler.block_manager
+        worker_manager = harness.worker_seqs.block_manager
+        a = harness.add(A, len(self.PROMPT_A), 1.0, self.MAX_TOKENS[A])
+        self.assertEqual(a.prompt_token_ids, self.PROMPT_A)
+        worker_a = harness.worker_seqs.get_seq(A)
+        b = worker_b = None
+        seqs = {A: a}
+
+        pending = {k: list(v) for k, v in self.DECODE_TOKENS.items()}
+        decode_events = []  # (step, seq_id, token) as sampled
+        self.trace = trace = []
+
+        for step, (preempted, emitted, after) in enumerate(self.EXPECTED):
+            now = 1.0 + step
+
+            def sample(m):
+                if m.prompt_chunk_len > 0:
+                    return self.PREFILL_SAMPLE
+                token = pending[m.seq_id].pop(0)
+                decode_events.append((step, m.seq_id, token))
+                return token
+
+            if step == self.BOUNDARY_STEP:
+                # A has generated exactly one token and is an unfinished,
+                # paused resident holding two blocks, with two free in each
+                # manager. B is added only now, with no batch in flight.
+                for copy_ in (a, worker_a):
+                    self.assertEqual(copy_.get_status(), SequenceStatus.PAUSED)
+                    self.assertEqual(copy_.output_token_ids, [101])
+                    self.assertEqual(copy_.prompt_token_ids, self.PROMPT_A)
+                    self.assertTrue(copy_.prompt_processing_finished)
+                self.assertEqual(
+                    (len(harness.central_tables()[A]), len(harness.worker_tables()[A])),
+                    (2, 2),
+                )
+                self.assertEqual(
+                    (central_manager.get_num_free_gpu_blocks(),
+                     worker_manager.get_num_free_gpu_blocks()), (2, 2),
+                )
+                self.assertEqual(scheduler.num_running_batches, 0)
+                b = harness.add(B, len(self.PROMPT_B), now, self.MAX_TOKENS[B])
+                self.assertEqual(b.prompt_token_ids, self.PROMPT_B)
+                worker_b = harness.worker_seqs.get_seq(B)
+                seqs[B] = b
+
+            unfinished = sorted(k for k, s in seqs.items() if not s.is_finished())
+            before = self._state(harness)
+            record = dict(step=step, now=now, before=before)
+            trace.append(record)
+
+            # Central block operations during scheduling: (op, seq_id, blocks).
+            central_ops = []
+            real_free, real_allocate = central_manager.free, central_manager.allocate
+            tables = central_manager.block_tables
+
+            def central_free(seq):
+                central_ops.append(("free", seq.seq_id, len(tables[seq.seq_id])))
+                real_free(seq)
+
+            def central_allocate(seq):
+                real_allocate(seq)
+                central_ops.append(("allocate", seq.seq_id, len(tables[seq.seq_id])))
+
+            harness.clock.reset_mock()
+            with _Spies() as spies, \
+                    mock.patch.object(central_manager, "free", central_free), \
+                    mock.patch.object(central_manager, "allocate", central_allocate):
+                outputs = harness.schedule(now)
+            self._assert_synchronous_pipeline(harness, spies, now, outputs)
+            snapshot, result = spies.calls[1][4], spies.calls[2][2]
+            problem = snapshot.lp_problem
+            requests = {r.raw_seq_id: r for r in snapshot.requests}
+            relaxed = {d.request_id: d for d in result.relaxed.decisions}
+            record.update(
+                snapshot=snapshot, result=result, central_ops=list(central_ops),
+                outputs=dict(id=outputs.id,
+                             preempted=list(outputs.preempted_seq_ids),
+                             scheduled=_emitted(outputs)),
+                after_execution=self._state(harness),
+            )
+
+            # The fixed per-request utilities reached the mapped problem for
+            # exactly the arrived, unfinished requests.
+            self.assertEqual(sorted(requests), unfinished)
+            for raw_id, r in requests.items():
+                self.assertEqual(r.utility, self.UTILITIES[raw_id])
+            self.assertEqual((problem.m_free, problem.w), (before["central_free"], 0))
+
+            self.assertEqual(outputs.id, step)
+            self.assertEqual(outputs.preempted_seq_ids, preempted)
+            self.assertEqual(outputs.ignored_seq_ids, [])
+            self.assertEqual(_emitted(outputs), emitted)
+            if step != self.BOUNDARY_STEP:
+                self.assertTrue(all(d.preempt == 0 for d in result.plan.decisions))
+
+            replay_log = []
+            if step == self.BOUNDARY_STEP:
+                self._assert_boundary(
+                    harness, problem, requests, relaxed, result, central_ops,
+                    a, b, before,
+                )
+                # Replay order: central reset, worker reset and local free of
+                # A, then B's worker allocation.
+                real_reset = Sequence.reset_for_recompute
+                real_wfree, real_wallocate = worker_manager.free, worker_manager.allocate
+
+                def reset(seq):
+                    copy_name = ("central" if seq is a else
+                                 "worker" if seq is worker_a else seq.seq_id)
+                    replay_log.append(("reset", copy_name, list(seq.prompt_token_ids),
+                                       list(seq.output_token_ids)))
+                    real_reset(seq)
+
+                def worker_free(seq):
+                    replay_log.append(("free", seq.seq_id))
+                    real_wfree(seq)
+
+                def worker_allocate(seq):
+                    replay_log.append(("allocate", seq.seq_id))
+                    real_wallocate(seq)
+
+                with mock.patch.object(Sequence, "reset_for_recompute", reset), \
+                        mock.patch.object(worker_manager, "free", worker_free), \
+                        mock.patch.object(worker_manager, "allocate", worker_allocate):
+                    harness.replay(outputs, sample)
+                self.assertEqual(replay_log, [
+                    ("reset", "central", self.PROMPT_A, [101]),
+                    ("reset", "worker", self.PROMPT_A, [101]),
+                    ("free", A),
+                    ("allocate", B),
+                ])
+            elif step == self.READMISSION_STEP:
+                # The waiting, unallocated A is admitted with its full
+                # expanded 6-token context (2 blocks) and recomputed from
+                # prompt token zero.
+                r = requests[A]
+                self.assertEqual(
+                    (r.ownership, r.status, r.physical_block_count,
+                     r.prompt_len, r.prompt_tokens_processed,
+                     r.prefill_fixed_charge),
+                    (lsm.OWNERSHIP_WAITING, "WAITING", 0, 6, 0, 2),
+                )
+                self.assertEqual(central_ops, [("allocate", A, 2)])
+                harness.replay(outputs, sample)
+            else:
+                harness.replay(outputs, sample)
+            record.update(replay_log=replay_log, after=self._state(harness))
+
+            # Completed-step boundary: progress, outputs, ownership, and
+            # allocation counts agree between the central and worker copies.
+            self.assertEqual(scheduler.num_running_batches, 0)
+            self._assert_managers_agree(harness)
+            self.assertEqual(sorted(harness.engine_seqs.seq_map), sorted(after))
+            self.assertEqual(sorted(harness.worker_seqs.seq_map), sorted(after))
+            for seq_id, (processed, output_ids) in after.items():
+                for copy_ in (harness.engine_seqs.get_seq(seq_id),
+                              harness.worker_seqs.get_seq(seq_id)):
+                    self.assertEqual(copy_.get_num_prompt_tokens_processed(), processed)
+                    self.assertEqual(copy_.output_token_ids, output_ids)
+                    self.assertNotIn(self.PREFILL_SAMPLE, copy_.get_token_ids())
+            if step == 2:
+                first_epoch_outputs = list(a.output_token_ids)
+            if step == self.BOUNDARY_STEP:
+                # A was reset centrally and on the worker: its expanded
+                # prompt holds the first generated token exactly once.
+                for copy_ in (a, worker_a):
+                    self.assertEqual(copy_.get_status(), SequenceStatus.WAITING)
+                    self.assertEqual(copy_.prompt_token_ids, self.PROMPT_A + [101])
+                    self.assertFalse(copy_.prompt_processing_finished)
+                    self.assertEqual(len(copy_.logical_token_blocks), 2)
+                self.assertEqual(scheduler.waiting, [a])
+                self.assertEqual(scheduler.running, [b])
+                self.assertNotIn(A, harness.worker_tables())
+                self.assertEqual(len(harness.worker_tables()[B]), 3)
+
+        # Native stopping completed B first and A later.
+        self.assertEqual(b.get_status(), SequenceStatus.FINISHED_LENGTH_CAPPED)
+        self.assertEqual(a.get_status(), SequenceStatus.FINISHED_LENGTH_CAPPED)
+        self.assertEqual(worker_b.get_status(), SequenceStatus.FINISHED_LENGTH_CAPPED)
+        self.assertEqual(worker_a.get_status(), SequenceStatus.FINISHED_LENGTH_CAPPED)
+        self.assertEqual(
+            [(s, k) for s, k, _ in decode_events],
+            [(2, A), (6, B), (9, A), (10, A)],
+        )
+        self.assertEqual(pending, {A: [], B: []})
+        self.assertEqual(b.prompt_token_ids, self.PROMPT_B)
+        self.assertEqual(b.output_token_ids, [201])
+
+        # A's cumulative history comes from its completed decode events:
+        # the first token before the reset, then two after recomputation.
+        # The native final state keeps the first token in the expanded prompt
+        # and only the post-reset tokens as output IDs. Three tokens for a
+        # 2-token cap is the inherited generation-limit behavior (16.1).
+        history = [t for _, k, t in decode_events if k == A]
+        self.assertEqual(history, [101, 102, 103])
+        self.assertEqual(first_epoch_outputs, [101])
+        self.assertEqual(a.prompt_token_ids, self.PROMPT_A + [101])
+        self.assertEqual(a.output_token_ids, [102, 103])
+        self.assertEqual(first_epoch_outputs + a.output_token_ids, history)
+        self.assertEqual(len(history), self.MAX_TOKENS[A] + 1)
+
+        # Final release in both managers and empty ownership.
+        self.assertEqual((scheduler.waiting, scheduler.running), ([], []))
+        self.assertEqual(
+            (harness.engine_seqs.seq_map, harness.worker_seqs.seq_map), ({}, {}),
+        )
+        self.assertEqual((harness.central_tables(), harness.worker_tables()), ({}, {}))
+        for manager in (central_manager, worker_manager):
+            self.assertEqual(manager.get_num_free_gpu_blocks(), self.POOL)
+        self._assert_managers_agree(harness)
+
+        # One ordinary idle call; the inherited iteration counter advances.
+        self.assertEqual(scheduler._iteration_id, len(self.EXPECTED) - 1)
+        before = _fingerprint(scheduler)
+        harness.clock.reset_mock()
+        with _Spies() as spies:
+            outputs = harness.schedule(100.0)
+        self.assertTrue(outputs.has_no_output())
+        self.assertEqual(spies.calls, [])
+        self.assertEqual(outputs.id, len(self.EXPECTED))
+        self.assertEqual(scheduler._iteration_id, len(self.EXPECTED))
+        self.assertEqual(scheduler.num_running_batches, 0)
+        self.assertEqual(_fingerprint(scheduler), before)
+        trace.append(dict(idle=dict(output_id=outputs.id,
+                                    after=self._state(harness))))
+        self.decode_events = decode_events
+
+    def _assert_boundary(self, harness, problem, requests, relaxed, result,
+                         central_ops, a, b, before):
+        A, B = self.A, self.B
+        tol = NUMERICAL_POLICY.feasibility_tol
+        scheduler = harness.scheduler
+        ra, rb = requests[A], requests[B]
+
+        # Mapped state: A is the only legal victim, a prompt-complete
+        # resident with one generated token, two blocks, and recovery two;
+        # B waits unallocated with fixed admission charge three.
+        self.assertEqual(problem.legal_preemption_ids, frozenset({str(A)}))
+        self.assertEqual((problem.m_free, problem.w), (2, 0))
+        self.assertEqual(before["central_seqs"][A][3], (101,))
+        self.assertEqual(
+            (ra.ownership, ra.status, ra.prompt_len, ra.prompt_tokens_processed,
+             ra.prompt_processing_finished, ra.physical_block_count,
+             ra.preemption_eligible, ra.preemption_recovery,
+             ra.decode_eligible, ra.decode_charge, ra.prefill_eligible),
+            (lsm.OWNERSHIP_RUNNING, "PAUSED", 5, 5, True, 2,
+             True, 2, True, 1, False),
+        )
+        self.assertEqual(
+            (rb.ownership, rb.status, rb.prompt_len, rb.physical_block_count,
+             rb.preemption_eligible, rb.prefill_fixed_charge),
+            (lsm.OWNERSHIP_WAITING, "WAITING", 12, 0, False, 3),
+        )
+
+        # Relaxed solution and integer extraction.
+        for rid, values in ((str(A), (0, 0, 0, 0.5)), (str(B), (4, 0, 1, 0))):
+            d = relaxed[rid]
+            for got, want in zip((d.x, d.y, d.prefill_indicator, d.z), values):
+                self.assertAlmostEqual(got, want, delta=tol)
+        self.assertAlmostEqual(result.relaxed.normalized_objective, 79.5, delta=tol)
+        self.assertEqual(
+            [(d.request_id, d.prefill_tokens, d.decode, d.preempt)
+             for d in result.plan.decisions],
+            [(str(A), 0, 0, 1), (str(B), 4, 0, 0)],
+        )
+        self.assertEqual(result.plan.dominant_preemption_ids, (str(A),))
+        self.assertEqual(result.plan.safety_preemption_ids, ())
+        self.assertAlmostEqual(result.plan.objective, 79.0, delta=tol)
+
+        # Central execution: A's two blocks are freed through native
+        # preemption before B's three-block admission; A returns to waiting
+        # with its prompt and generated token untouched until replay.
+        self.assertEqual(central_ops, [("free", A, 2), ("allocate", B, 3)])
+        self.assertEqual(scheduler.waiting, [a])
+        self.assertEqual(scheduler.running, [b])
+        self.assertEqual(a.get_status(), SequenceStatus.PAUSED)
+        self.assertEqual(a.prompt_token_ids, self.PROMPT_A)
+        self.assertEqual(a.output_token_ids, [101])
+        self.assertEqual(a.get_num_prompt_tokens_processed(), 5)
+        self.assertEqual(set(harness.central_tables()), {B})
+        self.assertEqual(scheduler.block_manager.get_num_free_gpu_blocks(), 1)
+        self.assertEqual(set(harness.worker_tables()), {A})
 
 
 class PreMutationFailureTest(unittest.TestCase):

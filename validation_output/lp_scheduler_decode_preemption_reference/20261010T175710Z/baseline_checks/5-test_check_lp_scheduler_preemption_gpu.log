@@ -1,0 +1,15 @@
+$ python -B -m unittest discover -s tests -p 'test_check_lp_scheduler_preemption_gpu.py' -v
+test_actual_profile_is_retained_and_chosen_capacity_returned (test_check_lp_scheduler_preemption_gpu.CacheCapacitySelectionTest) ... ok
+test_insufficient_capacity_fails_without_substitution (test_check_lp_scheduler_preemption_gpu.CacheCapacitySelectionTest) ... ok
+test_unexpected_result_shape_or_second_profile_fails (test_check_lp_scheduler_preemption_gpu.CacheCapacitySelectionTest) ... ok
+test_import_loads_no_engine_worker_ray_or_torch (test_check_lp_scheduler_preemption_gpu.DriverImportTest) ... ok
+test_chosen_capacity_reaches_native_initialization (test_check_lp_scheduler_preemption_gpu.EngineCacheInitializationTest) ... INFO 10-10 17:58:21 base_llm_engine.py:242] # GPU blocks: 4
+ok
+test_insufficient_capacity_fails_before_cache_initialization (test_check_lp_scheduler_preemption_gpu.EngineCacheInitializationTest) ... ok
+test_other_worker_operations_delegate_unchanged (test_check_lp_scheduler_preemption_gpu.EngineCacheInitializationTest) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.210s
+
+OK
+exit status: 0

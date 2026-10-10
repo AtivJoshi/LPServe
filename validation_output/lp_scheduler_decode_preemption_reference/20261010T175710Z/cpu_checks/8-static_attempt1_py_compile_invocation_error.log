@@ -1,0 +1,17 @@
+$ python -B -m py_compile <new driver> <new driver test> tests/test_lp_scheduler.py <trace script>
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "<string>", line 1, in <listcomp>
+  File "/modules/uri_apps/software/Python/3.10.8-GCCcore-12.2.0/lib/python3.10/py_compile.py", line 140, in compile
+    raise FileExistsError(msg.format(cfile))
+FileExistsError: /dev/null is a non-regular file and will be changed into a regular one if import writes a byte-compiled file to it
+exit status: 1
+
+$ git diff --check -- tests/test_lp_scheduler.py
+exit status: 0
+
+$ grep -nE '[[:space:]]+$' <new files>   (trailing whitespace; exit 1 = none)
+exit status: 1
+
+$ phase-term scan of added test lines and new files (exit 1 = none)
+exit status: 1

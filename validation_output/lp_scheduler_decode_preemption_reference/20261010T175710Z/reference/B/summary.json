@@ -1,0 +1,822 @@
+{
+ "scheduler": "vllm",
+ "request": "B",
+ "passed": true,
+ "failure": null,
+ "command": [
+  "scripts/check_lp_scheduler_decode_preemption_reference_gpu.py",
+  "--scheduler",
+  "vllm",
+  "--request",
+  "B",
+  "--model-path",
+  "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+  "--output-dir",
+  "validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z/reference/B"
+ ],
+ "provenance": {
+  "git_head": "025a9042dba388b175ea8a7b57a720e9fa136d94",
+  "git_branch": "main",
+  "git_status_short": " M tests/test_lp_scheduler.py\n?? scripts/check_lp_scheduler_decode_preemption_reference_gpu.py\n?? validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z/baseline_checks/environment.txt\n?? validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z/cpu_checks/environment.txt\n?? validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z/decision_trace.json\n?? validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z/reference/A/command.txt\n?? validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z/reference/A/decision_trace.json\n?? validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z/reference/A/summary.json\n?? validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z/reference/B/command.txt\n?? validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z/summary.json\n?? validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z/trace_live_decode_preemption.py\n",
+  "git_status_ignored_tests": " M tests/test_lp_scheduler.py\n!! tests/__pycache__/\n!! tests/test_check_lp_scheduler_decode_preemption_reference_gpu.py\n",
+  "git_diff_head_sha256": "035ff9a2d97243668af422a10fa74a30865c63a6dfd56d2046c6b429cdae5280",
+  "file_sha256": {
+   "scripts/check_lp_scheduler_decode_preemption_reference_gpu.py": "81795236a8073be106b85484ace280dc61331f8b358b04e95decd794983e45d9",
+   "scripts/check_lp_scheduler_preemption_reference_gpu.py": "be2bed064cd7362bf46aea74535c716ddf1384a813f5a854a235d8e51e780a63",
+   "scripts/check_lp_scheduler_preemption_gpu.py": "bda413ac831faf5a8135d4a803036bbe2c401b985c87a858032fdc5a0eb04421",
+   "scripts/check_lp_scheduler_reference_gpu.py": "b0eeb8852095b9253245898cfdb554c1d1607387a79e0d564a9083c2030bb6a9",
+   "scripts/check_lp_scheduler_gpu.py": "8d1423df0ad3052b0474679bac3c09014693331b44a53dca160d509613cf8591",
+   "tests/test_check_lp_scheduler_decode_preemption_reference_gpu.py": "fc9400f54c7bc869cb48ef2c40624e364f4e305ddd6582d5c37e2216003b33f3",
+   "tests/test_lp_scheduler.py": "1e79e1575aacbc1b9bdeb8101505b48ad295cf6ddea0dab08890de9e91b95e54",
+   "sarathi/core/scheduler/vllm_scheduler.py": "a0e0edf8ae6cdf054fff19acaba2852cd504dc4948933a5e5f3e253e7095255f",
+   "sarathi/core/scheduler/base_scheduler.py": "5b4ac0fd3154ae25b580614fb4b3fd773091eb730951f72b3624fd71ecf06cbd",
+   "sarathi/core/scheduler/lp_scheduler.py": "debfd4eca2225815d6c944b91d7c544b5af0e2fd8aaf4d5b645addd9cb2eb0c3",
+   "sarathi/core/block_space_manager/base_block_space_manager.py": "75b6e133fd5665e38f53a185aaf34db07883b468a557bd19b97c1632b4c91e0c",
+   "sarathi/core/block_space_manager/vllm_block_space_manager.py": "34b7f9e2474be259d114bbc5e3589238a8d3de1237f3bd7870d32eac144aface",
+   "sarathi/core/sequence_manager/base_sequence_manager.py": "1705241edd761aabde072332a806772eb90e1f245db608b183e5bcec29a6a103",
+   "sarathi/core/sequence_manager/worker_sequence_manager.py": "0f40e95a484fbf7d8d0f08c36757fd2f0bedb9514fd49b6cfa7a790fbcb0d0ff",
+   "sarathi/core/sequence_manager/engine_sequence_manager.py": "7c3fd9c2152011629edec216cb76dc1f26481ceb275447482ef7ca85638c05b9",
+   "sarathi/core/datatypes/sequence.py": "a10a34fbab78d8aaa7e0e2c18aa11641d0b33534a23092ccfcbe9715d39523b4",
+   "sarathi/core/datatypes/request_output.py": "ad7ce137bdeb74a19e43d76efbb9d0629484fe2dba7384a712593294d7ba5a57",
+   "sarathi/engine/base_llm_engine.py": "301f11f55ce19b08728df9f238b675916ee6d2c94373645dc72ccc348516f69c",
+   "sarathi/worker/base_worker.py": "b6de07bc0e2609b1306c26eebf39839ec4433494ad6cc571ca5577008d8569c2",
+   "sarathi/worker/cache_engine.py": "353409d27b6b2c18a2fc4f18ac4fa806d59691d4eeed69c8ed3b97a86cf2bdd0",
+   "sarathi/model_executor/model_runner.py": "259dc36dbd87986847284146003cdb4d4485ac881ef8d18e80198d1cd99179b3",
+   "sarathi/model_executor/model_loader.py": "46803dc0d558b7f5ea4ec066d421193aeada606dce7c47cd5d1fb9f97a93b355",
+   "sarathi/model_executor/weight_utils.py": "b79f66d39324e1d0153df6681d02253b8fa4e826608dc618d8e1f732b4008a03",
+   "sarathi/model_executor/models/llama.py": "8f00caba44d1f8ee8066e423572ac211d635c81d1de6972cc6fc6ea687799349",
+   "sarathi/model_executor/layers/sampler.py": "b9f7905a5f9aa4c373a0fb39e1341ccc78cca8a8e0a1b2342fb22944b73f0238",
+   "sarathi/config.py": "6069257709b2270844c6a7b2909461692396647211132307a94137aefa3bffb8",
+   "lp_relaxation_scheduler.py": "616f18d57eb10a1aa8d9f54b049335ba4f9c31f1ccce64e82c2d42dda665cdf3",
+   "lpserve_state_mapping.py": "7d95bf62e477716ea622654a047594214b9c4083fdd0921c4d4c6ccb34ecd2a7",
+   "lpserve_plan_execution.py": "b396e7f529c59527b2174536cc3f924b2faf4adf030de3aec2cc9e7355f0e4cd"
+  },
+  "executed_script_sha256": "81795236a8073be106b85484ace280dc61331f8b358b04e95decd794983e45d9",
+  "helper_sha256": {
+   "check_lp_scheduler_gpu": "8d1423df0ad3052b0474679bac3c09014693331b44a53dca160d509613cf8591",
+   "check_lp_scheduler_preemption_gpu": "bda413ac831faf5a8135d4a803036bbe2c401b985c87a858032fdc5a0eb04421",
+   "check_lp_scheduler_preemption_reference_gpu": "be2bed064cd7362bf46aea74535c716ddf1384a813f5a854a235d8e51e780a63",
+   "check_lp_scheduler_reference_gpu": "b0eeb8852095b9253245898cfdb554c1d1607387a79e0d564a9083c2030bb6a9"
+  },
+  "loaded_modules": "uri/main:GCCcore/12.2.0:binutils/.2.39-GCCcore-12.2.0:bzip2/.1.0.8-GCCcore-12.2.0:zlib/.1.2.12-GCCcore-12.2.0:libreadline/.8.2-GCCcore-12.2.0:ncurses/.6.3-GCCcore-12.2.0:Tcl/.8.6.12-GCCcore-12.2.0:SQLite/.3.39.4-GCCcore-12.2.0:XZ/.5.2.7-GCCcore-12.2.0:GMP/.6.2.1-GCCcore-12.2.0:libffi/3.4.4-GCCcore-12.2.0:OpenSSL/1.1:Python/3.10.8-GCCcore-12.2.0:CUDA/12.1.1"
+ },
+ "helper_constants": {
+  "check_lp_scheduler_preemption_gpu.INITIALIZED_NUM_GPU_BLOCKS": 4,
+  "check_lp_scheduler_preemption_gpu.TENSOR_PARALLEL_SIZE": 1,
+  "check_lp_scheduler_preemption_gpu.MAX_NUM_SEQS": 1,
+  "check_lp_scheduler_preemption_reference_gpu.PROMPT_TOKEN_IDS": {
+   "A": [
+    1000,
+    1001,
+    1002,
+    1003,
+    1004,
+    1005,
+    1006,
+    1007,
+    1008,
+    1009,
+    1010,
+    1011,
+    1012,
+    1013,
+    1014,
+    1015,
+    1016
+   ],
+   "B": [
+    2000,
+    2001,
+    2002,
+    2003,
+    2004,
+    2005,
+    2006,
+    2007,
+    2008,
+    2009,
+    2010,
+    2011,
+    2012,
+    2013,
+    2014,
+    2015,
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026,
+    2027,
+    2028,
+    2029,
+    2030,
+    2031,
+    2032,
+    2033,
+    2034,
+    2035,
+    2036,
+    2037,
+    2038,
+    2039,
+    2040,
+    2041,
+    2042,
+    2043,
+    2044,
+    2045,
+    2046,
+    2047
+   ]
+  },
+  "check_lp_scheduler_preemption_reference_gpu.FINGERPRINT_SPEC": [
+   [
+    "model.embed_tokens.weight",
+    [
+     1000,
+     1016,
+     2000,
+     2047
+    ]
+   ],
+   [
+    "lm_head.weight",
+    [
+     1000,
+     1016,
+     2000,
+     2047
+    ]
+   ],
+   [
+    "model.norm.weight",
+    null
+   ]
+  ],
+  "check_lp_scheduler_reference_gpu.MODEL_REPO": "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+ },
+ "environment": {
+  "hostname": "gpu048",
+  "slurm": {
+   "SLURM_JOB_ID": "65515174",
+   "SLURM_JOB_NODELIST": "gpu048",
+   "SLURM_JOB_PARTITION": "gpu-preempt",
+   "SLURM_STEP_ID": "4294967290"
+  },
+  "cuda_visible_devices": "0",
+  "gpu": "0, NVIDIA A16, GPU-8d45767b-01c8-5486-03af-138bbc1c6752, 595.91.07, 15356 MiB",
+  "torch_cuda": "12.1",
+  "python_executable": "/home/atjoshi_umass_edu/LPServe/env/bin/python",
+  "python_version": "3.10.8",
+  "virtual_env": "/home/atjoshi_umass_edu/LPServe/env",
+  "pythonpath": "/home/atjoshi_umass_edu/LPServe:/modules/uri_apps/software/Python/3.10.8-GCCcore-12.2.0/easybuild/python",
+  "versions": {
+   "torch": "2.3.0+cu121",
+   "transformers": "4.57.6",
+   "ray": "2.58.0",
+   "numpy": "2.2.6",
+   "scipy": "1.15.3",
+   "flashinfer": "0.2.0.post1+cu121torch2.3",
+   "vllm-flash-attn": "2.5.9",
+   "sarathi": "0.1.7",
+   "nvidia-ml-py": "13.595.45",
+   "huggingface-hub": "0.36.2",
+   "tokenizers": "0.22.2"
+  },
+  "git_head": "025a9042dba388b175ea8a7b57a720e9fa136d94",
+  "git_status_short": "M tests/test_lp_scheduler.py\n?? scripts/check_lp_scheduler_decode_preemption_reference_gpu.py\n?? validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z/baseline_checks/environment.txt\n?? validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z/cpu_checks/environment.txt\n?? validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z/decision_trace.json\n?? validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z/reference/A/command.txt\n?? validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z/reference/A/decision_trace.json\n?? validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z/reference/A/summary.json\n?? validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z/reference/B/command.txt\n?? validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z/summary.json\n?? validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z/trace_live_decode_preemption.py",
+  "cwd": "/home/atjoshi_umass_edu/LPServe"
+ },
+ "asset": {
+  "repository": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+  "snapshot_path": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+  "snapshot_revision": "fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+  "refs_main": "fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+  "architectures": [
+   "LlamaForCausalLM"
+  ],
+  "config_torch_dtype": "bfloat16",
+  "config_vocab_size": 32000,
+  "small_files": {
+   "config.json": {
+    "name": "config.json",
+    "is_symlink": true,
+    "exists": true,
+    "link_target": "../../blobs/4ea05f1bc289d48ba9b92eea2f58ad8acd3dce5d",
+    "size": 608,
+    "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/4ea05f1bc289d48ba9b92eea2f58ad8acd3dce5d",
+    "sha256": "486bedda3a6988332e60d9638a09ca4b260d34ebcf1b19e22cf3b140b63d8fe9"
+   },
+   "tokenizer_config.json": {
+    "name": "tokenizer_config.json",
+    "is_symlink": true,
+    "exists": true,
+    "link_target": "../../blobs/fa96b85858f4053b0142a18e2b09dbe94e3fae46",
+    "size": 1289,
+    "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/fa96b85858f4053b0142a18e2b09dbe94e3fae46",
+    "sha256": "7b41ba7d0eb91e77914ca3dafde559ea3e19878769b7e68409e89bed5222e77a"
+   },
+   "tokenizer.json": {
+    "name": "tokenizer.json",
+    "is_symlink": true,
+    "exists": true,
+    "link_target": "../../blobs/a6e931b92caff4c79c5c56282f1e89569a0ae558",
+    "size": 1842767,
+    "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/a6e931b92caff4c79c5c56282f1e89569a0ae558",
+    "sha256": "bcd04f0eadf90287bd26e1a183ac487d8a141b09b06aecb7725bbdd343640f2e"
+   },
+   "tokenizer.model": {
+    "name": "tokenizer.model",
+    "is_symlink": true,
+    "exists": true,
+    "link_target": "../../blobs/9e556afd44213b6bd1be2b850ebbbd98f5481437a8021afaf58ee7fb1818d347",
+    "size": 499723,
+    "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/9e556afd44213b6bd1be2b850ebbbd98f5481437a8021afaf58ee7fb1818d347",
+    "sha256": "9e556afd44213b6bd1be2b850ebbbd98f5481437a8021afaf58ee7fb1818d347"
+   },
+   "special_tokens_map.json": {
+    "name": "special_tokens_map.json",
+    "is_symlink": true,
+    "exists": true,
+    "link_target": "../../blobs/492d4b2966a1763442d426d880dbc29f94906e4c",
+    "size": 551,
+    "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/492d4b2966a1763442d426d880dbc29f94906e4c",
+    "sha256": "82d96d7a9e6ced037f12394b7ea6a5b02e6ca87e0d11edaa8d60d9be857ce7db"
+   }
+  },
+  "weight_format": "safetensors",
+  "weight_files": [
+   {
+    "name": "model.safetensors",
+    "is_symlink": true,
+    "exists": true,
+    "link_target": "../../blobs/6e6001da2106d4757498752a021df6c2bdc332c650aae4bae6b0c004dcf14933",
+    "size": 2200119864,
+    "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/6e6001da2106d4757498752a021df6c2bdc332c650aae4bae6b0c004dcf14933",
+    "safetensors": {
+     "num_tensors": 201,
+     "dtypes": [
+      "BF16"
+     ],
+     "tensor_names_sha256": "70b5291b06b5feffd9efcf70e39ec5a22e193c52a989c13859d03295f4a079ec"
+    }
+   }
+  ],
+  "weight_indexes": {},
+  "npcache_dir_present": false
+ },
+ "shared": {
+  "asset": {
+   "repository": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+   "snapshot_path": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+   "snapshot_revision": "fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+   "refs_main": "fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+   "architectures": [
+    "LlamaForCausalLM"
+   ],
+   "config_torch_dtype": "bfloat16",
+   "config_vocab_size": 32000,
+   "small_files": {
+    "config.json": {
+     "name": "config.json",
+     "is_symlink": true,
+     "exists": true,
+     "link_target": "../../blobs/4ea05f1bc289d48ba9b92eea2f58ad8acd3dce5d",
+     "size": 608,
+     "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/4ea05f1bc289d48ba9b92eea2f58ad8acd3dce5d",
+     "sha256": "486bedda3a6988332e60d9638a09ca4b260d34ebcf1b19e22cf3b140b63d8fe9"
+    },
+    "tokenizer_config.json": {
+     "name": "tokenizer_config.json",
+     "is_symlink": true,
+     "exists": true,
+     "link_target": "../../blobs/fa96b85858f4053b0142a18e2b09dbe94e3fae46",
+     "size": 1289,
+     "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/fa96b85858f4053b0142a18e2b09dbe94e3fae46",
+     "sha256": "7b41ba7d0eb91e77914ca3dafde559ea3e19878769b7e68409e89bed5222e77a"
+    },
+    "tokenizer.json": {
+     "name": "tokenizer.json",
+     "is_symlink": true,
+     "exists": true,
+     "link_target": "../../blobs/a6e931b92caff4c79c5c56282f1e89569a0ae558",
+     "size": 1842767,
+     "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/a6e931b92caff4c79c5c56282f1e89569a0ae558",
+     "sha256": "bcd04f0eadf90287bd26e1a183ac487d8a141b09b06aecb7725bbdd343640f2e"
+    },
+    "tokenizer.model": {
+     "name": "tokenizer.model",
+     "is_symlink": true,
+     "exists": true,
+     "link_target": "../../blobs/9e556afd44213b6bd1be2b850ebbbd98f5481437a8021afaf58ee7fb1818d347",
+     "size": 499723,
+     "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/9e556afd44213b6bd1be2b850ebbbd98f5481437a8021afaf58ee7fb1818d347",
+     "sha256": "9e556afd44213b6bd1be2b850ebbbd98f5481437a8021afaf58ee7fb1818d347"
+    },
+    "special_tokens_map.json": {
+     "name": "special_tokens_map.json",
+     "is_symlink": true,
+     "exists": true,
+     "link_target": "../../blobs/492d4b2966a1763442d426d880dbc29f94906e4c",
+     "size": 551,
+     "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/492d4b2966a1763442d426d880dbc29f94906e4c",
+     "sha256": "82d96d7a9e6ced037f12394b7ea6a5b02e6ca87e0d11edaa8d60d9be857ce7db"
+    }
+   },
+   "weight_format": "safetensors",
+   "weight_files": [
+    {
+     "name": "model.safetensors",
+     "is_symlink": true,
+     "exists": true,
+     "link_target": "../../blobs/6e6001da2106d4757498752a021df6c2bdc332c650aae4bae6b0c004dcf14933",
+     "size": 2200119864,
+     "resolved": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/blobs/6e6001da2106d4757498752a021df6c2bdc332c650aae4bae6b0c004dcf14933",
+     "safetensors": {
+      "num_tensors": 201,
+      "dtypes": [
+       "BF16"
+      ],
+      "tensor_names_sha256": "70b5291b06b5feffd9efcf70e39ec5a22e193c52a989c13859d03295f4a079ec"
+     }
+    }
+   ],
+   "weight_indexes": {},
+   "npcache_dir_present": false
+  },
+  "load_format": "auto",
+  "dtype": "float16",
+  "attention_backend": "flash_attention",
+  "tensor_parallel_size": 1,
+  "pipeline_parallel_size": 1,
+  "max_model_len": 64,
+  "block_size": 16,
+  "gpu_memory_utilization": 0.5,
+  "seed": 42,
+  "tokenizer_mode": "auto",
+  "trust_remote_code": true,
+  "initialized_num_gpu_blocks": 4,
+  "prompt_token_ids": {
+   "A": [
+    1000,
+    1001,
+    1002,
+    1003,
+    1004,
+    1005,
+    1006,
+    1007,
+    1008,
+    1009,
+    1010,
+    1011,
+    1012,
+    1013,
+    1014,
+    1015,
+    1016
+   ],
+   "B": [
+    2000,
+    2001,
+    2002,
+    2003,
+    2004,
+    2005,
+    2006,
+    2007,
+    2008,
+    2009,
+    2010,
+    2011,
+    2012,
+    2013,
+    2014,
+    2015,
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026,
+    2027,
+    2028,
+    2029,
+    2030,
+    2031,
+    2032,
+    2033,
+    2034,
+    2035,
+    2036,
+    2037,
+    2038,
+    2039,
+    2040,
+    2041,
+    2042,
+    2043,
+    2044,
+    2045,
+    2046,
+    2047
+   ]
+  },
+  "greedy_sampling": {
+   "temperature": 0.0,
+   "ignore_eos": true,
+   "stop": []
+  },
+  "reference_max_tokens": {
+   "A": 3,
+   "B": 1
+  },
+  "lp_max_tokens": {
+   "A": 2,
+   "B": 1
+  },
+  "metrics_mode": "enabled, all optional outputs off, never plotted",
+  "offline_env": {
+   "HF_HUB_OFFLINE": "1",
+   "TRANSFORMERS_OFFLINE": "1"
+  }
+ },
+ "scheduler_identity": {
+  "scheduler_class": "VLLMScheduler",
+  "type": "VLLM",
+  "max_num_seqs": 1,
+  "max_model_len": 64,
+  "num_pipeline_stages": 1,
+  "max_num_batched_tokens": 64
+ },
+ "cache_capacity": {
+  "profiled_available_blocks": [
+   15606
+  ],
+  "chosen_initialized_blocks": 4,
+  "profile_calls": 1,
+  "initializations": [
+   {
+    "num_gpu_blocks": 4,
+    "result": [
+     null
+    ]
+   }
+  ],
+  "engine_cache_config_num_gpu_blocks": 4,
+  "central_manager_total_blocks": 4,
+  "central_allocator_num_blocks": 4,
+  "central_free_blocks": 4,
+  "central_watermark_blocks": 0,
+  "worker": {
+   "cache_config_num_gpu_blocks": 4,
+   "cache_engine_num_gpu_blocks": 4,
+   "cache_layers": 22,
+   "cache_tensor_block_dims": [
+    4
+   ],
+   "cache_tensor_shapes": [
+    [
+     4,
+     16,
+     4,
+     64
+    ]
+   ],
+   "manager_total_blocks": 4,
+   "allocator_num_blocks": 4,
+   "free_blocks": 4,
+   "block_ops": []
+  }
+ },
+ "weight_fingerprint": {
+  "parameters": {
+   "model.embed_tokens.weight": {
+    "rows": [
+     1000,
+     1016,
+     2000,
+     2047
+    ],
+    "loaded_dtype": "torch.float16",
+    "file_dtype": "torch.bfloat16",
+    "loaded_shape": [
+     32000,
+     2048
+    ],
+    "file_shape": [
+     32000,
+     2048
+    ],
+    "num_values": 8192,
+    "equal": true,
+    "loaded_values_sha256": "c95ea2ec51c72075412f2d60eab154601584e6e8d018196e51d9c2374c2217e3",
+    "first_values": [
+     0.0263671875,
+     -0.00634765625,
+     0.003936767578125,
+     -0.0057373046875
+    ]
+   },
+   "lm_head.weight": {
+    "rows": [
+     1000,
+     1016,
+     2000,
+     2047
+    ],
+    "loaded_dtype": "torch.float16",
+    "file_dtype": "torch.bfloat16",
+    "loaded_shape": [
+     32000,
+     2048
+    ],
+    "file_shape": [
+     32000,
+     2048
+    ],
+    "num_values": 8192,
+    "equal": true,
+    "loaded_values_sha256": "45617fc57a732561a29ab11691e99b90028fc3a6183dab0f7cd529773875cd73",
+    "first_values": [
+     -0.000347137451171875,
+     0.03515625,
+     -0.006103515625,
+     0.025634765625
+    ]
+   },
+   "model.norm.weight": {
+    "rows": null,
+    "loaded_dtype": "torch.float16",
+    "file_dtype": "torch.bfloat16",
+    "loaded_shape": [
+     2048
+    ],
+    "file_shape": [
+     2048
+    ],
+    "num_values": 2048,
+    "equal": true,
+    "loaded_values_sha256": "86c7b77e2fe7ef4a68c8812d6244f7699c80fd50e9184a817afe1b69586dc2c2",
+    "first_values": [
+     1.921875,
+     1.8203125,
+     1.9453125,
+     1.984375
+    ]
+   }
+  },
+  "all_equal": true
+ },
+ "weight_fingerprint_sha256": "8473700f300cb7ffcb6136bb89937b759dab2908bc7f0cc05e886f3a084a5813",
+ "real_weights": {
+  "requested_load_format": "auto",
+  "model_config_load_format": "auto",
+  "weight_files": [
+   "model.safetensors"
+  ],
+  "fingerprint_matches_file": true
+ },
+ "shared_after_init": {
+  "resolved_dtype": "torch.float16",
+  "hf_config_commit_hash": "fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+  "vocab_size": 32000,
+  "tokenizer_len": 32000,
+  "tokenizer_class": "LlamaTokenizerFast",
+  "eos_token_id": 2,
+  "special_token_ids": [
+   0,
+   1,
+   2
+  ],
+  "prompt_tokens": {
+   "A": [
+    "ied",
+    "ER",
+    "\u2581stat",
+    "fig",
+    "me",
+    "\u2581von",
+    "\u2581inter",
+    "roid",
+    "ater",
+    "\u2581their",
+    "\u2581bet",
+    "\u2581ein",
+    "}\\",
+    "\">",
+    "\u2581sub",
+    "\u2581op",
+    "\u2581don"
+   ],
+   "B": [
+    "\u2581called",
+    "Item",
+    "ura",
+    "vec",
+    "eme",
+    "\u2581della",
+    "embre",
+    "urg",
+    "Se",
+    "\u2581request",
+    "ische",
+    "\u2581port",
+    "\u2581instead",
+    "=\\",
+    "\u2581\u0423",
+    "hor",
+    "ente",
+    "ume",
+    "erd",
+    "\u0441\u0430",
+    "\u2581why",
+    "rist",
+    "\u2581person",
+    "\u2581...",
+    "\u2581private",
+    "\u2581tot",
+    "pha",
+    "ift",
+    "ita",
+    "loc",
+    "\u2581old",
+    "\u043e\u043d",
+    "\u2581nel",
+    "']",
+    "ti",
+    "iet",
+    "cite",
+    "plement",
+    "\u2581above",
+    "ks",
+    "ready",
+    "\u2581come",
+    "section",
+    "\u2581Pol",
+    "\u2581writ",
+    "\u2581https",
+    "\u2581$$",
+    "\u2581\u00bb"
+   ]
+  },
+  "max_model_len": 64
+ },
+ "engine_init_seconds": 27.992,
+ "sampling": {
+  "temperature": 0.0,
+  "max_tokens": 1,
+  "ignore_eos": true,
+  "stop": []
+ },
+ "prompt_token_ids": [
+  2000,
+  2001,
+  2002,
+  2003,
+  2004,
+  2005,
+  2006,
+  2007,
+  2008,
+  2009,
+  2010,
+  2011,
+  2012,
+  2013,
+  2014,
+  2015,
+  2016,
+  2017,
+  2018,
+  2019,
+  2020,
+  2021,
+  2022,
+  2023,
+  2024,
+  2025,
+  2026,
+  2027,
+  2028,
+  2029,
+  2030,
+  2031,
+  2032,
+  2033,
+  2034,
+  2035,
+  2036,
+  2037,
+  2038,
+  2039,
+  2040,
+  2041,
+  2042,
+  2043,
+  2044,
+  2045,
+  2046,
+  2047
+ ],
+ "final_output": {
+  "seq_id": 0,
+  "prompt_token_ids": [
+   2000,
+   2001,
+   2002,
+   2003,
+   2004,
+   2005,
+   2006,
+   2007,
+   2008,
+   2009,
+   2010,
+   2011,
+   2012,
+   2013,
+   2014,
+   2015,
+   2016,
+   2017,
+   2018,
+   2019,
+   2020,
+   2021,
+   2022,
+   2023,
+   2024,
+   2025,
+   2026,
+   2027,
+   2028,
+   2029,
+   2030,
+   2031,
+   2032,
+   2033,
+   2034,
+   2035,
+   2036,
+   2037,
+   2038,
+   2039,
+   2040,
+   2041,
+   2042,
+   2043,
+   2044,
+   2045,
+   2046,
+   2047
+  ],
+  "token_ids": [
+   29871
+  ],
+  "text": " ",
+  "finished": true,
+  "finish_reason": "length"
+ },
+ "history": {
+  "history": {
+   "B": [
+    29871
+   ]
+  },
+  "decode_events": [
+   [
+    1,
+    "B",
+    29871
+   ]
+  ],
+  "discarded_prefill_samples": [
+   [
+    0,
+    "B",
+    48,
+    29871
+   ]
+  ]
+ },
+ "generated_token_ids": [
+  29871
+ ],
+ "cleanup": {
+  "engine_constructed": true,
+  "ray_initialized_before_shutdown": true,
+  "ray_initialized_after_shutdown": false
+ }
+}

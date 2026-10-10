@@ -1,0 +1,15 @@
+$ python -B -c 'py_compile.compile(f, doraise=True, cfile=<scratch>/pyc/<n>.pyc)' <new driver> <new driver test> tests/test_lp_scheduler.py <trace script>
+compiled scripts/check_lp_scheduler_decode_preemption_reference_gpu.py
+compiled tests/test_check_lp_scheduler_decode_preemption_reference_gpu.py
+compiled validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z/trace_live_decode_preemption.py
+compiled tests/test_lp_scheduler.py
+exit status: 0
+
+$ git diff --check -- tests/test_lp_scheduler.py
+exit status: 0
+
+$ grep -nE '[[:space:]]+$' <new files>   (trailing whitespace; exit 1 = none)
+exit status: 1
+
+$ phase-term scan of added test lines and new files (exit 1 = none)
+exit status: 1

@@ -1,0 +1,1030 @@
+{
+ "steps": [
+  {
+   "index": 0,
+   "before": {
+    "iteration_id": -1,
+    "num_running_batches": 0,
+    "waiting": [
+     0
+    ],
+    "running": [],
+    "total_blocks": 4,
+    "free_blocks": 4,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "block_tables": {},
+    "seqs": {
+     "0": {
+      "status": "WAITING",
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007,
+       2008,
+       2009,
+       2010,
+       2011,
+       2012,
+       2013,
+       2014,
+       2015,
+       2016,
+       2017,
+       2018,
+       2019,
+       2020,
+       2021,
+       2022,
+       2023,
+       2024,
+       2025,
+       2026,
+       2027,
+       2028,
+       2029,
+       2030,
+       2031,
+       2032,
+       2033,
+       2034,
+       2035,
+       2036,
+       2037,
+       2038,
+       2039,
+       2040,
+       2041,
+       2042,
+       2043,
+       2044,
+       2045,
+       2046,
+       2047
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 3
+     }
+    }
+   },
+   "worker_before": {
+    "cache_config_num_gpu_blocks": 4,
+    "cache_engine_num_gpu_blocks": 4,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     4
+    ],
+    "cache_tensor_shapes": [
+     [
+      4,
+      16,
+      4,
+      64
+     ]
+    ],
+    "manager_total_blocks": 4,
+    "allocator_num_blocks": 4,
+    "free_blocks": 4,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "block_tables": {},
+    "seqs": {
+     "0": {
+      "status": "WAITING",
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007,
+       2008,
+       2009,
+       2010,
+       2011,
+       2012,
+       2013,
+       2014,
+       2015,
+       2016,
+       2017,
+       2018,
+       2019,
+       2020,
+       2021,
+       2022,
+       2023,
+       2024,
+       2025,
+       2026,
+       2027,
+       2028,
+       2029,
+       2030,
+       2031,
+       2032,
+       2033,
+       2034,
+       2035,
+       2036,
+       2037,
+       2038,
+       2039,
+       2040,
+       2041,
+       2042,
+       2043,
+       2044,
+       2045,
+       2046,
+       2047
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 3
+     }
+    },
+    "block_ops": []
+   },
+   "native_gates": {
+    "watermark_blocks": 0,
+    "free_blocks": 4,
+    "requests": {
+     "0": {
+      "gate": "admission",
+      "initial_blocks": 3,
+      "can_allocate": true
+     }
+    }
+   },
+   "events": [
+    {
+     "call": "schedule",
+     "outputs": {
+      "id": 0,
+      "scheduled": [
+       [
+        0,
+        48
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "state": {
+      "iteration_id": 0,
+      "num_running_batches": 1,
+      "waiting": [],
+      "running": [
+       0
+      ],
+      "total_blocks": 4,
+      "free_blocks": 1,
+      "free_block_ids": [
+       0
+      ],
+      "block_tables": {
+       "0": [
+        3,
+        2,
+        1
+       ]
+      },
+      "seqs": {
+       "0": {
+        "status": "WAITING",
+        "prompt_token_ids": [
+         2000,
+         2001,
+         2002,
+         2003,
+         2004,
+         2005,
+         2006,
+         2007,
+         2008,
+         2009,
+         2010,
+         2011,
+         2012,
+         2013,
+         2014,
+         2015,
+         2016,
+         2017,
+         2018,
+         2019,
+         2020,
+         2021,
+         2022,
+         2023,
+         2024,
+         2025,
+         2026,
+         2027,
+         2028,
+         2029,
+         2030,
+         2031,
+         2032,
+         2033,
+         2034,
+         2035,
+         2036,
+         2037,
+         2038,
+         2039,
+         2040,
+         2041,
+         2042,
+         2043,
+         2044,
+         2045,
+         2046,
+         2047
+        ],
+        "prompt_tokens_processed": 0,
+        "prompt_processing_finished": false,
+        "output_token_ids": [],
+        "logical_blocks": 3
+       }
+      }
+     },
+     "block_ops": [
+      [
+       "allocate",
+       0,
+       [
+        3,
+        2,
+        1
+       ]
+      ]
+     ]
+    },
+    {
+     "call": "_run_workers",
+     "method": "execute_model",
+     "sampler_outputs": [
+      [
+       0,
+       29871
+      ]
+     ]
+    }
+   ],
+   "central_block_ops": [
+    [
+     "allocate",
+     0,
+     [
+      3,
+      2,
+      1
+     ]
+    ]
+   ],
+   "after": {
+    "iteration_id": 0,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [
+     0
+    ],
+    "total_blocks": 4,
+    "free_blocks": 1,
+    "free_block_ids": [
+     0
+    ],
+    "block_tables": {
+     "0": [
+      3,
+      2,
+      1
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007,
+       2008,
+       2009,
+       2010,
+       2011,
+       2012,
+       2013,
+       2014,
+       2015,
+       2016,
+       2017,
+       2018,
+       2019,
+       2020,
+       2021,
+       2022,
+       2023,
+       2024,
+       2025,
+       2026,
+       2027,
+       2028,
+       2029,
+       2030,
+       2031,
+       2032,
+       2033,
+       2034,
+       2035,
+       2036,
+       2037,
+       2038,
+       2039,
+       2040,
+       2041,
+       2042,
+       2043,
+       2044,
+       2045,
+       2046,
+       2047
+      ],
+      "prompt_tokens_processed": 48,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 3
+     }
+    }
+   },
+   "worker_after": {
+    "cache_config_num_gpu_blocks": 4,
+    "cache_engine_num_gpu_blocks": 4,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     4
+    ],
+    "cache_tensor_shapes": [
+     [
+      4,
+      16,
+      4,
+      64
+     ]
+    ],
+    "manager_total_blocks": 4,
+    "allocator_num_blocks": 4,
+    "free_blocks": 1,
+    "free_block_ids": [
+     0
+    ],
+    "block_tables": {
+     "0": [
+      3,
+      2,
+      1
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007,
+       2008,
+       2009,
+       2010,
+       2011,
+       2012,
+       2013,
+       2014,
+       2015,
+       2016,
+       2017,
+       2018,
+       2019,
+       2020,
+       2021,
+       2022,
+       2023,
+       2024,
+       2025,
+       2026,
+       2027,
+       2028,
+       2029,
+       2030,
+       2031,
+       2032,
+       2033,
+       2034,
+       2035,
+       2036,
+       2037,
+       2038,
+       2039,
+       2040,
+       2041,
+       2042,
+       2043,
+       2044,
+       2045,
+       2046,
+       2047
+      ],
+      "prompt_tokens_processed": 48,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 3
+     }
+    },
+    "block_ops": [
+     [
+      "allocate",
+      0,
+      [
+       3,
+       2,
+       1
+      ]
+     ]
+    ]
+   },
+   "request_outputs": [
+    {
+     "seq_id": 0,
+     "prompt_token_ids": [
+      2000,
+      2001,
+      2002,
+      2003,
+      2004,
+      2005,
+      2006,
+      2007,
+      2008,
+      2009,
+      2010,
+      2011,
+      2012,
+      2013,
+      2014,
+      2015,
+      2016,
+      2017,
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026,
+      2027,
+      2028,
+      2029,
+      2030,
+      2031,
+      2032,
+      2033,
+      2034,
+      2035,
+      2036,
+      2037,
+      2038,
+      2039,
+      2040,
+      2041,
+      2042,
+      2043,
+      2044,
+      2045,
+      2046,
+      2047
+     ],
+     "token_ids": [],
+     "text": "",
+     "finished": false,
+     "finish_reason": null
+    }
+   ]
+  },
+  {
+   "index": 1,
+   "before": {
+    "iteration_id": 0,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [
+     0
+    ],
+    "total_blocks": 4,
+    "free_blocks": 1,
+    "free_block_ids": [
+     0
+    ],
+    "block_tables": {
+     "0": [
+      3,
+      2,
+      1
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007,
+       2008,
+       2009,
+       2010,
+       2011,
+       2012,
+       2013,
+       2014,
+       2015,
+       2016,
+       2017,
+       2018,
+       2019,
+       2020,
+       2021,
+       2022,
+       2023,
+       2024,
+       2025,
+       2026,
+       2027,
+       2028,
+       2029,
+       2030,
+       2031,
+       2032,
+       2033,
+       2034,
+       2035,
+       2036,
+       2037,
+       2038,
+       2039,
+       2040,
+       2041,
+       2042,
+       2043,
+       2044,
+       2045,
+       2046,
+       2047
+      ],
+      "prompt_tokens_processed": 48,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 3
+     }
+    }
+   },
+   "worker_before": {
+    "cache_config_num_gpu_blocks": 4,
+    "cache_engine_num_gpu_blocks": 4,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     4
+    ],
+    "cache_tensor_shapes": [
+     [
+      4,
+      16,
+      4,
+      64
+     ]
+    ],
+    "manager_total_blocks": 4,
+    "allocator_num_blocks": 4,
+    "free_blocks": 1,
+    "free_block_ids": [
+     0
+    ],
+    "block_tables": {
+     "0": [
+      3,
+      2,
+      1
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007,
+       2008,
+       2009,
+       2010,
+       2011,
+       2012,
+       2013,
+       2014,
+       2015,
+       2016,
+       2017,
+       2018,
+       2019,
+       2020,
+       2021,
+       2022,
+       2023,
+       2024,
+       2025,
+       2026,
+       2027,
+       2028,
+       2029,
+       2030,
+       2031,
+       2032,
+       2033,
+       2034,
+       2035,
+       2036,
+       2037,
+       2038,
+       2039,
+       2040,
+       2041,
+       2042,
+       2043,
+       2044,
+       2045,
+       2046,
+       2047
+      ],
+      "prompt_tokens_processed": 48,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 3
+     }
+    },
+    "block_ops": []
+   },
+   "native_gates": {
+    "watermark_blocks": 0,
+    "free_blocks": 1,
+    "requests": {
+     "0": {
+      "gate": "append",
+      "can_append_slot": true
+     }
+    }
+   },
+   "events": [
+    {
+     "call": "schedule",
+     "outputs": {
+      "id": 1,
+      "scheduled": [
+       [
+        0,
+        0
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "state": {
+      "iteration_id": 1,
+      "num_running_batches": 1,
+      "waiting": [],
+      "running": [
+       0
+      ],
+      "total_blocks": 4,
+      "free_blocks": 1,
+      "free_block_ids": [
+       0
+      ],
+      "block_tables": {
+       "0": [
+        3,
+        2,
+        1
+       ]
+      },
+      "seqs": {
+       "0": {
+        "status": "PAUSED",
+        "prompt_token_ids": [
+         2000,
+         2001,
+         2002,
+         2003,
+         2004,
+         2005,
+         2006,
+         2007,
+         2008,
+         2009,
+         2010,
+         2011,
+         2012,
+         2013,
+         2014,
+         2015,
+         2016,
+         2017,
+         2018,
+         2019,
+         2020,
+         2021,
+         2022,
+         2023,
+         2024,
+         2025,
+         2026,
+         2027,
+         2028,
+         2029,
+         2030,
+         2031,
+         2032,
+         2033,
+         2034,
+         2035,
+         2036,
+         2037,
+         2038,
+         2039,
+         2040,
+         2041,
+         2042,
+         2043,
+         2044,
+         2045,
+         2046,
+         2047
+        ],
+        "prompt_tokens_processed": 48,
+        "prompt_processing_finished": true,
+        "output_token_ids": [],
+        "logical_blocks": 3
+       }
+      }
+     },
+     "block_ops": []
+    },
+    {
+     "call": "_run_workers",
+     "method": "execute_model",
+     "sampler_outputs": [
+      [
+       0,
+       29871
+      ]
+     ]
+    }
+   ],
+   "central_block_ops": [
+    [
+     "free",
+     0,
+     [
+      3,
+      2,
+      1
+     ]
+    ]
+   ],
+   "after": {
+    "iteration_id": 1,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [],
+    "total_blocks": 4,
+    "free_blocks": 4,
+    "free_block_ids": [
+     0,
+     3,
+     2,
+     1
+    ],
+    "block_tables": {},
+    "seqs": {}
+   },
+   "worker_after": {
+    "cache_config_num_gpu_blocks": 4,
+    "cache_engine_num_gpu_blocks": 4,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     4
+    ],
+    "cache_tensor_shapes": [
+     [
+      4,
+      16,
+      4,
+      64
+     ]
+    ],
+    "manager_total_blocks": 4,
+    "allocator_num_blocks": 4,
+    "free_blocks": 4,
+    "free_block_ids": [
+     0,
+     2,
+     3,
+     1
+    ],
+    "block_tables": {},
+    "seqs": {},
+    "block_ops": [
+     [
+      "free",
+      0,
+      [
+       3,
+       2,
+       1
+      ]
+     ]
+    ]
+   },
+   "request_outputs": [
+    {
+     "seq_id": 0,
+     "prompt_token_ids": [
+      2000,
+      2001,
+      2002,
+      2003,
+      2004,
+      2005,
+      2006,
+      2007,
+      2008,
+      2009,
+      2010,
+      2011,
+      2012,
+      2013,
+      2014,
+      2015,
+      2016,
+      2017,
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026,
+      2027,
+      2028,
+      2029,
+      2030,
+      2031,
+      2032,
+      2033,
+      2034,
+      2035,
+      2036,
+      2037,
+      2038,
+      2039,
+      2040,
+      2041,
+      2042,
+      2043,
+      2044,
+      2045,
+      2046,
+      2047
+     ],
+     "token_ids": [
+      29871
+     ],
+     "text": " ",
+     "finished": true,
+     "finish_reason": "length"
+    }
+   ]
+  }
+ ],
+ "idle": {
+  "before": {
+   "iteration_id": 1,
+   "num_running_batches": 0,
+   "waiting": [],
+   "running": [],
+   "total_blocks": 4,
+   "free_blocks": 4,
+   "free_block_ids": [
+    0,
+    3,
+    2,
+    1
+   ],
+   "block_tables": {},
+   "seqs": {}
+  },
+  "events": [
+   {
+    "call": "schedule",
+    "outputs": {
+     "id": 2,
+     "scheduled": [],
+     "ignored_seq_ids": [],
+     "preempted_seq_ids": []
+    },
+    "state": {
+     "iteration_id": 2,
+     "num_running_batches": 0,
+     "waiting": [],
+     "running": [],
+     "total_blocks": 4,
+     "free_blocks": 4,
+     "free_block_ids": [
+      0,
+      3,
+      2,
+      1
+     ],
+     "block_tables": {},
+     "seqs": {}
+    },
+    "block_ops": [
+     [
+      "free",
+      0,
+      [
+       3,
+       2,
+       1
+      ]
+     ]
+    ]
+   }
+  ],
+  "after": {
+   "iteration_id": 2,
+   "num_running_batches": 0,
+   "waiting": [],
+   "running": [],
+   "total_blocks": 4,
+   "free_blocks": 4,
+   "free_block_ids": [
+    0,
+    3,
+    2,
+    1
+   ],
+   "block_tables": {},
+   "seqs": {}
+  },
+  "request_outputs": []
+ }
+}

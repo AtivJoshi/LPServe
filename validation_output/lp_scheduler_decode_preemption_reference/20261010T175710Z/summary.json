@@ -1,0 +1,755 @@
+{
+ "passed": true,
+ "failures": [],
+ "provenance": {
+  "git_head": "025a9042dba388b175ea8a7b57a720e9fa136d94",
+  "git_status_short": " M tests/test_lp_scheduler.py\n?? scripts/check_lp_scheduler_decode_preemption_reference_gpu.py\n?? validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z/baseline_checks/environment.txt\n?? validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z/cpu_checks/environment.txt\n?? validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z/decision_trace.json\n?? validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z/trace_live_decode_preemption.py\n",
+  "git_status_ignored_tests": " M tests/test_lp_scheduler.py\n!! tests/__pycache__/\n!! tests/test_check_lp_scheduler_decode_preemption_reference_gpu.py\n",
+  "git_diff_head_sha256": "035ff9a2d97243668af422a10fa74a30865c63a6dfd56d2046c6b429cdae5280",
+  "file_sha256": {
+   "tests/test_lp_scheduler.py": "1e79e1575aacbc1b9bdeb8101505b48ad295cf6ddea0dab08890de9e91b95e54",
+   "tests/test_check_lp_scheduler_decode_preemption_reference_gpu.py": "fc9400f54c7bc869cb48ef2c40624e364f4e305ddd6582d5c37e2216003b33f3",
+   "scripts/check_lp_scheduler_decode_preemption_reference_gpu.py": "81795236a8073be106b85484ace280dc61331f8b358b04e95decd794983e45d9",
+   "sarathi/core/scheduler/lp_scheduler.py": "debfd4eca2225815d6c944b91d7c544b5af0e2fd8aaf4d5b645addd9cb2eb0c3",
+   "sarathi/core/scheduler/base_scheduler.py": "5b4ac0fd3154ae25b580614fb4b3fd773091eb730951f72b3624fd71ecf06cbd",
+   "sarathi/core/sequence_manager/base_sequence_manager.py": "1705241edd761aabde072332a806772eb90e1f245db608b183e5bcec29a6a103",
+   "sarathi/core/sequence_manager/worker_sequence_manager.py": "0f40e95a484fbf7d8d0f08c36757fd2f0bedb9514fd49b6cfa7a790fbcb0d0ff",
+   "sarathi/core/sequence_manager/engine_sequence_manager.py": "7c3fd9c2152011629edec216cb76dc1f26481ceb275447482ef7ca85638c05b9",
+   "sarathi/core/datatypes/sequence.py": "a10a34fbab78d8aaa7e0e2c18aa11641d0b33534a23092ccfcbe9715d39523b4",
+   "sarathi/core/block_space_manager/base_block_space_manager.py": "75b6e133fd5665e38f53a185aaf34db07883b468a557bd19b97c1632b4c91e0c",
+   "sarathi/core/block_space_manager/vllm_block_space_manager.py": "34b7f9e2474be259d114bbc5e3589238a8d3de1237f3bd7870d32eac144aface",
+   "lp_relaxation_scheduler.py": "616f18d57eb10a1aa8d9f54b049335ba4f9c31f1ccce64e82c2d42dda665cdf3",
+   "lpserve_state_mapping.py": "7d95bf62e477716ea622654a047594214b9c4083fdd0921c4d4c6ccb34ecd2a7",
+   "lpserve_plan_execution.py": "b396e7f529c59527b2174536cc3f924b2faf4adf030de3aec2cc9e7355f0e4cd"
+  },
+  "trace_script_sha256": "454892df96963946c2268df9f38e561c2a051f617b1f95dc9adef617a46f105b"
+ },
+ "inputs": {
+  "pool": 4,
+  "block_size": 4,
+  "config": {
+   "max_num_seqs": 1,
+   "max_model_len": 16,
+   "b_max": 4,
+   "c_max": 4,
+   "s_max": 1,
+   "memory_reserve": 0,
+   "decode_utility": 40.0,
+   "prefill_token_utility": 1.0,
+   "preemption_penalty": 1.0
+  },
+  "utilities": {
+   "0": {
+    "decode_utility": 40.0,
+    "prefill_token_utility": 1.0,
+    "preemption_penalty": 1.0
+   },
+   "1": {
+    "decode_utility": 40.0,
+    "prefill_token_utility": 20.0,
+    "preemption_penalty": 1.0
+   }
+  },
+  "numerical_policy": {
+   "policy_id": "lp_relaxation_mvp_v1",
+   "feasibility_tol": 1e-07,
+   "integrality_tol": 1e-06,
+   "objective_abs_tol": 1e-09,
+   "objective_rel_tol": 1e-09
+  },
+  "decode_policy_id": "conservative_one_block_v1",
+  "prompts": {
+   "A": [
+    0,
+    1,
+    2,
+    3,
+    4
+   ],
+   "B": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+   ]
+  },
+  "max_tokens": {
+   "0": 2,
+   "1": 1
+  },
+  "synthetic_decode_tokens": {
+   "0": [
+    101,
+    102,
+    103
+   ],
+   "1": [
+    201
+   ]
+  },
+  "synthetic_prefill_sample": 900
+ },
+ "emitted": [
+  {
+   "step": 0,
+   "id": 0,
+   "preempted": [],
+   "scheduled": [
+    [
+     0,
+     4
+    ]
+   ]
+  },
+  {
+   "step": 1,
+   "id": 1,
+   "preempted": [],
+   "scheduled": [
+    [
+     0,
+     1
+    ]
+   ]
+  },
+  {
+   "step": 2,
+   "id": 2,
+   "preempted": [],
+   "scheduled": [
+    [
+     0,
+     0
+    ]
+   ]
+  },
+  {
+   "step": 3,
+   "id": 3,
+   "preempted": [
+    0
+   ],
+   "scheduled": [
+    [
+     1,
+     4
+    ]
+   ]
+  },
+  {
+   "step": 4,
+   "id": 4,
+   "preempted": [],
+   "scheduled": [
+    [
+     1,
+     4
+    ]
+   ]
+  },
+  {
+   "step": 5,
+   "id": 5,
+   "preempted": [],
+   "scheduled": [
+    [
+     1,
+     4
+    ]
+   ]
+  },
+  {
+   "step": 6,
+   "id": 6,
+   "preempted": [],
+   "scheduled": [
+    [
+     1,
+     0
+    ]
+   ]
+  },
+  {
+   "step": 7,
+   "id": 7,
+   "preempted": [],
+   "scheduled": [
+    [
+     0,
+     4
+    ]
+   ]
+  },
+  {
+   "step": 8,
+   "id": 8,
+   "preempted": [],
+   "scheduled": [
+    [
+     0,
+     2
+    ]
+   ]
+  },
+  {
+   "step": 9,
+   "id": 9,
+   "preempted": [],
+   "scheduled": [
+    [
+     0,
+     0
+    ]
+   ]
+  },
+  {
+   "step": 10,
+   "id": 10,
+   "preempted": [],
+   "scheduled": [
+    [
+     0,
+     0
+    ]
+   ]
+  }
+ ],
+ "boundary": {
+  "legal_preemption_ids": [
+   "0"
+  ],
+  "m_free": 2,
+  "w": 0,
+  "requests": [
+   {
+    "raw_seq_id": 0,
+    "request_id": "0",
+    "order_key": [
+     0
+    ],
+    "ownership": "running",
+    "status": "PAUSED",
+    "arrival_time": 1.0,
+    "prompt_len": 5,
+    "prompt_tokens_processed": 5,
+    "prompt_tokens_remaining": 0,
+    "prompt_processing_finished": true,
+    "logical_block_count": 2,
+    "physical_block_count": 2,
+    "prefill_eligible": false,
+    "decode_eligible": true,
+    "preemption_eligible": true,
+    "prefill_fixed_charge": 0,
+    "decode_charge": 1,
+    "preemption_recovery": 2,
+    "utility": {
+     "decode_utility": 40.0,
+     "prefill_token_utility": 1.0,
+     "preemption_penalty": 1.0
+    }
+   },
+   {
+    "raw_seq_id": 1,
+    "request_id": "1",
+    "order_key": [
+     1
+    ],
+    "ownership": "waiting",
+    "status": "WAITING",
+    "arrival_time": 4.0,
+    "prompt_len": 12,
+    "prompt_tokens_processed": 0,
+    "prompt_tokens_remaining": 12,
+    "prompt_processing_finished": false,
+    "logical_block_count": 3,
+    "physical_block_count": 0,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 3,
+    "decode_charge": 0,
+    "preemption_recovery": 0,
+    "utility": {
+     "decode_utility": 40.0,
+     "prefill_token_utility": 20.0,
+     "preemption_penalty": 1.0
+    }
+   }
+  ],
+  "relaxed": {
+   "decisions": [
+    {
+     "request_id": "0",
+     "x": -0.0,
+     "y": -0.0,
+     "prefill_indicator": 0.0,
+     "z": 0.5
+    },
+    {
+     "request_id": "1",
+     "x": 4.0,
+     "y": 0.0,
+     "prefill_indicator": 1.0,
+     "z": 0.0
+    }
+   ],
+   "raw_vector": [
+    -0.0,
+    4.0,
+    -0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.5,
+    0.0
+   ],
+   "projection_count": 0,
+   "worst_raw_violation": 0.0,
+   "worst_normalized_violation": 0.0,
+   "normalized_objective": 79.5
+  },
+  "plan": {
+   "problem_id": "3",
+   "decisions": [
+    {
+     "request_id": "0",
+     "order_key": [
+      0
+     ],
+     "prefill_tokens": 0,
+     "decode": 0,
+     "preempt": 1,
+     "prefill_indicator": 0
+    },
+    {
+     "request_id": "1",
+     "order_key": [
+      1
+     ],
+     "prefill_tokens": 4,
+     "decode": 0,
+     "preempt": 0,
+     "prefill_indicator": 1
+    }
+   ],
+   "residual_token_capacity": 0,
+   "residual_action_capacity": 0,
+   "residual_memory_capacity": 1,
+   "fractional_request_count": 1,
+   "dominant_preemption_ids": [
+    "0"
+   ],
+   "safety_preemption_ids": [],
+   "numerical_policy": {
+    "policy_id": "lp_relaxation_mvp_v1",
+    "feasibility_tol": 1e-07,
+    "integrality_tol": 1e-06,
+    "objective_abs_tol": 1e-09,
+    "objective_rel_tol": 1e-09
+   },
+   "objective": 79.0
+  },
+  "central_ops": [
+   [
+    "free",
+    0,
+    2
+   ],
+   [
+    "allocate",
+    1,
+    3
+   ]
+  ],
+  "after_execution": {
+   "iteration_id": 3,
+   "waiting": [
+    0
+   ],
+   "running": [
+    1
+   ],
+   "central_seqs": {
+    "0": [
+     0,
+     "PAUSED",
+     [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     [
+      101
+     ],
+     5,
+     true,
+     2
+    ],
+    "1": [
+     1,
+     "WAITING",
+     [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     [],
+     0,
+     false,
+     3
+    ]
+   },
+   "worker_seqs": {
+    "0": [
+     0,
+     "PAUSED",
+     [
+      0,
+      1,
+      2,
+      3,
+      4
+     ],
+     [
+      101
+     ],
+     5,
+     true,
+     2
+    ],
+    "1": [
+     1,
+     "WAITING",
+     [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     [],
+     0,
+     false,
+     3
+    ]
+   },
+   "central_tables": {
+    "1": [
+     3,
+     2,
+     1
+    ]
+   },
+   "worker_tables": {
+    "0": [
+     3,
+     2
+    ]
+   },
+   "central_free": 1,
+   "worker_free": 2
+  },
+  "replay_log": [
+   [
+    "reset",
+    "central",
+    [
+     0,
+     1,
+     2,
+     3,
+     4
+    ],
+    [
+     101
+    ]
+   ],
+   [
+    "reset",
+    "worker",
+    [
+     0,
+     1,
+     2,
+     3,
+     4
+    ],
+    [
+     101
+    ]
+   ],
+   [
+    "free",
+    0
+   ],
+   [
+    "allocate",
+    1
+   ]
+  ],
+  "after_replay": {
+   "iteration_id": 3,
+   "waiting": [
+    0
+   ],
+   "running": [
+    1
+   ],
+   "central_seqs": {
+    "0": [
+     0,
+     "WAITING",
+     [
+      0,
+      1,
+      2,
+      3,
+      4,
+      101
+     ],
+     [],
+     0,
+     false,
+     2
+    ],
+    "1": [
+     1,
+     "PAUSED",
+     [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     [],
+     4,
+     false,
+     3
+    ]
+   },
+   "worker_seqs": {
+    "0": [
+     0,
+     "WAITING",
+     [
+      0,
+      1,
+      2,
+      3,
+      4,
+      101
+     ],
+     [],
+     0,
+     false,
+     2
+    ],
+    "1": [
+     1,
+     "PAUSED",
+     [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     [],
+     4,
+     false,
+     3
+    ]
+   },
+   "central_tables": {
+    "1": [
+     3,
+     2,
+     1
+    ]
+   },
+   "worker_tables": {
+    "1": [
+     2,
+     3,
+     1
+    ]
+   },
+   "central_free": 1,
+   "worker_free": 1
+  }
+ },
+ "readmission": {
+  "mapped_a": [
+   {
+    "raw_seq_id": 0,
+    "request_id": "0",
+    "order_key": [
+     0
+    ],
+    "ownership": "waiting",
+    "status": "WAITING",
+    "arrival_time": 1.0,
+    "prompt_len": 6,
+    "prompt_tokens_processed": 0,
+    "prompt_tokens_remaining": 6,
+    "prompt_processing_finished": false,
+    "logical_block_count": 2,
+    "physical_block_count": 0,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 2,
+    "decode_charge": 0,
+    "preemption_recovery": 0,
+    "utility": {
+     "decode_utility": 40.0,
+     "prefill_token_utility": 1.0,
+     "preemption_penalty": 1.0
+    }
+   }
+  ],
+  "central_ops": [
+   [
+    "allocate",
+    0,
+    2
+   ]
+  ],
+  "after": {
+   "iteration_id": 7,
+   "waiting": [],
+   "running": [
+    0
+   ],
+   "central_seqs": {
+    "0": [
+     0,
+     "PAUSED",
+     [
+      0,
+      1,
+      2,
+      3,
+      4,
+      101
+     ],
+     [],
+     4,
+     false,
+     2
+    ]
+   },
+   "worker_seqs": {
+    "0": [
+     0,
+     "PAUSED",
+     [
+      0,
+      1,
+      2,
+      3,
+      4,
+      101
+     ],
+     [],
+     4,
+     false,
+     2
+    ]
+   },
+   "central_tables": {
+    "0": [
+     3,
+     1
+    ]
+   },
+   "worker_tables": {
+    "0": [
+     2,
+     1
+    ]
+   },
+   "central_free": 2,
+   "worker_free": 2
+  }
+ },
+ "decode_events": [
+  [
+   2,
+   0,
+   101
+  ],
+  [
+   6,
+   1,
+   201
+  ],
+  [
+   9,
+   0,
+   102
+  ],
+  [
+   10,
+   0,
+   103
+  ]
+ ],
+ "idle": {
+  "idle": {
+   "output_id": 11,
+   "after": {
+    "iteration_id": 11,
+    "waiting": [],
+    "running": [],
+    "central_seqs": {},
+    "worker_seqs": {},
+    "central_tables": {},
+    "worker_tables": {},
+    "central_free": 4,
+    "worker_free": 4
+   }
+  }
+ }
+}

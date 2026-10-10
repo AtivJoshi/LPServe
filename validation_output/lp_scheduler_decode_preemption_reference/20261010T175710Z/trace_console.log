@@ -1,0 +1,7 @@
+$ python -B validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z/trace_live_decode_preemption.py validation_output/lp_scheduler_decode_preemption_reference/20261010T175710Z
+INFO 10-10 18:09:06 metrics_store.py:72] MetricsStore disabled
+tests run: 1 failures: 0 errors: 0
+emitted: [{"step": 0, "id": 0, "preempted": [], "scheduled": [[0, 4]]}, {"step": 1, "id": 1, "preempted": [], "scheduled": [[0, 1]]}, {"step": 2, "id": 2, "preempted": [], "scheduled": [[0, 0]]}, {"step": 3, "id": 3, "preempted": [0], "scheduled": [[1, 4]]}, {"step": 4, "id": 4, "preempted": [], "scheduled": [[1, 4]]}, {"step": 5, "id": 5, "preempted": [], "scheduled": [[1, 4]]}, {"step": 6, "id": 6, "preempted": [], "scheduled": [[1, 0]]}, {"step": 7, "id": 7, "preempted": [], "scheduled": [[0, 4]]}, {"step": 8, "id": 8, "preempted": [], "scheduled": [[0, 2]]}, {"step": 9, "id": 9, "preempted": [], "scheduled": [[0, 0]]}, {"step": 10, "id": 10, "preempted": [], "scheduled": [[0, 0]]}]
+decode events (step, seq, token): [[2, 0, 101], [6, 1, 201], [9, 0, 102], [10, 0, 103]]
+PASS
+exit status: 0

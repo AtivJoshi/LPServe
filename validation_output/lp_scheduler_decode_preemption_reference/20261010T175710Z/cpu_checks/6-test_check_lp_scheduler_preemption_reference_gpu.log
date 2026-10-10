@@ -1,0 +1,13 @@
+$ python -B -m unittest discover -s tests -p 'test_check_lp_scheduler_preemption_reference_gpu.py' -v
+test_import_loads_no_engine_worker_ray_or_torch (test_check_lp_scheduler_preemption_reference_gpu.DriverImportTest) ... ok
+test_reused_helper_constants_match_this_case (test_check_lp_scheduler_preemption_reference_gpu.DriverImportTest) ... ok
+test_compatible_passing_references_are_accepted (test_check_lp_scheduler_preemption_reference_gpu.ReferenceValidationTest) ... ok
+test_incompatible_references_are_rejected (test_check_lp_scheduler_preemption_reference_gpu.ReferenceValidationTest) ... ok
+test_load_references_requires_both_compatible_summaries (test_check_lp_scheduler_preemption_reference_gpu.ReferenceValidationTest) ... ok
+test_matching_and_mismatching_tokens (test_check_lp_scheduler_preemption_reference_gpu.TokenComparisonTest) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.244s
+
+OK
+exit status: 0
