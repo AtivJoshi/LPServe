@@ -1,0 +1,11 @@
+2026-10-10T06:55:56Z
+host=gpu051.unity.rc.umass.edu SLURM_JOB_ID=65495160 CUDA_VISIBLE_DEVICES=0
+cwd=/home/atjoshi_umass_edu/LPServe
+PYTHONPATH=/home/atjoshi_umass_edu/LPServe:/modules/uri_apps/software/Python/3.10.8-GCCcore-12.2.0/easybuild/python
+python=/home/atjoshi_umass_edu/LPServe/env/bin/python
+LOADEDMODULES=uri/main:ICU/75.1-GCCcore-13.3.0:nodejs/20.13.1-GCCcore-13.3.0:GCCcore/12.2.0:binutils/.2.39-GCCcore-12.2.0:bzip2/.1.0.8-GCCcore-12.2.0:zlib/.1.2.12-GCCcore-12.2.0:libreadline/.8.2-GCCcore-12.2.0:ncurses/.6.3-GCCcore-12.2.0:Tcl/.8.6.12-GCCcore-12.2.0:SQLite/.3.39.4-GCCcore-12.2.0:XZ/.5.2.7-GCCcore-12.2.0:GMP/.6.2.1-GCCcore-12.2.0:libffi/3.4.4-GCCcore-12.2.0:OpenSSL/1.1:Python/3.10.8-GCCcore-12.2.0:CUDA/12.1.1
+ray processes before: 0
+gpu memory used before: 0 MiB
+$ timeout 300s python -B scripts/check_lp_scheduler_preemption_reference_gpu.py --scheduler vllm --request B --model-path /home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6 --output-dir validation_output/lp_scheduler_preemption_reference/20261010T065408Z/reference/B
+ray processes after: 0
+gpu memory used after: 0 MiB

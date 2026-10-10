@@ -1,0 +1,693 @@
+{
+ "steps": [
+  {
+   "index": 0,
+   "before": {
+    "iteration_id": -1,
+    "num_running_batches": 0,
+    "waiting": [
+     0
+    ],
+    "running": [],
+    "total_blocks": 4,
+    "free_blocks": 4,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "block_tables": {},
+    "seqs": {
+     "0": {
+      "status": "WAITING",
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004,
+       1005,
+       1006,
+       1007,
+       1008,
+       1009,
+       1010,
+       1011,
+       1012,
+       1013,
+       1014,
+       1015,
+       1016
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     }
+    }
+   },
+   "worker_before": {
+    "cache_config_num_gpu_blocks": 4,
+    "cache_engine_num_gpu_blocks": 4,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     4
+    ],
+    "cache_tensor_shapes": [
+     [
+      4,
+      16,
+      4,
+      64
+     ]
+    ],
+    "manager_total_blocks": 4,
+    "allocator_num_blocks": 4,
+    "free_blocks": 4,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "block_tables": {},
+    "seqs": {
+     "0": {
+      "status": "WAITING",
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004,
+       1005,
+       1006,
+       1007,
+       1008,
+       1009,
+       1010,
+       1011,
+       1012,
+       1013,
+       1014,
+       1015,
+       1016
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     }
+    },
+    "block_ops": []
+   },
+   "events": [
+    {
+     "call": "schedule",
+     "outputs": {
+      "id": 0,
+      "scheduled": [
+       [
+        0,
+        17
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "state": {
+      "iteration_id": 0,
+      "num_running_batches": 1,
+      "waiting": [],
+      "running": [
+       0
+      ],
+      "total_blocks": 4,
+      "free_blocks": 2,
+      "free_block_ids": [
+       0,
+       1
+      ],
+      "block_tables": {
+       "0": [
+        3,
+        2
+       ]
+      },
+      "seqs": {
+       "0": {
+        "status": "WAITING",
+        "prompt_token_ids": [
+         1000,
+         1001,
+         1002,
+         1003,
+         1004,
+         1005,
+         1006,
+         1007,
+         1008,
+         1009,
+         1010,
+         1011,
+         1012,
+         1013,
+         1014,
+         1015,
+         1016
+        ],
+        "prompt_tokens_processed": 0,
+        "prompt_processing_finished": false,
+        "output_token_ids": [],
+        "logical_blocks": 2
+       }
+      }
+     },
+     "block_ops": [
+      [
+       "allocate",
+       0,
+       [
+        3,
+        2
+       ]
+      ]
+     ]
+    },
+    {
+     "call": "_run_workers",
+     "method": "execute_model",
+     "sampler_outputs": [
+      [
+       0,
+       403
+      ]
+     ]
+    }
+   ],
+   "central_block_ops": [
+    [
+     "allocate",
+     0,
+     [
+      3,
+      2
+     ]
+    ]
+   ],
+   "after": {
+    "iteration_id": 0,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [
+     0
+    ],
+    "total_blocks": 4,
+    "free_blocks": 2,
+    "free_block_ids": [
+     0,
+     1
+    ],
+    "block_tables": {
+     "0": [
+      3,
+      2
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004,
+       1005,
+       1006,
+       1007,
+       1008,
+       1009,
+       1010,
+       1011,
+       1012,
+       1013,
+       1014,
+       1015,
+       1016
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     }
+    }
+   },
+   "worker_after": {
+    "cache_config_num_gpu_blocks": 4,
+    "cache_engine_num_gpu_blocks": 4,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     4
+    ],
+    "cache_tensor_shapes": [
+     [
+      4,
+      16,
+      4,
+      64
+     ]
+    ],
+    "manager_total_blocks": 4,
+    "allocator_num_blocks": 4,
+    "free_blocks": 2,
+    "free_block_ids": [
+     0,
+     1
+    ],
+    "block_tables": {
+     "0": [
+      3,
+      2
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004,
+       1005,
+       1006,
+       1007,
+       1008,
+       1009,
+       1010,
+       1011,
+       1012,
+       1013,
+       1014,
+       1015,
+       1016
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     }
+    },
+    "block_ops": [
+     [
+      "allocate",
+      0,
+      [
+       3,
+       2
+      ]
+     ]
+    ]
+   },
+   "request_outputs": [
+    {
+     "seq_id": 0,
+     "prompt_token_ids": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004,
+      1005,
+      1006,
+      1007,
+      1008,
+      1009,
+      1010,
+      1011,
+      1012,
+      1013,
+      1014,
+      1015,
+      1016
+     ],
+     "token_ids": [],
+     "text": "",
+     "finished": false,
+     "finish_reason": null
+    }
+   ]
+  },
+  {
+   "index": 1,
+   "before": {
+    "iteration_id": 0,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [
+     0
+    ],
+    "total_blocks": 4,
+    "free_blocks": 2,
+    "free_block_ids": [
+     0,
+     1
+    ],
+    "block_tables": {
+     "0": [
+      3,
+      2
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004,
+       1005,
+       1006,
+       1007,
+       1008,
+       1009,
+       1010,
+       1011,
+       1012,
+       1013,
+       1014,
+       1015,
+       1016
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     }
+    }
+   },
+   "worker_before": {
+    "cache_config_num_gpu_blocks": 4,
+    "cache_engine_num_gpu_blocks": 4,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     4
+    ],
+    "cache_tensor_shapes": [
+     [
+      4,
+      16,
+      4,
+      64
+     ]
+    ],
+    "manager_total_blocks": 4,
+    "allocator_num_blocks": 4,
+    "free_blocks": 2,
+    "free_block_ids": [
+     0,
+     1
+    ],
+    "block_tables": {
+     "0": [
+      3,
+      2
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004,
+       1005,
+       1006,
+       1007,
+       1008,
+       1009,
+       1010,
+       1011,
+       1012,
+       1013,
+       1014,
+       1015,
+       1016
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     }
+    },
+    "block_ops": []
+   },
+   "events": [
+    {
+     "call": "schedule",
+     "outputs": {
+      "id": 1,
+      "scheduled": [
+       [
+        0,
+        0
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "state": {
+      "iteration_id": 1,
+      "num_running_batches": 1,
+      "waiting": [],
+      "running": [
+       0
+      ],
+      "total_blocks": 4,
+      "free_blocks": 2,
+      "free_block_ids": [
+       0,
+       1
+      ],
+      "block_tables": {
+       "0": [
+        3,
+        2
+       ]
+      },
+      "seqs": {
+       "0": {
+        "status": "PAUSED",
+        "prompt_token_ids": [
+         1000,
+         1001,
+         1002,
+         1003,
+         1004,
+         1005,
+         1006,
+         1007,
+         1008,
+         1009,
+         1010,
+         1011,
+         1012,
+         1013,
+         1014,
+         1015,
+         1016
+        ],
+        "prompt_tokens_processed": 17,
+        "prompt_processing_finished": true,
+        "output_token_ids": [],
+        "logical_blocks": 2
+       }
+      }
+     },
+     "block_ops": []
+    },
+    {
+     "call": "_run_workers",
+     "method": "execute_model",
+     "sampler_outputs": [
+      [
+       0,
+       403
+      ]
+     ]
+    }
+   ],
+   "central_block_ops": [
+    [
+     "free",
+     0,
+     [
+      3,
+      2
+     ]
+    ]
+   ],
+   "after": {
+    "iteration_id": 1,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [],
+    "total_blocks": 4,
+    "free_blocks": 4,
+    "free_block_ids": [
+     0,
+     1,
+     3,
+     2
+    ],
+    "block_tables": {},
+    "seqs": {}
+   },
+   "worker_after": {
+    "cache_config_num_gpu_blocks": 4,
+    "cache_engine_num_gpu_blocks": 4,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     4
+    ],
+    "cache_tensor_shapes": [
+     [
+      4,
+      16,
+      4,
+      64
+     ]
+    ],
+    "manager_total_blocks": 4,
+    "allocator_num_blocks": 4,
+    "free_blocks": 4,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "block_tables": {},
+    "seqs": {},
+    "block_ops": [
+     [
+      "free",
+      0,
+      [
+       3,
+       2
+      ]
+     ]
+    ]
+   },
+   "request_outputs": [
+    {
+     "seq_id": 0,
+     "prompt_token_ids": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004,
+      1005,
+      1006,
+      1007,
+      1008,
+      1009,
+      1010,
+      1011,
+      1012,
+      1013,
+      1014,
+      1015,
+      1016
+     ],
+     "token_ids": [
+      403
+     ],
+     "text": "ate",
+     "finished": true,
+     "finish_reason": "length"
+    }
+   ]
+  }
+ ],
+ "idle": {
+  "before": {
+   "iteration_id": 1,
+   "num_running_batches": 0,
+   "waiting": [],
+   "running": [],
+   "total_blocks": 4,
+   "free_blocks": 4,
+   "free_block_ids": [
+    0,
+    1,
+    3,
+    2
+   ],
+   "block_tables": {},
+   "seqs": {}
+  },
+  "events": [
+   {
+    "call": "schedule",
+    "outputs": {
+     "id": 2,
+     "scheduled": [],
+     "ignored_seq_ids": [],
+     "preempted_seq_ids": []
+    },
+    "state": {
+     "iteration_id": 2,
+     "num_running_batches": 0,
+     "waiting": [],
+     "running": [],
+     "total_blocks": 4,
+     "free_blocks": 4,
+     "free_block_ids": [
+      0,
+      1,
+      3,
+      2
+     ],
+     "block_tables": {},
+     "seqs": {}
+    },
+    "block_ops": [
+     [
+      "free",
+      0,
+      [
+       3,
+       2
+      ]
+     ]
+    ]
+   }
+  ],
+  "after": {
+   "iteration_id": 2,
+   "num_running_batches": 0,
+   "waiting": [],
+   "running": [],
+   "total_blocks": 4,
+   "free_blocks": 4,
+   "free_block_ids": [
+    0,
+    1,
+    3,
+    2
+   ],
+   "block_tables": {},
+   "seqs": {}
+  },
+  "request_outputs": []
+ }
+}

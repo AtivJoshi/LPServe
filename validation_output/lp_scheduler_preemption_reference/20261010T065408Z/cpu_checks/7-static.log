@@ -1,0 +1,6 @@
+$ python -B -m py_compile scripts/check_lp_scheduler_preemption_reference_gpu.py tests/test_check_lp_scheduler_preemption_reference_gpu.py
+exit_status=0
+$ grep -nE '[[:space:]]+$' scripts/check_lp_scheduler_preemption_reference_gpu.py tests/test_check_lp_scheduler_preemption_reference_gpu.py   # new untracked files; expect no match (exit 1)
+exit_status=1
+$ grep -niE 'phase|\b(stage|step) [A-H]\b' scripts/check_lp_scheduler_preemption_reference_gpu.py tests/test_check_lp_scheduler_preemption_reference_gpu.py   # expect no match (exit 1)
+exit_status=1
