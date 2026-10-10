@@ -1,0 +1,641 @@
+{
+ "passed": true,
+ "failure": null,
+ "provenance": {
+  "git_head": "04beb8789f17e11d55aec72d9f168353d486b2ba",
+  "git_branch": "main",
+  "git_status_short": "?? scripts/check_lp_scheduler_preemption_gpu.py\n?? validation_output/lp_scheduler_preemption_gpu/20261010T062705Z/INTERRUPTED.md\n?? validation_output/lp_scheduler_preemption_gpu/20261010T062705Z/cpu_checks/environment.txt\n?? validation_output/lp_scheduler_preemption_gpu/20261010T063249Z/cpu_checks/environment.txt\n?? validation_output/lp_scheduler_preemption_gpu/20261010T063249Z/gpu_command.txt\n",
+  "git_diff_head_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "file_sha256": {
+   "scripts/check_lp_scheduler_preemption_gpu.py": "bda413ac831faf5a8135d4a803036bbe2c401b985c87a858032fdc5a0eb04421",
+   "scripts/check_lp_scheduler_gpu.py": "8d1423df0ad3052b0474679bac3c09014693331b44a53dca160d509613cf8591",
+   "tests/test_check_lp_scheduler_preemption_gpu.py": "8175acfd7da3d8d32c82a6ca57fcc0979a0f30a1b882c4d030bec51486014ef0",
+   "tests/test_lp_scheduler.py": "1f65b98afc4605d0b09610ab3b4b2030034b38afae3c5e34f8416736c843ff01",
+   "tests/test_lpserve_plan_execution.py": "4c2e9ee24d7785c1abd0d82712e739164bdef8d4a43913bc70259455f3027d37",
+   "sarathi/core/scheduler/lp_scheduler.py": "debfd4eca2225815d6c944b91d7c544b5af0e2fd8aaf4d5b645addd9cb2eb0c3",
+   "sarathi/core/scheduler/base_scheduler.py": "5b4ac0fd3154ae25b580614fb4b3fd773091eb730951f72b3624fd71ecf06cbd",
+   "sarathi/core/block_space_manager/base_block_space_manager.py": "75b6e133fd5665e38f53a185aaf34db07883b468a557bd19b97c1632b4c91e0c",
+   "sarathi/core/sequence_manager/base_sequence_manager.py": "1705241edd761aabde072332a806772eb90e1f245db608b183e5bcec29a6a103",
+   "sarathi/core/sequence_manager/worker_sequence_manager.py": "0f40e95a484fbf7d8d0f08c36757fd2f0bedb9514fd49b6cfa7a790fbcb0d0ff",
+   "sarathi/engine/base_llm_engine.py": "301f11f55ce19b08728df9f238b675916ee6d2c94373645dc72ccc348516f69c",
+   "sarathi/worker/base_worker.py": "b6de07bc0e2609b1306c26eebf39839ec4433494ad6cc571ca5577008d8569c2",
+   "sarathi/model_executor/model_runner.py": "259dc36dbd87986847284146003cdb4d4485ac881ef8d18e80198d1cd99179b3",
+   "lp_relaxation_scheduler.py": "616f18d57eb10a1aa8d9f54b049335ba4f9c31f1ccce64e82c2d42dda665cdf3",
+   "lpserve_state_mapping.py": "7d95bf62e477716ea622654a047594214b9c4083fdd0921c4d4c6ccb34ecd2a7",
+   "lpserve_plan_execution.py": "b396e7f529c59527b2174536cc3f924b2faf4adf030de3aec2cc9e7355f0e4cd"
+  },
+  "executed_script_sha256": "bda413ac831faf5a8135d4a803036bbe2c401b985c87a858032fdc5a0eb04421",
+  "imported_helper_sha256": "8d1423df0ad3052b0474679bac3c09014693331b44a53dca160d509613cf8591",
+  "loaded_modules": "uri/main:ICU/75.1-GCCcore-13.3.0:nodejs/20.13.1-GCCcore-13.3.0:GCCcore/12.2.0:binutils/.2.39-GCCcore-12.2.0:bzip2/.1.0.8-GCCcore-12.2.0:zlib/.1.2.12-GCCcore-12.2.0:libreadline/.8.2-GCCcore-12.2.0:ncurses/.6.3-GCCcore-12.2.0:Tcl/.8.6.12-GCCcore-12.2.0:SQLite/.3.39.4-GCCcore-12.2.0:XZ/.5.2.7-GCCcore-12.2.0:GMP/.6.2.1-GCCcore-12.2.0:libffi/3.4.4-GCCcore-12.2.0:OpenSSL/1.1:Python/3.10.8-GCCcore-12.2.0:CUDA/12.1.1"
+ },
+ "argv": [
+  "scripts/check_lp_scheduler_preemption_gpu.py",
+  "--model-path",
+  "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+  "--output-dir",
+  "validation_output/lp_scheduler_preemption_gpu/20261010T063249Z"
+ ],
+ "model_path": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+ "environment": {
+  "hostname": "gpu051",
+  "slurm": {
+   "SLURM_JOB_ID": "65495160",
+   "SLURM_JOB_NODELIST": "gpu051",
+   "SLURM_JOB_PARTITION": "gpu-preempt",
+   "SLURM_STEP_ID": "4294967290"
+  },
+  "cuda_visible_devices": "0",
+  "gpu": "0, NVIDIA A16, GPU-b7192761-b009-1409-dfe0-541ef40add86, 595.91.07, 15356 MiB",
+  "torch_cuda": "12.1",
+  "python_executable": "/home/atjoshi_umass_edu/LPServe/env/bin/python",
+  "python_version": "3.10.8",
+  "virtual_env": "/home/atjoshi_umass_edu/LPServe/env",
+  "pythonpath": "/home/atjoshi_umass_edu/LPServe:/modules/uri_apps/software/Python/3.10.8-GCCcore-12.2.0/easybuild/python",
+  "versions": {
+   "torch": "2.3.0+cu121",
+   "transformers": "4.57.6",
+   "ray": "2.58.0",
+   "numpy": "2.2.6",
+   "scipy": "1.15.3",
+   "flashinfer": "0.2.0.post1+cu121torch2.3",
+   "vllm-flash-attn": "2.5.9",
+   "sarathi": "0.1.7",
+   "nvidia-ml-py": "13.595.45",
+   "huggingface-hub": "0.36.2",
+   "tokenizers": "0.22.2"
+  },
+  "git_head": "04beb8789f17e11d55aec72d9f168353d486b2ba",
+  "git_status_short": "?? scripts/check_lp_scheduler_preemption_gpu.py\n?? validation_output/lp_scheduler_preemption_gpu/20261010T062705Z/INTERRUPTED.md\n?? validation_output/lp_scheduler_preemption_gpu/20261010T062705Z/cpu_checks/environment.txt\n?? validation_output/lp_scheduler_preemption_gpu/20261010T063249Z/cpu_checks/environment.txt\n?? validation_output/lp_scheduler_preemption_gpu/20261010T063249Z/gpu_command.txt",
+  "cwd": "/home/atjoshi_umass_edu/LPServe"
+ },
+ "cache_capacity": {
+  "profiled_available_blocks": [
+   15606
+  ],
+  "chosen_initialized_blocks": 4,
+  "profile_calls": 1,
+  "initializations": [
+   {
+    "num_gpu_blocks": 4,
+    "result": [
+     null
+    ]
+   }
+  ],
+  "engine_cache_config_num_gpu_blocks": 4,
+  "central_manager_total_blocks": 4,
+  "central_allocator_num_blocks": 4,
+  "central_free_blocks": 4,
+  "central_watermark_blocks": 0,
+  "worker": {
+   "cache_config_num_gpu_blocks": 4,
+   "cache_engine_num_gpu_blocks": 4,
+   "cache_layers": 22,
+   "cache_tensor_block_dims": [
+    4
+   ],
+   "cache_tensor_shapes": [
+    [
+     4,
+     16,
+     4,
+     64
+    ]
+   ],
+   "manager_total_blocks": 4,
+   "allocator_num_blocks": 4,
+   "free_blocks": 4,
+   "block_ops": []
+  }
+ },
+ "config": {
+  "model": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+  "model_path": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+  "load_format": "dummy",
+  "requested_dtype": "float16",
+  "resolved_dtype": "torch.float16",
+  "hf_config_commit_hash": "fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+  "attention_backend": "flash_attention",
+  "tensor_parallel_size": 1,
+  "pipeline_parallel_size": 1,
+  "max_model_len": 64,
+  "block_size": 16,
+  "gpu_memory_utilization": 0.5,
+  "seed": 42,
+  "trust_remote_code": true,
+  "tokenizer_mode": "auto",
+  "vocab_size": 32000,
+  "tokenizer_len": 32000,
+  "eos_token_id": 2,
+  "prompts": {
+   "A": {
+    "token_ids": [
+     1000,
+     1001,
+     1002,
+     1003,
+     1004,
+     1005,
+     1006,
+     1007,
+     1008,
+     1009,
+     1010,
+     1011,
+     1012,
+     1013,
+     1014,
+     1015,
+     1016
+    ],
+    "tokens": [
+     "ied",
+     "ER",
+     "\u2581stat",
+     "fig",
+     "me",
+     "\u2581von",
+     "\u2581inter",
+     "roid",
+     "ater",
+     "\u2581their",
+     "\u2581bet",
+     "\u2581ein",
+     "}\\",
+     "\">",
+     "\u2581sub",
+     "\u2581op",
+     "\u2581don"
+    ]
+   },
+   "B": {
+    "token_ids": [
+     2000,
+     2001,
+     2002,
+     2003,
+     2004,
+     2005,
+     2006,
+     2007,
+     2008,
+     2009,
+     2010,
+     2011,
+     2012,
+     2013,
+     2014,
+     2015,
+     2016,
+     2017,
+     2018,
+     2019,
+     2020,
+     2021,
+     2022,
+     2023,
+     2024,
+     2025,
+     2026,
+     2027,
+     2028,
+     2029,
+     2030,
+     2031,
+     2032,
+     2033,
+     2034,
+     2035,
+     2036,
+     2037,
+     2038,
+     2039,
+     2040,
+     2041,
+     2042,
+     2043,
+     2044,
+     2045,
+     2046,
+     2047
+    ],
+    "tokens": [
+     "\u2581called",
+     "Item",
+     "ura",
+     "vec",
+     "eme",
+     "\u2581della",
+     "embre",
+     "urg",
+     "Se",
+     "\u2581request",
+     "ische",
+     "\u2581port",
+     "\u2581instead",
+     "=\\",
+     "\u2581\u0423",
+     "hor",
+     "ente",
+     "ume",
+     "erd",
+     "\u0441\u0430",
+     "\u2581why",
+     "rist",
+     "\u2581person",
+     "\u2581...",
+     "\u2581private",
+     "\u2581tot",
+     "pha",
+     "ift",
+     "ita",
+     "loc",
+     "\u2581old",
+     "\u043e\u043d",
+     "\u2581nel",
+     "']",
+     "ti",
+     "iet",
+     "cite",
+     "plement",
+     "\u2581above",
+     "ks",
+     "ready",
+     "\u2581come",
+     "section",
+     "\u2581Pol",
+     "\u2581writ",
+     "\u2581https",
+     "\u2581$$",
+     "\u2581\u00bb"
+    ]
+   }
+  },
+  "sampling": {
+   "temperature": 0.0,
+   "max_tokens": 1,
+   "ignore_eos": true,
+   "stop": []
+  },
+  "b_max": 64,
+  "c_max": 16,
+  "s_max": 1,
+  "max_num_seqs": 1,
+  "memory_reserve": 0,
+  "decode_memory_policy_id": "conservative_one_block_v1",
+  "utilities": {
+   "decode": 40.0,
+   "prefill_token": 1.0,
+   "preemption_penalty": 1.0
+  },
+  "numerical_policy": {
+   "policy_id": "lp_relaxation_mvp_v1",
+   "feasibility_tol": 1e-07,
+   "integrality_tol": 1e-06,
+   "objective_abs_tol": 1e-09,
+   "objective_rel_tol": 1e-09
+  },
+  "profiling_max_num_batched_tokens": 64,
+  "profiling_max_num_seqs": 1,
+  "metrics_mode": "enabled, all optional outputs off, never plotted",
+  "engine_init_seconds": 32.64
+ },
+ "finish_order": [
+  1,
+  0
+ ],
+ "final_outputs": {
+  "1": {
+   "seq_id": 1,
+   "prompt_token_ids": [
+    2000,
+    2001,
+    2002,
+    2003,
+    2004,
+    2005,
+    2006,
+    2007,
+    2008,
+    2009,
+    2010,
+    2011,
+    2012,
+    2013,
+    2014,
+    2015,
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026,
+    2027,
+    2028,
+    2029,
+    2030,
+    2031,
+    2032,
+    2033,
+    2034,
+    2035,
+    2036,
+    2037,
+    2038,
+    2039,
+    2040,
+    2041,
+    2042,
+    2043,
+    2044,
+    2045,
+    2046,
+    2047
+   ],
+   "token_ids": [
+    13271
+   ],
+   "text": " updating",
+   "finished": true,
+   "finish_reason": "length"
+  },
+  "0": {
+   "seq_id": 0,
+   "prompt_token_ids": [
+    1000,
+    1001,
+    1002,
+    1003,
+    1004,
+    1005,
+    1006,
+    1007,
+    1008,
+    1009,
+    1010,
+    1011,
+    1012,
+    1013,
+    1014,
+    1015,
+    1016
+   ],
+   "token_ids": [
+    11087
+   ],
+   "text": "unkt",
+   "finished": true,
+   "finish_reason": "length"
+  }
+ },
+ "decisions": [
+  {
+   "name": "a_admission_prefill",
+   "preempted": [],
+   "scheduled": [
+    [
+     0,
+     16
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     0,
+     10935
+    ]
+   ]
+  },
+  {
+   "name": "a_preemption_b_admission",
+   "preempted": [
+    0
+   ],
+   "scheduled": [
+    [
+     1,
+     16
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     1,
+     3591
+    ]
+   ]
+  },
+  {
+   "name": "b_resident_prefill",
+   "preempted": [],
+   "scheduled": [
+    [
+     1,
+     16
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     1,
+     24476
+    ]
+   ]
+  },
+  {
+   "name": "b_prompt_completion",
+   "preempted": [],
+   "scheduled": [
+    [
+     1,
+     16
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     1,
+     13271
+    ]
+   ]
+  },
+  {
+   "name": "b_decode_finish",
+   "preempted": [],
+   "scheduled": [
+    [
+     1,
+     0
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     1,
+     13271
+    ]
+   ]
+  },
+  {
+   "name": "a_readmission_prefill",
+   "preempted": [],
+   "scheduled": [
+    [
+     0,
+     16
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     0,
+     10935
+    ]
+   ]
+  },
+  {
+   "name": "a_prompt_completion",
+   "preempted": [],
+   "scheduled": [
+    [
+     0,
+     1
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     0,
+     11087
+    ]
+   ]
+  },
+  {
+   "name": "a_decode_finish",
+   "preempted": [],
+   "scheduled": [
+    [
+     0,
+     0
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     0,
+     11087
+    ]
+   ]
+  }
+ ],
+ "boundary": {
+  "relaxed": {
+   "decisions": [
+    {
+     "request_id": "0",
+     "x": -0.0,
+     "y": 0.0,
+     "prefill_indicator": -0.0,
+     "z": 0.5
+    },
+    {
+     "request_id": "1",
+     "x": 16.0,
+     "y": 0.0,
+     "prefill_indicator": 1.0,
+     "z": 0.0
+    }
+   ],
+   "raw_vector": [
+    -0.0,
+    16.0,
+    0.0,
+    0.0,
+    -0.0,
+    1.0,
+    0.5,
+    0.0
+   ],
+   "projection_count": 0,
+   "worst_raw_violation": 0.0,
+   "worst_normalized_violation": 0.0,
+   "normalized_objective": 15.5
+  },
+  "plan": {
+   "problem_id": "1",
+   "decisions": [
+    {
+     "request_id": "0",
+     "order_key": [
+      0
+     ],
+     "prefill_tokens": 0,
+     "decode": 0,
+     "preempt": 1,
+     "prefill_indicator": 0
+    },
+    {
+     "request_id": "1",
+     "order_key": [
+      1
+     ],
+     "prefill_tokens": 16,
+     "decode": 0,
+     "preempt": 0,
+     "prefill_indicator": 1
+    }
+   ],
+   "residual_token_capacity": 48,
+   "residual_action_capacity": 0,
+   "residual_memory_capacity": 1,
+   "fractional_request_count": 1,
+   "dominant_preemption_ids": [
+    "0"
+   ],
+   "safety_preemption_ids": [],
+   "numerical_policy": {
+    "policy_id": "lp_relaxation_mvp_v1",
+    "feasibility_tol": 1e-07,
+    "integrality_tol": 1e-06,
+    "objective_abs_tol": 1e-09,
+    "objective_rel_tol": 1e-09
+   },
+   "objective": 15.0
+  },
+  "central_block_ops": [
+   [
+    "free",
+    0,
+    [
+     3,
+     2
+    ]
+   ],
+   [
+    "allocate",
+    1,
+    [
+     2,
+     3,
+     1
+    ]
+   ]
+  ],
+  "worker_block_ops": [
+   [
+    "free",
+    0,
+    [
+     3,
+     2
+    ]
+   ],
+   [
+    "allocate",
+    1,
+    [
+     2,
+     3,
+     1
+    ]
+   ]
+  ]
+ }
+}

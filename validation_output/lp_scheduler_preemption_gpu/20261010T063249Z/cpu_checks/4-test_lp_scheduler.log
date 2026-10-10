@@ -1,0 +1,23 @@
+$ python -B -m unittest discover -s tests -p 'test_lp_scheduler.py' -v
+INFO 10-10 06:33:56 metrics_store.py:72] MetricsStore disabled
+test_mixed_prompt_first_output_and_unselected_resident (test_lp_scheduler.LivePipelineTest) ... ok
+test_request_lifecycle_through_real_pipeline_and_replay (test_lp_scheduler.LivePipelineTest) ... ok
+test_three_requests_contend_for_two_action_slots_until_completion (test_lp_scheduler.LivePipelineTest) ... ok
+test_solver_selected_preemption_is_recomputed_to_completion (test_lp_scheduler.LivePreemptionTest) ... ok
+test_empty_state_is_ordinary_idle (test_lp_scheduler.OrdinaryIdleTest) ... ok
+test_future_only_state_is_ordinary_idle (test_lp_scheduler.OrdinaryIdleTest) ... ok
+test_mapping_failure_stops_before_solver (test_lp_scheduler.PreMutationFailureTest) ... ok
+test_mathematical_failure_stops_before_executor (test_lp_scheduler.PreMutationFailureTest) ... ok
+test_no_progress_plan_is_not_ordinary_idle (test_lp_scheduler.PreMutationFailureTest) ... ok
+test_physically_infeasible_plan_raises_executor_failure (test_lp_scheduler.PreMutationFailureTest) ... ok
+test_multi_stage_configuration_is_rejected (test_lp_scheduler.RegistrationAndConfigTest) ... ok
+test_registration_and_explicit_configuration (test_lp_scheduler.RegistrationAndConfigTest) ... ok
+test_changed_stage_count_fails_before_base_scheduling (test_lp_scheduler.UnsupportedEntryAndDestructiveFailureTest) ... ok
+test_nonzero_running_batches_fails_before_base_scheduling (test_lp_scheduler.UnsupportedEntryAndDestructiveFailureTest) ... ok
+test_post_mutation_failure_propagates_without_recovery (test_lp_scheduler.UnsupportedEntryAndDestructiveFailureTest) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 0.060s
+
+OK
+exit_status=0

@@ -1,0 +1,8 @@
+$ python -B -m py_compile scripts/check_lp_scheduler_preemption_gpu.py tests/test_check_lp_scheduler_preemption_gpu.py
+exit_status=0
+$ git diff --check -- scripts/check_lp_scheduler_preemption_gpu.py docs/handoffs/lp_scheduler_preemption_gpu_handoff.md   # both files untracked, so git diff is vacuous; see the next check
+exit_status=0
+$ grep -nE '[[:space:]]+$' scripts/check_lp_scheduler_preemption_gpu.py tests/test_check_lp_scheduler_preemption_gpu.py   # expect no match (exit 1)
+exit_status=1
+$ grep -niE 'phase|\b(stage|step) [A-H]\b' scripts/check_lp_scheduler_preemption_gpu.py tests/test_check_lp_scheduler_preemption_gpu.py   # expect no match (exit 1)
+exit_status=1

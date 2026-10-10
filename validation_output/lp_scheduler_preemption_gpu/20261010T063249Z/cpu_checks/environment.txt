@@ -1,0 +1,72 @@
+2026-10-10T06:32:49Z
+$ hostname --fqdn
+gpu051.unity.rc.umass.edu
+SLURM_JOB_ID=65495160 SLURM_JOB_PARTITION=gpu-preempt SLURM_JOB_NODELIST=gpu051
+CUDA_VISIBLE_DEVICES=0
+$ module -t list
+uri/main
+ICU/75.1-GCCcore-13.3.0
+nodejs/20.13.1-GCCcore-13.3.0
+GCCcore/12.2.0
+binutils/.2.39-GCCcore-12.2.0 <H>
+bzip2/.1.0.8-GCCcore-12.2.0 <H>
+zlib/.1.2.12-GCCcore-12.2.0 <H>
+libreadline/.8.2-GCCcore-12.2.0 <H>
+ncurses/.6.3-GCCcore-12.2.0 <H>
+Tcl/.8.6.12-GCCcore-12.2.0 <H>
+SQLite/.3.39.4-GCCcore-12.2.0 <H>
+XZ/.5.2.7-GCCcore-12.2.0 <H>
+GMP/.6.2.1-GCCcore-12.2.0 <H>
+libffi/3.4.4-GCCcore-12.2.0
+OpenSSL/1.1
+Python/3.10.8-GCCcore-12.2.0
+CUDA/12.1.1
+$ nvidia-smi
+index, name, uuid, driver_version, memory.total [MiB], memory.used [MiB]
+0, NVIDIA A16, GPU-b7192761-b009-1409-dfe0-541ef40add86, 595.91.07, 15356 MiB, 0 MiB
+| NVIDIA-SMI 595.91.07              Driver Version: 595.91.07      CUDA Version: 13.2     |
+$ git branch --show-current
+main
+$ git rev-parse HEAD
+04beb8789f17e11d55aec72d9f168353d486b2ba
+$ git status --short --untracked-files=all
+?? scripts/check_lp_scheduler_preemption_gpu.py
+?? validation_output/lp_scheduler_preemption_gpu/20261010T062705Z/INTERRUPTED.md
+?? validation_output/lp_scheduler_preemption_gpu/20261010T062705Z/cpu_checks/environment.txt
+?? validation_output/lp_scheduler_preemption_gpu/20261010T063249Z/cpu_checks/environment.txt
+$ git status --short --ignored (driver test)
+!! tests/test_check_lp_scheduler_preemption_gpu.py
+$ python versions
+/home/atjoshi_umass_edu/LPServe/env/bin/python
+3.10.8 (main, Oct 23 2023, 13:48:55) [GCC 12.2.0]
+numpy 2.2.6
+scipy 1.15.3
+torch 2.3.0+cu121 cuda 12.1
+transformers 4.57.6
+ray 2.58.0
+PYTHONPATH=/home/atjoshi_umass_edu/LPServe:/modules/uri_apps/software/Python/3.10.8-GCCcore-12.2.0/easybuild/python
+model_path=/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6
+total 0
+lrwxrwxrwx 1 atjoshi_umass_edu atjoshi_umass_edu 52 Sep  1 22:18 config.json -> ../../blobs/4ea05f1bc289d48ba9b92eea2f58ad8acd3dce5d
+lrwxrwxrwx 1 atjoshi_umass_edu atjoshi_umass_edu 76 Oct  6 05:23 model.safetensors -> ../../blobs/6e6001da2106d4757498752a021df6c2bdc332c650aae4bae6b0c004dcf14933
+lrwxrwxrwx 1 atjoshi_umass_edu atjoshi_umass_edu 52 Sep  1 22:18 special_tokens_map.json -> ../../blobs/492d4b2966a1763442d426d880dbc29f94906e4c
+lrwxrwxrwx 1 atjoshi_umass_edu atjoshi_umass_edu 52 Sep  1 22:18 tokenizer_config.json -> ../../blobs/fa96b85858f4053b0142a18e2b09dbe94e3fae46
+lrwxrwxrwx 1 atjoshi_umass_edu atjoshi_umass_edu 52 Sep  1 22:18 tokenizer.json -> ../../blobs/a6e931b92caff4c79c5c56282f1e89569a0ae558
+lrwxrwxrwx 1 atjoshi_umass_edu atjoshi_umass_edu 76 Sep  1 22:18 tokenizer.model -> ../../blobs/9e556afd44213b6bd1be2b850ebbbd98f5481437a8021afaf58ee7fb1818d347
+$ sha256sum
+bda413ac831faf5a8135d4a803036bbe2c401b985c87a858032fdc5a0eb04421  scripts/check_lp_scheduler_preemption_gpu.py
+8d1423df0ad3052b0474679bac3c09014693331b44a53dca160d509613cf8591  scripts/check_lp_scheduler_gpu.py
+8175acfd7da3d8d32c82a6ca57fcc0979a0f30a1b882c4d030bec51486014ef0  tests/test_check_lp_scheduler_preemption_gpu.py
+1f65b98afc4605d0b09610ab3b4b2030034b38afae3c5e34f8416736c843ff01  tests/test_lp_scheduler.py
+4c2e9ee24d7785c1abd0d82712e739164bdef8d4a43913bc70259455f3027d37  tests/test_lpserve_plan_execution.py
+45b9bd69a1989dacf5ec0e62e95db434420dd81f45395fbd7161b0d6d7ed7fe2  tests/test_lpserve_state_mapping.py
+88ff7cd75c9636a960a7a5bdee26e64a6d607a7182f45c72d5aee553dd1819a8  tests/test_lp_relaxation_scheduler.py
+616f18d57eb10a1aa8d9f54b049335ba4f9c31f1ccce64e82c2d42dda665cdf3  lp_relaxation_scheduler.py
+7d95bf62e477716ea622654a047594214b9c4083fdd0921c4d4c6ccb34ecd2a7  lpserve_state_mapping.py
+b396e7f529c59527b2174536cc3f924b2faf4adf030de3aec2cc9e7355f0e4cd  lpserve_plan_execution.py
+debfd4eca2225815d6c944b91d7c544b5af0e2fd8aaf4d5b645addd9cb2eb0c3  sarathi/core/scheduler/lp_scheduler.py
+301f11f55ce19b08728df9f238b675916ee6d2c94373645dc72ccc348516f69c  sarathi/engine/base_llm_engine.py
+b6de07bc0e2609b1306c26eebf39839ec4433494ad6cc571ca5577008d8569c2  sarathi/worker/base_worker.py
+259dc36dbd87986847284146003cdb4d4485ac881ef8d18e80198d1cd99179b3  sarathi/model_executor/model_runner.py
+$ ray processes (this user)
+none

@@ -1,0 +1,57 @@
+`torch_dtype` is deprecated! Use `dtype` instead!
+WARNING 10-10 06:34:41 config.py:585] Casting torch.bfloat16 to torch.float16.
+environment: {
+ "hostname": "gpu051",
+ "slurm": {
+  "SLURM_JOB_ID": "65495160",
+  "SLURM_JOB_NODELIST": "gpu051",
+  "SLURM_JOB_PARTITION": "gpu-preempt",
+  "SLURM_STEP_ID": "4294967290"
+ },
+ "cuda_visible_devices": "0",
+ "gpu": "0, NVIDIA A16, GPU-b7192761-b009-1409-dfe0-541ef40add86, 595.91.07, 15356 MiB",
+ "torch_cuda": "12.1",
+ "python_executable": "/home/atjoshi_umass_edu/LPServe/env/bin/python",
+ "python_version": "3.10.8",
+ "virtual_env": "/home/atjoshi_umass_edu/LPServe/env",
+ "pythonpath": "/home/atjoshi_umass_edu/LPServe:/modules/uri_apps/software/Python/3.10.8-GCCcore-12.2.0/easybuild/python",
+ "versions": {
+  "torch": "2.3.0+cu121",
+  "transformers": "4.57.6",
+  "ray": "2.58.0",
+  "numpy": "2.2.6",
+  "scipy": "1.15.3",
+  "flashinfer": "0.2.0.post1+cu121torch2.3",
+  "vllm-flash-attn": "2.5.9",
+  "sarathi": "0.1.7",
+  "nvidia-ml-py": "13.595.45",
+  "huggingface-hub": "0.36.2",
+  "tokenizers": "0.22.2"
+ },
+ "git_head": "04beb8789f17e11d55aec72d9f168353d486b2ba",
+ "git_status_short": "?? scripts/check_lp_scheduler_preemption_gpu.py\n?? validation_output/lp_scheduler_preemption_gpu/20261010T062705Z/INTERRUPTED.md\n?? validation_output/lp_scheduler_preemption_gpu/20261010T062705Z/cpu_checks/environment.txt\n?? validation_output/lp_scheduler_preemption_gpu/20261010T063249Z/cpu_checks/environment.txt\n?? validation_output/lp_scheduler_preemption_gpu/20261010T063249Z/gpu_command.txt",
+ "cwd": "/home/atjoshi_umass_edu/LPServe"
+}
+INFO 10-10 06:34:41 base_llm_engine.py:68] Initializing an LLM engine with config: model='/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6', tokenizer='/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6', tokenizer_mode=auto, revision=None, trust_remote_code=True, dtype=torch.float16, download_dir=None, load_format=dummy, tensor_parallel_size=1, pipeline_parallel_size=1, seed=42)
+2026-10-10 06:34:51,443	INFO worker.py:2024 -- Started a local Ray instance.
+INFO 10-10 06:35:04 base_llm_engine.py:146] Starting workers with resource mapping: [(None, 0)]
+INFO 10-10 06:35:04 base_llm_engine.py:189] Initializing workers with distributed init method: tcp://10.100.20.51:18024
+[36m(RayWorker pid=749788)[0m INFO 10-10 06:35:12 base_worker.py:103] Worker 0 is using device 0
+[36m(RayWorker pid=749788)[0m INFO 10-10 06:35:13 base_worker.py:122] Initializing worker 0 on device cuda:0, tensor parallel rank 0 and pipeline parallel rank 0.
+[36m(RayWorker pid=749788)[0m INFO 10-10 06:35:13 base_worker.py:138] Model initialized on worker 0.
+INFO 10-10 06:35:14 base_llm_engine.py:242] # GPU blocks: 4
+INFO 10-10 06:35:14 base_llm_engine.py:129] Scheduler initialised, block_manager has 4 total blocks
+cache capacity: {"profiled_available_blocks": [15606], "chosen_initialized_blocks": 4, "profile_calls": 1, "initializations": [{"num_gpu_blocks": 4, "result": [null]}], "engine_cache_config_num_gpu_blocks": 4, "central_manager_total_blocks": 4, "central_allocator_num_blocks": 4, "central_free_blocks": 4, "central_watermark_blocks": 0, "worker": {"cache_config_num_gpu_blocks": 4, "cache_engine_num_gpu_blocks": 4, "cache_layers": 22, "cache_tensor_block_dims": [4], "cache_tensor_shapes": [[4, 16, 4, 64]], "manager_total_blocks": 4, "allocator_num_blocks": 4, "free_blocks": 4, "block_ops": []}}
+config: {"model": "TinyLlama/TinyLlama-1.1B-Chat-v1.0", "model_path": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6", "load_format": "dummy", "requested_dtype": "float16", "resolved_dtype": "torch.float16", "hf_config_commit_hash": "fe8a4ea1ffedaf415f4da2f062534de366a451e6", "attention_backend": "flash_attention", "tensor_parallel_size": 1, "pipeline_parallel_size": 1, "max_model_len": 64, "block_size": 16, "gpu_memory_utilization": 0.5, "seed": 42, "trust_remote_code": true, "tokenizer_mode": "auto", "vocab_size": 32000, "tokenizer_len": 32000, "eos_token_id": 2, "prompts": {"A": {"token_ids": [1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011, 1012, 1013, 1014, 1015, 1016], "tokens": ["ied", "ER", "\u2581stat", "fig", "me", "\u2581von", "\u2581inter", "roid", "ater", "\u2581their", "\u2581bet", "\u2581ein", "}\\", "\">", "\u2581sub", "\u2581op", "\u2581don"]}, "B": {"token_ids": [2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035, 2036, 2037, 2038, 2039, 2040, 2041, 2042, 2043, 2044, 2045, 2046, 2047], "tokens": ["\u2581called", "Item", "ura", "vec", "eme", "\u2581della", "embre", "urg", "Se", "\u2581request", "ische", "\u2581port", "\u2581instead", "=\\", "\u2581\u0423", "hor", "ente", "ume", "erd", "\u0441\u0430", "\u2581why", "rist", "\u2581person", "\u2581...", "\u2581private", "\u2581tot", "pha", "ift", "ita", "loc", "\u2581old", "\u043e\u043d", "\u2581nel", "']", "ti", "iet", "cite", "plement", "\u2581above", "ks", "ready", "\u2581come", "section", "\u2581Pol", "\u2581writ", "\u2581https", "\u2581$$", "\u2581\u00bb"]}}, "sampling": {"temperature": 0.0, "max_tokens": 1, "ignore_eos": true, "stop": []}, "b_max": 64, "c_max": 16, "s_max": 1, "max_num_seqs": 1, "memory_reserve": 0, "decode_memory_policy_id": "conservative_one_block_v1", "utilities": {"decode": 40.0, "prefill_token": 1.0, "preemption_penalty": 1.0}, "numerical_policy": {"policy_id": "lp_relaxation_mvp_v1", "feasibility_tol": 1e-07, "integrality_tol": 1e-06, "objective_abs_tol": 1e-09, "objective_rel_tol": 1e-09}, "profiling_max_num_batched_tokens": 64, "profiling_max_num_seqs": 1, "metrics_mode": "enabled, all optional outputs off, never plotted", "engine_init_seconds": 32.64}
+step 0 a_admission_prefill: preempted [] scheduled [[0, 16]] central free 2 worker free 2 sampler [[0, 10935]]
+step 1 a_preemption_b_admission: preempted [0] scheduled [[1, 16]] central free 1 worker free 1 sampler [[1, 3591]]
+step 2 b_resident_prefill: preempted [] scheduled [[1, 16]] central free 1 worker free 1 sampler [[1, 24476]]
+step 3 b_prompt_completion: preempted [] scheduled [[1, 16]] central free 1 worker free 1 sampler [[1, 13271]]
+step 4 b_decode_finish: preempted [] scheduled [[1, 0]] central free 4 worker free 4 sampler [[1, 13271]]
+step 5 a_readmission_prefill: preempted [] scheduled [[0, 16]] central free 2 worker free 2 sampler [[0, 10935]]
+step 6 a_prompt_completion: preempted [] scheduled [[0, 1]] central free 2 worker free 2 sampler [[0, 11087]]
+step 7 a_decode_finish: preempted [] scheduled [[0, 0]] central free 4 worker free 4 sampler [[0, 11087]]
+idle: no outputs, calls ['schedule'], iteration 7 -> 8
+cleanup: {"engine_constructed": true, "ray_initialized_before_shutdown": true, "ray_initialized_after_shutdown": false}
+RESULT: PASS
+exit_status=0
