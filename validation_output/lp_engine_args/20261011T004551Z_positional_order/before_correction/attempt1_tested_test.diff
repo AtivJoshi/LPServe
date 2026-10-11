@@ -1,0 +1,69 @@
+diff --git a/tests/test_lp_engine_args.py b/tests/test_lp_engine_args.py
+index e3427c3..060540b 100644
+--- a/tests/test_lp_engine_args.py
++++ b/tests/test_lp_engine_args.py
+@@ -235,6 +235,64 @@ class LPEngineArgsTest(unittest.TestCase):
+         self.assertEqual(metrics_config.output_dir, self.output_dir)
+         self.assertEqual(metrics_config.model_num_layers, MODEL_NUM_LAYERS)
+ 
++    def test_legacy_positional_metrics_arguments_keep_their_bindings(self):
++        # Positional EngineArgs order through output_dir before LP fields were
++        # added (commit 09e05151dd76dd4e9ef557b7c4c03a24871d6b5b). Frozen here
++        # so the check does not adapt to the current declaration.
++        output_dir = os.path.join(self.tmp.name, "legacy_output")
++        legacy = (
++            ("model", MODEL),
++            ("replica_id", 0),
++            ("replica_resource_mapping", []),
++            ("tokenizer", None),
++            ("tokenizer_mode", "auto"),
++            ("trust_remote_code", False),
++            ("download_dir", None),
++            ("load_format", "auto"),
++            ("dtype", "auto"),
++            ("seed", 0),
++            ("pipeline_parallel_size", 1),
++            ("tensor_parallel_size", 1),
++            ("block_size", 16),
++            ("gpu_memory_utilization", 0.85),
++            ("revision", None),
++            ("scheduler_type", "sarathi"),
++            ("max_model_len", None),
++            ("max_num_seqs", 256),
++            ("max_num_batched_tokens", None),
++            ("chunk_size", None),
++            ("enable_dynamic_chunking_schedule", False),
++            ("low_chunk_size", None),
++            ("high_chunk_size", None),
++            ("chunk_schedule_max_tokens", None),
++            ("chunk_schedule_stages", None),
++            ("token_budget", None),
++            ("fcfs", None),
++            ("fixed_offset", None),
++            ("below_memory_limit_offset", None),
++            ("above_memory_limit_offset", None),
++            ("memory_limit", None),
++            ("user_priority", None),
++            ("time_between_tokens", None),
++            ("process_smallest_prefill", None),
++            ("limit_total_decodes", None),
++            ("hold_n_scheduler_hold_n", None),
++            ("hold_n_scheduler_token_budget", None),
++            ("hold_n_scheduler_prefill_factor", None),
++            ("write_metrics", False),
++            ("output_dir", output_dir),
++        )
++        with mock.patch.object(arg_utils, "open", create=True) as open_mock, \
++                mock.patch.object(arg_utils.os, "makedirs") as makedirs:
++            args = EngineArgs(*(value for _, value in legacy))
++        for name, value in legacy:
++            self.assertEqual(getattr(args, name), value, name)
++        for name in arg_utils._LP_REQUIRED_FIELDS:
++            self.assertIsNone(getattr(args, name), name)
++        open_mock.assert_not_called()
++        makedirs.assert_not_called()
++        self.assertFalse(os.path.exists(output_dir))
++
+     def test_registries_resolve_lp_scheduler_and_block_manager(self):
+         scheduler_config = EngineArgs(**self.lp_kwargs()).create_engine_configs()[3]
+         self.assertIs(SchedulerRegistry.get_class(scheduler_config.type), LPScheduler)

@@ -1,0 +1,28 @@
+2026-10-11T00:45:54Z
+$ hostname --fqdn
+gpu048.unity.rc.umass.edu
+SLURM_JOB_ID=65529855 SLURM_JOB_PARTITION=gpu-preempt SLURM_JOB_NODELIST=gpu048
+$ module -t list
+uri/main
+GCCcore/12.2.0
+libffi/3.4.4-GCCcore-12.2.0
+OpenSSL/1.1
+Python/3.10.8-GCCcore-12.2.0
+CUDA/12.1.1
+$ git branch --show-current
+main
+$ git rev-parse HEAD
+9c894d97399e62b93bf77bd90236d05699c2b5d6
+$ git status --short --untracked-files=all
+ M tests/test_lp_engine_args.py
+?? validation_output/lp_engine_args/20261011T004551Z_positional_order/before_correction/environment.txt
+$ git status --short --ignored tests/test_lp_engine_args.py
+ M tests/test_lp_engine_args.py
+$ python versions
+/home/atjoshi_umass_edu/LPServe/env/bin/python
+3.10.8 (main, Oct 23 2023, 13:48:55) [GCC 12.2.0]
+pyyaml 6.0.3
+PYTHONPATH=/home/atjoshi_umass_edu/LPServe:/modules/uri_apps/software/Python/3.10.8-GCCcore-12.2.0/easybuild/python
+$ sha256sum
+0a292f4389005d7dfc46b3796d0107f39e132be024ccb305e60bf74379333433  sarathi/engine/arg_utils.py
+0c552d1375c85edd6cb7e6a8e0fdf8f1236c6fc8af959a1ea417565d40f49600  tests/test_lp_engine_args.py

@@ -1,0 +1,8 @@
+Attempt 1 failed for a test defect, not the target defect: the frozen legacy
+tuple supplied tokenizer=None, but EngineArgs.__post_init__ replaces a None
+tokenizer with the model name, so the binding assertion failed on `tokenizer`
+before reaching write_metrics/output_dir. The fixture was changed to pass
+tokenizer=MODEL explicitly; the expected-failure check was rerun as
+2-legacy_positional_expected_failure.log. (Files renamed with an attempt1_
+prefix; an empty tested_arg_utils.diff from attempt 1 was dropped because
+arg_utils.py was unchanged from HEAD.)

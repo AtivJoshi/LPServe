@@ -87,18 +87,6 @@ class EngineArgs:
     hold_n_scheduler_hold_n: Optional[int] = None   # flag created by ConfigParser
     hold_n_scheduler_token_budget: Optional[int] = None  # flag created by ConfigParser
     hold_n_scheduler_prefill_factor: Optional[int] = None  # flag created by Config
-    # LP scheduler parameters: all required for scheduler_type="lp", no
-    # defaults. The resident limit, model length, and stage count come from
-    # the shared max_num_seqs, max_model_len, and pipeline_parallel_size.
-    lp_b_max: Optional[int] = None  # combined prefill/decode token budget
-    lp_c_max: Optional[int] = None  # per-request prefill chunk cap
-    lp_s_max: Optional[int] = None  # execution-action limit
-    lp_memory_reserve: Optional[int] = None  # planning reserve in blocks
-    lp_decode_memory_policy_id: Optional[str] = None
-    lp_decode_utility: Optional[float] = None
-    lp_prefill_token_utility: Optional[float] = None
-    lp_preemption_penalty: Optional[float] = None
-    lp_numerical_policy: Optional["NumericalPolicy"] = None
     # Metrics store parameters
     write_metrics: bool = True
     output_dir: str = "."
@@ -113,6 +101,18 @@ class EngineArgs:
     enable_request_outputs: bool = False
     keep_individual_batch_metrics: bool = False
     attention_backend: str = "flash_attention"
+    # LP scheduler parameters: all required for scheduler_type="lp", no
+    # defaults. The resident limit, model length, and stage count come from
+    # the shared max_num_seqs, max_model_len, and pipeline_parallel_size.
+    lp_b_max: Optional[int] = None  # combined prefill/decode token budget
+    lp_c_max: Optional[int] = None  # per-request prefill chunk cap
+    lp_s_max: Optional[int] = None  # execution-action limit
+    lp_memory_reserve: Optional[int] = None  # planning reserve in blocks
+    lp_decode_memory_policy_id: Optional[str] = None
+    lp_decode_utility: Optional[float] = None
+    lp_prefill_token_utility: Optional[float] = None
+    lp_preemption_penalty: Optional[float] = None
+    lp_numerical_policy: Optional["NumericalPolicy"] = None
 
     def __post_init__(self):
         if self.tokenizer is None:

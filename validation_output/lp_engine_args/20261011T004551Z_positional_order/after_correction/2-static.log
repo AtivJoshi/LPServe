@@ -1,0 +1,16 @@
+$ git diff --check -- sarathi/engine/arg_utils.py tests/test_lp_engine_args.py docs/handoffs/lp_engine_args_handoff.md
+exit_status=0
+$ grep -nE '[[:space:]]+$' tests/test_lp_engine_args.py   # ignored file, not covered by git diff --check; expect no match (exit 1)
+exit_status=1
+$ python -B -c <in-memory compile() of both files; no bytecode written>
+syntax ok sarathi/engine/arg_utils.py
+syntax ok tests/test_lp_engine_args.py
+exit_status=0
+$ python -B <AST comparison: EngineArgs fields at 09e0515 must be the exact prefix of current fields (name, annotation, default)>
+old fields: 51 current fields: 60
+legacy prefix identical: True
+appended: ['lp_b_max', 'lp_c_max', 'lp_s_max', 'lp_memory_reserve', 'lp_decode_memory_policy_id', 'lp_decode_utility', 'lp_prefill_token_utility', 'lp_preemption_penalty', 'lp_numerical_policy']
+exit_status=0
+$ ls -la config.yml (repository root; expect absent)
+ls: cannot access 'config.yml': No such file or directory
+exit_status=2

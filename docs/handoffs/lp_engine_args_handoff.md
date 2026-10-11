@@ -139,3 +139,49 @@ changed to 32. Production code did not change between the two runs.
   to record this integration. Those documentation-only edits did not change
   the tested code. The historical CPU-milestone wording in
   `docs/project_status.md` was left as written.
+
+## Correction: positional field order (2026-10-11)
+
+**Defect.** In the reviewed commit `9c894d9`, the nine `lp_*` fields were
+declared before `write_metrics`. `EngineArgs` is a dataclass, so this
+shifted every later positional argument. A legacy positional call supplying
+`write_metrics=False` and an output directory bound those values to
+`lp_b_max` and `lp_c_max`. It left `write_metrics=True` and
+`output_dir="."`, which would cause an unexpected `config.yml` write.
+
+**Correction.** The LP field block was moved, unchanged, to directly after
+`attention_backend`. All 51 fields from `09e0515` now form an identical
+prefix (same names, annotations, and defaults), as shown by an AST comparison.
+LP keywords, validation, policy identity, and configuration construction are
+unchanged. No constructor or compatibility code was added.
+
+**Regression.** `test_legacy_positional_metrics_arguments_keep_their_bindings`
+freezes the `09e0515` order through `output_dir`. It builds a non-LP
+`EngineArgs` positionally with `write_metrics=False` and a temporary path,
+checks every binding, and checks that `open` and `os.makedirs` in
+`arg_utils` (both mocked) are not called and no directory is created.
+
+Evidence is in `validation_output/lp_engine_args/20261011T004551Z_positional_order/`, from `gpu048.unity.rc.umass.edu`, job 65529855,
+`env/bin/python` 3.10.8, base `9c894d9` plus uncommitted changes.
+
+- `before_correction/2-legacy_positional_expected_failure.log`: before the
+  move, the test failed as expected (`True != False : write_metrics`, exit 1).
+  No repository-root `config.yml` was created.
+- `before_correction/1-legacy_positional_attempt1_test_bug.log` and
+  `ATTEMPT1_NOTE.txt`: an earlier failure was caused by the test, not the
+  defect. The frozen tuple passed `tokenizer=None`, which `__post_init__`
+  replaces with the model name. The fixture now passes the model name.
+- `after_correction/1-test_lp_engine_args.log`: 9 passed, exit 0. The
+  original 8 tests are unchanged.
+- `after_correction/2-static.log`: `git diff --check` was clean, the
+  in-memory syntax check passed, and the legacy-prefix AST comparison passed.
+  No repository-root `config.yml` was created. Its comment calls the test
+  file ignored; it is tracked since `9c894d9`, so `git diff --check`
+  covers it.
+- `after_correction/environment.txt` and `tested_changes.diff` give the
+  host, modules, working-tree state, tested diff, and SHA-256 hashes.
+
+The scheduler suites were not rerun. This correction only reorders dataclass
+fields, and the full EngineArgs suite covers LP construction. The earlier
+CPU-only limitation is unchanged: real engine initialization through
+`EngineArgs` and GPU execution remain unverified.
