@@ -222,210 +222,134 @@ vLLM acts purely as the high-throughput execution engine and exposes the necessa
 \section{Myopic Utility Maximization: The Primal ILP Formulation}
 \label{sec:general_formulations}
 
-Continuous batching in Large Language Model (LLM) serving can be rigorously defined as an online optimization problem. Rather than relying on the hard-coded heuristics native to current serving engines, we formalize the execution loop as a generalized mathematical framework: a single-step Myopic Utility Maximization problem. In this section, we construct the exact Integer Linear Program (ILP) representing the scheduling constraints and propose two primal heuristics to approximate its solution within a strict microsecond latency budget.
+We model each continuous-batching step as a myopic utility maximization problem. The scheduler chooses actions using the current request state and resource budgets. We first give an integer linear program, then two primal heuristics for constructing feasible schedules.
 
 \subsection{Mathematical Formulation}
 \label{subsec:myopic_ilp}
 
-At any discrete scheduler step \(t \in \mathbb{Z}_{\ge 0}\), let \(U_t\) denote the set of all active requests in the system. Let
-\[
-\mathcal{Z}_t
-=
-\left\{
-i \in U_t :
-i \text{ is resident and legally preemptible at the beginning of step } t
-\right\}
-\]
-denote the set of requests for which a preemption action is physically and operationally legal. In particular, waiting, already-preempted, finished, and in-flight requests that cannot safely be evicted are excluded from \(\mathcal{Z}_t\).
+Fix a scheduler step \(t\) and take a snapshot of the system before selecting any actions. Let \(U_t\) be the set of unfinished requests, each with one sequence. All parameters are fixed during the solve; we suppress their time arguments below.
 
-For each request \(i \in U_t\), the scheduler determines its execution state for the upcoming forward pass using the following decision variables:
+Let \(P_i^{\mathrm{rem}}\in\mathbb{Z}_{\ge0}\) count the tokens that still require prefill processing for request \(i\). This includes unprocessed prompt tokens and any context tokens that must be recomputed after a cache discard. Thus, completing the original prompt does not permit decoding if its cache still needs recomputation. Define the following sets from the snapshot:
 \begin{itemize}
-    \item \(x_i(t) \in \mathbb{Z}_{\ge 0}\): the number of prefill tokens processed for request \(i\) at step \(t\).
-    \item \(y_i(t) \in \{0,1\}\): whether one decode token is generated for request \(i\) at step \(t\).
-    \item \(I_i^P(t) \in \{0,1\}\): whether request \(i\) executes a positive prefill chunk at step \(t\).
-    \item \(z_i(t) \in \{0,1\}\), defined only for \(i \in \mathcal{Z}_t\): whether request \(i\) is preempted at step \(t\). For notational convenience, we set \(z_i(t)=0\) for every \(i \in U_t \setminus \mathcal{Z}_t\).
+    \item \(\mathcal{P}_t\): requests with \(P_i^{\mathrm{rem}}>0\) whose state permits prefill or recomputation in this step.
+    \item \(\mathcal{D}_t\): resident requests with a valid cache, \(P_i^{\mathrm{rem}}=0\), and a state that permits one decode step.
+    \item \(\mathcal{Z}_t\): resident requests whose cache can legally be released by preemption in this step.
 \end{itemize}
+These sets describe state eligibility, before enforcing the shared resource budgets. Requests with an in-flight operation that prevents an action are excluded from that action's set. Waiting and already-preempted requests are excluded from \(\mathcal{D}_t\) and \(\mathcal{Z}_t\).
 
-The system state and physical hardware at the beginning of step \(t\) are characterized by observable parameters. Let \(P_i^{\mathrm{rem}}(t) \in \mathbb{Z}_{\ge 0}\) be the number of unprocessed prompt tokens remaining for request \(i\), and define
+For each \(i\in U_t\), choose
+\begin{itemize}
+    \item \(x_i\in\mathbb{Z}_{\ge0}\): the number of tokens processed by prefill, including recomputation;
+    \item \(y_i\in\{0,1\}\): whether to execute one decode step;
+    \item \(I_i^P\in\{0,1\}\): whether to execute a positive prefill chunk;
+    \item \(z_i\in\{0,1\}\): whether to preempt the request, with \(z_i=0\) for \(i\notin\mathcal{Z}_t\).
+\end{itemize}
+Selecting no action leaves the request unchanged. If preemption discards the cache, the request must recompute its context before decoding in a later step.
+
+The token budget is \(B_{\max}\in\mathbb{Z}_{>0}\), the maximum number of executing requests is \(S_{\max}\in\mathbb{Z}_{>0}\), and the maximum prefill chunk size is \(C_{\max}\in\mathbb{Z}_{>0}\). The per-request chunk bound is
 \[
-U_i(t)
-=
-\min\left(P_i^{\mathrm{rem}}(t),C_{\max}\right),
+q_i=\min\{P_i^{\mathrm{rem}},C_{\max}\}.
 \]
-where \(C_{\max} \in \mathbb{Z}_{>0}\) is the maximum prefill chunk size in one forward pass.
-
-The time-dependent coefficient \(a_i^P(t)\) denotes the fixed number of physical KV-cache blocks that must be allocated before request \(i\) can execute a positive prefill chunk:
+Let \(M_t^{\mathrm{free}}\in\mathbb{Z}_{\ge0}\) be the free KV-cache blocks and \(W_t\in\mathbb{Z}_{\ge0}\) the required reserve. The memory budget is
 \[
-a_i^P(t)
-=
-\begin{cases}
-0,
-& \text{if request \(i\) is already resident and allocated},\\
-A_i(t),
-& \text{if request \(i\) requires admission or recomputation},
-\end{cases}
+M_{\mathrm{avail}}=M_t^{\mathrm{free}}-W_t.
 \]
-where \(A_i(t)\) is the number of blocks required to allocate the request's complete current logical context. The coefficient \(c_i^D(t)\) denotes the marginal blocks required to execute one decode step, while \(c_i^Z(t)\) denotes the number of blocks recovered by legally preempting request \(i \in \mathcal{Z}_t\).
+Time arguments can be restored when comparing steps, for example \(q_i(t)\) and \(M_{\mathrm{avail}}(t)\).
 
-We formulate the single-step scheduling decision as an Integer Linear Program (ILP). The objective is to maximize a holistic utility function characterized by time-varying, request-specific weights: $\alpha_i(t)$ (marginal reward of a decode token), $\beta_i(t)$ (marginal reward of a prefill token), and $\gamma_i(t)$ (penalty for preemption).
+Memory charges are measured in blocks:
+\begin{itemize}
+    \item \(a_i^P\in\mathbb{Z}_{\ge0}\): the additional blocks needed for a positive prefill action. It is zero for a resident request whose context is already allocated, and equals \(A_i\) for admission or recomputation, where \(A_i\) is the allocation required for the complete current context.
+    \item \(c_i^D\in\mathbb{Z}_{\ge0}\): the additional blocks needed for one decode step.
+    \item \(c_i^Z\in\mathbb{Z}_{\ge0}\): the blocks released by preempting \(i\in\mathcal{Z}_t\), extended by zero outside \(\mathcal{Z}_t\).
+\end{itemize}
+The model assumes these charges are fixed and additive across requests. It excludes allocation or reclamation that depends on shared cache blocks. Selected preemptions release their blocks before the selected execution actions allocate memory. Prefill incurs the fixed charge \(a_i^P\) whenever \(x_i>0\), independently of the chunk size; it is not charged per token.
 
-The Myopic Utility Maximization problem is formulated as follows:
+Let \(\alpha_i,\beta_i,\gamma_i\) be finite, nonnegative weights on a common utility scale: reward per decode step, reward per prefill token, and penalty per preemption. They may depend on the snapshot, but are fixed during the solve. The single-step integer linear program (ILP) is
 \begin{subequations}
 \label{eq:myopic_ilp}
 \begin{align}
-    \max_{\mathbf{x}(t),\mathbf{y}(t),\mathbf{z}(t),\mathbf{I}^P(t)}
-    \quad
-    &\sum_{i \in U_t}
-    \left(
-        \alpha_i(t)y_i(t)
-        +
-        \beta_i(t)x_i(t)
-    \right)
-    -
-    \sum_{i \in \mathcal{Z}_t}
-    \gamma_i(t)z_i(t)
+    \max_{\mathbf{x},\mathbf{y},\mathbf{z},\mathbf{I}^P}\quad
+    &\sum_{i\in U_t}(\alpha_i y_i+\beta_i x_i)
+      -\sum_{i\in\mathcal{Z}_t}\gamma_i z_i
     \label{eq:myopic_ilp_obj}\\
     \text{s.t.}\quad
-    &\sum_{i \in U_t}
-    \left(
-        x_i(t)+y_i(t)
-    \right)
-    \le B_{\max}
+    &\sum_{i\in U_t}(x_i+y_i)\le B_{\max}
     \label{eq:p_compute}\\
-    &\sum_{i \in U_t}
-    \left(
-        I_i^P(t)+y_i(t)
-    \right)
-    \le S_{\max}
+    &\sum_{i\in U_t}(I_i^P+y_i)\le S_{\max}
     \label{eq:p_concurrency}\\
-    &\sum_{i \in U_t}
-    \left(
-        a_i^P(t)I_i^P(t)
-        +
-        c_i^D(t)y_i(t)
-    \right)
-    -
-    \sum_{i \in \mathcal{Z}_t}
-    c_i^Z(t)z_i(t)
-    \le
-    M_t^{\mathrm{free}}-W_t
+    &\sum_{i\in U_t}(a_i^P I_i^P+c_i^D y_i)
+      -\sum_{i\in\mathcal{Z}_t}c_i^Z z_i\le M_{\mathrm{avail}}
     \label{eq:p_memory}\\
-    &I_i^P(t)
-    \le
-    x_i(t)
-    \le
-    U_i(t)I_i^P(t)
-    \qquad
-    \forall i \in U_t
+    &I_i^P\le x_i\le q_i I_i^P
+    &&\forall i\in U_t
     \label{eq:p_chunked}\\
-    &y_i(t)
-    \le
-    \mathbf{1}
-    \left\{
-        P_i^{\mathrm{rem}}(t)=0
-    \right\}
-    \qquad
-    \forall i \in U_t
+    &I_i^P\le\mathbf{1}\{i\in\mathcal{P}_t\}
+    &&\forall i\in U_t
+    \label{eq:p_prefill_eligibility}\\
+    &y_i\le\mathbf{1}\{i\in\mathcal{D}_t\}
+    &&\forall i\in U_t
     \label{eq:p_causality}\\
-    &I_i^P(t)+y_i(t)+z_i(t)
-    \le 1
-    \qquad
-    \forall i \in U_t.
+    &I_i^P+y_i+z_i\le1
+    &&\forall i\in U_t.
     \label{eq:p_mutex}
 \end{align}
 \end{subequations}
+Here \(\mathbf{1}\{\cdot\}\) is the indicator of a condition; the variable domains and the restriction on \(z_i\) are as defined above.
 
-The first three constraints are \textbf{Global Coupling Constraints}. Constraint~\ref{eq:p_compute} limits the total token volume processed in the forward pass, Constraint~\ref{eq:p_concurrency} limits the number of scheduled request actions, and Constraint~\ref{eq:p_memory} limits the net physical KV-cache allocation after accounting for selected preemptions. Here, \(B_{\max}\) is the token-volume budget, \(S_{\max}\) is the maximum scheduled action width, \(M_t^{\mathrm{free}}\) is the number of free KV-cache blocks at the beginning of the step, and \(W_t\) is a configurable memory reserve.
+Constraints~\ref{eq:p_compute}--\ref{eq:p_memory} couple requests through the token, concurrency, and memory budgets. Memory feasibility requires at least \(W_t\) free blocks after the selected actions. If \(M_t^{\mathrm{free}}<W_t\), the idle plan is infeasible: enough blocks must be released, or the ILP has no feasible solution. This is a hard reserve for the whole step, not an admission-only check.
 
-The memory constraint
+The remaining constraints are request-local. Constraint~\ref{eq:p_chunked} makes \(I_i^P\) an exact indicator of \(x_i>0\) and bounds the chunk size. Constraints~\ref{eq:p_prefill_eligibility} and~\ref{eq:p_causality} permit only state-eligible execution actions; membership in \(\mathcal{D}_t\) also enforces completion of prefill and recomputation. Constraint~\ref{eq:p_mutex} prevents execution and preemption of the same request in one step.
+
+The ILP maximizes weighted utility for the current step under these assumptions. It does not optimize future completion times or account for the action-dependent duration of a forward pass. Its memory inequality is a planning constraint; an execution plan must still pass exact physical allocation checks before scheduler state is changed.
+
+Exact integer optimization can be costly in a scheduler loop. The following subsections give two primal heuristics for constructing feasible schedules. All scheduling methods below use the same snapshot, eligibility sets, and request coefficients; inputs omitted from procedure signatures are implicit snapshot data.
+
+\paragraph{Incremental Prefill Allocation.}
+For architectures that allocate KV-cache capacity incrementally during prefill, a token-proportional model replaces Constraint~\ref{eq:p_memory} with
 \[
-\sum_{i \in U_t}
-\left(
-    c_i^P(t)x_i(t)
-    +
-    c_i^D(t)y_i(t)
-    -
-    c_i^Z(t)z_i(t)
-\right)
-\le
-M_t^{\mathrm{free}}-W_t
+\sum_{i\in U_t}(c_i^P x_i+c_i^D y_i)
+-\sum_{i\in\mathcal{Z}_t}c_i^Z z_i
+\le M_{\mathrm{avail}}.
 \]
-is a more general abstraction for serving architectures that allocate KV-cache capacity incrementally as prefill tokens are processed. However, the Sarathi serving architecture used by \texttt{LPServe} does not expose such token-incremental prefill allocation. On admission, its block manager allocates the physical blocks required for the request's complete current logical context, independently of the positive prefill chunk selected for that iteration. A resident partial-prefill request, by contrast, has already incurred this allocation and normally requires no additional blocks for another prefill chunk.
+Here \(c_i^P\in\mathbb{R}_{\ge0}\) is the number of blocks charged per prefill token, fixed at the beginning of the step. This linear charge abstracts away block rounding; all other constraints are unchanged. In the LPServe model above, admission instead allocates the complete current context, so the prefill charge is \(a_i^P I_i^P\). Shortening a positive chunk does not reduce that fixed charge.
 
-Because of this architectural limitation, we specialize the planning-memory constraint to
-\[
-\sum_{i \in U_t}
-\left(
-    a_i^P(t)I_i^P(t)
-    +
-    c_i^D(t)y_i(t)
-\right)
--
-\sum_{i \in \mathcal{Z}_t}
-c_i^Z(t)z_i(t)
-\le
-M_t^{\mathrm{free}}-W_t.
-\]
-This fixed-charge specialization matches the audited Sarathi allocation behavior while retaining a linear formulation. It remains a planning constraint: the final integer action plan must still undergo exact physical block-manager validation before any scheduler state is mutated.
-
-The remaining constraints are \textbf{Local State Constraints}. Constraint~\ref{eq:p_chunked} makes \(I_i^P(t)\) an exact indicator of a positive prefill action: \(I_i^P(t)=0\) forces \(x_i(t)=0\), while \(I_i^P(t)=1\) requires \(1 \le x_i(t) \le U_i(t)\). Constraint~\ref{eq:p_causality} prevents decoding before prompt processing is complete. Constraint~\ref{eq:p_mutex} enforces mutual exclusivity among prefill, decode, and legal preemption actions. Preemption eligibility is enforced by defining \(z_i(t)\) only over \(\mathcal{Z}_t\).
-
-While the formulation in Equation~\ref{eq:myopic_ilp} provides a mathematically optimal blueprint for continuous batching, solving an exact Integer Linear Program (ILP) is computationally intractable for the microsecond-level fast-path of a GPU scheduling loop. The global coupling constraints transform the decision space into a variant of the NP-hard Multi-Dimensional Knapsack Problem (MDKP). To deploy this logic in a live serving engine without stalling the forward pass, we must approximate the solution. The remainder of this section introduces two purely primal heuristics that evaluate the system state and extract a feasible, near-optimal execution schedule.
-
-\subsection{Primal Heuristic 1: Approximation via LP Relaxation}
+\subsection{Primal Heuristic 1: LP Relaxation and Integer Extraction}
 \label{subsec:lp_relaxation}
 
-While solving the exact Integer Linear Program (ILP) is unsuitable for the scheduler fast path, its continuous relaxation can be solved as a Linear Program (LP) and followed by deterministic integer extraction. A true continuous relaxation must relax \(x_i(t)\) as well as the binary action variables. We therefore use
+The linear programming (LP) relaxation of the fixed-charge formulation in Equation~\ref{eq:myopic_ilp} keeps its objective and constraints, but replaces the integer domains with
 \[
-x_i(t)\in\mathbb{R}_{\ge0},
-\qquad
-y_i(t),I_i^P(t)\in[0,1],
+\begin{aligned}
+&x_i\in\mathbb{R}_{\ge0},\qquad y_i,I_i^P,z_i\in[0,1]
+&&\forall i\in U_t,\\
+&z_i=0
+&&\forall i\in U_t\setminus\mathcal{Z}_t.
+\end{aligned}
 \]
-together with
-\[
-z_i(t)\in[0,1]
-\quad\text{for }i\in\mathcal{Z}_t,
-\qquad
-z_i(t)=0
-\quad\text{for }i\in U_t\setminus\mathcal{Z}_t.
-\]
-All constraints in Equation~\ref{eq:myopic_ilp}, including
-\[
-I_i^P(t)\le x_i(t)\le U_i(t)I_i^P(t),
-\]
-are retained. Let the relaxed solution be denoted by
-\[
-\tilde{\mathbf{x}},
-\quad
-\tilde{\mathbf{y}},
-\quad
-\tilde{\mathbf{z}},
-\quad
-\tilde{\mathbf{I}}^P.
-\]
-For readability, the explicit time argument is suppressed in the extraction algorithms below.
+When the LP is feasible, let \((\tilde{\mathbf{x}},\tilde{\mathbf{y}},\tilde{\mathbf{z}},\tilde{\mathbf{I}}^P)\) denote an optimal solution. The algorithms below extract an integer schedule. The incremental-allocation alternative in Section~\ref{subsec:myopic_ilp} requires a different prefill-memory check.
+
+Proceed only if the solver reports optimality and its usable finite vector passes relaxed-solution validation. Before success, validate the integer plan's domains, eligible actions, mutual exclusion, chunk bounds, and shared budgets. Failure returns no schedule.
+
+Hats denote the integer schedule. Algorithm~\ref{alg:lp_rounding} puts a request in \(U_{\mathrm{int}}\) when all three indicators \(\tilde y_i,\tilde z_i,\tilde I_i^P\) are in \(\{0,1\}\), and in \(U_{\mathrm{frac}}\) otherwise. The token count \(\tilde x_i\) may still be fractional in \(U_{\mathrm{int}}\). For those requests, keep the indicators and set \(\hat x_i=\lfloor\tilde x_i\rfloor\).
+
+This flooring preserves the local chunk constraints. If \(\tilde{I}_i^P=0\), then \(\tilde{x}_i=0\). If \(\tilde{I}_i^P=1\), then \(1\le\tilde{x}_i\le q_i\). Since \(q_i\) is an integer, flooring still gives \(1\le\lfloor\tilde{x}_i\rfloor\le q_i\). Flooring can only reduce token use. The executing-request count and fixed prefill-memory charge are unchanged.
+
+Supply a fixed total order \(\pi_t\) for processing requests and breaking memory-repair ties. An exact preemption tie in the first step leaves the request available for execution; repair may still preempt it. Extraction is deterministic for a given LP solution and order.
 
 \begin{algorithm}[htbp]
 \caption{LP Relaxation and Variable Partitioning}
 \label{alg:lp_rounding}
 \begin{algorithmic}[1]
-\Procedure{SolveLPRelaxation}{$U_t,\mathcal{Z}_t,B_{\max},S_{\max}, M_t^{\mathrm{free}},W_t,C_{\max}$}
+\Procedure{SolveLPRelaxation}{$U_t,\mathcal{Z}_t,\pi_t,B_{\max},S_{\max},M_{\mathrm{avail}}$}
     \State \Comment{1. Solve the continuous relaxation of Eq.~\ref{eq:myopic_ilp}}
-    \State
-    \(
-    \tilde{\mathbf{x}},
-    \tilde{\mathbf{y}},
-    \tilde{\mathbf{z}},
-    \tilde{\mathbf{I}}^P
-    \gets
-    \text{LPSolver}(U_t,\mathcal{Z}_t)
-    \)
-    \State
-    \Comment{
-        Relax \(x_i\in\mathbb{R}_{\ge0}\) and
-        \(y_i,z_i,I_i^P\in[0,1]\)
-    }
-
+    \State $R\gets\text{LPSolver}(U_t,\mathcal Z_t)$
+    \If{$R$ does not report optimality or has no usable finite solution vector}
+        \State \textbf{return} \textsc{LPFailure}
+    \EndIf
+    \State $\mathrm{solution}\gets$\Call{ValidateRelaxedSolution}{$R.\mathrm{vector}$}
+    \If{validation returned failure}
+        \State \textbf{return} \textsc{LPFailure}
+    \EndIf
+    \State $(\tilde{\mathbf x},\tilde{\mathbf y},\tilde{\mathbf z},\tilde{\mathbf I}^P)\gets\mathrm{solution}$
     \State
     \(
     \hat{\mathbf{x}},
@@ -500,7 +424,7 @@ For readability, the explicit time argument is suppressed in the extraction algo
     \(
     M_{\mathrm{rem}}
     \gets
-    \left(M_t^{\mathrm{free}}-W_t\right)
+    M_{\mathrm{avail}}
     -
     \sum_{i\in U_{\mathrm{int}}}
     \left(
@@ -513,11 +437,11 @@ For readability, the explicit time argument is suppressed in the extraction algo
     \)
 
     \State \Comment{4. Deterministically resolve fractional requests}
-    \State \textbf{return}
+    \State $\mathrm{plan}\gets$
     \Call{ExtractFractionals}{$
         U_{\mathrm{frac}},
         \mathcal{Z}_t,
-        \tilde{\mathbf{x}},
+        \pi_t,
         \tilde{\mathbf{y}},
         \tilde{\mathbf{z}},
         \tilde{\mathbf{I}}^P,
@@ -527,12 +451,20 @@ For readability, the explicit time argument is suppressed in the extraction algo
         \hat{\mathbf{I}}^P,
         B_{\mathrm{rem}},
         S_{\mathrm{rem}},
-        M_{\mathrm{rem}},
-        C_{\max}
+        M_{\mathrm{rem}}
     $}
+    \If{extraction returned failure}
+        \State \textbf{return} $\mathrm{plan}$
+    \EndIf
+    \If{$\mathrm{plan}$ fails integer-plan validation}
+        \State \textbf{return} \textsc{PlanFailure}
+    \EndIf
+    \State \textbf{return} $\mathrm{plan}$
 \EndProcedure
 \end{algorithmic}
 \end{algorithm}
+
+Subtracting the locked requests' resource use gives the residual budgets \(B_{\mathrm{rem}},S_{\mathrm{rem}},M_{\mathrm{rem}}\). For a feasible LP allocation, the token and request-count residuals are nonnegative. Memory may be negative because fractional preemption credits are excluded. Algorithm~\ref{alg:fractional_packing} repairs this deficit before packing execution actions.
 
 \begin{algorithm}[htbp]
 \caption{Safe Fractional Extraction}
@@ -542,7 +474,7 @@ For readability, the explicit time argument is suppressed in the extraction algo
     $
     U_{\mathrm{frac}},
     \mathcal{Z}_t,
-    \tilde{\mathbf{x}},
+    \pi_t,
     \tilde{\mathbf{y}},
     \tilde{\mathbf{z}},
     \tilde{\mathbf{I}}^P,
@@ -550,146 +482,52 @@ For readability, the explicit time argument is suppressed in the extraction algo
     \hat{\mathbf{y}},
     \hat{\mathbf{z}},
     \hat{\mathbf{I}}^P,
-    B_{\mathrm{curr}},
-    S_{\mathrm{curr}},
-    M_{\mathrm{curr}},
-    C_{\max}
+    B_{\mathrm{rem}},
+    S_{\mathrm{rem}},
+    M_{\mathrm{rem}}
     $
 }
     \State \Comment{1. Round dominant legal preemptions first}
-    \For{$i\in U_{\mathrm{frac}}\cap\mathcal{Z}_t$}
-        \State
-        $
-        \text{DominantAction}
-        \gets
-        \arg\max
-        \left(
-            \tilde{y}_i,
-            \tilde{I}_i^P,
-            \tilde{z}_i
-        \right)
-        $
-
-        \If{
-            $\text{DominantAction}=\tilde{z}_i$
-            \textbf{and}
-            $c_i^Z>0$
-        }
-            \State $\hat{z}_i\gets1$
-            \State
-            $M_{\mathrm{curr}}\gets M_{\mathrm{curr}}+c_i^Z$
+    \For{$i\in U_{\mathrm{frac}}\cap\mathcal{Z}_t$ in order $\pi_t$}
+        \If{$c_i^Z>0$ \textbf{and} $\tilde z_i>\max\{\tilde y_i,\tilde I_i^P\}$}
+            \State $\hat z_i\gets1$
+            \State $M_{\mathrm{rem}}\gets M_{\mathrm{rem}}+c_i^Z$
         \EndIf
     \EndFor
 
     \State \Comment{2. Restore planning-memory feasibility}
-    \While{$M_{\mathrm{curr}}<0$}
-        \State
-        $
-        k
-        \gets
-        \arg\max_{
-            i\in U_{\mathrm{frac}}\cap\mathcal{Z}_t:
-            \hat{z}_i=0,\,
-            c_i^Z>0
-        }
-        \tilde{z}_i
-        $
-
-        \If{\textbf{no such $k$ exists}}
+    \While{$M_{\mathrm{rem}}<0$}
+        \State $V\gets\{i\in U_{\mathrm{frac}}\cap\mathcal{Z}_t:\hat z_i=0,\ c_i^Z>0\}$
+        \If{$V=\emptyset$}
             \State \textbf{return} \textsc{ExtractionFailure}
         \EndIf
-
-        \State $\hat{z}_k\gets1$
-        \State
-        $M_{\mathrm{curr}}\gets M_{\mathrm{curr}}+c_k^Z$
+        \State Choose $k\in V$ with largest $\tilde z_k$; choose the earliest in $\pi_t$ on a tie
+        \State $\hat z_k\gets1$
+        \State $M_{\mathrm{rem}}\gets M_{\mathrm{rem}}+c_k^Z$
     \EndWhile
 
     \State \Comment{3. Pack the remaining fractional execution actions}
-    \For{
-        $i\in U_{\mathrm{frac}}$
-        \textbf{ where }
-        $\hat{z}_i\ne1$
-    }
-        \If{$\tilde{y}_i=0$ \textbf{and} $\tilde{I}_i^P=0$}
+    \For{$i\in U_{\mathrm{frac}}$ in order $\pi_t$}
+        \If{$\hat z_i=1$ \textbf{or} $B_{\mathrm{rem}}<1$ \textbf{or} $S_{\mathrm{rem}}<1$}
             \State \textbf{continue}
-            \Comment{No relaxed support for decode or prefill}
         \EndIf
-        \State
-        $
-        \text{DominantAction}
-        \gets
-        \arg\max
-        \left(
-            \tilde{y}_i,
-            \tilde{I}_i^P
-        \right)
-        $
-        \Comment{Exact ties choose decode}
-
-        \If{
-            $\text{DominantAction}=\tilde{y}_i$
-            \textbf{and}
-            $B_{\mathrm{curr}}\ge1$
-            \textbf{and}
-            $S_{\mathrm{curr}}\ge1$
-            \textbf{and}
-            $M_{\mathrm{curr}}\ge c_i^D$
-        }
-            \State $\hat{y}_i\gets1$
-            \State
-            $B_{\mathrm{curr}}\gets B_{\mathrm{curr}}-1$
-            \State
-            $S_{\mathrm{curr}}\gets S_{\mathrm{curr}}-1$
-            \State
-            $M_{\mathrm{curr}}\gets M_{\mathrm{curr}}-c_i^D$
-
-        \ElsIf{
-            $\text{DominantAction}=\tilde{I}_i^P$
-            \textbf{and}
-            $B_{\mathrm{curr}}\ge1$
-            \textbf{and}
-            $S_{\mathrm{curr}}\ge1$
-            \textbf{and}
-            $M_{\mathrm{curr}}\ge a_i^P$
-        }
-            \State
-            $
-            \hat{x}_i
-            \gets
-            \min
-            \left(
-                P_i^{\mathrm{rem}},
-                C_{\max},
-                B_{\mathrm{curr}}
-            \right)
-            $
-
-            \If{$\hat{x}_i>0$}
-                \State $\hat{I}_i^P\gets1$
-                \State
-                $B_{\mathrm{curr}}
-                \gets
-                B_{\mathrm{curr}}-\hat{x}_i$
-                \State
-                $S_{\mathrm{curr}}
-                \gets
-                S_{\mathrm{curr}}-1$
-                \State
-                $M_{\mathrm{curr}}
-                \gets
-                M_{\mathrm{curr}}-a_i^P$
-            \EndIf
+        \If{$\tilde y_i>0$ \textbf{and} $M_{\mathrm{rem}}\ge c_i^D$}
+            \State $\hat y_i\gets1$
+            \State $B_{\mathrm{rem}}\gets B_{\mathrm{rem}}-1$
+            \State $S_{\mathrm{rem}}\gets S_{\mathrm{rem}}-1$
+            \State $M_{\mathrm{rem}}\gets M_{\mathrm{rem}}-c_i^D$
+        \ElsIf{$\tilde I_i^P>0$ \textbf{and} $M_{\mathrm{rem}}\ge a_i^P$}
+            \State $\hat x_i\gets\min(q_i,B_{\mathrm{rem}})$
+            \State $\hat I_i^P\gets1$
+            \State $B_{\mathrm{rem}}\gets B_{\mathrm{rem}}-\hat x_i$
+            \State $S_{\mathrm{rem}}\gets S_{\mathrm{rem}}-1$
+            \State $M_{\mathrm{rem}}\gets M_{\mathrm{rem}}-a_i^P$
         \EndIf
     \EndFor
 
-    \State
-    $
-    \hat{I}_i^P
-    \gets
-    \mathbf{1}\{\hat{x}_i>0\}
-    \quad
-    \forall i\in U_t
-    $
+    \If{$\hat I_i^P\ne\mathbf1\{\hat x_i>0\}$ for some $i\in U_t$}
+        \State \textbf{return} \textsc{ExtractionFailure}
+    \EndIf
     \State
     \textbf{return}
     $
@@ -703,41 +541,77 @@ For readability, the explicit time argument is suppressed in the extraction algo
 \end{algorithm}
 
 \paragraph{Almost-Integral Structure.}
-The relaxation contains three global coupling constraints---token volume, scheduled action width, and planning memory---while the remaining feasibility conditions are request-local. This block-angular structure suggests that an optimal basic feasible solution may contain only a small number of request blocks that are not at local extreme points.
+A vertex, or basic feasible solution, is a feasible point that is not the midpoint of two distinct feasible points. At any vertex of this relaxation, at most three requests have nonintegral variables.
 
-However, the Fundamental Theorem of Linear Programming alone does not establish that at most three requests are fractional. Such a bound additionally requires an appropriate extreme-point characterization of the request-local polytope and a solver that returns a suitable basic feasible solution. The implementation therefore records the observed number of fractional requests and permits the extraction procedure to process an arbitrary \(U_{\mathrm{frac}}\). Any formal bound on \(\lvert U_{\mathrm{frac}}\rvert\) must be established separately for the exact implemented formulation.
+\begin{proof}
+First consider one request, keeping its local constraints but ignoring the three shared budgets. The action vectors for \((x_i,y_i,z_i,I_i^P)\) are
+\[
+\begin{array}{cl}
+(0,0,0,0) & \text{idle},\\
+(0,1,0,0) & \text{decode},\\
+(0,0,1,0) & \text{preempt},\\
+(1,0,0,1) & \text{prefill one token},\\
+(q_i,0,0,1) & \text{prefill }q_i\text{ tokens}.
+\end{array}
+\]
+Omit actions that are ineligible for this request. The two prefill vectors use the smallest and largest positive chunks allowed by \(1\le x_i\le q_i\) when \(I_i^P=1\).
 
-\paragraph{Deterministic and Safe Fractional Extraction:}
-Extracting a feasible integer schedule requires explicit treatment of both capacity-producing and capacity-consuming actions. A fractional preemption can contribute memory credit to the relaxed solution, but that credit disappears if the preemption is rounded down. Conversely, rounding a fractional prefill indicator up to one incurs the complete fixed admission cost \(a_i^P\), rather than a cost proportional to the selected chunk length.
+Every locally feasible point is a weighted average of these vectors. Assign weights \(y_i\) to decode, \(z_i\) to preemption, and \(1-y_i-z_i-I_i^P\) to idle. The mutual-exclusion constraint makes the idle weight nonnegative. The remaining weight \(I_i^P\) is split between the prefill vectors. When prefill is eligible and \(q_i>1\), use
+\[
+w_{\min}=\frac{q_i I_i^P-x_i}{q_i-1},
+\qquad
+w_{\max}=\frac{x_i-I_i^P}{q_i-1}.
+\]
+The chunk bounds make these weights nonnegative. They sum to \(I_i^P\) and satisfy \(w_{\min}+q_iw_{\max}=x_i\), so the weighted average reproduces all four variables. If \(q_i=1\), the prefill vectors coincide and \(x_i=I_i^P\). Ineligible actions have zero weight; in particular, ineligible prefill has \(x_i=I_i^P=0\). All action weights are nonnegative and sum to one. Conversely, their weighted averages satisfy the local constraints because those constraints are linear. Thus the local feasible region is exactly their convex hull, meaning the set of these weighted averages. Its vertices are integral because \(q_i\) is an integer.
 
-The extraction procedure therefore proceeds in two ordered phases:
-\begin{enumerate}
-    \item \textbf{Legal preemption and memory repair.}
-    The algorithm first considers dominant preemption actions only for requests in \(\mathcal{Z}_t\). If the integral actions remain memory-infeasible after fractional preemption credits are removed, it repeatedly selects the largest remaining \(\tilde{z}_i\) from \(\mathcal{Z}_t\) until planning-memory feasibility is restored. If no legal preemption candidate with positive recoverable memory remains, extraction fails explicitly.
+Now consider a vertex of the full LP. Suppose, for a contradiction, that at least four requests are not at their local vertices. Choose four of them. Each is the midpoint of two distinct locally feasible points. It can therefore move a little in either direction along the line between those points. A movement may change several variables, but only for that request.
 
-    \item \textbf{Decode and prefill packing.}
-    Decode actions are admitted only when their token, sequence, and marginal decode-memory costs fit. A positive prefill action is admitted only when the complete fixed charge \(a_i^P\) fits. Once this fixed charge is affordable, the selected chunk may be truncated by the remaining token budget:
-    \[
-    \hat{x}_i
-    =
-    \min
-    \left(
-        P_i^{\mathrm{rem}},
-        C_{\max},
-        B_{\mathrm{curr}}
-    \right).
-    \]
-    Under the audited Sarathi allocation behavior, reducing the chunk length does not reduce the admission-memory requirement. Memory therefore acts as a fixed admission gate rather than a fluid per-token prefill capacity.
-\end{enumerate}
+For selected request \(j\), let \((b_j,s_j,m_j)\) describe the changes in token use, executing-request count, and memory use per unit movement. To preserve all three shared totals, the movement amounts \(h_1,\ldots,h_4\) must satisfy
+\[
+\sum_{j=1}^{4}h_jb_j=0,
+\qquad
+\sum_{j=1}^{4}h_js_j=0,
+\qquad
+\sum_{j=1}^{4}h_jm_j=0.
+\]
+These are three linear equations with zero right-hand sides and four unknowns. Hence they have a solution with at least one nonzero \(h_j\).
 
-The complete construction of
-\(
-\hat{\mathbf{x}},
-\hat{\mathbf{y}},
-\hat{\mathbf{z}},
-\hat{\mathbf{I}}^P
-\)
-is given in Algorithm~\ref{alg:lp_rounding} and Algorithm~\ref{alg:fractional_packing}. Mathematical planning feasibility does not replace the exact LPServe block-manager validation required before action execution.
+Scale all four amounts down together until the movements are locally feasible in both directions. The shared totals are unchanged, so both resulting LP points are feasible. They are distinct: at least one request's variables change, and movements of other requests cannot undo that change. Reversing all movements places the two points equally far on either side of the original solution. Their midpoint is therefore the original solution, contradicting that it is a vertex. At most three requests can be away from local vertices, and thus at most three can have nonintegral variables.
+\end{proof}
+
+The feasible LP is bounded, so an optimal vertex exists. If the solver returns such a solution, the bound applies to all request variables, including \(x_i\), and therefore implies \(\lvert U_{\mathrm{frac}}\rvert\le3\). An arbitrary optimal solution need not satisfy this bound. Algorithm~\ref{alg:fractional_packing} therefore remains defined for any number of fractional requests.
+
+\paragraph{Deterministic and Safe Fractional Extraction.}
+Algorithm~\ref{alg:fractional_packing} applies dominant preemption, memory repair, and packing in that order. Repair may select a legal positive-credit candidate even when \(\tilde z_i=0\). Execution support means \(\tilde y_i>0\) or \(\tilde I_i^P>0\); at most one can be positive because \(\mathcal P_t\cap\mathcal D_t=\emptyset\). Requests without support remain idle. Supported actions that do not fit are skipped.
+
+For a supported prefill, \(q_i\ge1\) and the token check ensures \(B_{\mathrm{rem}}\ge1\), so the selected chunk is positive. Shortening it does not reduce the fixed memory charge \(a_i^P\). Physical block-manager validation is still required before execution.
+
+\paragraph{Feasibility.}
+Assume exact arithmetic, a feasible relaxed solution, and the fixed additive memory model. Before any fractional preemption is rounded up, LP feasibility gives
+\[
+M_{\mathrm{rem}}
+\ge
+\sum_{i\in U_{\mathrm{frac}}}(a_i^P\tilde I_i^P+c_i^D\tilde y_i)
+-\sum_{i\in U_{\mathrm{frac}}\cap\mathcal Z_t}c_i^Z\tilde z_i.
+\]
+The execution charges are nonnegative and \(0\le\tilde z_i\le1\). Hence
+\[
+M_{\mathrm{rem}}+\sum_{i\in U_{\mathrm{frac}}\cap\mathcal Z_t}c_i^Z\ge0.
+\]
+Thus, preempting all legal fractional candidates would cover any memory deficit. Each preemption adds positive credit and selects an unused request, so it cannot run out of candidates while a deficit remains. The failure guard remains for invalid or numerical inputs.
+
+Flooring the locked token counts leaves nonnegative integer token and request-count budgets. Packing subtracts only costs that fit, so all residual budgets remain nonnegative. Selected actions are eligible and mutually exclusive: preempted requests are skipped, and prefill and decode eligibility are disjoint. Each selected prefill chunk is an integer in \([1,q_i]\). Therefore the returned schedule satisfies every constraint of Equation~\ref{eq:myopic_ilp}.
+
+The implementation uses numerical tolerances for relaxed-solution validation and indicator classification. The exact argument above does not cover those changes; the complete integer plan is checked independently before success. An optimal solver status also does not certify that the returned solution is a vertex.
+
+\paragraph{Utility Limit.}
+The optimal LP utility is an upper bound on the optimal ILP utility. A feasible extracted schedule need not be close to either optimum. In particular, the three-request bound limits the number of fractional requests, not the utility lost during extraction.
+
+For an exact-arithmetic example, take two eligible prefills with \(q_1=q_2=1\), \(B_{\max}=S_{\max}=2\), \(M_{\mathrm{avail}}=N\), and no legal preemptions, where \(N\ge3\) is an integer. Set
+\[
+a_1^P=1,\quad a_2^P=N,\qquad \beta_1=2/N,\quad\beta_2=1.
+\]
+Request 1 has higher utility per block, so the LP fills it first. The optimal LP vertex selects \(x_1=I_1^P=1\) and \(x_2=I_2^P=(N-1)/N\). Extraction locks request 1, leaving \(N-1\) blocks, and rejects request 2 because its fixed charge is \(N\). It earns \(2/N\), while the optimal integer schedule selects request 2 alone and earns \(1\). The ratio tends to zero despite having only one fractional request. Thus exact extraction cannot guarantee any fixed positive fraction of the optimal integer utility. Numerical classification may change this example for large \(N\) as the second indicator approaches one.
 
 
 % \clearpage
@@ -760,21 +634,21 @@ This heuristic translates the NP-hard Multi-Dimensional Knapsack Problem (MDKP) 
     
     \For{$i \in U_t$}
         \State \Comment{1. Evaluate Capacity Producers (Preemption Candidates)}
-        \If{$I_i^{\text{GPU}} == 1$} \Comment{Request is currently active in GPU}
+        \If{$i\in\mathcal{Z}_t$ \textbf{and} $c_i^Z>0$}
             \State $r_i \gets \gamma_i / \max(1, c_i^Z)$ \Comment{Penalty per physical block freed}
             \State $\texttt{PreemptsList}.\text{append}(\langle i, r_i \rangle)$
         \EndIf
         
         \State \Comment{2. Evaluate Capacity Consumers (Admission Candidates)}
-        \If{$P_i^{\text{rem}} == 0$ \textbf{and} $I_i^{\text{GPU}} == 1$} 
+        \If{$i\in\mathcal{D}_t$}
             \State \Comment{Decode Candidate}
             \State $F_i \gets (1 / B_{\max}) + (1 / S_{\max}) + (c_i^D / M_{\text{total}})$
             \State $\rho_i \gets \alpha_i / \max(\epsilon, F_i)$ \Comment{Primal Value Density}
             \State $\texttt{AdmissionsList}.\text{append}(\langle i, \text{Decode}, \rho_i, \text{chunk}=1 \rangle)$
             
-        \ElsIf{$P_i^{\text{rem}} > 0$}
+        \ElsIf{$i\in\mathcal{P}_t$}
             \State \Comment{Prefill Candidate}
-            \State $\hat{x}_i \gets \min(P_i^{\text{rem}}, C_{\max})$ \Comment{Evaluate based on ideal chunk}
+            \State $\hat{x}_i \gets q_i$ \Comment{Evaluate based on ideal chunk}
             \State \(F_i \gets (\hat{x}_i / B_{\max}) + (1 / S_{\max}) + (a_i^P / M_{\text{total}})\)
             \State $\rho_i \gets (\beta_i \cdot \hat{x}_i) / \max(\epsilon, F_i)$
             \State $\texttt{AdmissionsList}.\text{append}(\langle i, \text{Prefill}, \rho_i, \text{chunk}=\hat{x}_i \rangle)$
@@ -840,14 +714,14 @@ Admissions are sorted in descending order of their \textbf{Primal Value Density}
 \caption{Primal Phase 2: Lazy Packing \& Fluid Extraction}
 \label{alg:primal_phase2}
 \begin{algorithmic}[1]
-\Procedure{ExtractPrimalSchedule}{$\texttt{Admissions}, \texttt{Preempts}, B_{\max}, S_{\max}, M_{\text{avail}}$}
+\Procedure{ExtractPrimalSchedule}{$\texttt{Admissions}, \texttt{Preempts}, B_{\max}, S_{\max}, M_{\mathrm{avail}}$}
     \State $\texttt{Batch} \gets \emptyset$
     \State $\texttt{SafeSet} \gets \emptyset$ 
     \State $\texttt{EvictedSet} \gets \emptyset$
     
     \State $B_{\text{rem}} \gets B_{\max}$
     \State $S_{\text{rem}} \gets S_{\max}$
-    \State $M_{\text{rem}} \gets M_{\text{avail}}$
+    \State $M_{\text{rem}} \gets M_{\mathrm{avail}}$
     
     \For{$\langle i, \text{State}, \rho_i, \hat{x}_i \rangle \in \texttt{Admissions}$}
         \If{$S_{\text{rem}} < 1$} \textbf{break} \EndIf \Comment{Strict concurrency check}
@@ -912,8 +786,7 @@ With the lists independently sorted, Phase 2 (Algorithm~\ref{alg:primal_phase2})
     =
     \min
     \left(
-        P_i^{\mathrm{rem}},
-        C_{\max},
+        q_i,
         B_{\mathrm{remaining}}
     \right).
     \]
@@ -925,7 +798,7 @@ With the lists independently sorted, Phase 2 (Algorithm~\ref{alg:primal_phase2})
 
 While the purely primal heuristics introduced in Section~\ref{sec:general_formulations} successfully bound the execution latency of the fast-path scheduler, they are fundamentally greedy algorithms. Because they evaluate requests using static, local utility weights, they lack a mathematical awareness of global, time-varying resource scarcity. Furthermore, solving the exact Myopic ILP (Equation~\ref{eq:myopic_ilp}) directly via Branch-and-Bound is computationally intractable within the 10 to 20-millisecond latency budget of the GPU iteration loop.
 
-To make the problem tractable while achieving near-optimal system throughput, state-of-the-art serving systems utilize Time-Scale Separation (also known as Hierarchical Scheduling). By dualizing the global capacity constraints (compute bandwidth ($B_{\max}$), sequence concurrency ($S_{\max}$), and physical memory ($M_{\text{avail}}(t)$)), we apply Lagrangian Relaxation to decouple the system into independent, request-level subproblems. This approach splits the scheduling architecture into two distinct components: an asynchronous strategic Slow Path, and a reactive tactical Fast Path.
+To make the problem tractable while achieving near-optimal system throughput, state-of-the-art serving systems utilize Time-Scale Separation (also known as Hierarchical Scheduling). By dualizing the global capacity constraints (compute bandwidth ($B_{\max}$), sequence concurrency ($S_{\max}$), and physical memory ($M_{\mathrm{avail}}(t)$)), we apply Lagrangian Relaxation to decouple the system into independent, request-level subproblems. This approach splits the scheduling architecture into two distinct components: an asynchronous strategic Slow Path, and a reactive tactical Fast Path.
 
 % While the formulations presented in Section~\ref{sec:general_formulations} mathematically capture the ideal scheduling logic, solving an ILP or evaluating an expected-value MPC requires seconds or minutes. In continuous batching, the fast-path iteration loop executes in approximately $10$ to $20$ milliseconds. Evaluating heavy mathematics at every decode step is computationally intractable and would stall the GPU forward pass. To bridge this gap, state-of-the-art serving systems utilize Time-Scale Separation (also known as Hierarchical Scheduling). This approach decouples the \textit{strategic planning} from the \textit{tactical execution}.
 
@@ -987,7 +860,7 @@ We introduce a vector of non-negative Lagrangian multipliers (shadow prices) $\b
 \end{align}
 By rearranging the terms, we factor out the constants and perfectly separate the Lagrangian into a sum of independent functions for each request $i$:
 \begin{equation}
-    \mathcal{L}(\mathbf{x}, \mathbf{y}, \mathbf{z}, \mathbf{I}^P, \boldsymbol{\lambda}) = \lambda_B B_{\max} + \lambda_S S_{\max} + \lambda_M M_{\text{avail}}(t) + \sum_{i \in U_t} L_i(x_i, y_i, z_i, I_i^P, \boldsymbol{\lambda})
+    \mathcal{L}(\mathbf{x}, \mathbf{y}, \mathbf{z}, \mathbf{I}^P, \boldsymbol{\lambda}) = \lambda_B B_{\max} + \lambda_S S_{\max} + \lambda_M M_{\mathrm{avail}}(t) + \sum_{i \in U_t} L_i(x_i, y_i, z_i, I_i^P, \boldsymbol{\lambda})
 \end{equation}
 where the request-specific isolated Lagrangian score $L_i$ is defined as:
 \begin{equation}
@@ -1022,7 +895,7 @@ L_i
 \end{aligned}
 \end{equation}
 
-Let $\mathcal{F}_{\text{local}}$ denote the feasible region defined strictly by the local state constraints (Eqs.~\ref{eq:p_chunked}, \ref{eq:p_causality}, \ref{eq:p_mutex}). The \textbf{Dual Function} is defined by maximizing the Lagrangian over this local region:
+Let $\mathcal{F}_{\text{local}}$ denote the feasible region defined by the variable domains, preemption eligibility, and local state constraints (Eqs.~\ref{eq:p_chunked}, \ref{eq:p_prefill_eligibility}, \ref{eq:p_causality}, \ref{eq:p_mutex}). The \textbf{Dual Function} is defined by maximizing the Lagrangian over this local region:
 \begin{equation}
     g(\boldsymbol{\lambda}) = \max_{(\mathbf{x}, \mathbf{y}, \mathbf{z}, \mathbf{I}^P) \in \mathcal{F}_{\text{local}}} \mathcal{L}(\mathbf{x}, \mathbf{y}, \mathbf{z}, \mathbf{I}^P, \boldsymbol{\lambda})
 \end{equation}
@@ -1038,21 +911,21 @@ The \textbf{Lagrangian Dual Problem} seeks the tightest upper bound on the prima
 \caption{Slow Path: Strategic Subgradient Descent Planner}
 \label{alg:slow_path}
 \begin{algorithmic}[1]
-\Procedure{UpdateShadowPrices}{$U_t, B_{\max}, S_{\max}, M_{\text{avail}}, \text{max\_iter}, \eta$}
+\Procedure{UpdateShadowPrices}{$U_t, B_{\max}, S_{\max}, M_{\mathrm{avail}}, \text{max\_iter}, \eta$}
     \State $\boldsymbol{\lambda}^{(0)} \gets [0, 0, 0]^\top$
     \For{$k = 0$ \textbf{to} $\text{max\_iter} - 1$}
         \State $\hat{\mathbf{x}}, \hat{\mathbf{y}}, \hat{\mathbf{z}}, \hat{\mathbf{I}}^P \gets \mathbf{0}$
         
         \State \Comment{1. Solve the relaxed independent subproblems}
         \For{$i \in U_t$}
-            \State Compute valid local actions satisfying $\mathcal{F}_{\text{local}}$ (Eqs.~\ref{eq:p_chunked}, \ref{eq:p_causality}, \ref{eq:p_mutex})
+            \State Compute valid local actions satisfying $\mathcal{F}_{\text{local}}$ (Eqs.~\ref{eq:p_chunked}, \ref{eq:p_prefill_eligibility}, \ref{eq:p_causality}, \ref{eq:p_mutex})
             \State Select $(\hat{x}_i, \hat{y}_i, \hat{z}_i, \hat{I}_i^P)$ that maximizes $L_i(\cdot, \boldsymbol{\lambda}^{(k)})$ using Eq.~\ref{eq:exact_lagrangian_score}
         \EndFor
         
         \State \Comment{2. Calculate constraint violations (subgradients)}
         \State $\nabla_{\lambda_B} \gets \sum_{i} (\hat{x}_i + \hat{y}_i) - B_{\max}$
         \State $\nabla_{\lambda_S} \gets \sum_{i} (\hat{I}_i^P + \hat{y}_i) - S_{\max}$
-        \State \(\nabla_{\lambda_M} \gets \sum_{i \in U_t} (a_i^P \hat{I}_i^P + c_i^D \hat{y}_i) - \sum_{i \in \mathcal{Z}_t} c_i^Z \hat{z}_i - M_{\text{avail}}\)
+        \State \(\nabla_{\lambda_M} \gets \sum_{i \in U_t} (a_i^P \hat{I}_i^P + c_i^D \hat{y}_i) - \sum_{i \in \mathcal{Z}_t} c_i^Z \hat{z}_i - M_{\mathrm{avail}}\)
         
         \State \Comment{3. Check stopping criteria}
         \If{$\nabla_{\lambda_B} \le 0$ \textbf{and} $\nabla_{\lambda_S} \le 0$ \textbf{and} $\nabla_{\lambda_M} \le 0$ \textbf{and} $(\boldsymbol{\lambda}^{(k)} \cdot \nabla \approx 0)$}
@@ -1084,13 +957,13 @@ Because the slow path operates asynchronously (typically executing every $100$ t
 
 While the dual problem cleanly identifies the optimal resource prices $\boldsymbol{\lambda}^*$, extracting a strict primal-feasible schedule from the continuous dual solution is non-trivial. Because the primal variables are integers, there exists a \textit{duality gap}. Simply executing the actions that maximize the absolute Lagrangian score $L_i$ often violates hard hardware boundaries or triggers catastrophic operational hazards (such as mass preemption or liveness deadlocks) if the asynchronous slow path lags and publishes stale shadow prices.
 
-To correctly bridge the duality gap within a microsecond latency budget, the fast-path iteration loop must abandon the absolute Lagrangian score as a rigid sorting metric. Instead, it utilizes $\boldsymbol{\lambda}^*$ as a \textbf{universal exchange rate} to compress the orthogonal multi-dimensional knapsack constraints ($B_{\max}, S_{\max}, M_{\text{avail}}$) into a scalar opportunity cost. The extraction is then executed via a highly robust, two-phase dual-descent algorithm.
+To correctly bridge the duality gap within a microsecond latency budget, the fast-path iteration loop must abandon the absolute Lagrangian score as a rigid sorting metric. Instead, it utilizes $\boldsymbol{\lambda}^*$ as a \textbf{universal exchange rate} to compress the orthogonal multi-dimensional knapsack constraints ($B_{\max}, S_{\max}, M_{\mathrm{avail}}$) into a scalar opportunity cost. The extraction is then executed via a highly robust, two-phase dual-descent algorithm.
 
 \begin{algorithm}[htbp]
 \caption{Fast Path: Tactical Iteration Scheduler (Two-Phase Primal Recovery)}
 \label{alg:fast_path_main}
 \begin{algorithmic}[1]
-\Procedure{ScheduleNextStep}{$U_t, \boldsymbol{\lambda}^*, B_{\max}, S_{\max}, M_{\text{avail}}, C_{\max}$}
+\Procedure{ScheduleNextStep}{$U_t, \boldsymbol{\lambda}^*, B_{\max}, S_{\max}, M_{\mathrm{avail}}, C_{\max}$}
     
     \State \Comment{Phase 1: Valuation and Decoupled Sorting (Alg. \ref{alg:phase1_sorting})}
     \State \Comment{Reduces MDKP constraints to scalar densities and isolates preemptions}
@@ -1098,7 +971,7 @@ To correctly bridge the duality gap within a microsecond latency budget, the fas
     
     \State \Comment{Phase 2: Lazy Packing and Fluid Extraction (Alg. \ref{alg:phase2_extraction})}
     \State \Comment{Packs GPU, applying fluid chunking and deficit-bounded preemptions}
-    \State $\texttt{Batch} \gets \text{ExtractPrimalSchedule}(\texttt{Admissions}, \texttt{Preempts}, \boldsymbol{\lambda}^*, B_{\max}, S_{\max}, M_{\text{avail}})$
+    \State $\texttt{Batch} \gets \text{ExtractPrimalSchedule}(\texttt{Admissions}, \texttt{Preempts}, \boldsymbol{\lambda}^*, B_{\max}, S_{\max}, M_{\mathrm{avail}})$
     
     \State \Comment{Return the unified execution plan for the current iteration}
     \State \textbf{return} $\texttt{Batch}$
@@ -1116,21 +989,21 @@ To correctly bridge the duality gap within a microsecond latency budget, the fas
     
     \For{$i \in U_t$}
         \State \Comment{1. Evaluate Capacity Producers (Preemption Candidates)}
-        \If{$I_i^{\text{GPU}} == 1$}
+        \If{$i\in\mathcal{Z}_t$ \textbf{and} $c_i^Z>0$}
             \State $r_i \gets \gamma_i / c_i^Z$ \Comment{Penalty per block of memory freed}
             \State $\texttt{PreemptList}.\text{append}(\langle i, r_i \rangle)$
         \EndIf
         
         \State \Comment{2. Evaluate Capacity Consumers (Admission Candidates)}
-        \If{$P_i^{\text{rem}} == 0$ \textbf{and} $I_i^{\text{GPU}} == 1$} 
+        \If{$i\in\mathcal{D}_t$}
             \State \Comment{Decode Candidate}
             \State $\text{Cost}_i \gets \lambda_B^* \cdot 1 + \lambda_S^* \cdot 1 + \lambda_M^* \cdot c_i^D$
             \State $\rho_i \gets \alpha_i / \text{Cost}_i$
             \State $\texttt{AdmissionsList}.\text{append}(\langle i, \text{Decode}, \rho_i, \text{chunk}=1 \rangle)$
             
-        \ElsIf{$P_i^{\text{rem}} > 0$}
+        \ElsIf{$i\in\mathcal{P}_t$}
             \State \Comment{Prefill Candidate}
-            \State $\hat{x}_i \gets \min(P_i^{\text{rem}}, C_{\max})$ \Comment{Evaluate based on ideal max chunk}
+            \State $\hat{x}_i \gets q_i$ \Comment{Evaluate based on ideal max chunk}
             \State \(\text{Cost}_i \gets \lambda_B^* \hat{x}_i + \lambda_S^* + \lambda_M^* a_i^P\)
             \State $\rho_i \gets (\beta_i \cdot \hat{x}_i) / \text{Cost}_i$
             \State $\texttt{AdmissionsList}.\text{append}(\langle i, \text{Prefill}, \rho_i, \text{chunk}=\hat{x}_i \rangle)$
@@ -1170,8 +1043,7 @@ With the sorted lists, Phase 2 (Algorithm~\ref{alg:phase2_extraction}) greedily 
     =
     \min
     \left(
-        P_i^{\mathrm{rem}},
-        C_{\max},
+        q_i,
         B_{\mathrm{remaining}}
     \right).
     \]
@@ -1182,7 +1054,7 @@ With the sorted lists, Phase 2 (Algorithm~\ref{alg:phase2_extraction}) greedily 
 \caption{Phase 2: Lazy Packing \& Fluid Extraction}
 \label{alg:phase2_extraction}
 \begin{algorithmic}[1]
-\Procedure{ExtractPrimalSchedule}{$\texttt{Admissions}, \texttt{Preempts}, \boldsymbol{\lambda}^*, B_{\max}, S_{\max}, M_{\text{avail}}$}
+\Procedure{ExtractPrimalSchedule}{$\texttt{Admissions}, \texttt{Preempts}, \boldsymbol{\lambda}^*, B_{\max}, S_{\max}, M_{\mathrm{avail}}$}
     \State $\texttt{Batch} \gets \emptyset$
     \State $\texttt{SafeSet} \gets \emptyset$ \Comment{Protects admitted requests from priority-inversion preemption}
     
@@ -1196,7 +1068,7 @@ With the sorted lists, Phase 2 (Algorithm~\ref{alg:phase2_extraction}) greedily 
         
         \State \Comment{2. Check Memory Bottleneck \& trigger Lazy Preemption if required}
         \State \(M_{\text{req}} \gets\) (\(c_i^D\) \textbf{if} \(\text{State} == \text{Decode}\) \textbf{else} \(a_i^P\))
-        \State $\text{Deficit} \gets M_{\text{req}} - M_{\text{avail}}$
+        \State $\text{Deficit} \gets M_{\text{req}} - M_{\mathrm{avail}}$
         
         \If{$\text{Deficit} > 0$}
             \State \Comment{Calculate Net Value (Utility minus compute shadow costs)}
@@ -1205,15 +1077,15 @@ With the sorted lists, Phase 2 (Algorithm~\ref{alg:phase2_extraction}) greedily 
             \State $\texttt{success}, \texttt{victims} \gets \text{TryLazyEvict}(\text{Deficit}, \text{NetValue}_i, \texttt{Preempts}, \texttt{SafeSet})$ 
             \If{\texttt{success}}
                 \State \text{Evict}(\texttt{victims})
-                \State $M_{\text{avail}} \gets M_{\text{avail}} + \sum_{j \in \texttt{victims}} c_j^Z$
+                \State $M_{\mathrm{avail}} \gets M_{\mathrm{avail}} + \sum_{j \in \texttt{victims}} c_j^Z$
             \EndIf
         \EndIf
         
         \State \Comment{3. Fluid Chunking: Take whatever memory we have (even if preemption failed)}
         \If{$\text{State} == \text{Decode}$}
-            \State $x_i \gets 1$ \textbf{if} $M_{\text{avail}} \ge c_i^D$ \textbf{else} $0$
+            \State $x_i \gets 1$ \textbf{if} $M_{\mathrm{avail}} \ge c_i^D$ \textbf{else} $0$
         \Else
-            \State \(x_i \gets x_i^*\) \textbf{if} \(M_{\text{avail}} \ge a_i^P\) \textbf{else} \(0\) \Comment{Fixed-charge prefill admission}
+            \State \(x_i \gets x_i^*\) \textbf{if} \(M_{\mathrm{avail}} \ge a_i^P\) \textbf{else} \(0\) \Comment{Fixed-charge prefill admission}
         \EndIf
         
         \State \Comment{4. Admission Commitment}
@@ -1222,7 +1094,7 @@ With the sorted lists, Phase 2 (Algorithm~\ref{alg:phase2_extraction}) greedily 
             \State $\texttt{SafeSet}.\text{add}(i)$ \Comment{Protect $i$ from being cannibalized by later admissions}
             \State $B_{\max} \gets B_{\max} - x_i$
             \State $S_{\max} \gets S_{\max} - 1$
-            \State \(M_{\text{avail}} \gets M_{\text{avail}} - (a_i^P \textbf{ if } \text{State} == \text{Prefill} \textbf{ else } c_i^D)\)
+            \State \(M_{\mathrm{avail}} \gets M_{\mathrm{avail}} - (a_i^P \textbf{ if } \text{State} == \text{Prefill} \textbf{ else } c_i^D)\)
         \EndIf
     \EndFor
     

@@ -35,6 +35,8 @@ All rules below are reusable. Apply them when relevant to the document and task.
 
 ## Existing problems and audits
 
+- Commentary, disagreements, issues, questions, and other editorial notes must be explicitly marked in a distinct visible color, different from the main prose. Do not insert such notes as ordinary uncolored text. Use the document's existing note-color convention when available.
+
 - Actively flag mathematical, logical, factual, notation, citation, structural, and writing problems encountered, including inconsistencies across prose, equations, algorithms, tables, captions, and sections. Style preservation does not require preserving errors.
 - Distinguish confirmed errors, suspected problems, ambiguities, and optional improvements. Give the current location, evidence, consequence, uncertainty, and a concrete correction or question; prioritize substantive findings over cosmetic suggestions.
 - Correct unambiguous typos and grammar within scope and report them briefly. Seek approval before substantive corrections unless already authorized. Report out-of-scope issues without editing them.
@@ -46,6 +48,7 @@ All rules below are reusable. Apply them when relevant to the document and task.
 - Read project instructions and the current editing record; follow the designated entry point and active dependencies. Read needed passages and nearby context, not the whole repository. Inspect figures and supporting sources when relevant; skip generated files except necessary diagnostics.
 - Work in small reviewable batches, with one writer per file. Reread saved files before edits; reconcile concurrent changes and preserve unrelated author work. Do not assume unsaved buffers are available.
 - Do not delete, move, or rename files as incidental cleanup, or commit or publish without authorization. Figure sources are not disposable build artifacts.
-- Review the saved diff for scope, meaning, terminology, citations, and cross-references. Respect build/PDF permissions; avoid concurrent builds and use the designated current output.
-- Separate source checks, compilation, and rendered review. When page checks are authorized, measure the main-text boundary with the project's exclusions; distinguish current verified counts, earlier counts, and author estimates.
+- Review the saved diff for scope, meaning, terminology, citations, and cross-references. Follow the project's verification boundary. Permission to compile does not authorize inspecting the compiled PDF; PDF inspection requires an explicit user request. Avoid concurrent builds and use the designated current output.
+- Separate source checks, compilation, and rendered review. Only when the user explicitly requests page checks, measure the main-text boundary with the project's exclusions; distinguish current verified counts, earlier counts, and author estimates.
+- After every completed edit, give the user an explicit list of the changes. Identify affected files or sections and enumerate additions, deletions, moves, notation changes, and changes to meaning when applicable, including minor consistency edits elsewhere. Report checks separately.
 - Report changed files, what changed, checks actually run, coverage, and unresolved issues. Never claim unperformed checks passed. Record accepted decisions and completed batches as configured in `AGENTS.md`; keep records concise and distinguish author and assistant edits.
