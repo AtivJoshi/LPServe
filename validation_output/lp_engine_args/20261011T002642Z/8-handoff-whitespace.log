@@ -1,0 +1,7 @@
+$ grep -nE '[[:space:]]+$' docs/handoffs/lp_engine_args_handoff.md tests/test_lp_engine_args.py   # expect no match (exit 1)
+exit_status=1
+$ grep -nE 'Phase [A-H]' docs/handoffs/lp_engine_args_handoff.md   # informational
+exit_status=1
+$ sha256sum (post-run; must equal environment.txt)
+0a292f4389005d7dfc46b3796d0107f39e132be024ccb305e60bf74379333433  sarathi/engine/arg_utils.py
+9f1bcdf7e4e94b91e5a7b8d2af59bdc176f172f4d8f3e920603e9574158328f5  tests/test_lp_engine_args.py

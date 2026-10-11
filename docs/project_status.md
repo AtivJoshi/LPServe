@@ -283,6 +283,21 @@ integrity instead. Not yet accepted. Evidence:
 `docs/handoffs/lp_scheduler_contention_handoff.md` and
 `validation_output/lp_scheduler_contention/20261006T043706Z/`.
 
+## Python EngineArgs construction (2026-10-11, awaiting review)
+
+`LLMEngine.from_engine_args(scheduler_type="lp", ...)` builds
+`LPSchedulerConfig` through `EngineArgs.create_engine_configs()` and the
+existing factory and registries. Nine `lp_*` fields are required with no LP
+defaults; missing fields, a wrong numerical-policy type, more than one
+pipeline stage, and a supplied `max_num_batched_tokens` fail before model
+metadata loading and the `config.yml` write. On Unity (base `09e0515` plus
+the tested changes), the new 8-test suite and the existing mathematical,
+mapper, executor, and live-scheduler suites passed. Model and engine
+construction were mocked; real engine initialization through `EngineArgs`,
+benchmark configuration, and command-line parsing remain unverified or
+deferred. Evidence: `docs/handoffs/lp_engine_args_handoff.md` and
+`validation_output/lp_engine_args/20261011T002642Z/`.
+
 ## Historical repository baseline (Phases A and B)
 
 Phase B completed on 2026-09-02. It reproduced the controlled baseline workload

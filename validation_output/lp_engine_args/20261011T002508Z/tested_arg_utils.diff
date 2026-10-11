@@ -1,0 +1,123 @@
+diff --git a/sarathi/engine/arg_utils.py b/sarathi/engine/arg_utils.py
+index 153bde8..9e37cdb 100644
+--- a/sarathi/engine/arg_utils.py
++++ b/sarathi/engine/arg_utils.py
+@@ -1,7 +1,7 @@
+ import dataclasses
+ import os
+ from dataclasses import asdict, dataclass
+-from typing import List, Optional, Tuple
++from typing import TYPE_CHECKING, List, Optional, Tuple
+ 
+ import yaml
+ 
+@@ -9,6 +9,7 @@ from sarathi.config import (
+     BaseSchedulerConfig,
+     CacheConfig,
+     FasterTransformerSchedulerConfig,
++    LPSchedulerConfig,
+     MetricsConfig,
+     ModelConfig,
+     OrcaSchedulerConfig,
+@@ -21,6 +22,22 @@ from sarathi.config import (
+ )
+ 
+ from sarathi.core.scheduler.hold_n_scheduler import Hold_NSchedulerConfig
++
++if TYPE_CHECKING:
++    from lp_relaxation_scheduler import NumericalPolicy
++
++_LP_REQUIRED_FIELDS = (
++    "lp_b_max",
++    "lp_c_max",
++    "lp_s_max",
++    "lp_memory_reserve",
++    "lp_decode_memory_policy_id",
++    "lp_decode_utility",
++    "lp_prefill_token_utility",
++    "lp_preemption_penalty",
++    "lp_numerical_policy",
++)
++
+ @dataclass
+ class EngineArgs:
+     """Arguments for Sarathi engine."""
+@@ -70,6 +87,18 @@ class EngineArgs:
+     hold_n_scheduler_hold_n: Optional[int] = None   # flag created by ConfigParser
+     hold_n_scheduler_token_budget: Optional[int] = None  # flag created by ConfigParser
+     hold_n_scheduler_prefill_factor: Optional[int] = None  # flag created by Config
++    # LP scheduler parameters: all required for scheduler_type="lp", no
++    # defaults. The resident limit, model length, and stage count come from
++    # the shared max_num_seqs, max_model_len, and pipeline_parallel_size.
++    lp_b_max: Optional[int] = None  # combined prefill/decode token budget
++    lp_c_max: Optional[int] = None  # per-request prefill chunk cap
++    lp_s_max: Optional[int] = None  # execution-action limit
++    lp_memory_reserve: Optional[int] = None  # planning reserve in blocks
++    lp_decode_memory_policy_id: Optional[str] = None
++    lp_decode_utility: Optional[float] = None
++    lp_prefill_token_utility: Optional[float] = None
++    lp_preemption_penalty: Optional[float] = None
++    lp_numerical_policy: Optional["NumericalPolicy"] = None
+     # Metrics store parameters
+     write_metrics: bool = True
+     output_dir: str = "."
+@@ -88,11 +117,37 @@ class EngineArgs:
+     def __post_init__(self):
+         if self.tokenizer is None:
+             self.tokenizer = self.model
++        if self.scheduler_type == SchedulerType.LP.name.lower():
++            self._verify_lp_args()
+         if self.write_metrics:
+             os.makedirs(self.output_dir, exist_ok=True)
+             with open(f"{self.output_dir}/config.yml", "w") as f:
+                 yaml.dump(asdict(self), f, default_flow_style=False, sort_keys=False)
+ 
++    def _verify_lp_args(self) -> None:
++        missing = [name for name in _LP_REQUIRED_FIELDS if getattr(self, name) is None]
++        if missing:
++            raise ValueError(
++                f"LP scheduler requires explicit values for: {', '.join(missing)}"
++            )
++        from lp_relaxation_scheduler import NumericalPolicy
++
++        if not isinstance(self.lp_numerical_policy, NumericalPolicy):
++            raise TypeError(
++                "lp_numerical_policy must be an lp_relaxation_scheduler."
++                f"NumericalPolicy, got {type(self.lp_numerical_policy).__name__}"
++            )
++        if self.pipeline_parallel_size != 1:
++            raise ValueError(
++                "LP scheduler supports exactly one pipeline stage, got "
++                f"pipeline_parallel_size={self.pipeline_parallel_size!r}"
++            )
++        if self.max_num_batched_tokens is not None:
++            raise ValueError(
++                "max_num_batched_tokens is not used by the LP scheduler; "
++                "set the combined token budget with lp_b_max instead"
++            )
++
+     def _get_scheduler_config(
+         self, model_config: ModelConfig, num_pipeline_stages: int
+     ) -> BaseSchedulerConfig:
+@@ -173,6 +228,21 @@ class EngineArgs:
+                 self.time_between_tokens,
+                 self.limit_total_decodes,
+             )
++        elif self.scheduler_type == SchedulerType.LP.name.lower():
++            scheduler_config = LPSchedulerConfig(
++                max_num_seqs=self.max_num_seqs,
++                max_model_len=model_config.get_max_model_len(),
++                num_pipeline_stages=num_pipeline_stages,
++                b_max=self.lp_b_max,
++                c_max=self.lp_c_max,
++                s_max=self.lp_s_max,
++                memory_reserve=self.lp_memory_reserve,
++                decode_memory_policy_id=self.lp_decode_memory_policy_id,
++                decode_utility=self.lp_decode_utility,
++                prefill_token_utility=self.lp_prefill_token_utility,
++                preemption_penalty=self.lp_preemption_penalty,
++                numerical_policy=self.lp_numerical_policy,
++            )
+         else:
+             raise ValueError(f"Unsupported scheduler type: {self.scheduler_type}")
+ 

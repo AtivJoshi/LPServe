@@ -1,0 +1,57 @@
+2026-10-11T00:26:45Z
+$ hostname --fqdn
+gpu048.unity.rc.umass.edu
+SLURM_JOB_ID=65529855 SLURM_JOB_PARTITION=gpu-preempt SLURM_JOB_NODELIST=gpu048
+CUDA_VISIBLE_DEVICES=0
+$ module -t list
+uri/main
+GCCcore/12.2.0
+binutils/.2.39-GCCcore-12.2.0 <H>
+bzip2/.1.0.8-GCCcore-12.2.0 <H>
+zlib/.1.2.12-GCCcore-12.2.0 <H>
+libreadline/.8.2-GCCcore-12.2.0 <H>
+ncurses/.6.3-GCCcore-12.2.0 <H>
+Tcl/.8.6.12-GCCcore-12.2.0 <H>
+SQLite/.3.39.4-GCCcore-12.2.0 <H>
+XZ/.5.2.7-GCCcore-12.2.0 <H>
+GMP/.6.2.1-GCCcore-12.2.0 <H>
+libffi/3.4.4-GCCcore-12.2.0
+OpenSSL/1.1
+Python/3.10.8-GCCcore-12.2.0
+CUDA/12.1.1
+$ git branch --show-current
+main
+$ git rev-parse HEAD
+09e05151dd76dd4e9ef557b7c4c03a24871d6b5b
+$ git status --short --untracked-files=all
+ M docs/lp_scheduler_design.md
+ M sarathi/engine/arg_utils.py
+?? validation_output/lp_engine_args/20261011T002508Z/ATTEMPT_NOTE.txt
+?? validation_output/lp_engine_args/20261011T002508Z/environment.txt
+?? validation_output/lp_engine_args/20261011T002642Z/environment.txt
+$ git status --short --ignored tests/test_lp_engine_args.py
+!! tests/test_lp_engine_args.py
+$ python versions
+/home/atjoshi_umass_edu/LPServe/env/bin/python
+3.10.8 (main, Oct 23 2023, 13:48:55) [GCC 12.2.0]
+numpy 2.2.6
+scipy 1.15.3
+torch 2.3.0+cu121
+transformers 4.57.6
+pyyaml 6.0.3
+PYTHONPATH=/home/atjoshi_umass_edu/LPServe:/modules/uri_apps/software/Python/3.10.8-GCCcore-12.2.0/easybuild/python
+$ sha256sum
+0a292f4389005d7dfc46b3796d0107f39e132be024ccb305e60bf74379333433  sarathi/engine/arg_utils.py
+9f1bcdf7e4e94b91e5a7b8d2af59bdc176f172f4d8f3e920603e9574158328f5  tests/test_lp_engine_args.py
+e07ae027569962c829db0fa4c726469133438aa1630327dd5ec0a16a1a745ac3  sarathi/engine/llm_engine.py
+6069257709b2270844c6a7b2909461692396647211132307a94137aefa3bffb8  sarathi/config.py
+e0826b07fc6efad1587034293665c9c002d8d87bf3570067c51d5596f0799a76  sarathi/core/scheduler/scheduler_registry.py
+93eeeb8737f07dab64d55eaca7cc75eef503cd31e3dcfb838a1b5c0a8efd984f  sarathi/core/block_space_manager/block_space_manager_registry.py
+debfd4eca2225815d6c944b91d7c544b5af0e2fd8aaf4d5b645addd9cb2eb0c3  sarathi/core/scheduler/lp_scheduler.py
+616f18d57eb10a1aa8d9f54b049335ba4f9c31f1ccce64e82c2d42dda665cdf3  lp_relaxation_scheduler.py
+7d95bf62e477716ea622654a047594214b9c4083fdd0921c4d4c6ccb34ecd2a7  lpserve_state_mapping.py
+b396e7f529c59527b2174536cc3f924b2faf4adf030de3aec2cc9e7355f0e4cd  lpserve_plan_execution.py
+88ff7cd75c9636a960a7a5bdee26e64a6d607a7182f45c72d5aee553dd1819a8  tests/test_lp_relaxation_scheduler.py
+45b9bd69a1989dacf5ec0e62e95db434420dd81f45395fbd7161b0d6d7ed7fe2  tests/test_lpserve_state_mapping.py
+4c2e9ee24d7785c1abd0d82712e739164bdef8d4a43913bc70259455f3027d37  tests/test_lpserve_plan_execution.py
+1e79e1575aacbc1b9bdeb8101505b48ad295cf6ddea0dab08890de9e91b95e54  tests/test_lp_scheduler.py

@@ -1276,8 +1276,25 @@ and `LPSchedulingError`.
   `max_num_seqs`. A stage count other than one raises `ValueError` at config
   construction. The entry point is direct configuration plus
   `SchedulerRegistry`; the same type is registered with the existing
-  `VLLMBlockSpaceManager` (central and worker). `EngineArgs`, benchmark
-  configuration, and command-line parsing are unchanged.
+  `VLLMBlockSpaceManager` (central and worker). Benchmark configuration and
+  command-line parsing are unchanged.
+- *Python `EngineArgs` entry point (2026-10-11).*
+  `LLMEngine.from_engine_args(scheduler_type="lp", ...)` builds
+  `LPSchedulerConfig` through `EngineArgs.create_engine_configs()` and the
+  existing engine factory and registries. The nine fields `lp_b_max`,
+  `lp_c_max`, `lp_s_max`, `lp_memory_reserve`, `lp_decode_memory_policy_id`,
+  `lp_decode_utility`, `lp_prefill_token_utility`, `lp_preemption_penalty`,
+  and `lp_numerical_policy` (an `lp_relaxation_scheduler.NumericalPolicy`,
+  passed unchanged) are required, with no LP defaults. The resident limit,
+  model length, and stage count are the inherited shared engine settings
+  `max_num_seqs`, the model configuration's resolved maximum length, and
+  `pipeline_parallel_size`, with their existing defaults; they are not LP
+  research choices. Missing LP fields (checked with `is None`), a
+  non-`NumericalPolicy` value, `pipeline_parallel_size != 1`, and any
+  supplied `max_num_batched_tokens` (use `lp_b_max`) raise before model
+  metadata loading and the `config.yml` write. Value-domain checks remain in
+  the mapper and mathematical layer. Validated only by mocked CPU tests; real
+  engine initialization through `EngineArgs` is unverified.
 - *Scoped values.* The CPU plumbing fixture uses `b_max=8`, `c_max=4`,
   `s_max=3`, resident limit 4, `max_model_len=32`, block size 4, 10 blocks,
   reserve 1, `conservative_one_block_v1`, uniform utilities

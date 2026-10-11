@@ -1,0 +1,16 @@
+$ python -B -c <compile() syntax check, no bytecode written> sarathi/engine/arg_utils.py tests/test_lp_engine_args.py
+syntax ok sarathi/engine/arg_utils.py
+syntax ok tests/test_lp_engine_args.py
+exit_status=0
+$ python -B -c "import sarathi.engine.arg_utils, sys; print(\"lp_relaxation_scheduler\" in sys.modules)"   # non-LP import must not load the LP layer
+lp_relaxation_scheduler loaded: False
+exit_status=0
+$ git diff --check HEAD -- sarathi/engine/arg_utils.py docs/lp_scheduler_design.md
+exit_status=0
+$ grep -nE '[[:space:]]+$' tests/test_lp_engine_args.py docs/handoffs/lp_engine_args_handoff.md   # expect no match (exit 1)
+grep: docs/handoffs/lp_engine_args_handoff.md: No such file or directory
+exit_status=2
+$ grep -niE 'phase' sarathi/engine/arg_utils.py tests/test_lp_engine_args.py   # expect no match (exit 1)
+exit_status=1
+$ find . -maxdepth 1 -newer sarathi/engine/arg_utils.py -name "config.yml"   # expect no repository-root config file from tests
+exit_status=0

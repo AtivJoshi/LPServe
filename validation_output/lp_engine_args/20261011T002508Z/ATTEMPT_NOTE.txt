@@ -1,0 +1,6 @@
+Failed attempt, retained. test_existing_schedulers_need_no_lp_inputs supplied
+max_num_batched_tokens=16 with max_model_len=32 for the VLLM path; the existing
+VLLMSchedulerConfig asserts max_model_len <= max_num_batched_tokens. Test
+fixture error, not a production-code defect. The fixture was changed to 32 and
+all checks rerun in the next timestamped directory. The handoff-file whitespace
+grep here exited 2 because the handoff did not exist yet.
