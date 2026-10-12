@@ -231,11 +231,13 @@ Fix a scheduler step \(t\) and take a snapshot of the system before selecting an
 
 Let \(P_i^{\mathrm{rem}}\in\mathbb{Z}_{\ge0}\) count the tokens that still require prefill processing for request \(i\). This includes unprocessed prompt tokens and any context tokens that must be recomputed after a cache discard. Thus, completing the original prompt does not permit decoding if its cache still needs recomputation. Define the following sets from the snapshot:
 \begin{itemize}
+    \item \(\mathcal{R}_t\): resident requests, whose KV-cache blocks are allocated.
+    \item \(\mathcal{Q}_t\): arrived waiting requests with no allocated blocks, including preempted requests that must recompute their context.
     \item \(\mathcal{P}_t\): requests with \(P_i^{\mathrm{rem}}>0\) whose state permits prefill or recomputation in this step.
     \item \(\mathcal{D}_t\): resident requests with a valid cache, \(P_i^{\mathrm{rem}}=0\), and a state that permits one decode step.
     \item \(\mathcal{Z}_t\): resident requests whose cache can legally be released by preemption in this step.
 \end{itemize}
-These sets describe state eligibility, before enforcing the shared resource budgets. Requests with an in-flight operation that prevents an action are excluded from that action's set. Waiting and already-preempted requests are excluded from \(\mathcal{D}_t\) and \(\mathcal{Z}_t\).
+The sets \(\mathcal{R}_t\) and \(\mathcal{Q}_t\) are disjoint and together contain every arrived request in \(U_t\). The last three sets describe state eligibility, before enforcing the shared resource budgets. Requests that have not arrived belong to none of these sets. Requests with an in-flight operation that prevents an action are excluded from that action's set. Thus \(\mathcal{P}_t\subseteq\mathcal{R}_t\cup\mathcal{Q}_t\) and \(\mathcal{D}_t,\mathcal{Z}_t\subseteq\mathcal{R}_t\): waiting and already-preempted requests can only prefill.
 
 For each \(i\in U_t\), choose
 \begin{itemize}
@@ -246,23 +248,26 @@ For each \(i\in U_t\), choose
 \end{itemize}
 Selecting no action leaves the request unchanged. If preemption discards the cache, the request must recompute its context before decoding in a later step.
 
-The token budget is \(B_{\max}\in\mathbb{Z}_{>0}\), the maximum number of executing requests is \(S_{\max}\in\mathbb{Z}_{>0}\), and the maximum prefill chunk size is \(C_{\max}\in\mathbb{Z}_{>0}\). The per-request chunk bound is
+The token budget is \(B_{\max}\in\mathbb{Z}_{>0}\), the maximum number of executing requests is \(S_{\max}\in\mathbb{Z}_{>0}\), the maximum number of resident requests is \(N_{\max}\in\mathbb{Z}_{>0}\), and the maximum prefill chunk size is \(C_{\max}\in\mathbb{Z}_{>0}\). The per-request chunk bound is
 \[
 q_i=\min\{P_i^{\mathrm{rem}},C_{\max}\}.
 \]
-Let \(M_t^{\mathrm{free}}\in\mathbb{Z}_{\ge0}\) be the free KV-cache blocks and \(W_t\in\mathbb{Z}_{\ge0}\) the required reserve. The memory budget is
-\[
-M_{\mathrm{avail}}=M_t^{\mathrm{free}}-W_t.
-\]
+Let \(F=M_t^{\mathrm{free}}\in\mathbb{Z}_{\ge0}\) be the free KV-cache blocks, and let \(h\in\mathbb{Z}_{\ge0}\) be the admission watermark: each admission must leave at least \(h\) free blocks. We also write \(M_{\mathrm{avail}}=F\) for the memory budget; no separate reserve is subtracted.
 Time arguments can be restored when comparing steps, for example \(q_i(t)\) and \(M_{\mathrm{avail}}(t)\).
 
 Memory charges are measured in blocks:
 \begin{itemize}
-    \item \(a_i^P\in\mathbb{Z}_{\ge0}\): the additional blocks needed for a positive prefill action. It is zero for a resident request whose context is already allocated, and equals \(A_i\) for admission or recomputation, where \(A_i\) is the allocation required for the complete current context.
-    \item \(c_i^D\in\mathbb{Z}_{\ge0}\): the additional blocks needed for one decode step.
-    \item \(c_i^Z\in\mathbb{Z}_{\ge0}\): the blocks released by preempting \(i\in\mathcal{Z}_t\), extended by zero outside \(\mathcal{Z}_t\).
+    \item \(a_i^P\in\mathbb{Z}_{\ge0}\): the additional blocks needed for a positive prefill action. It is zero for a resident request (\(i\in\mathcal{R}_t\)), whose context is already allocated. For \(i\in\mathcal{Q}_t\), admission or recomputation allocates the complete current context, so \(a_i^P=A_i\), where \(A_i\) is the allocation required for that context.
+    \item \(c_i^D\in\{0,1\}\): the additional blocks actually allocated by one decode step. It is one if the next token needs a new block and zero otherwise.
+    \item \(c_i^Z\in\mathbb{Z}_{\ge0}\): the blocks released by preempting \(i\in\mathcal{Z}_t\), extended by zero outside \(\mathcal{Z}_t\). Preemption releases the whole cache, so \(c_i^Z\) is the number of blocks allocated to \(i\).
 \end{itemize}
-The model assumes these charges are fixed and additive across requests. It excludes allocation or reclamation that depends on shared cache blocks. Selected preemptions release their blocks before the selected execution actions allocate memory. Prefill incurs the fixed charge \(a_i^P\) whenever \(x_i>0\), independently of the chunk size; it is not charged per token.
+The model assumes these charges are fixed and additive across requests. It excludes allocation or reclamation that depends on shared cache blocks. Prefill incurs the fixed charge \(a_i^P\) whenever \(x_i>0\), independently of the chunk size; it is not charged per token.
+
+The model assumes that selected actions execute in this order: preemptions, then prefills, then decodes with \(c_i^D=0\), then decodes with \(c_i^D=1\). Let
+\[
+H=F+\sum_{i\in\mathcal{R}_t}c_i^Z z_i-\sum_{i\in U_t}a_i^P I_i^P
+\]
+be the number of free blocks after the selected preemptions and prefills, before any decode. \(H\) is a linear expression in the decision variables, not an additional variable.
 
 Let \(\alpha_i,\beta_i,\gamma_i\) be finite, nonnegative weights on a common utility scale: reward per decode step, reward per prefill token, and penalty per preemption. They may depend on the snapshot, but are fixed during the solve. The single-step integer linear program (ILP) is
 \begin{subequations}
@@ -277,9 +282,17 @@ Let \(\alpha_i,\beta_i,\gamma_i\) be finite, nonnegative weights on a common uti
     \label{eq:p_compute}\\
     &\sum_{i\in U_t}(I_i^P+y_i)\le S_{\max}
     \label{eq:p_concurrency}\\
-    &\sum_{i\in U_t}(a_i^P I_i^P+c_i^D y_i)
-      -\sum_{i\in\mathcal{Z}_t}c_i^Z z_i\le M_{\mathrm{avail}}
+    &H-\sum_{i\in U_t}c_i^D y_i\ge0
     \label{eq:p_memory}\\
+    &\sum_{i\in U_t}y_i\le S_{\max}H
+    \label{eq:p_decode_start}\\
+    &H\ge h\,I_i^P
+    &&\forall i\in\mathcal{Q}_t
+    \label{eq:p_watermark}\\
+    &|\mathcal{R}_t|-\sum_{i\in\mathcal{R}_t}z_i+\sum_{i\in\mathcal{Q}_t}I_i^P\le N_{\max}
+    \label{eq:p_resident}\\
+    &\sum_{i\in U_t}(I_i^P+y_i)\ge1
+    \label{eq:p_progress}\\
     &I_i^P\le x_i\le q_i I_i^P
     &&\forall i\in U_t
     \label{eq:p_chunked}\\
@@ -296,13 +309,23 @@ Let \(\alpha_i,\beta_i,\gamma_i\) be finite, nonnegative weights on a common uti
 \end{subequations}
 Here \(\mathbf{1}\{\cdot\}\) is the indicator of a condition; the variable domains and the restriction on \(z_i\) are as defined above.
 
-Constraints~\ref{eq:p_compute}--\ref{eq:p_memory} couple requests through the token, concurrency, and memory budgets. Memory feasibility requires at least \(W_t\) free blocks after the selected actions. If \(M_t^{\mathrm{free}}<W_t\), the idle plan is infeasible: enough blocks must be released, or the ILP has no feasible solution. This is a hard reserve for the whole step, not an admission-only check.
+Constraints~\ref{eq:p_compute}--\ref{eq:p_progress} couple requests. Constraints~\ref{eq:p_compute} and~\ref{eq:p_concurrency} bound the processed tokens and the executing requests. Constraint~\ref{eq:p_resident} bounds the residents after the step. Every retained resident counts, including one that executes no action in this step. A preemption removes one resident and an admission adds one; resident prefill and decode add none. Thus \(S_{\max}\) bounds execution actions, while \(N_{\max}\) bounds residents.
+
+Constraints~\ref{eq:p_memory}--\ref{eq:p_watermark} follow the allocation checks along the execution order. Preemptions only release blocks, and within the prefill group only admissions allocate blocks. Free memory therefore decreases through the prefill group and is least, equal to \(H\), after the last admission. Each admission must leave at least \(h\) free blocks, and every earlier admission leaves at least \(H\). Constraint~\ref{eq:p_watermark} therefore enforces the watermark once for the whole admission group; it does not charge \(h\) per admission. When \(h=0\), it is implied by Constraint~\ref{eq:p_memory} and its rows may be omitted. The watermark is an admission check, not a reserve: decodes may use the blocks it protects.
+
+Each decode requires at least one free block before it starts, even when \(c_i^D=0\). Since \(H\) is an integer and Constraint~\ref{eq:p_concurrency} allows at most \(S_{\max}\) decodes, Constraint~\ref{eq:p_decode_start} is equivalent to \(H\ge1\) whenever some decode is selected. Decodes with \(c_i^D=0\) allocate nothing, so each finds \(H\ge1\) free blocks. The \(k\)-th decode with \(c_i^D=1\) then finds \(H-k+1\) free blocks, which is at least one because Constraint~\ref{eq:p_memory} gives \(H\ge\sum_{i\in U_t}c_i^D y_i\ge k\). The same constraint keeps the final free-block count nonnegative.
+
+These resource arguments assume a coherent synchronous snapshot, independent caches without shared blocks, correct fixed charges and whole-cache recovery, legal independent preemptions, and \(c_i^D\in\{0,1\}\). They show only that an integer solution passes these allocation checks in the stated order. They do not establish correctness of the whole serving engine.
+
+Constraint~\ref{eq:p_progress} requires useful execution: at least one prefill or decode. Preemption alone does not satisfy it. If no unfinished request has arrived, the step is ordinary idle and no ILP is solved. Otherwise, the ILP is solved after input and admission validation. If no legal integer plan executes useful work, the ILP is infeasible; this is reported, and no action is invented. The required work may have negative utility, for example when its only legal admission needs a costly preemption; the ILP then selects it over idle. Passing the initial admission checks does not guarantee that a request eventually completes. For example, a resident whose context grows to fill every block cannot decode.
 
 The remaining constraints are request-local. Constraint~\ref{eq:p_chunked} makes \(I_i^P\) an exact indicator of \(x_i>0\) and bounds the chunk size. Constraints~\ref{eq:p_prefill_eligibility} and~\ref{eq:p_causality} permit only state-eligible execution actions; membership in \(\mathcal{D}_t\) also enforces completion of prefill and recomputation. Constraint~\ref{eq:p_mutex} prevents execution and preemption of the same request in one step.
 
-The ILP maximizes weighted utility for the current step under these assumptions. It does not optimize future completion times or account for the action-dependent duration of a forward pass. Its memory inequality is a planning constraint; an execution plan must still pass exact physical allocation checks before scheduler state is changed.
+The ILP maximizes weighted utility for the current step under these assumptions. It does not optimize future completion times or account for the action-dependent duration of a forward pass. Its resource inequalities are planning constraints; an execution plan must still pass exact physical allocation checks before scheduler state is changed.
 
 Exact integer optimization can be costly in a scheduler loop. The following subsections give two primal heuristics for constructing feasible schedules. All scheduling methods below use the same snapshot, eligibility sets, and request coefficients; inputs omitted from procedure signatures are implicit snapshot data.
+
+\textcolor{red}{Revision note: the following subsections have not yet been revised for this formulation. They do not enforce Constraints~\ref{eq:p_decode_start}--\ref{eq:p_progress}, and some passages still refer to the removed planning reserve. Their feasibility and equivalence claims refer to the earlier formulation until revised.}
 
 \paragraph{Incremental Prefill Allocation.}
 For architectures that allocate KV-cache capacity incrementally during prefill, a token-proportional model replaces Constraint~\ref{eq:p_memory} with
@@ -311,7 +334,7 @@ For architectures that allocate KV-cache capacity incrementally during prefill, 
 -\sum_{i\in\mathcal{Z}_t}c_i^Z z_i
 \le M_{\mathrm{avail}}.
 \]
-Here \(c_i^P\in\mathbb{R}_{\ge0}\) is the number of blocks charged per prefill token, fixed at the beginning of the step. This linear charge abstracts away block rounding; all other constraints are unchanged. In the LPServe model above, admission instead allocates the complete current context, so the prefill charge is \(a_i^P I_i^P\). Shortening a positive chunk does not reduce that fixed charge.
+Here \(c_i^P\in\mathbb{R}_{\ge0}\) is the number of blocks charged per prefill token, fixed at the beginning of the step. This linear charge abstracts away block rounding. In the LPServe model above, admission instead allocates the complete current context, so the prefill charge is \(a_i^P I_i^P\). Shortening a positive chunk does not reduce that fixed charge. This alternative is not supported here. It needs its own allocation model and its own derivation of the admission and decode checks; Constraints~\ref{eq:p_memory}--\ref{eq:p_watermark}, their execution-order argument, and the methods below do not transfer to it automatically.
 
 \subsection{Primal Heuristic 1: LP Relaxation and Integer Extraction}
 \label{subsec:lp_relaxation}
