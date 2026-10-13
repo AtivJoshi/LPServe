@@ -1,0 +1,56 @@
+{
+  "purpose": "focused CPU checks of the corrected pure LP planning layer",
+  "tested_base_commit": "3a161695b541a86e56e81d4d630a720bbfb352a7",
+  "branch": "main",
+  "working_tree_changes": [
+    "lp_relaxation_scheduler.py",
+    "tests/test_lp_relaxation_scheduler.py"
+  ],
+  "working_tree_diff": "working_tree.diff",
+  "working_tree_diff_sha256": "13e13e19a353514621549a68ed13155cc6f8e182d0e6e01947a78e51f34f02dd",
+  "file_sha256": {
+    "lp_relaxation_scheduler.py": "e6b035487df0fbec134a348e24963a4d080cef36a16fb849c9adf89d3ab6c1bf",
+    "tests/test_lp_relaxation_scheduler.py": "b71b546f154bdb17f485914defcd617b37fba95252f8d6f1bba061872157814e"
+  },
+  "host": "gpu049",
+  "slurm_job_id": "65615469",
+  "python": "3.10.8 (/home/atjoshi_umass_edu/LPServe/env)",
+  "numpy": "2.2.6",
+  "scipy": "1.15.3",
+  "gpu_used": false,
+  "checks": {
+    "01_py_compile": {
+      "command_output": "01_py_compile.txt",
+      "exit_status": 0
+    },
+    "02_import": {
+      "command_output": "02_import.txt",
+      "exit_status": 0
+    },
+    "03_smoke": {
+      "command_output": "03_smoke.txt",
+      "exit_status": 0
+    },
+    "04_unittest": {
+      "command_output": "04_unittest.txt",
+      "exit_status": 0
+    },
+    "05_git_diff_check": {
+      "command_output": "05_git_diff_check.txt",
+      "exit_status": 0
+    }
+  },
+  "unittest": {
+    "ran": 36,
+    "result": "OK"
+  },
+  "enumeration_counts": {
+    "success": 129,
+    "solver_reported_lp_infeasibility": 20,
+    "no_legal_useful_work": 1,
+    "guided_success": 129,
+    "guided_none": 21,
+    "plans_enumerated": 10348
+  },
+  "script": "run_checks.sh"
+}

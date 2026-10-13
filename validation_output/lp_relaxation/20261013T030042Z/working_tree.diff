@@ -1,0 +1,2897 @@
+diff --git a/lp_relaxation_scheduler.py b/lp_relaxation_scheduler.py
+index 2fb4b55..4d0536d 100644
+--- a/lp_relaxation_scheduler.py
++++ b/lp_relaxation_scheduler.py
+@@ -1,17 +1,22 @@
+ """Standalone, CPU-only LP-relaxation scheduling layer.
+ 
+ Builds the one-step myopic scheduling LP (docs/lp_scheduler_design.md section 7)
+-from immutable inputs, solves it with SciPy/HiGHS, validates the relaxed
+-solution, deterministically extracts an integer plan (design section 10), and
+-validates that plan exactly (design section 11.3).
++from immutable inputs, solves it once with SciPy/HiGHS, validates the relaxed
++solution, constructs whole integer actions guided by that solution (design
++section 10), and validates the complete integer plan exactly (design section
++11.3).
+ 
+ The module reads no clocks, global state, or randomness, and imports nothing
+ from the serving framework. Every failure is returned as a structured
+-``Failure`` that carries no plan.
++``Failure`` that carries no plan. ``Failure.outcome`` distinguishes
++solver-reported LP infeasibility, exhaustive absence of legal useful integer
++work, solver or numerical failure, and implementation or validation failure.
+ 
+ Variable layout for ``n`` requests sorted by ascending ``order_key``: the LP
+ vector is ``[x_0..x_{n-1}, y_0.., I_0.., z_0..]`` where ``I`` is the prefill
+-indicator.
++indicator. Throughout, ``H`` is the free-block count after selected
++preemptions and prefills and before any decode:
++``H = m_free + sum(recovery * z) - sum(prefill_fixed_charge * I)``.
+ """
+ 
+ from __future__ import annotations
+@@ -19,7 +24,7 @@ from __future__ import annotations
+ import dataclasses
+ import math
+ from dataclasses import dataclass
+-from typing import Optional
++from typing import Optional, Union
+ 
+ import numpy as np
+ import scipy
+@@ -31,10 +36,18 @@ STAGE_RELAXED = "relaxed_validation"
+ STAGE_EXTRACTION = "extraction"
+ STAGE_PLAN = "plan_validation"
+ 
++OUTCOME_LP_INFEASIBLE = "solver_reported_lp_infeasibility"
++OUTCOME_NO_USEFUL_WORK = "no_legal_useful_work"
++OUTCOME_NUMERICAL = "solver_or_numerical_failure"
++OUTCOME_INVALID = "implementation_or_validation_failure"
++
+ CATEGORY_OPTIMAL = "optimal_candidate"
++CATEGORY_LP_INFEASIBLE = "solver_reported_infeasibility"
++CATEGORY_NO_USEFUL_WORK = "no_legal_useful_work"
++CATEGORY_NONFINITE = "nonfinite_arithmetic"
+ _STATUS_CATEGORIES = {
+     1: "solver_limit",
+-    2: "infeasible",
++    2: CATEGORY_LP_INFEASIBLE,
+     3: "unbounded",
+     4: "numerical_difficulty",
+ }
+@@ -42,6 +55,8 @@ _STATUS_CATEGORIES = {
+ SOLVER_METHOD = "highs-ds"
+ SOLVER_OPTIONS = (("presolve", True),)
+ 
++Rank = Union[int, float]
++
+ 
+ # ---------------------------------------------------------------------------
+ # Immutable records
+@@ -50,7 +65,11 @@ SOLVER_OPTIONS = (("presolve", True),)
+ 
+ @dataclass(frozen=True)
+ class NumericalPolicy:
+-    """Provisional numerical policy; every value is externally visible."""
++    """Provisional numerical policy; every value is externally visible.
++
++    ``integrality_tol`` is retained as a configured value only; it has no
++    classification or decision role in extraction.
++    """
+ 
+     policy_id: str = "lp_relaxation_mvp_v1"
+     feasibility_tol: float = 1e-7
+@@ -61,19 +80,31 @@ class NumericalPolicy:
+ 
+ @dataclass(frozen=True)
+ class RequestInput:
++    """One request of the planning universe.
++
++    ``resident`` selects membership of the resident set (allocated cache) or
++    the waiting set (no allocation). ``decode_demand`` is the exact zero-or-one
++    block allocated by one decode. ``service_rank`` is required for prefill- or
++    decode-eligible requests and ``victim_rank`` for preemption-eligible ones;
++    smaller ranks come first and ``order_key`` breaks remaining ties.
++    """
++
+     request_id: str
+     order_key: tuple
++    resident: bool
+     prompt_tokens_remaining: int
+     prefill_upper_bound: int
+     prefill_eligible: bool
+     decode_eligible: bool
+     preemption_eligible: bool
+     prefill_fixed_charge: int
+-    decode_charge: int
++    decode_demand: int
+     preemption_recovery: int
+     decode_utility: float
+     prefill_token_utility: float
+     preemption_penalty: float
++    service_rank: Optional[Rank]
++    victim_rank: Optional[Rank]
+ 
+ 
+ @dataclass(frozen=True)
+@@ -83,10 +114,11 @@ class LPProblem:
+     b_max: int
+     c_max: int
+     s_max: int
++    resident_limit: int
++    resident_count: int
+     m_free: int
+-    w: int
++    admission_watermark: int
+     problem_id: str
+-    decode_memory_policy_id: str
+     numerical_policy: NumericalPolicy
+ 
+ 
+@@ -136,6 +168,26 @@ class RelaxedSolution:
+     normalized_objective: float
+ 
+ 
++@dataclass(frozen=True)
++class ExtractionDiagnostics:
++    """Observations of one whole-action construction.
++
++    ``candidate_order`` and ``victim_candidate_order`` are the scan orders.
++    For the no-useful-work outcome, ``candidate_order`` is the exhausted
++    candidate set. ``fractional_request_count`` counts requests with some
++    relaxed y, I, or z strictly between 0 and 1; it is descriptive only.
++    """
++
++    candidate_order: tuple
++    victim_candidate_order: tuple
++    accepted_order: tuple
++    trial_count: int
++    failed_trial_count: int
++    declined_optional_trial_count: int
++    skipped_candidate_count: int
++    fractional_request_count: int
++
++
+ @dataclass(frozen=True)
+ class IntegerDecision:
+     request_id: str
+@@ -148,25 +200,37 @@ class IntegerDecision:
+ 
+ @dataclass(frozen=True)
+ class IntegerPlan:
++    """A complete integer plan.
++
++    ``victim_order`` lists preempted requests by (victim rank, order_key).
++    ``execution_order`` lists prefills, then zero-demand decodes, then
++    one-block-demand decodes, each by (service rank, order_key). The totals
++    are final local totals: ``free_blocks_before_decodes`` is H.
++    """
++
+     problem_id: str
+     decisions: tuple
+-    residual_token_capacity: int
+-    residual_action_capacity: int
+-    residual_memory_capacity: int
+-    fractional_request_count: int
+-    dominant_preemption_ids: tuple
+-    safety_preemption_ids: tuple
++    victim_order: tuple
++    execution_order: tuple
++    token_use: int
++    action_count: int
++    resident_count_after: int
++    free_blocks_before_decodes: int
++    decode_demand: int
+     numerical_policy: NumericalPolicy
+     objective: float
++    extraction: ExtractionDiagnostics
+ 
+ 
+ @dataclass(frozen=True)
+ class Failure:
+     problem_id: Optional[str]
+     stage: str
++    outcome: str
+     category: str
+     reason: str
+     solver: Optional[SolverResult] = None
++    extraction: Optional[ExtractionDiagnostics] = None
+ 
+ 
+ @dataclass(frozen=True)
+@@ -177,11 +241,14 @@ class SchedulingSuccess:
+     solver: SolverResult
+ 
+ 
+-def _fail(problem, stage, category, reason, solver=None):
++def _fail(problem, stage, outcome, category, reason, solver=None,
++          extraction=None):
+     problem_id = getattr(problem, "problem_id", None)
+     if not isinstance(problem_id, str):
+         problem_id = None
+-    return Failure(problem_id, stage, category, reason, solver)
++    return Failure(
++        problem_id, stage, outcome, category, reason, solver, extraction
++    )
+ 
+ 
+ class _InputError(Exception):
+@@ -191,6 +258,37 @@ class _InputError(Exception):
+         self.reason = reason
+ 
+ 
++class _NumericalError(Exception):
++    pass
++
++
++# ---------------------------------------------------------------------------
++# Checked arithmetic
++# ---------------------------------------------------------------------------
++
++
++def _checked_sum(values, what):
++    """Stable sum that raises ``_NumericalError`` unless the result is finite.
++
++    ``math.fsum`` raises on intermediate overflow and on ``inf + -inf``; both
++    are reported as numerical failures, never as unexplained exceptions.
++    """
++    try:
++        total = math.fsum(values)
++    except (OverflowError, ValueError) as exc:
++        raise _NumericalError(f"{what}: nonfinite summation ({exc})") from None
++    if not math.isfinite(total):
++        raise _NumericalError(f"{what}: nonfinite sum {total!r}")
++    return total
++
++
++def _checked_product(a, b, what):
++    value = a * b
++    if not math.isfinite(value):
++        raise _NumericalError(f"{what}: nonfinite product {a!r} * {b!r}")
++    return value
++
++
+ # ---------------------------------------------------------------------------
+ # Input validation
+ # ---------------------------------------------------------------------------
+@@ -201,11 +299,17 @@ def _is_int(value):
+ 
+ 
+ def _is_real(value):
+-    return (
+-        isinstance(value, (int, float))
+-        and not isinstance(value, bool)
+-        and math.isfinite(value)
+-    )
++    if isinstance(value, bool) or not isinstance(value, (int, float)):
++        return False
++    try:
++        return math.isfinite(float(value))
++    except OverflowError:
++        return False
++
++
++def _is_count(value, minimum):
++    """Integer at least ``minimum`` that converts to a finite float."""
++    return _is_int(value) and value >= minimum and _is_real(value)
+ 
+ 
+ def _require(condition, category, reason):
+@@ -247,25 +351,33 @@ def _check_request(r, c_max, legal_ids):
+     )
+     for name in (
+         "prompt_tokens_remaining", "prefill_upper_bound",
+-        "prefill_fixed_charge", "decode_charge", "preemption_recovery",
++        "prefill_fixed_charge", "decode_demand", "preemption_recovery",
+     ):
+-        value = getattr(r, name)
+         _require(
+-            _is_int(value) and value >= 0, "malformed_value",
+-            f"request {rid!r}: {name} must be a non-negative integer",
++            _is_count(getattr(r, name), 0), "malformed_value",
++            f"request {rid!r}: {name} must be a non-negative integer "
++            "representable as a finite float",
+         )
+     for name in (
+         "decode_utility", "prefill_token_utility", "preemption_penalty",
+     ):
++        value = getattr(r, name)
+         _require(
+-            _is_real(getattr(r, name)), "malformed_value",
+-            f"request {rid!r}: {name} must be a finite number",
++            _is_real(value) and value >= 0, "malformed_value",
++            f"request {rid!r}: {name} must be a finite non-negative number",
+         )
+-    for name in ("prefill_eligible", "decode_eligible", "preemption_eligible"):
++    for name in (
++        "resident", "prefill_eligible", "decode_eligible",
++        "preemption_eligible",
++    ):
+         _require(
+             isinstance(getattr(r, name), bool), "malformed_value",
+             f"request {rid!r}: {name} must be a bool",
+         )
++    _require(
++        r.decode_demand in (0, 1), "inconsistent_resources",
++        f"request {rid!r}: decode_demand must be exactly 0 or 1",
++    )
+     if r.prefill_eligible:
+         _require(
+             r.prompt_tokens_remaining > 0
+@@ -287,6 +399,17 @@ def _check_request(r, c_max, legal_ids):
+             f"request {rid!r}: decode-eligible requires "
+             "prompt_tokens_remaining == 0",
+         )
++    if r.resident:
++        _require(
++            r.prefill_fixed_charge == 0, "inconsistent_resources",
++            f"request {rid!r}: a resident request has prefill_fixed_charge 0",
++        )
++    else:
++        _require(
++            not r.decode_eligible and not r.preemption_eligible,
++            "inconsistent_membership",
++            f"request {rid!r}: a waiting request can only prefill",
++        )
+     _require(
+         r.preemption_eligible == (rid in legal_ids),
+         "inconsistent_preemption_membership",
+@@ -299,6 +422,20 @@ def _check_request(r, c_max, legal_ids):
+             f"request {rid!r}: preemption_recovery must be 0 outside the "
+             "legal-preemption set",
+         )
++    for name, required in (
++        ("service_rank", r.prefill_eligible or r.decode_eligible),
++        ("victim_rank", r.preemption_eligible),
++    ):
++        value = getattr(r, name)
++        if required:
++            _require(
++                value is not None, "missing_rank",
++                f"request {rid!r}: {name} is required",
++            )
++        _require(
++            value is None or _is_real(value), "malformed_value",
++            f"request {rid!r}: {name} must be a finite number",
++        )
+ 
+ 
+ def _validate_problem_or_raise(problem):
+@@ -306,23 +443,23 @@ def _validate_problem_or_raise(problem):
+         isinstance(problem, LPProblem), "malformed_value",
+         "problem must be an LPProblem",
+     )
+-    for name in ("problem_id", "decode_memory_policy_id"):
+-        value = getattr(problem, name)
++    _require(
++        isinstance(problem.problem_id, str) and problem.problem_id,
++        "malformed_value", "problem_id must be a non-empty string",
++    )
++    _check_policy(problem.numerical_policy)
++    for name in ("b_max", "c_max", "s_max", "resident_limit"):
+         _require(
+-            isinstance(value, str) and value, "malformed_value",
+-            f"{name} must be a non-empty string",
++            _is_count(getattr(problem, name), 1), "malformed_value",
++            f"{name} must be a positive integer representable as a "
++            "finite float",
+         )
+-    _check_policy(problem.numerical_policy)
+-    for name in ("b_max", "s_max", "m_free", "w"):
+-        value = getattr(problem, name)
++    for name in ("m_free", "admission_watermark", "resident_count"):
+         _require(
+-            _is_int(value) and value >= 0, "malformed_value",
+-            f"{name} must be a non-negative integer",
++            _is_count(getattr(problem, name), 0), "malformed_value",
++            f"{name} must be a non-negative integer representable as a "
++            "finite float",
+         )
+-    _require(
+-        _is_int(problem.c_max) and problem.c_max > 0, "malformed_value",
+-        "c_max must be a positive integer",
+-    )
+     _require(
+         isinstance(problem.requests, tuple) and problem.requests
+         and all(isinstance(r, RequestInput) for r in problem.requests),
+@@ -353,6 +490,18 @@ def _validate_problem_or_raise(problem):
+         len(set(keys)) == len(keys), "duplicate_order_key",
+         "duplicate order_key",
+     )
++    residents = sum(1 for r in problem.requests if r.resident)
++    _require(
++        problem.resident_count == residents, "inconsistent_membership",
++        f"resident_count {problem.resident_count} differs from the "
++        f"{residents} resident requests",
++    )
++    _require(
++        problem.resident_count <= problem.resident_limit,
++        "inconsistent_membership",
++        f"resident_count {problem.resident_count} exceeds resident_limit "
++        f"{problem.resident_limit}",
++    )
+     ordered = tuple(sorted(problem.requests, key=lambda r: r.order_key))
+     return dataclasses.replace(problem, requests=ordered)
+ 
+@@ -363,7 +512,8 @@ def validate_problem(problem):
+     try:
+         return _validate_problem_or_raise(problem)
+     except _InputError as err:
+-        return _fail(problem, STAGE_INPUT, err.category, err.reason)
++        return _fail(problem, STAGE_INPUT, OUTCOME_INVALID, err.category,
++                     err.reason)
+ 
+ 
+ # ---------------------------------------------------------------------------
+@@ -371,46 +521,110 @@ def validate_problem(problem):
+ # ---------------------------------------------------------------------------
+ 
+ 
++def _watermark_rows_needed(problem):
++    """Waiting requests that receive a watermark row (none when h == 0)."""
++    if problem.admission_watermark == 0:
++        return []
++    return [i for i, r in enumerate(problem.requests) if not r.resident]
++
++
+ def _build_lp(problem):
+-    """Return (c, A_ub, b_ub, bounds) in SciPy minimization form."""
++    """Return (c, A_ub, b_ub, bounds, row_labels) in SciPy minimization form.
++
++    Every row is ``A_ub[k] @ v <= b_ub[k]``; ``row_labels[k]`` names it with
++    the same labels as ``_residuals``.
++    """
+     reqs = problem.requests
+     n = len(reqs)
++    s_max = float(problem.s_max)
++    h = float(problem.admission_watermark)
+     c = np.zeros(4 * n)
+     bounds = []
+     for i, r in enumerate(reqs):
+-        c[i] = -r.prefill_token_utility
+-        c[n + i] = -r.decode_utility
++        c[i] = -float(r.prefill_token_utility)
++        c[n + i] = -float(r.decode_utility)
+         if r.preemption_eligible:
+-            c[3 * n + i] = r.preemption_penalty
++            c[3 * n + i] = float(r.preemption_penalty)
+     bounds += [(0.0, None)] * n
+     bounds += [(0.0, 1.0 if r.decode_eligible else 0.0) for r in reqs]
+     bounds += [(0.0, 1.0 if r.prefill_eligible else 0.0) for r in reqs]
+     bounds += [(0.0, 1.0 if r.preemption_eligible else 0.0) for r in reqs]
+ 
+-    rows = np.zeros((3 + 3 * n, 4 * n))
+-    rhs = np.zeros(3 + 3 * n)
++    # Coefficients of -H on (I, z); -H <= -m_free is the generic H row.
++    neg_h = np.zeros(4 * n)
++    for i, r in enumerate(reqs):
++        neg_h[2 * n + i] = float(r.prefill_fixed_charge)
++        if r.resident:
++            neg_h[3 * n + i] = -float(r.preemption_recovery)
++    m_free = float(problem.m_free)
++
++    rows, rhs, labels = [], [], []
++
++    def add(label, row, bound):
++        rows.append(row)
++        rhs.append(bound)
++        labels.append(label)
++
++    row = np.zeros(4 * n)
++    row[0:n] = 1.0
++    row[n:2 * n] = 1.0
++    add("token_volume", row, float(problem.b_max))
++
++    row = np.zeros(4 * n)
++    row[n:2 * n] = 1.0
++    row[2 * n:3 * n] = 1.0
++    add("action_width", row, s_max)
++
++    # H - sum(d y) >= 0  <=>  -H + sum(d y) <= 0
++    row = neg_h.copy()
+     for i, r in enumerate(reqs):
+-        rows[0, i] = 1.0
+-        rows[0, n + i] = 1.0
+-        rows[1, 2 * n + i] = 1.0
+-        rows[1, n + i] = 1.0
+-        rows[2, 2 * n + i] = r.prefill_fixed_charge
+-        rows[2, n + i] = r.decode_charge
+-        rows[2, 3 * n + i] = -r.preemption_recovery
+-    rhs[0] = problem.b_max
+-    rhs[1] = problem.s_max
+-    rhs[2] = problem.m_free - problem.w
++        row[n + i] = float(r.decode_demand)
++    add("actual_memory", row, m_free)
++
++    # sum(y) <= S_max * H  <=>  sum(y) - S_max * H <= 0. Overflow yields a
++    # nonfinite entry, which solve_relaxation reports before solving.
++    with np.errstate(over="ignore"):
++        row = s_max * neg_h
++    row[n:2 * n] += 1.0
++    add("decode_prerequisite", row, s_max * m_free)
++
++    # h * I_i <= H
++    for i in _watermark_rows_needed(problem):
++        row = neg_h.copy()
++        row[2 * n + i] += h
++        add(f"admission_watermark[{reqs[i].request_id}]", row, m_free)
++
++    # |R| - sum_R z + sum_Q I <= N_max
++    row = np.zeros(4 * n)
+     for i, r in enumerate(reqs):
+-        link_lo, link_hi, mutex = 3 + 3 * i, 4 + 3 * i, 5 + 3 * i
+-        rows[link_lo, 2 * n + i] = 1.0  # I - x <= 0
+-        rows[link_lo, i] = -1.0
+-        rows[link_hi, i] = 1.0  # x - U*I <= 0
+-        rows[link_hi, 2 * n + i] = -r.prefill_upper_bound
+-        rows[mutex, 2 * n + i] = 1.0  # I + y + z <= 1
+-        rows[mutex, n + i] = 1.0
+-        rows[mutex, 3 * n + i] = 1.0
+-        rhs[mutex] = 1.0
+-    return c, rows, rhs, bounds
++        if r.resident:
++            row[3 * n + i] = -1.0
++        else:
++            row[2 * n + i] = 1.0
++    add("resident_capacity", row,
++        float(problem.resident_limit) - float(problem.resident_count))
++
++    # sum(I + y) >= 1
++    row = np.zeros(4 * n)
++    row[n:3 * n] = -1.0
++    add("useful_execution", row, -1.0)
++
++    for i, r in enumerate(reqs):
++        rid = r.request_id
++        row = np.zeros(4 * n)  # I - x <= 0
++        row[2 * n + i] = 1.0
++        row[i] = -1.0
++        add(f"prefill_linkage_lower[{rid}]", row, 0.0)
++        row = np.zeros(4 * n)  # x - U * I <= 0
++        row[i] = 1.0
++        row[2 * n + i] = -float(r.prefill_upper_bound)
++        add(f"prefill_linkage_upper[{rid}]", row, 0.0)
++        row = np.zeros(4 * n)  # I + y + z <= 1
++        row[n + i] = 1.0
++        row[2 * n + i] = 1.0
++        row[3 * n + i] = 1.0
++        add(f"mutual_exclusion[{rid}]", row, 1.0)
++    return c, np.array(rows), np.array(rhs), bounds, labels
+ 
+ 
+ def _objective_agrees(reported, recomputed, policy):
+@@ -433,7 +647,8 @@ def _diagnostics(expected_length, status=None, success=None, message=None,
+         scipy_version=scipy.__version__,
+         method=SOLVER_METHOD,
+         options=SOLVER_OPTIONS,
+-        raw_status=status if _is_int(status) else None,
++        raw_status=int(status) if _is_int(status)
++        or isinstance(status, np.integer) else None,
+         raw_success=success if isinstance(success, bool) else None,
+         message=None if message is None else str(message),
+         iterations=iterations if _is_int(iterations) else None,
+@@ -491,8 +706,13 @@ def _normalize_scipy_result(raw, c, policy):
+         return result(
+             "malformed_output", "status 0 without a finite reported objective"
+         )
+-    recomputed = math.fsum(float(ci) * v for ci, v in zip(c, vector))
+     reported = float(fun)
++    try:
++        recomputed = _checked_sum(
++            (float(ci) * v for ci, v in zip(c, vector)), "solver objective"
++        )
++    except _NumericalError as err:
++        return result(CATEGORY_NONFINITE, str(err), reported)
+     if not _objective_agrees(reported, recomputed, policy):
+         return result(
+             "malformed_output",
+@@ -504,9 +724,18 @@ def _normalize_scipy_result(raw, c, policy):
+ 
+ 
+ def solve_relaxation(problem):
+-    """Solve the LP for a canonical problem; never raises for solver outcomes."""
+-    c, rows, rhs, bounds = _build_lp(problem)
++    """Solve the LP once for a canonical problem; never raises for solver or
++    numerical outcomes."""
++    c, rows, rhs, bounds, _ = _build_lp(problem)
+     expected = int(c.size)
++    if not (np.all(np.isfinite(c)) and np.all(np.isfinite(rows))
++            and np.all(np.isfinite(rhs))):
++        return SolverResult(
++            CATEGORY_NONFINITE,
++            "LP construction produced a nonfinite coefficient; the solver "
++            "was not called",
++            _diagnostics(expected), None, None, None,
++        )
+     try:
+         raw = linprog(
+             c, A_ub=rows, b_ub=rhs, bounds=bounds,
+@@ -525,6 +754,12 @@ def solve_relaxation(problem):
+     return _normalize_scipy_result(raw, c, problem.numerical_policy)
+ 
+ 
++def _solver_outcome(category):
++    if category == CATEGORY_LP_INFEASIBLE:
++        return OUTCOME_LP_INFEASIBLE
++    return OUTCOME_NUMERICAL
++
++
+ # ---------------------------------------------------------------------------
+ # Relaxed-solution validation
+ # ---------------------------------------------------------------------------
+@@ -538,29 +773,58 @@ def _split(vector, n):
+ 
+ 
+ def _residuals(problem, x, y, ind, z):
+-    """Recompute every constraint residual (lhs - rhs) from project data."""
++    """Recompute every constraint residual (lhs - rhs, feasible when <= 0)
++    directly from project data, independently of the LP matrix.
++
++    Raises ``_NumericalError`` when the arithmetic is not finite.
++    """
+     reqs = problem.requests
+-    n = len(reqs)
+-    rng = range(n)
+-    return {
+-        "token_volume": math.fsum(x[i] + y[i] for i in rng) - problem.b_max,
+-        "action_width": math.fsum(ind[i] + y[i] for i in rng) - problem.s_max,
+-        "planning_memory": math.fsum(
+-            reqs[i].prefill_fixed_charge * ind[i]
+-            + reqs[i].decode_charge * y[i]
+-            - reqs[i].preemption_recovery * z[i]
+-            for i in rng
+-        ) - (problem.m_free - problem.w),
+-        "prefill_linkage_lower": max(ind[i] - x[i] for i in rng),
+-        "prefill_linkage_upper": max(
+-            x[i] - reqs[i].prefill_upper_bound * ind[i] for i in rng
+-        ),
+-        "decode_causality": max(
+-            y[i] - (1.0 if reqs[i].prompt_tokens_remaining == 0 else 0.0)
+-            for i in rng
+-        ),
+-        "mutual_exclusion": max(ind[i] + y[i] + z[i] - 1.0 for i in rng),
++    rng = range(len(reqs))
++
++    def prod(a, b):
++        return _checked_product(float(a), b, "relaxed residual")
++
++    h_value = _checked_sum(
++        [float(problem.m_free)]
++        + [prod(r.preemption_recovery, z[i])
++           for i, r in enumerate(reqs) if r.resident]
++        + [-prod(r.prefill_fixed_charge, ind[i]) for i, r in enumerate(reqs)],
++        "H",
++    )
++    decodes = _checked_sum(y, "decode count")
++    res = {
++        "token_volume": _checked_sum(
++            list(x) + list(y) + [-float(problem.b_max)], "token volume"),
++        "action_width": _checked_sum(
++            list(ind) + list(y) + [-float(problem.s_max)], "action width"),
++        "actual_memory": _checked_sum(
++            [prod(r.decode_demand, y[i]) for i, r in enumerate(reqs)]
++            + [-h_value], "actual memory"),
++        "decode_prerequisite": _checked_sum(
++            [decodes, -prod(problem.s_max, h_value)], "decode prerequisite"),
+     }
++    for i in _watermark_rows_needed(problem):
++        res[f"admission_watermark[{reqs[i].request_id}]"] = _checked_sum(
++            [prod(problem.admission_watermark, ind[i]), -h_value],
++            "admission watermark",
++        )
++    res["resident_capacity"] = _checked_sum(
++        [float(problem.resident_count), -float(problem.resident_limit)]
++        + [-z[i] if r.resident else ind[i] for i, r in enumerate(reqs)],
++        "resident capacity",
++    )
++    res["useful_execution"] = _checked_sum(
++        [1.0] + [-v for v in ind] + [-v for v in y], "useful execution")
++    for i in rng:
++        r = reqs[i]
++        rid = r.request_id
++        res[f"prefill_linkage_lower[{rid}]"] = _checked_sum(
++            [ind[i], -x[i]], "prefill linkage")
++        res[f"prefill_linkage_upper[{rid}]"] = _checked_sum(
++            [x[i], -prod(r.prefill_upper_bound, ind[i])], "prefill linkage")
++        res[f"mutual_exclusion[{rid}]"] = _checked_sum(
++            [ind[i], y[i], z[i], -1.0], "mutual exclusion")
++    return res
+ 
+ 
+ def _project(value, upper, eps):
+@@ -580,12 +844,17 @@ def _project(value, upper, eps):
+ 
+ 
+ def _objective_max(problem, x, y, z):
+-    reqs = problem.requests
+-    return math.fsum(
+-        r.decode_utility * y[i] + r.prefill_token_utility * x[i]
+-        - (r.preemption_penalty * z[i] if r.preemption_eligible else 0.0)
+-        for i, r in enumerate(reqs)
+-    )
++    """Maximization objective with checked stable summation."""
++    terms = []
++    for i, r in enumerate(problem.requests):
++        terms.append(_checked_product(
++            float(r.decode_utility), y[i], "objective"))
++        terms.append(_checked_product(
++            float(r.prefill_token_utility), x[i], "objective"))
++        if r.preemption_eligible:
++            terms.append(-_checked_product(
++                float(r.preemption_penalty), z[i], "objective"))
++    return _checked_sum(terms, "objective")
+ 
+ 
+ def validate_relaxed_solution(problem, raw_vector):
+@@ -597,16 +866,18 @@ def validate_relaxed_solution(problem, raw_vector):
+     reqs = problem.requests
+     n = len(reqs)
+     eps = problem.numerical_policy.feasibility_tol
++
++    def bad(category, reason):
++        return _fail(problem, STAGE_RELAXED, OUTCOME_NUMERICAL, category,
++                     reason)
++
+     try:
+         raw = tuple(float(v) for v in raw_vector)
+     except (TypeError, ValueError):
+-        return _fail(
+-            problem, STAGE_RELAXED, "malformed_vector",
+-            "raw vector is not a sequence of numbers",
+-        )
++        return bad("malformed_vector", "raw vector is not a sequence of numbers")
+     if len(raw) != 4 * n or not all(math.isfinite(v) for v in raw):
+-        return _fail(
+-            problem, STAGE_RELAXED, "malformed_vector",
++        return bad(
++            "malformed_vector",
+             f"raw vector must be finite with length {4 * n}, got {len(raw)}",
+         )
+ 
+@@ -622,25 +893,29 @@ def validate_relaxed_solution(problem, raw_vector):
+         projected = _project(value, upper, eps)
+         if projected is None:
+             block = ("x", "y", "prefill_indicator", "z")[k // n]
+-            return _fail(
+-                problem, STAGE_RELAXED, "bound_violation",
++            return bad(
++                "bound_violation",
+                 f"{block} of request {reqs[k % n].request_id!r} = {value!r} "
+                 f"is outside its bounds beyond tolerance {eps}",
+             )
+         normalized.append(projected[0])
+         projection_count += projected[1]
+ 
+-    raw_res = _residuals(problem, *_split(raw, n))
+-    norm_res = _residuals(problem, *_split(normalized, n))
++    try:
++        raw_res = _residuals(problem, *_split(raw, n))
++        norm_res = _residuals(problem, *_split(normalized, n))
++        x, y, ind, z = _split(normalized, n)
++        objective = _objective_max(problem, x, y, z)
++    except _NumericalError as err:
++        return bad(CATEGORY_NONFINITE, str(err))
+     for label, res in (("raw", raw_res), ("normalized", norm_res)):
+         for name, value in res.items():
+-            if value > eps:
+-                return _fail(
+-                    problem, STAGE_RELAXED, "constraint_violation",
++            if not value <= eps:
++                return bad(
++                    "constraint_violation",
+                     f"{label} {name} residual {value!r} exceeds tolerance "
+                     f"{eps}",
+                 )
+-    x, y, ind, z = _split(normalized, n)
+     decisions = tuple(
+         RelaxedDecision(r.request_id, x[i], y[i], ind[i], z[i])
+         for i, r in enumerate(reqs)
+@@ -651,155 +926,256 @@ def validate_relaxed_solution(problem, raw_vector):
+         projection_count=projection_count,
+         worst_raw_violation=max(0.0, *raw_res.values()),
+         worst_normalized_violation=max(0.0, *norm_res.values()),
+-        normalized_objective=_objective_max(problem, x, y, z),
++        normalized_objective=objective,
+     )
+ 
+ 
+ # ---------------------------------------------------------------------------
+-# Deterministic extraction
++# Whole-action construction
+ # ---------------------------------------------------------------------------
+ 
+ 
+-def _classify(value, eps):
+-    """0, 1, or None (fractional) for a validated indicator in [0, 1]."""
+-    if value <= eps:
+-        return 0
+-    if value >= 1.0 - eps:
+-        return 1
+-    return None
++@dataclass
++class _Totals:
++    """Local exact integer totals of a partial plan."""
++
++    tokens: int
++    actions: int
++    residents: int
++    free_before_decodes: int
++    decode_demand: int
++    admissions: int
++    decodes: int
++
++    def legal(self, problem):
++        h = self.free_before_decodes
++        return (
++            self.tokens <= problem.b_max
++            and self.actions <= problem.s_max
++            and self.residents <= problem.resident_limit
++            and h >= self.decode_demand
++            and (self.admissions == 0 or h >= problem.admission_watermark)
++            and (self.decodes == 0 or h >= 1)
++        )
++
++
++def _execution_key(r):
++    return (r.service_rank, r.order_key)
++
++
++def _victim_key(r):
++    return (r.victim_rank, r.order_key)
++
++
++def _declared_orders(problem, decode, preempt, prefill_tokens):
++    reqs = problem.requests
++    n = len(reqs)
++    victims = sorted(
++        (i for i in range(n) if preempt[i]), key=lambda i: _victim_key(reqs[i])
++    )
++
++    def group(i):
++        if prefill_tokens[i] > 0:
++            return 0
++        return 1 + reqs[i].decode_demand
++
++    executions = sorted(
++        (i for i in range(n) if prefill_tokens[i] > 0 or decode[i]),
++        key=lambda i: (group(i),) + _execution_key(reqs[i]),
++    )
++    return (
++        tuple(reqs[i].request_id for i in victims),
++        tuple(reqs[i].request_id for i in executions),
++    )
+ 
+ 
+ def extract_integer_plan(problem, relaxed):
+-    """Deterministic integer extraction; returns an unvalidated plan or a
+-    ``Failure``. Callers must pass the result through ``validate_integer_plan``.
++    """Construct whole actions guided by a validated relaxed solution.
++
++    Returns an unvalidated ``IntegerPlan`` or a ``Failure``. Callers must pass
++    a plan through ``validate_integer_plan``.
+     """
+     reqs = problem.requests
+     n = len(reqs)
+-    eps = problem.numerical_policy.integrality_tol
+-    if len(relaxed.decisions) != n or any(
++    policy = problem.numerical_policy
++    if not isinstance(relaxed, RelaxedSolution) or len(
++        relaxed.decisions
++    ) != n or any(
+         d.request_id != r.request_id for d, r in zip(relaxed.decisions, reqs)
+     ):
+         return _fail(
+-            problem, STAGE_EXTRACTION, "association_mismatch",
++            problem, STAGE_EXTRACTION, OUTCOME_INVALID, "association_mismatch",
+             "relaxed decisions do not match the ordered problem requests",
+         )
++    lp = relaxed.decisions
++    if not all(
++        _is_real(v) and v >= 0
++        for d in lp for v in (d.x, d.y, d.prefill_indicator, d.z)
++    ):
++        return _fail(
++            problem, STAGE_EXTRACTION, OUTCOME_INVALID, "unvalidated_relaxed",
++            "relaxed values must be finite and non-negative",
++        )
++
++    candidates = sorted(
++        (i for i in range(n) if reqs[i].prefill_eligible
++         or reqs[i].decode_eligible),
++        key=lambda i: (-(lp[i].prefill_indicator + lp[i].y),)
++        + _execution_key(reqs[i]),
++    )
++    victim_list = sorted(
++        (i for i in range(n) if reqs[i].preemption_eligible),
++        key=lambda i: (-lp[i].z,) + _victim_key(reqs[i]),
++    )
++
++    x_hat, y_hat, z_hat = [0] * n, [0] * n, [0] * n
++    accepted, accepted_order, victims = set(), [], set()
++    totals = _Totals(
++        tokens=0, actions=0, residents=problem.resident_count,
++        free_before_decodes=problem.m_free, decode_demand=0,
++        admissions=0, decodes=0,
++    )
++    trials = failed = declined = skipped = 0
++
++    def diagnostics():
++        return ExtractionDiagnostics(
++            candidate_order=tuple(reqs[i].request_id for i in candidates),
++            victim_candidate_order=tuple(
++                reqs[i].request_id for i in victim_list),
++            accepted_order=tuple(reqs[i].request_id for i in accepted_order),
++            trial_count=trials,
++            failed_trial_count=failed,
++            declined_optional_trial_count=declined,
++            skipped_candidate_count=skipped,
++            fractional_request_count=sum(
++                1 for d in lp
++                if any(0.0 < v < 1.0 for v in (d.y, d.prefill_indicator, d.z))
++            ),
++        )
+ 
+-    x_hat, y_hat, z_hat, i_hat = [0] * n, [0] * n, [0] * n, [0] * n
+-    frac = []
+-    for i, (r, d) in enumerate(zip(reqs, relaxed.decisions)):
+-        cy = _classify(d.y, eps)
+-        ci = _classify(d.prefill_indicator, eps)
+-        cz = _classify(d.z, eps)
+-        if cy is None or ci is None or cz is None:
+-            frac.append(i)
+-            continue
+-        floor_x = math.floor(d.x)
+-        if (ci == 1 and floor_x < 1) or (ci == 0 and floor_x > 0):
+-            return _fail(
+-                problem, STAGE_EXTRACTION, "indicator_inconsistent_with_x",
+-                f"request {r.request_id!r}: locked prefill indicator {ci} "
+-                f"is inconsistent with unchanged x={d.x!r}",
++    try:
++        for i in candidates:
++            r = reqs[i]
++            b_rem = problem.b_max - totals.tokens
++            s_rem = problem.s_max - totals.actions
++            if i in victims or b_rem < 1 or s_rem < 1:
++                skipped += 1
++                continue
++            trials += 1
++            trial = dataclasses.replace(
++                totals, tokens=totals.tokens + 1, actions=totals.actions + 1
+             )
+-        x_hat[i], y_hat[i], z_hat[i], i_hat[i] = floor_x, cy, cz, ci
+-
+-    frac_set = set(frac)
+-    locked = [i for i in range(n) if i not in frac_set]
+-    b_curr = problem.b_max - sum(x_hat[i] + y_hat[i] for i in locked)
+-    s_curr = problem.s_max - sum(i_hat[i] + y_hat[i] for i in locked)
+-    m_curr = (problem.m_free - problem.w) - sum(
+-        reqs[i].prefill_fixed_charge * i_hat[i]
+-        + reqs[i].decode_charge * y_hat[i]
+-        - reqs[i].preemption_recovery * z_hat[i]
+-        for i in locked
+-    )
+-
+-    dominant = []
+-    for i in frac:
+-        r, d = reqs[i], relaxed.decisions[i]
+-        if (
+-            r.preemption_eligible and r.preemption_recovery > 0
+-            and d.z > d.y and d.z > d.prefill_indicator
+-        ):
+-            z_hat[i] = 1
+-            m_curr += r.preemption_recovery
+-            dominant.append(i)
+-
+-    safety = []
+-    while m_curr < 0:
+-        candidates = [
+-            i for i in frac
+-            if reqs[i].preemption_eligible and z_hat[i] == 0
+-            and reqs[i].preemption_recovery > 0
+-        ]
+-        if not candidates:
+-            return _fail(
+-                problem, STAGE_EXTRACTION, "memory_repair_exhausted",
+-                f"planning memory {m_curr} is negative and no unused legal "
+-                "preemption candidate with positive recovery remains",
++            chunk = 0
++            if r.decode_eligible:
++                trial.decode_demand += r.decode_demand
++                trial.decodes += 1
++                reward = float(r.decode_utility)
++            else:
++                chunk = min(
++                    r.prefill_upper_bound, b_rem, max(1, math.floor(lp[i].x))
++                )
++                trial.tokens = totals.tokens + chunk
++                trial.free_before_decodes -= r.prefill_fixed_charge
++                if not r.resident:
++                    trial.residents += 1
++                    trial.admissions += 1
++                reward = _checked_product(
++                    float(r.prefill_token_utility), chunk, "trial reward"
++                )
++            new_victims = []
++            for k in victim_list:
++                if trial.legal(problem):
++                    break
++                if k == i or k in accepted or k in victims:
++                    continue
++                new_victims.append(k)
++                trial.free_before_decodes += reqs[k].preemption_recovery
++                trial.residents -= 1
++            if not trial.legal(problem):
++                failed += 1
++                continue
++            penalty = _checked_sum(
++                (float(reqs[k].preemption_penalty) for k in new_victims),
++                "trial penalty",
+             )
+-        k = min(
+-            candidates, key=lambda i: (-relaxed.decisions[i].z,
+-                                       reqs[i].order_key),
+-        )
+-        z_hat[k] = 1
+-        m_curr += reqs[k].preemption_recovery
+-        safety.append(k)
+-
+-    for i in frac:
+-        if z_hat[i] == 1:
+-            continue
+-        r, d = reqs[i], relaxed.decisions[i]
+-        if d.y == 0.0 and d.prefill_indicator == 0.0:
+-            continue
+-        if d.y >= d.prefill_indicator:
+-            if b_curr >= 1 and s_curr >= 1 and m_curr >= r.decode_charge:
++            if accepted:
++                if new_victims:
++                    gain = reward - penalty
++                    tau = policy.objective_abs_tol + policy.objective_rel_tol \
++                        * max(abs(reward), abs(penalty))
++                    if not (math.isfinite(gain) and math.isfinite(tau)):
++                        raise _NumericalError(
++                            f"trial gain {gain!r} or threshold {tau!r} is "
++                            "nonfinite"
++                        )
++                    if not gain > tau:
++                        declined += 1
++                        continue
++                elif not reward >= 0.0:
++                    declined += 1
++                    continue
++            totals = trial
++            accepted.add(i)
++            accepted_order.append(i)
++            if r.decode_eligible:
+                 y_hat[i] = 1
+-                b_curr -= 1
+-                s_curr -= 1
+-                m_curr -= r.decode_charge
+-        elif b_curr >= 1 and s_curr >= 1 and m_curr >= r.prefill_fixed_charge:
+-            chunk = min(r.prompt_tokens_remaining, problem.c_max, b_curr)
+-            if chunk > 0:
++            else:
+                 x_hat[i] = chunk
+-                i_hat[i] = 1
+-                b_curr -= chunk
+-                s_curr -= 1
+-                m_curr -= r.prefill_fixed_charge
+-
+-    for i in range(n):
+-        if i_hat[i] != (1 if x_hat[i] > 0 else 0):
+-            return _fail(
+-                problem, STAGE_EXTRACTION, "noncanonical_prefill",
+-                f"request {reqs[i].request_id!r}: indicator {i_hat[i]} "
+-                f"disagrees with prefill tokens {x_hat[i]}",
+-            )
++            for k in new_victims:
++                victims.add(k)
++                z_hat[k] = 1
++    except _NumericalError as err:
++        return _fail(problem, STAGE_EXTRACTION, OUTCOME_NUMERICAL,
++                     CATEGORY_NONFINITE, str(err))
++
++    if not accepted:
++        return _fail(
++            problem, STAGE_EXTRACTION, OUTCOME_NO_USEFUL_WORK,
++            CATEGORY_NO_USEFUL_WORK,
++            f"none of the {len(candidates)} eligible execution candidates "
++            "has a legal whole action even with every other legal victim",
++            extraction=diagnostics(),
++        )
+ 
+-    def by_key(indices):
+-        return tuple(
+-            reqs[i].request_id
+-            for i in sorted(indices, key=lambda j: reqs[j].order_key)
++    for i in sorted(
++        (i for i in accepted if x_hat[i] > 0),
++        key=lambda i: _execution_key(reqs[i]),
++    ):
++        extra = min(
++            reqs[i].prefill_upper_bound - x_hat[i],
++            problem.b_max - totals.tokens,
+         )
++        x_hat[i] += extra
++        totals.tokens += extra
+ 
++    try:
++        objective = _objective_max(problem, x_hat, y_hat, z_hat)
++    except _NumericalError as err:
++        return _fail(problem, STAGE_EXTRACTION, OUTCOME_NUMERICAL,
++                     CATEGORY_NONFINITE, str(err))
++    victim_order, execution_order = _declared_orders(
++        problem, y_hat, z_hat, x_hat
++    )
+     decisions = tuple(
+         IntegerDecision(
+             reqs[i].request_id, reqs[i].order_key, x_hat[i], y_hat[i],
+-            z_hat[i], i_hat[i],
++            z_hat[i], 1 if x_hat[i] > 0 else 0,
+         )
+         for i in range(n)
+     )
+     return IntegerPlan(
+         problem_id=problem.problem_id,
+         decisions=decisions,
+-        residual_token_capacity=b_curr,
+-        residual_action_capacity=s_curr,
+-        residual_memory_capacity=m_curr,
+-        fractional_request_count=len(frac),
+-        dominant_preemption_ids=by_key(dominant),
+-        safety_preemption_ids=by_key(safety),
+-        numerical_policy=problem.numerical_policy,
+-        objective=_objective_max(
+-            problem, x_hat, y_hat, [float(v) for v in z_hat]
+-        ),
++        victim_order=victim_order,
++        execution_order=execution_order,
++        token_use=totals.tokens,
++        action_count=totals.actions,
++        resident_count_after=totals.residents,
++        free_blocks_before_decodes=totals.free_before_decodes,
++        decode_demand=totals.decode_demand,
++        numerical_policy=policy,
++        objective=objective,
++        extraction=diagnostics(),
+     )
+ 
+ 
+@@ -809,11 +1185,17 @@ def extract_integer_plan(problem, relaxed):
+ 
+ 
+ def validate_integer_plan(problem, plan):
+-    """Exactly validate a complete integer plan; return it or a ``Failure``."""
++    """Exactly validate a complete integer plan; return it or a ``Failure``.
++
++    Recomputes every total from the per-request decisions with exact integer
++    arithmetic and does not trust the plan's reported totals or orders. A
++    rejection is an implementation or validation failure; it never proves
++    that useful work is impossible.
++    """
+     reqs = problem.requests
+ 
+-    def bad(category, reason):
+-        return _fail(problem, STAGE_PLAN, category, reason)
++    def bad(category, reason, outcome=OUTCOME_INVALID):
++        return _fail(problem, STAGE_PLAN, outcome, category, reason)
+ 
+     if not isinstance(plan, IntegerPlan):
+         return bad("malformed_plan", "plan must be an IntegerPlan")
+@@ -821,10 +1203,16 @@ def validate_integer_plan(problem, plan):
+         return bad("snapshot_mismatch", "plan problem_id differs from problem")
+     if plan.numerical_policy != problem.numerical_policy:
+         return bad("policy_mismatch", "plan numerical policy differs")
+-    if len(plan.decisions) != len(reqs):
++    if not isinstance(plan.extraction, ExtractionDiagnostics):
++        return bad("malformed_plan", "plan extraction diagnostics missing")
++    if not isinstance(plan.decisions, tuple) or len(plan.decisions) != len(
++        reqs
++    ):
+         return bad("decision_count", "plan must have one decision per request")
+ 
+-    tokens = actions = memory = 0
++    tokens = actions = demand = admissions = decodes = 0
++    free = problem.m_free
++    residents = problem.resident_count
+     for r, d in zip(reqs, plan.decisions):
+         rid = r.request_id
+         if not (
+@@ -853,50 +1241,77 @@ def validate_integer_plan(problem, plan):
+         if d.decode and not r.decode_eligible:
+             return bad("ineligible_action", f"{rid!r}: decode not eligible")
+         if d.preempt and not (
+-            r.preemption_eligible and rid in problem.legal_preemption_ids
++            r.preemption_eligible and r.resident
++            and rid in problem.legal_preemption_ids
+         ):
+             return bad("ineligible_action", f"{rid!r}: preemption not legal")
+         tokens += d.prefill_tokens + d.decode
+         actions += d.prefill_indicator + d.decode
+-        memory += (
+-            r.prefill_fixed_charge * d.prefill_indicator
+-            + r.decode_charge * d.decode
+-            - r.preemption_recovery * d.preempt
++        demand += r.decode_demand * d.decode
++        decodes += d.decode
++        free += r.preemption_recovery * d.preempt
++        free -= r.prefill_fixed_charge * d.prefill_indicator
++        residents -= d.preempt
++        if not r.resident:
++            residents += d.prefill_indicator
++            admissions += d.prefill_indicator
++
++    checks = (
++        ("token_volume", tokens <= problem.b_max),
++        ("action_width", actions <= problem.s_max),
++        ("resident_capacity", residents <= problem.resident_limit),
++        ("actual_memory", free >= demand),
++        ("decode_prerequisite", decodes == 0 or free >= 1),
++        ("admission_watermark",
++         admissions == 0 or free >= problem.admission_watermark),
++        ("useful_execution", actions >= 1),
++    )
++    for name, ok in checks:
++        if not ok:
++            return bad(
++                "constraint_violation",
++                f"{name} fails: tokens={tokens} actions={actions} "
++                f"residents_after={residents} H={free} decode_demand={demand} "
++                f"admissions={admissions} decodes={decodes}",
++            )
++    reported = (
++        plan.token_use, plan.action_count, plan.resident_count_after,
++        plan.free_blocks_before_decodes, plan.decode_demand,
++    )
++    recomputed = (tokens, actions, residents, free, demand)
++    if reported != recomputed:
++        return bad(
++            "total_mismatch",
++            f"reported totals {reported} disagree with recomputed "
++            f"{recomputed}",
+         )
+-
+-    residuals = (
+-        problem.b_max - tokens,
+-        problem.s_max - actions,
+-        (problem.m_free - problem.w) - memory,
++    victim_order, execution_order = _declared_orders(
++        problem,
++        [d.decode for d in plan.decisions],
++        [d.preempt for d in plan.decisions],
++        [d.prefill_tokens for d in plan.decisions],
+     )
+-    if any(v < 0 for v in residuals):
++    if plan.victim_order != victim_order:
++        return bad("order_mismatch", f"victim order must be {victim_order}")
++    if plan.execution_order != execution_order:
+         return bad(
+-            "capacity_violation",
+-            f"residual token/action/memory capacities {residuals} are "
+-            "negative",
++            "order_mismatch", f"execution order must be {execution_order}"
+         )
+-    if residuals != (
+-        plan.residual_token_capacity, plan.residual_action_capacity,
+-        plan.residual_memory_capacity,
+-    ):
++    try:
++        objective = _objective_max(
++            problem,
++            [d.prefill_tokens for d in plan.decisions],
++            [d.decode for d in plan.decisions],
++            [d.preempt for d in plan.decisions],
++        )
++    except _NumericalError as err:
++        return bad(CATEGORY_NONFINITE, str(err), OUTCOME_NUMERICAL)
++    if plan.objective != objective:
+         return bad(
+-            "residual_mismatch",
+-            f"reported residuals disagree with recomputed {residuals}",
++            "objective_mismatch",
++            f"reported objective {plan.objective!r} differs from "
++            f"recomputed {objective!r}",
+         )
+-    preempted = {d.request_id for d in plan.decisions if d.preempt}
+-    for label, ids in (
+-        ("dominant", plan.dominant_preemption_ids),
+-        ("safety", plan.safety_preemption_ids),
+-    ):
+-        if not set(ids) <= preempted:
+-            return bad("preemption_ids", f"{label} IDs are not preempted")
+-    if set(plan.dominant_preemption_ids) & set(plan.safety_preemption_ids):
+-        return bad("preemption_ids", "dominant and safety IDs overlap")
+-    if not (
+-        _is_int(plan.fractional_request_count)
+-        and 0 <= plan.fractional_request_count <= len(reqs)
+-    ):
+-        return bad("malformed_plan", "invalid fractional request count")
+     return plan
+ 
+ 
+@@ -906,14 +1321,16 @@ def validate_integer_plan(problem, plan):
+ 
+ 
+ def solve_and_extract(problem):
+-    """Validate, solve, validate the relaxation, extract, validate the plan."""
++    """Validate, solve once, validate the relaxation, construct whole
++    actions, and validate the complete integer plan."""
+     canonical = validate_problem(problem)
+     if isinstance(canonical, Failure):
+         return canonical
+     solver = solve_relaxation(canonical)
+     if solver.category != CATEGORY_OPTIMAL:
+         return _fail(
+-            canonical, STAGE_SOLVER, solver.category, solver.reason, solver
++            canonical, STAGE_SOLVER, _solver_outcome(solver.category),
++            solver.category, solver.reason, solver,
+         )
+     relaxed = validate_relaxed_solution(canonical, solver.raw_vector)
+     if isinstance(relaxed, Failure):
+@@ -933,33 +1350,38 @@ def solve_and_extract(problem):
+ 
+ 
+ def _smoke_problem():
++    # One waiting prefill (admission charge 1) and one resident zero-demand
++    # decode. Two free blocks leave H = 1 after the admission, which the
++    # decode prerequisite requires.
+     return LPProblem(
+         requests=(
+             RequestInput(
+-                request_id="smoke-prefill", order_key=(0, 10),
++                request_id="smoke-prefill", order_key=(0, 10), resident=False,
+                 prompt_tokens_remaining=4, prefill_upper_bound=4,
+                 prefill_eligible=True, decode_eligible=False,
+                 preemption_eligible=False,
+-                prefill_fixed_charge=1, decode_charge=0,
++                prefill_fixed_charge=1, decode_demand=0,
+                 preemption_recovery=0,
+                 decode_utility=0.0, prefill_token_utility=1.0,
+                 preemption_penalty=0.0,
++                service_rank=1, victim_rank=None,
+             ),
+             RequestInput(
+-                request_id="smoke-decode", order_key=(0, 20),
++                request_id="smoke-decode", order_key=(0, 20), resident=True,
+                 prompt_tokens_remaining=0, prefill_upper_bound=0,
+                 prefill_eligible=False, decode_eligible=True,
+                 preemption_eligible=False,
+-                prefill_fixed_charge=0, decode_charge=0,
++                prefill_fixed_charge=0, decode_demand=0,
+                 preemption_recovery=0,
+                 decode_utility=10.0, prefill_token_utility=0.0,
+                 preemption_penalty=0.0,
++                service_rank=0, victim_rank=None,
+             ),
+         ),
+         legal_preemption_ids=frozenset(),
+-        b_max=3, c_max=4, s_max=2, m_free=1, w=0,
++        b_max=3, c_max=4, s_max=2, resident_limit=2, resident_count=1,
++        m_free=2, admission_watermark=0,
+         problem_id="smoke-problem",
+-        decode_memory_policy_id="fixture_supplied_charge_v1",
+         numerical_policy=NumericalPolicy(),
+     )
+ 
+@@ -968,7 +1390,8 @@ def format_result(result):
+     if isinstance(result, Failure):
+         return (
+             f"lp_relaxation FAILURE problem_id={result.problem_id} "
+-            f"stage={result.stage} category={result.category}\n"
++            f"stage={result.stage} outcome={result.outcome} "
++            f"category={result.category}\n"
+             f"  reason: {result.reason}"
+         )
+     plan, diag = result.plan, result.solver.diagnostics
+@@ -997,13 +1420,16 @@ def format_result(result):
+         f"prefill_tokens={sum(d.prefill_tokens for d in plan.decisions)} "
+         f"decode_actions={sum(d.decode for d in plan.decisions)} "
+         f"preemptions={sum(d.preempt for d in plan.decisions)}",
+-        "  residual capacities: "
+-        f"tokens={plan.residual_token_capacity} "
+-        f"actions={plan.residual_action_capacity} "
+-        f"memory={plan.residual_memory_capacity}",
+-        f"  fractional_request_count: {plan.fractional_request_count}",
+-        f"  dominant_preemption_ids: {plan.dominant_preemption_ids}",
+-        f"  safety_preemption_ids: {plan.safety_preemption_ids}",
++        "  final totals: "
++        f"tokens={plan.token_use} actions={plan.action_count} "
++        f"residents_after={plan.resident_count_after} "
++        f"H={plan.free_blocks_before_decodes} "
++        f"decode_demand={plan.decode_demand}",
++        f"  victim_order: {plan.victim_order}",
++        f"  execution_order: {plan.execution_order}",
++        f"  candidate_order: {plan.extraction.candidate_order}",
++        f"  fractional_request_count (observation): "
++        f"{plan.extraction.fractional_request_count}",
+     ]
+     return "\n".join(lines)
+ 
+diff --git a/tests/test_lp_relaxation_scheduler.py b/tests/test_lp_relaxation_scheduler.py
+index 8dd6e2d..93d0429 100644
+--- a/tests/test_lp_relaxation_scheduler.py
++++ b/tests/test_lp_relaxation_scheduler.py
+@@ -1,46 +1,354 @@
++"""Focused CPU checks for the corrected LP-relaxation planning layer.
++
++Fixture domains. Each fixture is labelled either ABSTRACT (abstract
++formulation: valid model input, no claim that a validated runtime state has
++this shape) or RUNTIME (admission-validated runtime: pool and watermark are
++consistent, checked by ``runtime_pool_consistent``). The module itself applies
++no total-pool admission restriction.
++
++Dispositions of the superseded expectations (earlier revision of this file):
++
++- ``test_main_smoke``: retained; the smoke inputs were corrected (two free
++  blocks, exact zero decode demand, resident membership, ranks) so the decode
++  prerequisite holds after the admission. Same printed totals.
++- ``test_mixed_case_and_tied_extraction``: superseded. Its residual,
++  dominant-preemption, and safety-preemption fields are retired with locking
++  extraction. Replaced by ``test_declared_orders_and_totals`` and
++  ``test_lp_values_primary_over_ranks_then_identity``.
++- ``test_fractional_prefill``: superseded. It used a decode charge of 2,
++  which the exact zero-or-one demand contract rejects. Fractional guidance is
++  covered by ``test_chunk_floor_and_minimum_one`` and the nine-waiting
++  watermark construction.
++- ``test_zero_zero_execution_tie_is_no_action``: superseded and inverted.
++  Zero-support candidates are now always tried
++  (``test_integral_idle_victim_and_zero_support_candidate``); its fixture also
++  gave a resident prefill a nonzero charge, now invalid input.
++- ``test_visible_infeasibility``: superseded. It relied on the removed
++  planning reserve; ``test_solver_reported_infeasibility_real_status_2``
++  reaches status 2 through the actual-memory and useful-execution rows.
++"""
++
+ import contextlib
++import dataclasses
+ import io
++import itertools
++import math
++import random
+ import sys
++import types
+ import unittest
+ from pathlib import Path
++from unittest import mock
+ 
+ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+ 
++import numpy as np  # noqa: E402
++
+ import lp_relaxation_scheduler as lrs  # noqa: E402
+ 
+-POLICY_ID = "fixture_supplied_charge_v1"
+-
+-
+-def req(request_id, key, rem, ub, flags, charges, utilities):
+-    prefill, decode, preempt = (f == "T" for f in flags.split("/"))
+-    fixed, decode_charge, recovery = charges
+-    alpha, beta, gamma = utilities
+-    return lrs.RequestInput(
+-        request_id=request_id, order_key=key,
+-        prompt_tokens_remaining=rem, prefill_upper_bound=ub,
+-        prefill_eligible=prefill, decode_eligible=decode,
+-        preemption_eligible=preempt,
+-        prefill_fixed_charge=fixed, decode_charge=decode_charge,
+-        preemption_recovery=recovery,
+-        decode_utility=alpha, prefill_token_utility=beta,
+-        preemption_penalty=gamma,
++ABSTRACT = "abstract formulation"
++RUNTIME = "admission-validated runtime"
++EPS = lrs.NumericalPolicy().feasibility_tol
++
++
++# ---------------------------------------------------------------------------
++# Fixture builders
++# ---------------------------------------------------------------------------
++
++
++def _spec(rid, key, **kw):
++    spec = dict(
++        request_id=rid, order_key=(key,), resident=True,
++        prompt_tokens_remaining=0, prefill_eligible=False,
++        decode_eligible=False, preemption_eligible=False,
++        prefill_fixed_charge=0, decode_demand=0, preemption_recovery=0,
++        decode_utility=0.0, prefill_token_utility=0.0, preemption_penalty=0.0,
++        service_rank=None, victim_rank=None,
+     )
++    spec.update(kw)
++    return spec
++
+ 
++def waiting(rid, key, rem, charge, beta=0.0, service=None):
++    return _spec(rid, key, resident=False, prompt_tokens_remaining=rem,
++                 prefill_eligible=True, prefill_fixed_charge=charge,
++                 prefill_token_utility=beta,
++                 service_rank=key if service is None else service)
+ 
+-def problem(requests, b, c, s, m_free, w, legal=(), problem_id="test"):
++
++def decoder(rid, key, demand, blocks, alpha=0.0, gamma=0.0, service=None,
++            victim=None, preemptible=True):
++    return _spec(rid, key, decode_eligible=True, decode_demand=demand,
++                 preemption_eligible=preemptible,
++                 preemption_recovery=blocks if preemptible else 0,
++                 decode_utility=alpha, preemption_penalty=gamma,
++                 service_rank=key if service is None else service,
++                 victim_rank=(key if victim is None else victim)
++                 if preemptible else None)
++
++
++def resident_prefill(rid, key, rem, blocks, beta=0.0, gamma=0.0, service=None,
++                     victim=None, preemptible=True):
++    return _spec(rid, key, prompt_tokens_remaining=rem, prefill_eligible=True,
++                 preemption_eligible=preemptible,
++                 preemption_recovery=blocks if preemptible else 0,
++                 prefill_token_utility=beta, preemption_penalty=gamma,
++                 service_rank=key if service is None else service,
++                 victim_rank=(key if victim is None else victim)
++                 if preemptible else None)
++
++
++def idle(rid, key, blocks, gamma=0.0, victim=None):
++    """Resident holding blocks, not eligible to execute, legally preemptible."""
++    return _spec(rid, key, preemption_eligible=True,
++                 preemption_recovery=blocks, preemption_penalty=gamma,
++                 victim_rank=key if victim is None else victim)
++
++
++def problem(specs, b, c, s, n, free, h, pid="test"):
++    reqs = []
++    for spec in specs:
++        ub = (min(spec["prompt_tokens_remaining"], c)
++              if spec["prefill_eligible"] else 0)
++        reqs.append(lrs.RequestInput(prefill_upper_bound=ub, **spec))
+     return lrs.LPProblem(
+-        requests=tuple(requests), legal_preemption_ids=frozenset(legal),
+-        b_max=b, c_max=c, s_max=s, m_free=m_free, w=w,
+-        problem_id=problem_id, decode_memory_policy_id=POLICY_ID,
++        requests=tuple(reqs),
++        legal_preemption_ids=frozenset(
++            r.request_id for r in reqs if r.preemption_eligible),
++        b_max=b, c_max=c, s_max=s, resident_limit=n,
++        resident_count=sum(1 for r in reqs if r.resident),
++        m_free=free, admission_watermark=h, problem_id=pid,
+         numerical_policy=lrs.NumericalPolicy(),
+     )
+ 
+ 
+-def decision(plan, request_id):
+-    return next(d for d in plan.decisions if d.request_id == request_id)
++def runtime_pool_consistent(prob):
++    """Test-side label check: pool T = free + all resident blocks (every
++    resident preemptible, so its recovery is its block count), default
++    watermark h = floor(0.01 T), and A_i + h <= T for each waiting prefill.
++    This is only the pool/watermark part of initial admission validation."""
++    if any(r.resident and not r.preemption_eligible for r in prob.requests):
++        return False
++    total = prob.m_free + sum(
++        r.preemption_recovery for r in prob.requests if r.resident)
++    return (
++        prob.admission_watermark == total // 100
++        and all(r.prefill_fixed_charge + prob.admission_watermark <= total
++                for r in prob.requests if not r.resident)
++        and prob.resident_count <= prob.resident_limit
++    )
++
++
++def canon(testcase, prob):
++    canonical = lrs.validate_problem(prob)
++    testcase.assertIsInstance(canonical, lrs.LPProblem, canonical)
++    return canonical
++
++
++def vector(canonical, values):
++    """Layout [x.., y.., I.., z..] in canonical order from {id: {x,y,I,z}}."""
++    n = len(canonical.requests)
++    v = [0.0] * (4 * n)
++    for i, r in enumerate(canonical.requests):
++        d = values.get(r.request_id, {})
++        v[i], v[n + i] = d.get("x", 0.0), d.get("y", 0.0)
++        v[2 * n + i], v[3 * n + i] = d.get("I", 0.0), d.get("z", 0.0)
++    return tuple(v)
++
++
++def actions(plan):
++    out = {}
++    for d in plan.decisions:
++        if d.prefill_tokens:
++            out[d.request_id] = f"prefill:{d.prefill_tokens}"
++        elif d.decode:
++            out[d.request_id] = "decode"
++        elif d.preempt:
++            out[d.request_id] = "preempt"
++    return out
++
++
++# ---------------------------------------------------------------------------
++# Independent oracle (test code only; does not call production validators)
++# ---------------------------------------------------------------------------
++
++
++def oracle_options(r):
++    opts = [None]
++    if r.decode_eligible:
++        opts.append(("decode",))
++    if r.prefill_eligible:
++        opts += [("prefill", c) for c in range(1, r.prefill_upper_bound + 1)]
++    if r.preemption_eligible:
++        opts.append(("preempt",))
++    return opts
++
++
++def oracle_simulate(prob, choice):
++    """Simulate the native allocation checks in the declared execution
++    order: free all victims; admit each waiting prefill requiring
++    free - A >= h; resident prefills allocate nothing; each zero-demand decode
++    requires one free block; each one-block decode requires one free block
++    and then consumes it. Returns (legal, useful, utility)."""
++    reqs = prob.requests
++    tokens = acts = 0
++    residents = prob.resident_count
++    free = prob.m_free
++    util = []
++    for r, c in zip(reqs, choice):
++        if c is None:
++            continue
++        if c[0] == "preempt":
++            free += r.preemption_recovery
++            residents -= 1
++            util.append(-r.preemption_penalty)
++        elif c[0] == "decode":
++            tokens += 1
++            acts += 1
++            util.append(r.decode_utility)
++        else:
++            tokens += c[1]
++            acts += 1
++            util.append(r.prefill_token_utility * c[1])
++    legal = (tokens <= prob.b_max and acts <= prob.s_max)
++    for r, c in zip(reqs, choice):
++        if c is not None and c[0] == "prefill" and not r.resident:
++            free -= r.prefill_fixed_charge
++            residents += 1
++            legal = legal and free >= prob.admission_watermark
++    legal = legal and residents <= prob.resident_limit
++    for demand in (0, 1):
++        for r, c in zip(reqs, choice):
++            if c is not None and c[0] == "decode" and r.decode_demand == demand:
++                legal = legal and free >= 1
++                free -= demand
++    return legal, acts >= 1, math.fsum(util)
++
++
++def oracle_enumerate(prob, limit=50000):
++    """All complete integer plans of a small canonical problem."""
++    option_lists = [oracle_options(r) for r in prob.requests]
++    size = math.prod(len(o) for o in option_lists)
++    assert size <= limit, f"enumeration size {size} exceeds bound {limit}"
++    return itertools.product(*option_lists)
++
++
++def oracle_best(prob):
++    """(useful legal plan exists, best utility among them)."""
++    best = None
++    for choice in oracle_enumerate(prob):
++        legal, useful, util = oracle_simulate(prob, choice)
++        if legal and useful and (best is None or util > best):
++            best = util
++    return best is not None, best
++
++
++def plan_choice(plan):
++    out = []
++    for d in plan.decisions:
++        if d.prefill_tokens:
++            out.append(("prefill", d.prefill_tokens))
++        elif d.decode:
++            out.append(("decode",))
++        elif d.preempt:
++            out.append(("preempt",))
++        else:
++            out.append(None)
++    return tuple(out)
++
++
++def choice_vector(prob, choice):
++    n = len(prob.requests)
++    v = [0.0] * (4 * n)
++    for i, c in enumerate(choice):
++        if c is None:
++            continue
++        if c[0] == "decode":
++            v[n + i] = 1.0
++        elif c[0] == "prefill":
++            v[i], v[2 * n + i] = float(c[1]), 1.0
++        else:
++            v[3 * n + i] = 1.0
++    return v
++
++
++# ---------------------------------------------------------------------------
++# Named fixtures from the manuscript and discussion
++# ---------------------------------------------------------------------------
++
++
++def abstract_lp_feasible_integer_infeasible():
++    # ABSTRACT: F=3, h=2, two waiting requests needing two blocks each.
++    return problem(
++        [waiting("w1", 1, 1, 2, beta=1.0), waiting("w2", 2, 1, 2, beta=1.0)],
++        b=2, c=1, s=2, n=2, free=3, h=2,
++    )
++
++
++def nine_waiting_watermark(n_waiting=9):
++    # RUNTIME: background resident with 98 blocks, pool 100, h = 1.
++    specs = [decoder("b", 100, 0, 98, alpha=0.0, gamma=100.0, victim=0)]
++    specs += [waiting(f"w{j}", j, 1, 1, beta=1.0) for j in range(1, n_waiting + 1)]
++    return problem(specs, b=2, c=1, s=2, n=n_waiting + 1, free=2, h=1)
++
++
++def avoidable_negative_first():
++    # RUNTIME: pool 12 (A 10, B 1, C 1, free 0), h = 0.
++    return problem(
++        [
++            decoder("A", 1, 0, 10, alpha=0.0, gamma=8.0, service=2, victim=0),
++            decoder("B", 2, 0, 1, alpha=5.0, gamma=100.0, service=0, victim=1),
++            resident_prefill("C", 3, 1, 1, beta=0.0, gamma=100.0, service=1,
++                             victim=2),
++        ],
++        b=1, c=1, s=2, n=3, free=0, h=0,
++    )
++
++
++def mass_preemption(positive):
++    # RUNTIME: pool 111 (A 10, B 1, 100 others 1), free 0, h = 1.
++    small_alpha, small_gamma = (0.001, 0.1) if positive else (0.0, 0.0)
++    specs = [
++        decoder("A", 1, 0, 10, alpha=small_alpha,
++                gamma=1.0 if positive else 0.0, service=1, victim=1),
++        decoder("B", 2, 0, 1, alpha=100.0, gamma=small_gamma, service=2,
++                victim=2),
++        waiting("W", 3, 1, 109, beta=10.5 if positive else 0.0, service=3),
++    ]
++    specs += [
++        decoder(f"R{j:03d}", 10 + j, 0, 1, alpha=small_alpha,
++                gamma=small_gamma)
++        for j in range(100)
++    ]
++    return problem(specs, b=2, c=1, s=2, n=102, free=0, h=1)
++
++
++MASS_POINT = {"B": {"y": 1.0}, "A": {"z": 0.05}}
++
++
++# ---------------------------------------------------------------------------
++# Tests
++# ---------------------------------------------------------------------------
+ 
+ 
+ class LPRelaxationSchedulerTest(unittest.TestCase):
++
++    def extract(self, prob, values):
++        """Validate the supplied relaxed point, extract, validate the plan."""
++        canonical = canon(self, prob)
++        relaxed = lrs.validate_relaxed_solution(
++            canonical, vector(canonical, values))
++        self.assertIsInstance(relaxed, lrs.RelaxedSolution, relaxed)
++        plan = lrs.extract_integer_plan(canonical, relaxed)
++        if isinstance(plan, lrs.IntegerPlan):
++            self.assertIs(lrs.validate_integer_plan(canonical, plan), plan)
++            legal, useful, util = oracle_simulate(canonical, plan_choice(plan))
++            self.assertTrue(legal and useful)
++            self.assertAlmostEqual(util, plan.objective, places=9)
++        return canonical, relaxed, plan
++
++    # -- smoke and interface ------------------------------------------------
++
+     def test_main_smoke(self):
+         out = io.StringIO()
+         with contextlib.redirect_stdout(out):
+@@ -55,120 +363,1006 @@ class LPRelaxationSchedulerTest(unittest.TestCase):
+         self.assertIsInstance(result, lrs.SchedulingSuccess)
+         self.assertEqual(result.solver.diagnostics.raw_status, 0)
+         self.assertEqual(result.solver.diagnostics.method, "highs-ds")
+-        self.assertEqual(decision(result.plan, "smoke-prefill").prefill_tokens, 2)
+-        self.assertEqual(decision(result.plan, "smoke-decode").decode, 1)
++        self.assertEqual(
++            actions(result.plan),
++            {"smoke-prefill": "prefill:2", "smoke-decode": "decode"})
++        self.assertEqual(result.plan.free_blocks_before_decodes, 1)
+ 
+-    def test_mixed_case_and_tied_extraction(self):
+-        victims = dict(rem=0, ub=0, flags="F/T/T", charges=(0, 0, 2),
+-                       utilities=(0, 0, 0.5))
+-        prob = problem(
+-            [
+-                req("admit", (0, 10), 2, 2, "T/F/F", (2, 0, 0), (0, 4, 0)),
+-                req("decode", (0, 20), 0, 0, "F/T/F", (0, 0, 0), (3, 0, 0)),
+-                req("victim-a", (0, 30), **victims),
+-                req("victim-b", (0, 40), **victims),
+-            ],
+-            b=4, c=2, s=3, m_free=0, w=0, legal={"victim-a", "victim-b"},
+-        )
+-        result = lrs.solve_and_extract(prob)
+-        self.assertIsInstance(result, lrs.SchedulingSuccess)
+-        plan = result.plan
+-        self.assertIs(lrs.validate_integer_plan(
+-            lrs.validate_problem(prob), plan), plan)
+-        self.assertAlmostEqual(result.relaxed.normalized_objective, 10.5)
+-        self.assertGreater(decision(plan, "admit").prefill_tokens, 0)
+-        self.assertEqual(decision(plan, "decode").decode, 1)
+-        self.assertTrue(
+-            any(d.preempt for d in plan.decisions if d.request_id.startswith("victim"))
++    def test_obsolete_fields_removed_without_compatibility(self):
++        problem_fields = {f.name for f in dataclasses.fields(lrs.LPProblem)}
++        request_fields = {f.name for f in dataclasses.fields(lrs.RequestInput)}
++        plan_fields = {f.name for f in dataclasses.fields(lrs.IntegerPlan)}
++        self.assertFalse({"w", "decode_memory_policy_id"} & problem_fields)
++        self.assertNotIn("decode_charge", request_fields)
++        self.assertFalse({
++            "residual_token_capacity", "residual_action_capacity",
++            "residual_memory_capacity", "dominant_preemption_ids",
++            "safety_preemption_ids", "fractional_request_count",
++        } & plan_fields)
++        spec = waiting("a", 1, 1, 0)
++        spec["decode_charge"] = spec.pop("decode_demand")
++        with self.assertRaises(TypeError):
++            lrs.RequestInput(prefill_upper_bound=1, **spec)
++        prob = lrs._smoke_problem()
++        with self.assertRaises(TypeError):
++            lrs.LPProblem(**{f.name: getattr(prob, f.name)
++                             for f in dataclasses.fields(prob)}, w=0)
++
++    def test_input_validation(self):
++        base = problem(
++            [decoder("d", 1, 1, 2, alpha=1.0), waiting("w", 2, 3, 1, beta=1.0),
++             resident_prefill("p", 3, 2, 1)],
++            b=4, c=2, s=2, n=3, free=1, h=0,
+         )
+-        self.assertEqual(
+-            [d.request_id for d in plan.decisions],
+-            ["admit", "decode", "victim-a", "victim-b"],
++        self.assertIsInstance(lrs.validate_problem(base), lrs.LPProblem)
++
++        def with_req(rid, **kw):
++            reqs = tuple(dataclasses.replace(r, **kw)
++                         if r.request_id == rid else r for r in base.requests)
++            return dataclasses.replace(base, requests=reqs)
++
++        cases = [
++            ("b_max zero", dataclasses.replace(base, b_max=0)),
++            ("s_max zero", dataclasses.replace(base, s_max=0)),
++            ("c_max zero", dataclasses.replace(base, c_max=0)),
++            ("resident limit zero", dataclasses.replace(base, resident_limit=0)),
++            ("negative free", dataclasses.replace(base, m_free=-1)),
++            ("negative watermark",
++             dataclasses.replace(base, admission_watermark=-1)),
++            ("bool capacity", dataclasses.replace(base, b_max=True)),
++            ("float free", dataclasses.replace(base, m_free=1.0)),
++            ("resident count mismatch",
++             dataclasses.replace(base, resident_count=1)),
++            ("resident count over limit", dataclasses.replace(
++                base, resident_limit=1, resident_count=2,
++                requests=base.requests[:2])),
++            ("resident prefill charge", with_req("p", prefill_fixed_charge=1)),
++            ("decode demand two", with_req("d", decode_demand=2)),
++            ("waiting decode", with_req("w", decode_eligible=True)),
++            ("waiting preemptible", with_req("w", preemption_eligible=True)),
++            ("waiting recovery", with_req("w", preemption_recovery=1)),
++            ("negative beta", with_req("w", prefill_token_utility=-1.0)),
++            ("negative gamma", with_req("d", preemption_penalty=-0.5)),
++            ("nan alpha", with_req("d", decode_utility=float("nan"))),
++            ("inf beta", with_req("w", prefill_token_utility=float("inf"))),
++            ("huge int beta", with_req("w", prefill_token_utility=10 ** 400)),
++            ("huge int charge", with_req("w", prefill_fixed_charge=10 ** 400)),
++            ("missing service rank", with_req("w", service_rank=None)),
++            ("nan service rank", with_req("d", service_rank=float("nan"))),
++            ("missing victim rank", with_req("d", victim_rank=None)),
++            ("inf victim rank", with_req("p", victim_rank=float("inf"))),
++            ("string rank", with_req("d", service_rank="0")),
++            ("legal set mismatch", dataclasses.replace(
++                base, legal_preemption_ids=frozenset({"d"}))),
++            ("bad upper bound", with_req("w", prefill_upper_bound=3)),
++            ("decode with prompt", with_req("d", prompt_tokens_remaining=1)),
++            ("non-bool membership", with_req("d", resident=1)),
++            ("duplicate order key", with_req("w", order_key=(1,))),
++            ("empty", dataclasses.replace(base, requests=())),
++        ]
++        for name, bad in cases:
++            with self.subTest(name):
++                result = lrs.validate_problem(bad)
++                self.assertIsInstance(result, lrs.Failure)
++                self.assertEqual(result.stage, lrs.STAGE_INPUT)
++                self.assertEqual(result.outcome, lrs.OUTCOME_INVALID)
++                solved = lrs.solve_and_extract(bad)
++                self.assertIsInstance(solved, lrs.Failure)
++                self.assertIsNone(solved.solver)
++
++    # -- LP rows and relaxed validation -------------------------------------
++
++    def row_fixture(self, **over):
++        # ABSTRACT fixture used for individual-row checks.
++        params = dict(b=4, c=2, s=3, n=4, free=2, h=1)
++        params.update(over)
++        return problem(
++            [decoder("d0", 1, 1, 2, alpha=1.0), decoder("d1", 2, 0, 1),
++             resident_prefill("p0", 3, 3, 1),
++             waiting("w0", 4, 2, 2, beta=1.0), waiting("w1", 5, 2, 1)],
++            **params,
+         )
+ 
+-        # Tied relaxed point: layout is [x.., y.., I.., z..] in order_key order.
+-        canonical = lrs.validate_problem(prob)
+-        tied = (2, 0, 0, 0, 0, 1, 0.5, 0.5, 1, 0, 0, 0, 0, 0, 0.5, 0.5)
+-        relaxed = lrs.validate_relaxed_solution(canonical, tied)
+-        self.assertIsInstance(relaxed, lrs.RelaxedSolution)
+-        self.assertEqual(relaxed.projection_count, 0)
+-        extracted = lrs.extract_integer_plan(canonical, relaxed)
+-        self.assertIsInstance(extracted, lrs.IntegerPlan)
+-        self.assertEqual(extracted.fractional_request_count, 2)
+-        self.assertEqual(extracted.dominant_preemption_ids, ())
+-        self.assertEqual(extracted.safety_preemption_ids, ("victim-a",))
+-        self.assertEqual(decision(extracted, "victim-a").preempt, 1)
+-        self.assertEqual(decision(extracted, "victim-b").preempt, 0)
+-        self.assertEqual(decision(extracted, "victim-b").decode, 1)
+-        self.assertIs(lrs.validate_integer_plan(canonical, extracted), extracted)
+-
+-    def test_fractional_prefill(self):
++    def test_lp_matrix_matches_independent_residuals(self):
++        rng = random.Random(7)
++        for h in (0, 1):
++            prob = canon(self, self.row_fixture(h=h))
++            c, a_ub, b_ub, bounds, labels = lrs._build_lp(prob)
++            watermark = [lb for lb in labels if lb.startswith("admission")]
++            self.assertEqual(
++                watermark,
++                [] if h == 0 else ["admission_watermark[w0]",
++                                   "admission_watermark[w1]"])
++            self.assertEqual(len(labels), len(set(labels)))
++            for _ in range(20):
++                v = [rng.uniform(-0.5, 2.0) for _ in range(c.size)]
++                n = len(prob.requests)
++                res = lrs._residuals(prob, *lrs._split(v, n))
++                self.assertEqual(sorted(res), sorted(labels))
++                matrix = a_ub @ np.array(v) - b_ub
++                for label, value in zip(labels, matrix):
++                    self.assertAlmostEqual(value, res[label], places=9,
++                                           msg=label)
++
++        # Hand-computed residuals for one point (h = 1).
++        prob = canon(self, self.row_fixture())
++        point = {"d0": {"y": 0.5}, "d1": {"y": 1.0, "z": 0.0},
++                 "p0": {"x": 1.0, "I": 0.5, "z": 0.25},
++                 "w0": {"x": 1.0, "I": 0.5}, "w1": {"z": 0.0}}
++        v = vector(prob, point)
++        res = lrs._residuals(prob, *lrs._split(v, len(prob.requests)))
++        h_value = 2 + 1 * 0.25 - 2 * 0.5
++        expected = {
++            "token_volume": 1.0 + 1.0 + 0.5 + 1.0 - 4,
++            "action_width": 0.5 + 1.0 + 0.5 + 0.5 - 3,
++            "actual_memory": 1 * 0.5 - h_value,
++            "decode_prerequisite": 1.5 - 3 * h_value,
++            "admission_watermark[w0]": 1 * 0.5 - h_value,
++            "admission_watermark[w1]": 0.0 - h_value,
++            "resident_capacity": 3 - 0.25 + 0.5 - 4,
++            "useful_execution": 1 - 2.5,
++            "prefill_linkage_lower[p0]": 0.5 - 1.0,
++            "prefill_linkage_upper[p0]": 1.0 - 2 * 0.5,
++            "mutual_exclusion[p0]": 0.5 + 0.25 - 1,
++            "prefill_linkage_upper[w0]": 1.0 - 2 * 0.5,
++        }
++        for label, value in expected.items():
++            self.assertAlmostEqual(res[label], value, places=12, msg=label)
++
++    def test_relaxed_validation_rejects_each_row(self):
++        default = canon(self, self.row_fixture())
++        ok = lrs.validate_relaxed_solution(
++            default, vector(default, {"d1": {"y": 1.0}}))
++        self.assertIsInstance(ok, lrs.RelaxedSolution)
++        cases = [
++            ("token_volume", dict(b=1),
++             {"d1": {"y": 1.0}, "p0": {"x": 0.5, "I": 0.25}}),
++            ("action_width", dict(s=1),
++             {"d1": {"y": 1.0}, "p0": {"x": 0.5, "I": 0.5}}),
++            ("actual_memory", dict(free=0),
++             {"d0": {"y": 1.0}, "p0": {"z": 0.5}}),
++            ("decode_prerequisite", dict(free=0),
++             {"d1": {"y": 1.0}, "p0": {"z": 0.2}}),
++            ("admission_watermark[w0]", {}, {"w0": {"x": 1.0, "I": 1.0}}),
++            ("resident_capacity", dict(n=3), {"w1": {"x": 1.0, "I": 1.0}}),
++            ("useful_execution", {}, {"d1": {"y": 0.5}}),
++            ("prefill_linkage_lower[p0]", {},
++             {"d1": {"y": 1.0}, "p0": {"x": 0.2, "I": 0.5}}),
++            ("prefill_linkage_upper[p0]", {},
++             {"d1": {"y": 1.0}, "p0": {"x": 1.5, "I": 0.5}}),
++            ("mutual_exclusion[d0]", {},
++             {"d1": {"y": 1.0}, "d0": {"y": 0.6, "z": 0.6}}),
++        ]
++        for label, over, point in cases:
++            with self.subTest(label):
++                prob = canon(self, self.row_fixture(**over))
++                n = len(prob.requests)
++                v = vector(prob, point)
++                res = lrs._residuals(prob, *lrs._split(v, n))
++                violated = [k for k, val in res.items() if val > EPS]
++                self.assertEqual(violated, [label])
++                result = lrs.validate_relaxed_solution(prob, v)
++                self.assertIsInstance(result, lrs.Failure)
++                self.assertEqual(result.category, "constraint_violation")
++                self.assertEqual(result.outcome, lrs.OUTCOME_NUMERICAL)
++                self.assertIn(f"raw {label} residual", result.reason)
++
++    def test_relaxed_bounds_projection_and_raw_versus_normalized(self):
++        prob = canon(self, self.row_fixture())
++        bad = lrs.validate_relaxed_solution(
++            prob, vector(prob, {"d1": {"y": 1.0}, "w0": {"y": 0.5}}))
++        self.assertEqual(bad.category, "bound_violation")
++        bad = lrs.validate_relaxed_solution(
++            prob, vector(prob, {"d1": {"y": 1.0}, "w0": {"z": 1e-6}}))
++        self.assertEqual(bad.category, "bound_violation")
++        ok = lrs.validate_relaxed_solution(
++            prob, vector(prob, {"d1": {"y": 1.0 + 5e-8}, "w0": {"z": 5e-8},
++                                "d0": {"y": 0.5}}))
++        self.assertIsInstance(ok, lrs.RelaxedSolution)
++        self.assertEqual(ok.projection_count, 2)
++        self.assertEqual(ok.decisions[1].y, 1.0)  # d1
++        self.assertEqual(ok.decisions[0].y, 0.5)  # interior value untouched
++
++        # ABSTRACT: raw residual exceeds tolerance, normalized does not.
++        prob = canon(self, problem(
++            [decoder("d", 1, 0, 0, preemptible=False),
++             resident_prefill("p", 2, 2, 0, preemptible=False)],
++            b=2, c=2, s=2, n=2, free=5, h=0))
++        raw_bad = lrs.validate_relaxed_solution(prob, vector(
++            prob, {"d": {"y": 1 + 0.9e-7}, "p": {"x": 1 + 0.5e-7, "I": 1.0}}))
++        self.assertIsInstance(raw_bad, lrs.Failure)
++        self.assertIn("raw token_volume", raw_bad.reason)
++
++        # ABSTRACT: raw residual within tolerance, normalized exceeds it.
++        prob = canon(self, problem(
++            [decoder("d", 1, 0, 0, preemptible=False)]
++            + [resident_prefill(p, k, 2, 0, preemptible=False)
++               for p, k in (("p1", 2), ("p2", 3), ("p3", 4))],
++            b=2, c=2, s=4, n=4, free=5, h=0))
++        point = {"d": {"y": 1.0}, "p1": {"x": -0.9e-7}, "p2": {"x": -0.9e-7},
++                 "p3": {"x": 1 + 2e-7, "I": 1.0}}
++        norm_bad = lrs.validate_relaxed_solution(prob, vector(prob, point))
++        self.assertIsInstance(norm_bad, lrs.Failure)
++        self.assertIn("normalized token_volume", norm_bad.reason)
++
++    def test_malformed_vectors(self):
++        prob = canon(self, self.row_fixture())
++        good = list(vector(prob, {"d1": {"y": 1.0}}))
++        for name, raw in (
++            ("short", good[:-1]), ("nan", good[:-1] + [float("nan")]),
++            ("inf", [float("inf")] + good[1:]), ("text", ["a"] * len(good)),
++            ("none", None),
++        ):
++            with self.subTest(name):
++                result = lrs.validate_relaxed_solution(prob, raw)
++                self.assertIsInstance(result, lrs.Failure)
++                self.assertEqual(result.category, "malformed_vector")
++                self.assertEqual(result.outcome, lrs.OUTCOME_NUMERICAL)
++
++    # -- watermark, resident capacity, and fixed charge ---------------------
++
++    def test_watermark_zero_positive_and_shared(self):
++        # ABSTRACT (pool 2 implies h = 0 at runtime; h = 1 is formulation-only).
++        # The two admissions are symmetric, so for h = 1 only the count of
++        # admissions is asserted, not which one (no optimizer tie outcome).
++        specs = [waiting("w1", 1, 1, 1, beta=1.0), waiting("w2", 2, 1, 1, beta=1.0)]
++        for h, admitted in ((0, 2), (1, 1)):
++            with self.subTest(h=h):
++                result = lrs.solve_and_extract(
++                    problem(specs, b=2, c=1, s=2, n=2, free=2, h=h))
++                self.assertIsInstance(result, lrs.SchedulingSuccess, result)
++                self.assertEqual(len(actions(result.plan)), admitted)
++                self.assertEqual(result.plan.free_blocks_before_decodes,
++                                 2 - admitted)
++                if h == 1:  # unique LP optimum I = 2/3 for both
++                    for d in result.relaxed.decisions:
++                        self.assertAlmostEqual(d.prefill_indicator, 2 / 3,
++                                               places=6)
++                    self.assertEqual(
++                        result.plan.extraction.failed_trial_count, 1)
++
++        # ABSTRACT: two admissions share one watermark: H = 5 - 4 = 1 >= h.
++        result = lrs.solve_and_extract(problem(
++            [waiting("w1", 1, 1, 2, beta=1.0), waiting("w2", 2, 1, 2, beta=1.0)],
++            b=2, c=1, s=2, n=2, free=5, h=1))
++        self.assertIsInstance(result, lrs.SchedulingSuccess, result)
++        self.assertEqual(actions(result.plan),
++                         {"w1": "prefill:1", "w2": "prefill:1"})
++        self.assertEqual(result.plan.free_blocks_before_decodes, 1)
++
++    def test_fixed_admission_charge_despite_short_chunk(self):
++        # ABSTRACT: chunk is 1 token (token budget), charge stays 3 blocks.
++        result = lrs.solve_and_extract(problem(
++            [waiting("w", 1, 4, 3, beta=1.0)], b=1, c=4, s=1, n=1, free=3,
++            h=0))
++        self.assertIsInstance(result, lrs.SchedulingSuccess, result)
++        self.assertEqual(actions(result.plan), {"w": "prefill:1"})
++        self.assertEqual(result.plan.free_blocks_before_decodes, 0)
++        short = lrs.solve_and_extract(problem(
++            [waiting("w", 1, 4, 3, beta=1.0)], b=1, c=4, s=1, n=1, free=2,
++            h=0))
++        self.assertIsInstance(short, lrs.Failure)
++        self.assertEqual(short.outcome, lrs.OUTCOME_LP_INFEASIBLE)
++
++    def test_omitted_resident_counts_and_zero_recovery_replacement(self):
++        # ABSTRACT: the omitted resident holds no blocks; preempting it only
++        # releases a resident place.
+         prob = problem(
+-            [
+-                req("decode", (0, 10), 0, 0, "F/T/F", (0, 2, 0), (4, 0, 0)),
+-                req("prefill", (0, 20), 3, 3, "T/F/F", (0, 0, 0), (0, 1, 0)),
+-            ],
+-            b=2, c=3, s=2, m_free=1, w=0,
+-        )
++            [decoder("r_exec", 1, 0, 0, alpha=1.0, preemptible=False,
++                     service=0),
++             decoder("r_omit", 2, 0, 0, alpha=0.0, gamma=0.5, service=2),
++             waiting("w", 3, 1, 1, beta=1.0, service=1)],
++            b=3, c=1, s=3, n=2, free=5, h=0)
++        _, _, plan = self.extract(prob, {
++            "r_exec": {"y": 1.0}, "w": {"x": 1.0, "I": 1.0},
++            "r_omit": {"z": 1.0}})
++        self.assertEqual(actions(plan), {
++            "r_exec": "decode", "w": "prefill:1", "r_omit": "preempt"})
++        self.assertEqual(plan.resident_count_after, 2)
++        self.assertEqual(plan.free_blocks_before_decodes, 4)
++
++        # Without the omitted resident's preemption the admission cannot fit.
++        prob_locked = problem(
++            [decoder("r_exec", 1, 0, 0, alpha=1.0, preemptible=False),
++             decoder("r_omit", 2, 0, 0, preemptible=False),
++             waiting("w", 3, 1, 1, beta=1.0)],
++            b=3, c=1, s=3, n=2, free=5, h=0)
++        exists_choice = (None, None, ("prefill", 1))
++        legal, _, _ = oracle_simulate(canon(self, prob_locked), exists_choice)
++        self.assertFalse(legal)
++
++    # -- decode demand and free blocks --------------------------------------
++
++    def test_zero_free_blocks_zero_demand_decode(self):
++        # ABSTRACT: a zero-demand decode still needs one free block.
++        alone = lrs.solve_and_extract(problem(
++            [decoder("d", 1, 0, 3, alpha=1.0)], b=1, c=1, s=1, n=1, free=0,
++            h=0))
++        self.assertIsInstance(alone, lrs.Failure)
++        self.assertEqual(alone.outcome, lrs.OUTCOME_LP_INFEASIBLE)
++        self.assertFalse(oracle_best(canon(self, problem(
++            [decoder("d", 1, 0, 3, alpha=1.0)], b=1, c=1, s=1, n=1, free=0,
++            h=0)))[0])
++        # RUNTIME (pool 4, h = 0): another resident can be preempted.
++        prob = problem(
++            [decoder("d", 1, 0, 3, alpha=5.0, gamma=1.0),
++             idle("v", 2, 1, gamma=1.0)],
++            b=1, c=1, s=1, n=2, free=0, h=0)
++        self.assertTrue(runtime_pool_consistent(prob))
+         result = lrs.solve_and_extract(prob)
+-        self.assertIsInstance(result, lrs.SchedulingSuccess)
+-        relaxed = {d.request_id: d for d in result.relaxed.decisions}
+-        self.assertAlmostEqual(relaxed["decode"].y, 0.5, places=6)
+-        self.assertAlmostEqual(relaxed["prefill"].x, 1.5, places=6)
+-        plan = result.plan
+-        self.assertTrue(any(d.prefill_tokens > 0 or d.decode for d in plan.decisions))
+-        self.assertGreaterEqual(plan.residual_token_capacity, 0)
+-        self.assertGreaterEqual(plan.residual_action_capacity, 0)
+-        self.assertGreaterEqual(plan.residual_memory_capacity, 0)
+-        self.assertIs(lrs.validate_integer_plan(
+-            lrs.validate_problem(prob), plan), plan)
+-
+-    def test_zero_zero_execution_tie_is_no_action(self):
+-        # A legal-preemption request with zero recovery is never preempted
+-        # (c^Z must be positive), so its y=I=0, z=0.5 relaxed point must
+-        # yield no execution action rather than a decode it is not eligible for.
++        self.assertIsInstance(result, lrs.SchedulingSuccess, result)
++        self.assertEqual(actions(result.plan), {"d": "decode", "v": "preempt"})
++
++    def test_one_free_block_demand_one_then_zero(self):
++        # ABSTRACT: A consumes the only block; B needs none and runs first.
++        result = lrs.solve_and_extract(problem(
++            [decoder("A", 1, 1, 0, alpha=1.0, preemptible=False, service=0),
++             decoder("B", 2, 0, 0, alpha=1.0, preemptible=False, service=1)],
++            b=2, c=1, s=2, n=2, free=1, h=0))
++        self.assertIsInstance(result, lrs.SchedulingSuccess, result)
++        self.assertEqual(actions(result.plan), {"A": "decode", "B": "decode"})
++        self.assertEqual(result.plan.execution_order, ("B", "A"))
++        self.assertEqual(result.plan.decode_demand, 1)
++        self.assertEqual(result.plan.free_blocks_before_decodes, 1)
++
++    def test_free_blocks_versus_one_block_decodes(self):
++        specs = [decoder("O1", 1, 1, 0, alpha=1.0, preemptible=False),
++                 decoder("O2", 2, 1, 0, alpha=1.0, preemptible=False)]
++        # ABSTRACT, F = 1: only one of two one-block decodes fits.
++        _, _, plan = self.extract(
++            problem(specs, b=2, c=1, s=2, n=2, free=1, h=0),
++            {"O1": {"y": 0.5}, "O2": {"y": 0.5}})
++        self.assertEqual(actions(plan), {"O1": "decode"})
++        self.assertEqual(plan.extraction.failed_trial_count, 1)
++        # ABSTRACT, F = 2: both fit (unique LP optimum).
++        result = lrs.solve_and_extract(
++            problem(specs, b=2, c=1, s=2, n=2, free=2, h=0))
++        self.assertIsInstance(result, lrs.SchedulingSuccess, result)
++        self.assertEqual(actions(result.plan), {"O1": "decode", "O2": "decode"})
++
++    def test_mixed_decode_demand_groups(self):
++        # ABSTRACT: F = 1, two zero-demand and two one-block decodes.
+         prob = problem(
+-            [
+-                req("locked", (0, 10), 1, 1, "T/F/F", (2, 0, 0), (0, 1, 0)),
+-                req("cand", (0, 20), 1, 1, "T/F/T", (1, 0, 0), (0, 0, 0)),
+-            ],
+-            b=2, c=1, s=2, m_free=2, w=0, legal={"cand"},
+-        )
+-        canonical = lrs.validate_problem(prob)
+-        self.assertIsInstance(canonical, lrs.LPProblem)
+-        # Layout is [x.., y.., I.., z..] in order_key order.
+-        point = (1, 0, 0, 0, 1, 0, 0, 0.5)
+-        relaxed = lrs.validate_relaxed_solution(canonical, point)
+-        self.assertIsInstance(relaxed, lrs.RelaxedSolution)
+-        plan = lrs.extract_integer_plan(canonical, relaxed)
+-        self.assertIsInstance(plan, lrs.IntegerPlan)
+-        self.assertEqual(plan.fractional_request_count, 1)
+-        self.assertEqual(plan.dominant_preemption_ids, ())
+-        self.assertEqual(plan.safety_preemption_ids, ())
+-        self.assertEqual(decision(plan, "locked").prefill_tokens, 1)
+-        other = decision(plan, "cand")
+-        self.assertEqual(
+-            (other.prefill_tokens, other.decode, other.preempt,
+-             other.prefill_indicator),
+-            (0, 0, 0, 0),
+-        )
+-        self.assertIs(lrs.validate_integer_plan(canonical, plan), plan)
++            [decoder("O1", 1, 1, 0, alpha=1.0, preemptible=False, service=0),
++             decoder("Z1", 2, 0, 0, alpha=1.0, preemptible=False, service=1),
++             decoder("Z2", 3, 0, 0, alpha=1.0, preemptible=False, service=2),
++             decoder("O2", 4, 1, 0, alpha=1.0, preemptible=False, service=3)],
++            b=4, c=1, s=4, n=4, free=1, h=0)
++        _, _, plan = self.extract(prob, {
++            "O1": {"y": 0.5}, "O2": {"y": 0.5}, "Z1": {"y": 1.0},
++            "Z2": {"y": 1.0}})
++        self.assertEqual(set(actions(plan)), {"Z1", "Z2", "O1"})
++        self.assertEqual(plan.execution_order, ("Z1", "Z2", "O1"))
++        self.assertEqual(plan.extraction.candidate_order,
++                         ("Z1", "Z2", "O1", "O2"))
++
++    # -- fractional structure and integral-idle victims ---------------------
++
++    def test_nine_waiting_watermark_construction(self):
++        prob = nine_waiting_watermark()
++        self.assertTrue(runtime_pool_consistent(prob), RUNTIME)
++        canonical, relaxed, plan = self.extract(
++            prob, {f"w{j}": {"x": 0.2, "I": 0.2} for j in range(1, 10)})
++        self.assertAlmostEqual(relaxed.normalized_objective, 1.8)
++        self.assertEqual(plan.extraction.fractional_request_count, 9)
++        self.assertEqual(actions(plan), {"w1": "prefill:1", "b": "decode"})
++        self.assertEqual(plan.extraction.declined_optional_trial_count, 8)
++        self.assertEqual(oracle_best(canonical), (True, 1.0))
++
++        # Executed observation: the solver's I values equal 2/(n+1), the
++        # unique optimal I (y_b is not unique, so it is not asserted).
++        for n_waiting in (2, 5, 9):
++            with self.subTest(n=n_waiting):
++                result = lrs.solve_and_extract(nine_waiting_watermark(n_waiting))
++                self.assertIsInstance(result, lrs.SchedulingSuccess, result)
++                self.assertAlmostEqual(result.relaxed.normalized_objective,
++                                       2 * n_waiting / (n_waiting + 1),
++                                       places=6)
++                for d in result.relaxed.decisions:
++                    if d.request_id != "b":
++                        self.assertAlmostEqual(d.prefill_indicator,
++                                               2 / (n_waiting + 1), places=6)
++                        self.assertAlmostEqual(d.x, d.prefill_indicator,
++                                               places=6)
++                acts = actions(result.plan)
++                self.assertEqual(acts.pop("b"), "decode")
++                self.assertEqual(list(acts.values()), ["prefill:1"])
+ 
+-    def test_visible_infeasibility(self):
++    def test_integral_idle_victim_and_zero_support_candidate(self):
++        # RUNTIME: pool 200, h = 2; the background resident is integral idle.
+         prob = problem(
+-            [req("only", (0, 10), 1, 1, "T/F/F", (1, 0, 0), (0, 1, 0))],
+-            b=1, c=1, s=1, m_free=0, w=1,
+-        )
+-        self.assertIsInstance(lrs.validate_problem(prob), lrs.LPProblem)
++            [waiting("w1", 1, 1, 2, beta=1.0), waiting("w2", 2, 1, 2, beta=1.0),
++             idle("bg", 3, 197, gamma=1000.0)],
++            b=2, c=1, s=2, n=3, free=3, h=2)
++        self.assertTrue(runtime_pool_consistent(prob))
++        canonical, relaxed, plan = self.extract(prob, {
++            "w1": {"x": 0.5, "I": 0.5}, "w2": {"x": 0.5, "I": 0.5}})
++        solved = lrs.solve_relaxation(canonical)
++        self.assertAlmostEqual(-solved.recomputed_objective_min,
++                               relaxed.normalized_objective, places=7)
++        self.assertEqual(actions(plan), {
++            "w1": "prefill:1", "w2": "prefill:1", "bg": "preempt"})
++        self.assertEqual(plan.objective, 2.0 - 1000.0)
++        self.assertEqual(oracle_best(canonical), (True, -998.0))
++
++    # -- negative utility -----------------------------------------------------
++
++    def test_necessary_negative_utility_first_work(self):
++        # ABSTRACT (B holds no blocks). The only useful plan preempts A.
++        prob = problem(
++            [idle("A", 1, 1, gamma=5.0), decoder("B", 2, 0, 0, alpha=1.0,
++                                                 preemptible=False)],
++            b=1, c=1, s=1, n=2, free=0, h=0)
++        result = lrs.solve_and_extract(prob)
++        self.assertIsInstance(result, lrs.SchedulingSuccess, result)
++        self.assertEqual(actions(result.plan), {"A": "preempt", "B": "decode"})
++        self.assertEqual(result.plan.objective, -4.0)
++        self.assertEqual(oracle_best(canon(self, prob)), (True, -4.0))
++
++    def test_avoidable_negative_first_selection(self):
++        prob = avoidable_negative_first()
++        self.assertTrue(runtime_pool_consistent(prob), RUNTIME)
++        point = {"B": {"y": 1.0}, "A": {"z": 0.05}}
++        canonical, relaxed, plan = self.extract(prob, point)
++        # The supplied point attains the LP optimum (analytically unique).
++        solved = lrs.solve_relaxation(canonical)
++        self.assertEqual(solved.category, lrs.CATEGORY_OPTIMAL)
++        self.assertAlmostEqual(-solved.recomputed_objective_min, 4.6, places=7)
++        self.assertAlmostEqual(relaxed.normalized_objective, 4.6, places=12)
++        self.assertEqual(actions(plan), {"B": "decode", "A": "preempt"})
++        self.assertEqual(plan.objective, -3.0)
++        # C alone is legal with utility 0, the integer optimum.
++        c_alone = tuple(("prefill", 1) if r.request_id == "C" else None
++                        for r in canonical.requests)
++        self.assertEqual(oracle_simulate(canonical, c_alone), (True, True, 0.0))
++        self.assertEqual(oracle_best(canonical), (True, 0.0))
++        # End to end, the unique LP optimum gives the same accepted limitation.
+         result = lrs.solve_and_extract(prob)
++        self.assertIsInstance(result, lrs.SchedulingSuccess, result)
++        self.assertEqual(result.plan.objective, -3.0)
++
++    # -- no legal useful plan --------------------------------------------------
++
++    def test_lp_feasible_integer_infeasible_abstract_fixture(self):
++        prob = abstract_lp_feasible_integer_infeasible()
++        self.assertFalse(runtime_pool_consistent(prob), ABSTRACT)
++        canonical = canon(self, prob)
++        relaxed = lrs.validate_relaxed_solution(canonical, vector(
++            canonical, {"w1": {"x": 0.5, "I": 0.5}, "w2": {"x": 0.5, "I": 0.5}}))
++        self.assertIsInstance(relaxed, lrs.RelaxedSolution)
++        failure = lrs.extract_integer_plan(canonical, relaxed)
++        self.assertIsInstance(failure, lrs.Failure)
++        self.assertEqual(failure.outcome, lrs.OUTCOME_NO_USEFUL_WORK)
++        self.assertEqual(failure.extraction.candidate_order, ("w1", "w2"))
++        self.assertEqual(failure.extraction.failed_trial_count, 2)
++        self.assertFalse(oracle_best(canonical)[0])
++
++        result = lrs.solve_and_extract(prob)
++        self.assertIsInstance(result, lrs.Failure)
++        self.assertEqual(result.stage, lrs.STAGE_EXTRACTION)
++        self.assertEqual(result.outcome, lrs.OUTCOME_NO_USEFUL_WORK)
++        self.assertEqual(result.solver.diagnostics.raw_status, 0)
++        self.assertFalse(hasattr(result, "plan"))
++
++    # -- construction mechanics ------------------------------------------------
++
++    def test_self_victim_exclusion(self):
++        # ABSTRACT: d is first in victim order but cannot be its own victim.
++        prob = problem(
++            [decoder("d", 1, 1, 2, alpha=1.0, service=0, victim=0),
++             decoder("e", 2, 0, 0, alpha=1.0, preemptible=False, service=1),
++             idle("v", 3, 1, victim=1)],
++            b=2, c=1, s=2, n=3, free=0, h=0)
++        _, _, plan = self.extract(prob, {
++            "d": {"y": 0.5, "z": 0.5}, "e": {"y": 0.5}})
++        self.assertEqual(plan.extraction.victim_candidate_order,
++                         ("d", "v"))
++        self.assertEqual(actions(plan), {
++            "d": "decode", "e": "decode", "v": "preempt"})
++
++    def test_failed_trial_cleanup_and_preservation(self):
++        # ABSTRACT: W fails even with every victim; its tentative victims are
++        # discarded and are later decoded.
++        prob = problem(
++            [decoder("d1", 1, 0, 0, alpha=1.0, preemptible=False, service=0),
++             waiting("W", 2, 1, 100, beta=5.0, service=1),
++             decoder("r1", 3, 0, 1, service=2),
++             decoder("r2", 4, 0, 1, service=3)],
++            b=3, c=1, s=3, n=4, free=1, h=0)
++        _, _, plan = self.extract(prob, {"d1": {"y": 1.0}})
++        self.assertEqual(actions(plan), {
++            "d1": "decode", "r1": "decode", "r2": "decode"})
++        self.assertEqual(plan.extraction.failed_trial_count, 1)
++        self.assertEqual(plan.extraction.accepted_order, ("d1", "r1", "r2"))
++
++    def test_zero_coefficient_mass_preemption_rejected(self):
++        prob = mass_preemption(positive=False)
++        self.assertTrue(runtime_pool_consistent(prob), RUNTIME)
++        canonical, relaxed, plan = self.extract(prob, MASS_POINT)
++        self.assertEqual(relaxed.normalized_objective, 100.0)
++        solved = lrs.solve_relaxation(canonical)
++        self.assertAlmostEqual(-solved.recomputed_objective_min, 100.0,
++                               places=7)
++        self.assertEqual(actions(plan), {
++            "B": "decode", "A": "preempt", "R000": "decode"})
++        self.assertEqual(plan.extraction.declined_optional_trial_count, 1)
++        self.assertEqual(plan.extraction.accepted_order, ("B", "R000"))
++        self.assertEqual(plan.victim_order, ("A",))
++
++    def test_positive_coefficient_mass_preemption_accepted_limitation(self):
++        prob = mass_preemption(positive=True)
++        self.assertTrue(runtime_pool_consistent(prob), RUNTIME)
++        canonical, relaxed, plan = self.extract(prob, MASS_POINT)
++        self.assertAlmostEqual(relaxed.normalized_objective, 99.95, places=12)
++        solved = lrs.solve_relaxation(canonical)
++        self.assertAlmostEqual(-solved.recomputed_objective_min, 99.95,
++                               places=7)
++        self.assertEqual(sum(d.preempt for d in plan.decisions), 101)
++        self.assertEqual(actions(plan)["W"], "prefill:1")
++        self.assertEqual(actions(plan)["B"], "decode")
++        self.assertAlmostEqual(plan.objective, 99.5, places=9)
++        self.assertEqual(plan.free_blocks_before_decodes, 1)
++        self.assertEqual(plan.resident_count_after, 2)
++        # A cheaper legal plan exists: decode B after one small victim.
++        cheap = tuple(
++            ("decode",) if r.request_id == "B" else
++            ("preempt",) if r.request_id == "R000" else None
++            for r in canonical.requests)
++        legal, useful, util = oracle_simulate(canonical, cheap)
++        self.assertTrue(legal and useful)
++        self.assertAlmostEqual(util, 99.9, places=9)
++
++    def test_chunk_floor_and_minimum_one(self):
++        # ABSTRACT: chunk = floor(1.7) = 1; the decode then uses the last token.
++        prob = problem(
++            [resident_prefill("p", 1, 3, 0, beta=1.0, preemptible=False),
++             decoder("d", 2, 0, 0, alpha=1.0, preemptible=False)],
++            b=2, c=3, s=2, n=2, free=1, h=0)
++        _, _, plan = self.extract(prob, {
++            "p": {"x": 1.7, "I": 1.0}, "d": {"y": 0.3}})
++        self.assertEqual(actions(plan), {"p": "prefill:1", "d": "decode"})
++        # Minimum one token for a small and for a zero-support prefill.
++        for x_value in (0.3, 0.0):
++            with self.subTest(x=x_value):
++                prob = problem(
++                    [decoder("d", 1, 0, 0, alpha=1.0, preemptible=False),
++                     resident_prefill("p", 2, 3, 0, beta=1.0,
++                                      preemptible=False)],
++                    b=2, c=3, s=2, n=2, free=1, h=0)
++                values = {"d": {"y": 1.0}}
++                if x_value:
++                    values["p"] = {"x": x_value, "I": x_value}
++                _, _, plan = self.extract(prob, values)
++                self.assertEqual(actions(plan), {"d": "decode",
++                                                 "p": "prefill:1"})
++
++    def test_extension_in_service_rank_order(self):
++        # ABSTRACT: p2 has the smaller service rank and is extended first.
++        prob = problem(
++            [resident_prefill("p1", 1, 3, 0, beta=1.0, preemptible=False,
++                              service=1),
++             resident_prefill("p2", 2, 3, 0, beta=1.0, preemptible=False,
++                              service=0)],
++            b=5, c=3, s=2, n=2, free=0, h=0)
++        _, _, plan = self.extract(prob, {
++            "p1": {"x": 1.0, "I": 1.0}, "p2": {"x": 1.0, "I": 1.0}})
++        self.assertEqual(actions(plan), {"p1": "prefill:2", "p2": "prefill:3"})
++        self.assertEqual(plan.extraction.accepted_order, ("p2", "p1"))
++        self.assertEqual(plan.token_use, 5)
++
++    def test_strict_improvement_threshold(self):
++        # ABSTRACT: after d1, d2 needs victim v (penalty 1.0).
++        def run(alpha2):
++            prob = problem(
++                [decoder("d1", 1, 1, 0, alpha=10.0, preemptible=False),
++                 decoder("d2", 2, 1, 0, alpha=alpha2, preemptible=False),
++                 decoder("d3", 3, 0, 0, alpha=0.0, preemptible=False),
++                 idle("v", 4, 1, gamma=1.0)],
++                b=3, c=1, s=3, n=4, free=1, h=0)
++            return self.extract(prob, {"d1": {"y": 1.0}})[2]
++
++        policy = lrs.NumericalPolicy()
++        for alpha2, accepted in ((1.0 + 3e-9, True), (1.0 + 1.5e-9, False),
++                                 (1.0, False)):
++            with self.subTest(alpha2=alpha2):
++                gain = alpha2 - 1.0
++                tau = policy.objective_abs_tol + policy.objective_rel_tol * max(
++                    alpha2, 1.0)
++                self.assertEqual(gain > tau, accepted)
++                self.assertGreaterEqual(gain, 0.0)
++                plan = run(alpha2)
++                acts = actions(plan)
++                if accepted:
++                    self.assertEqual(acts, {"d1": "decode", "d2": "decode",
++                                            "v": "preempt", "d3": "decode"})
++                else:
++                    # d2 declined; zero-gain d3 without new victims accepted.
++                    self.assertEqual(acts, {"d1": "decode", "d3": "decode"})
++                    self.assertEqual(
++                        plan.extraction.declined_optional_trial_count, 1)
++
++    def test_lp_values_primary_over_ranks_then_identity(self):
++        # ABSTRACT.
++        prob = problem(
++            [decoder("A", 1, 0, 0, preemptible=False, service=5),
++             decoder("B", 2, 0, 0, preemptible=False, service=0),
++             decoder("C", 3, 0, 0, preemptible=False, service=1),
++             decoder("D", 4, 0, 0, preemptible=False, service=1),
++             idle("V1", 5, 0, victim=9), idle("V2", 6, 0, victim=0),
++             idle("V3", 7, 0, victim=2), idle("V4", 8, 0, victim=2)],
++            b=4, c=1, s=4, n=8, free=1, h=0)
++        values = {"A": {"y": 0.5}, "B": {"y": 0.4}, "C": {"y": 0.5},
++                  "D": {"y": 0.5}, "V1": {"z": 0.3}, "V2": {"z": 0.2},
++                  "V3": {"z": 0.3}, "V4": {"z": 0.3}}
++        _, relaxed, plan = self.extract(prob, values)
++        self.assertEqual(plan.extraction.candidate_order, ("C", "D", "A", "B"))
++        self.assertEqual(plan.extraction.victim_candidate_order,
++                         ("V3", "V4", "V1", "V2"))
++        canonical = canon(self, prob)
++        again = lrs.extract_integer_plan(canonical, relaxed)
++        self.assertEqual(again, plan)
++
++    def test_exact_lp_comparison_precedes_rank(self):
++        # ABSTRACT. Observed solver output for the symmetric h = 1 watermark
++        # fixture differs by one unit in the last place. Exact comparison
++        # (no tolerance comparator) orders by that difference; ranks break
++        # only exactly equal values.
++        specs = [waiting("w1", 1, 1, 1, beta=1.0), waiting("w2", 2, 1, 1, beta=1.0)]
++        prob = problem(specs, b=2, c=1, s=2, n=2, free=2, h=1)
++        low, high = 0.6666666666666666, 0.6666666666666667
++        self.assertLess(low, high)
++        for values, first in (
++            ({"w1": {"x": low, "I": low}, "w2": {"x": high, "I": high}}, "w2"),
++            ({"w1": {"x": low, "I": low}, "w2": {"x": low, "I": low}}, "w1"),
++        ):
++            with self.subTest(first=first):
++                _, _, plan = self.extract(prob, values)
++                self.assertEqual(plan.extraction.candidate_order[0], first)
++                self.assertEqual(actions(plan), {first: "prefill:1"})
++
++    def test_declared_orders_and_totals(self):
++        # ABSTRACT: victims by victim rank; prefills, zero-demand decodes,
++        # then one-block decodes, each by service rank.
++        prob = problem(
++            [idle("v1", 1, 3, victim=5), idle("v2", 2, 1, victim=1),
++             decoder("z0", 3, 0, 0, alpha=1.0, preemptible=False, service=3),
++             decoder("o1", 4, 1, 0, alpha=1.0, preemptible=False, service=0),
++             resident_prefill("rp", 5, 3, 0, beta=1.0, preemptible=False,
++                              service=4),
++             waiting("w", 6, 2, 3, beta=1.0, service=2)],
++            b=10, c=10, s=10, n=10, free=0, h=0)
++        _, _, plan = self.extract(prob, {
++            "v1": {"z": 1.0}, "v2": {"z": 1.0}, "z0": {"y": 1.0},
++            "o1": {"y": 1.0}, "rp": {"x": 1.0, "I": 1.0},
++            "w": {"x": 1.0, "I": 1.0}})
++        self.assertEqual(plan.victim_order, ("v2", "v1"))
++        self.assertEqual(plan.execution_order, ("w", "rp", "z0", "o1"))
++        self.assertEqual(actions(plan), {
++            "v1": "preempt", "v2": "preempt", "z0": "decode", "o1": "decode",
++            "rp": "prefill:3", "w": "prefill:2"})
++        self.assertEqual(
++            (plan.token_use, plan.action_count, plan.resident_count_after,
++             plan.free_blocks_before_decodes, plan.decode_demand),
++            (7, 4, 4, 1, 1))
++        self.assertEqual([d.request_id for d in plan.decisions],
++                         ["v1", "v2", "z0", "o1", "rp", "w"])
++
++    # -- numerical failures -----------------------------------------------------
++
++    def test_nonfinite_aggregate_arithmetic(self):
++        # Overflow of 1e308 times a two-token chunk after extension.
++        prob = canon(self, problem(
++            [resident_prefill("p", 1, 2, 0, beta=1e308, preemptible=False)],
++            b=2, c=2, s=1, n=1, free=0, h=0))
++        relaxed = lrs.validate_relaxed_solution(
++            prob, vector(prob, {"p": {"x": 1.5, "I": 1.0}}))
++        self.assertIsInstance(relaxed, lrs.RelaxedSolution)
++        failure = lrs.extract_integer_plan(prob, relaxed)
++        self.assertEqual((failure.stage, failure.outcome, failure.category),
++                         (lrs.STAGE_EXTRACTION, lrs.OUTCOME_NUMERICAL,
++                          lrs.CATEGORY_NONFINITE))
++
++        # Overflowing penalty sum of two tentative victims.
++        prob = canon(self, problem(
++            [decoder("d1", 1, 1, 0, alpha=1.0, preemptible=False),
++             decoder("d2", 2, 1, 0, alpha=1.0, preemptible=False),
++             idle("v0", 3, 0, gamma=1e308), idle("v1", 4, 1, gamma=1e308)],
++            b=2, c=1, s=2, n=4, free=1, h=0))
++        relaxed = lrs.validate_relaxed_solution(
++            prob, vector(prob, {"d1": {"y": 1.0}}))
++        failure = lrs.extract_integer_plan(prob, relaxed)
++        self.assertEqual(failure.outcome, lrs.OUTCOME_NUMERICAL)
++        self.assertIn("trial penalty", failure.reason)
++
++        # Relaxed residual overflow is a numerical failure, not an exception.
++        big = 10 ** 308
++        prob = canon(self, problem(
++            [resident_prefill("p1", 1, big, 0, preemptible=False),
++             resident_prefill("p2", 2, big, 0, preemptible=False)],
++            b=big, c=big, s=2, n=2, free=0, h=0))
++        failure = lrs.validate_relaxed_solution(prob, vector(prob, {
++            "p1": {"x": 1.5e308, "I": 1.0}, "p2": {"x": 1.5e308, "I": 1.0}}))
++        self.assertEqual((failure.category, failure.outcome),
++                         (lrs.CATEGORY_NONFINITE, lrs.OUTCOME_NUMERICAL))
++
++        # LP construction overflow (S_max * charge): solver not called.
++        prob = problem([waiting("w", 1, 1, big, beta=1.0)], b=1, c=1, s=2,
++                       n=1, free=big, h=0)
++        with mock.patch.object(lrs, "linprog") as patched:
++            failure = lrs.solve_and_extract(prob)
++        patched.assert_not_called()
++        self.assertEqual((failure.stage, failure.outcome, failure.category),
++                         (lrs.STAGE_SOLVER, lrs.OUTCOME_NUMERICAL,
++                          lrs.CATEGORY_NONFINITE))
++
++        # Objective recomputation overflow in solver-result normalization.
++        fake = types.SimpleNamespace(status=0, success=True, x=np.array([2.0, 2.0]),
++                                     fun=-1.0, message="ok", nit=1)
++        result = lrs._normalize_scipy_result(
++            fake, np.array([-1e308, 1e308]), lrs.NumericalPolicy())
++        self.assertEqual(result.category, lrs.CATEGORY_NONFINITE)
++
++        # Large finite coefficients end to end return a structured result.
++        result = lrs.solve_and_extract(problem(
++            [resident_prefill("p", 1, 2, 0, beta=1e308, preemptible=False)],
++            b=2, c=2, s=1, n=1, free=0, h=0))
++        self.assertIsInstance(result, (lrs.Failure, lrs.SchedulingSuccess))
++        if isinstance(result, lrs.Failure):
++            self.assertNotEqual(result.outcome, lrs.OUTCOME_NO_USEFUL_WORK)
++
++    # -- solver outcomes and diagnostics ---------------------------------------
++
++    def test_solver_reported_infeasibility_real_status_2(self):
++        # ABSTRACT: an admission needs 3 blocks and only 2 are free.
++        result = lrs.solve_and_extract(problem(
++            [waiting("w", 1, 1, 3, beta=1.0)], b=1, c=1, s=1, n=1, free=2,
++            h=0))
+         self.assertIsInstance(result, lrs.Failure)
+-        self.assertNotIsInstance(result, lrs.SchedulingSuccess)
+-        self.assertEqual(result.stage, "solver")
+-        self.assertEqual(result.category, "infeasible")
++        self.assertEqual(result.stage, lrs.STAGE_SOLVER)
++        self.assertEqual(result.outcome, lrs.OUTCOME_LP_INFEASIBLE)
++        self.assertEqual(result.category, lrs.CATEGORY_LP_INFEASIBLE)
+         self.assertEqual(result.solver.diagnostics.raw_status, 2)
+-        self.assertIsNone(result.solver.raw_vector)
++        self.assertTrue(result.solver.diagnostics.message)
+         self.assertFalse(hasattr(result, "plan"))
+ 
++    def test_solver_outcome_distinctions_with_fake_results(self):
++        prob = self.row_fixture()
++        good = canon(self, prob)
++        expected_len = 4 * len(good.requests)
++
++        def fake(status, success=False, x=None, fun=None, message="m"):
++            return types.SimpleNamespace(status=status, success=success, x=x,
++                                         fun=fun, message=message, nit=3)
++
++        cases = [
++            (fake(1, message="limit"), "solver_limit", lrs.OUTCOME_NUMERICAL),
++            (fake(2, message="infeasible"), lrs.CATEGORY_LP_INFEASIBLE,
++             lrs.OUTCOME_LP_INFEASIBLE),
++            (fake(3), "unbounded", lrs.OUTCOME_NUMERICAL),
++            (fake(4), "numerical_difficulty", lrs.OUTCOME_NUMERICAL),
++            (fake(9), "malformed_output", lrs.OUTCOME_NUMERICAL),
++            (fake(0, success=False, x=np.zeros(expected_len), fun=0.0),
++             "malformed_output", lrs.OUTCOME_NUMERICAL),
++            (fake(0, success=True, x=None, fun=0.0), "malformed_output",
++             lrs.OUTCOME_NUMERICAL),
++            (fake(0, success=True, x=np.zeros(expected_len), fun=5.0),
++             "malformed_output", lrs.OUTCOME_NUMERICAL),
++        ]
++        for raw, category, outcome in cases:
++            with self.subTest(category=category, status=raw.status):
++                with mock.patch.object(lrs, "linprog", return_value=raw):
++                    result = lrs.solve_and_extract(prob)
++                self.assertIsInstance(result, lrs.Failure)
++                self.assertEqual((result.category, result.outcome),
++                                 (category, outcome))
++                self.assertEqual(result.solver.diagnostics.raw_status,
++                                 raw.status)
++                self.assertEqual(result.solver.diagnostics.message,
++                                 raw.message)
++                self.assertEqual(result.solver.diagnostics.iterations, 3)
++        with mock.patch.object(lrs, "linprog",
++                               side_effect=RuntimeError("boom")):
++            result = lrs.solve_and_extract(prob)
++        self.assertEqual((result.category, result.outcome),
++                         ("exception", lrs.OUTCOME_NUMERICAL))
++        # A status-0 vector failing relaxed validation keeps diagnostics.
++        with mock.patch.object(lrs, "linprog", return_value=fake(
++                0, success=True, x=np.zeros(expected_len), fun=0.0)):
++            result = lrs.solve_and_extract(prob)
++        self.assertEqual((result.stage, result.outcome),
++                         (lrs.STAGE_RELAXED, lrs.OUTCOME_NUMERICAL))
++        self.assertIn("useful_execution", result.reason)
++        self.assertEqual(result.solver.diagnostics.raw_status, 0)
++
++    def test_single_solver_invocation_on_success(self):
++        prob = mass_preemption(positive=True)
++        with mock.patch.object(lrs, "linprog", wraps=lrs.linprog) as spy:
++            result = lrs.solve_and_extract(prob)
++        self.assertIsInstance(result, lrs.SchedulingSuccess, result)
++        self.assertEqual(spy.call_count, 1)
++        kwargs = spy.call_args.kwargs
++        self.assertEqual(kwargs["method"], "highs-ds")
++        self.assertEqual(kwargs["options"], {"presolve": True})
++        self.assertEqual(set(kwargs), {"A_ub", "b_ub", "bounds", "method",
++                                       "options"})
++
++    def test_final_plan_rejection_is_not_impossibility(self):
++        prob = mass_preemption(positive=True)
++        canonical, _, plan = self.extract(prob, MASS_POINT)
++        zero = tuple(dataclasses.replace(d, prefill_tokens=0, decode=0,
++                                         preempt=0, prefill_indicator=0)
++                     for d in plan.decisions)
++        preempt_only = tuple(
++            dataclasses.replace(d, prefill_tokens=0, decode=0,
++                                prefill_indicator=0)
++            for d in plan.decisions)
++        over_chunk = tuple(
++            dataclasses.replace(d, prefill_tokens=2) if d.request_id == "W"
++            else d for d in plan.decisions)
++        tampered = [
++            ("totals", dataclasses.replace(plan, token_use=1)),
++            ("victim order", dataclasses.replace(
++                plan, victim_order=plan.victim_order[::-1])),
++            ("execution order", dataclasses.replace(
++                plan, execution_order=plan.execution_order[::-1])),
++            ("objective", dataclasses.replace(plan, objective=0.0)),
++            ("empty", dataclasses.replace(
++                plan, decisions=zero, victim_order=(), execution_order=())),
++            ("preempt only", dataclasses.replace(
++                plan, decisions=preempt_only, execution_order=())),
++            ("chunk bound", dataclasses.replace(plan, decisions=over_chunk)),
++            ("problem id", dataclasses.replace(plan, problem_id="other")),
++        ]
++        for name, bad in tampered:
++            with self.subTest(name):
++                result = lrs.validate_integer_plan(canonical, bad)
++                self.assertIsInstance(result, lrs.Failure)
++                self.assertEqual(result.stage, lrs.STAGE_PLAN)
++                self.assertEqual(result.outcome, lrs.OUTCOME_INVALID)
++
++        # Memory violation: W admitted without its 100 small victims.
++        partial = tuple(
++            dataclasses.replace(d, preempt=0) if d.request_id.startswith("R")
++            else d for d in plan.decisions)
++        result = lrs.validate_integer_plan(canonical, dataclasses.replace(
++            plan, decisions=partial))
++        self.assertEqual(result.category, "constraint_violation")
++
++        # Through the entry point, a rejected plan keeps solver diagnostics
++        # and is not reported as no useful work.
++        with mock.patch.object(lrs, "extract_integer_plan",
++                               return_value=dataclasses.replace(
++                                   plan, token_use=0)):
++            result = lrs.solve_and_extract(prob)
++        self.assertEqual((result.stage, result.outcome),
++                         (lrs.STAGE_PLAN, lrs.OUTCOME_INVALID))
++        self.assertEqual(result.solver.diagnostics.raw_status, 0)
++
++    # -- independent bounded enumeration ----------------------------------------
++
++    def random_state(self, rng, index):
++        specs, key = [], 0
++        n_res, n_wait = rng.randint(0, 3), rng.randint(0, 3)
++        if n_res + n_wait == 0:
++            n_wait = 1
++        c_max = rng.randint(1, 3)
++        coef = (0.0, 0.5, 1.0, 2.0, 7.0)
++        for _ in range(n_res):
++            key += 1
++            preemptible = rng.random() < 0.8
++            blocks = rng.randint(0, 3)
++            kind = rng.choice(("decode", "decode", "prefill", "idle"))
++            service, victim = rng.randint(0, 2), rng.randint(0, 2)
++            if kind == "decode":
++                specs.append(decoder(
++                    f"r{key}", key, rng.randint(0, 1), blocks,
++                    alpha=rng.choice(coef), gamma=rng.choice(coef),
++                    service=service, victim=victim, preemptible=preemptible))
++            elif kind == "prefill":
++                specs.append(resident_prefill(
++                    f"r{key}", key, rng.randint(1, 3), blocks,
++                    beta=rng.choice(coef), gamma=rng.choice(coef),
++                    service=service, victim=victim, preemptible=preemptible))
++            elif preemptible:
++                specs.append(idle(f"r{key}", key, blocks,
++                                  gamma=rng.choice(coef), victim=victim))
++            else:
++                specs.append(_spec(f"r{key}", key))
++        for _ in range(n_wait):
++            key += 1
++            specs.append(waiting(f"w{key}", key, rng.randint(1, 3),
++                                 rng.randint(0, 4), beta=rng.choice(coef),
++                                 service=rng.randint(0, 2)))
++        return problem(
++            specs, b=rng.randint(1, 4), c=c_max, s=rng.randint(1, 3),
++            n=rng.randint(max(1, n_res), n_res + 2), free=rng.randint(0, 4),
++            h=rng.randint(0, 3), pid=f"random-{index}")
++
++    def test_bounded_enumeration_against_constructor(self):
++        # ABSTRACT random states (seeded). The oracle simulates native-order
++        # allocation; it never calls the production legality validator.
++        rng = random.Random(20261013)
++        counts = {"success": 0, lrs.OUTCOME_LP_INFEASIBLE: 0,
++                  lrs.OUTCOME_NO_USEFUL_WORK: 0, "guided_success": 0,
++                  "guided_none": 0, "plans_enumerated": 0}
++        for index in range(150):
++            prob = canon(self, self.random_state(rng, index))
++            n = len(prob.requests)
++            c, a_ub, b_ub, _, labels = lrs._build_lp(prob)
++            exists, best = False, None
++            for choice in oracle_enumerate(prob):
++                counts["plans_enumerated"] += 1
++                legal, useful, util = oracle_simulate(prob, choice)
++                v = choice_vector(prob, choice)
++                res = lrs._residuals(prob, *lrs._split(v, n))
++                lp_ok = all(val <= 1e-9 for val in res.values())
++                matrix_ok = bool(np.all(a_ub @ np.array(v) - b_ub <= 1e-9))
++                # Integer points satisfy every LP row exactly when legal+useful.
++                self.assertEqual(lp_ok, legal and useful, (index, choice))
++                self.assertEqual(matrix_ok, lp_ok, (index, choice))
++                if legal and useful:
++                    exists = True
++                    best = util if best is None else max(best, util)
++
++            result = lrs.solve_and_extract(prob)
++            if isinstance(result, lrs.SchedulingSuccess):
++                counts["success"] += 1
++                self.assertTrue(exists, index)
++                legal, useful, util = oracle_simulate(
++                    prob, plan_choice(result.plan))
++                self.assertTrue(legal and useful, index)
++                self.assertLessEqual(util, best + 1e-9)
++                self.assertGreaterEqual(
++                    result.relaxed.normalized_objective, best - 1e-6, index)
++            else:
++                self.assertIn(result.outcome, (lrs.OUTCOME_LP_INFEASIBLE,
++                                               lrs.OUTCOME_NO_USEFUL_WORK),
++                              (index, result))
++                counts[result.outcome] += 1
++                self.assertFalse(exists, index)
++
++            # Progress does not depend on the guidance values: arbitrary
++            # finite guidance (bypassing relaxed validation on purpose).
++            guided = lrs.RelaxedSolution(
++                decisions=tuple(
++                    lrs.RelaxedDecision(
++                        r.request_id, rng.uniform(0, r.prefill_upper_bound),
++                        rng.random(), rng.random(), rng.random())
++                    for r in prob.requests),
++                raw_vector=(), projection_count=0, worst_raw_violation=0.0,
++                worst_normalized_violation=0.0, normalized_objective=0.0)
++            plan = lrs.extract_integer_plan(prob, guided)
++            if isinstance(plan, lrs.IntegerPlan):
++                counts["guided_success"] += 1
++                self.assertTrue(exists, index)
++                self.assertIs(lrs.validate_integer_plan(prob, plan), plan)
++                legal, useful, _ = oracle_simulate(prob, plan_choice(plan))
++                self.assertTrue(legal and useful, index)
++            else:
++                counts["guided_none"] += 1
++                self.assertEqual(plan.outcome, lrs.OUTCOME_NO_USEFUL_WORK)
++                self.assertFalse(exists, index)
++        self.assertGreater(counts["success"], 0)
++        self.assertGreater(counts[lrs.OUTCOME_LP_INFEASIBLE]
++                           + counts[lrs.OUTCOME_NO_USEFUL_WORK], 0)
++        print(f"\n[enumeration counts] {counts}", file=sys.stderr)
++
++    def test_enumeration_on_named_fixtures(self):
++        named = [
++            ("abstract F=3 h=2", abstract_lp_feasible_integer_infeasible(),
++             False),
++            ("nine waiting", nine_waiting_watermark(), True),
++            ("avoidable negative", avoidable_negative_first(), True),
++        ]
++        for name, prob, expect in named:
++            with self.subTest(name):
++                canonical = canon(self, prob)
++                exists, _ = oracle_best(canonical)
++                self.assertEqual(exists, expect)
++                result = lrs.solve_and_extract(prob)
++                self.assertEqual(
++                    isinstance(result, lrs.SchedulingSuccess), expect)
++
+ 
+ if __name__ == "__main__":
+     unittest.main()

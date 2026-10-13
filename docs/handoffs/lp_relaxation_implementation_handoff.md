@@ -201,3 +201,46 @@ open, resolved minimally in code and visible here:
 ```
 
 `CLAUDE.md` is the pre-existing untracked file, not part of this work.
+
+## 2026-10-13 — Corrected pure planning layer (CPU evidence; awaiting review)
+
+Scope: `lp_relaxation_scheduler.py` and `tests/test_lp_relaxation_scheduler.py`
+only, implementing the amended `subsec:myopic_ilp`/`subsec:lp_relaxation` and
+design §§7–11 and §14 for the pure layer. No mapper, executor, live scheduler,
+configuration, `EngineArgs`, or normative/mathematical document was changed.
+Earlier sections of this handoff describe the superseded extraction and remain
+historical evidence for their revisions.
+
+Evidence: `validation_output/lp_relaxation/20261013T030042Z/` (`summary.json`,
+`run_checks.sh`, per-command outputs with exit statuses, `working_tree.diff`,
+SHA-256 hashes). Tested base `3a161695b541a86e56e81d4d630a720bbfb352a7` plus
+those two uncommitted files; host `gpu049`, allocation `65615469`, CPU only;
+Python 3.10.8 (`env`), NumPy 2.2.6, SciPy 1.15.3. Observed: compile, import,
+standalone smoke, 36 focused tests, and `git diff --check` all exit 0.
+
+Interface: `RequestInput` adds `resident`, `decode_demand` (exact 0/1;
+replaces `decode_charge`), `service_rank`, `victim_rank`. `LPProblem` adds
+`resident_limit`, `resident_count`, `admission_watermark`, and removes `w` and
+`decode_memory_policy_id`. `IntegerPlan` exposes victim/execution orders and
+final token/action/resident/H/decode-demand totals plus extraction
+diagnostics; the residual, dominant, safety, and fractional-count fields are
+removed. `Failure` gains a required `outcome` field (third position).
+
+Observed findings recorded for review:
+
+- Baseline defects reproduced at `3a16169` and fixed: a status-0 result whose
+  finite objective coefficients overflow made `_normalize_scipy_result` raise
+  `ValueError` (`-inf + inf in fsum`); an integer utility of `10**400` made
+  `validate_problem` raise `OverflowError`. Both now return structured failures.
+- Exact LP-value comparison lets one-ulp solver roundoff override service
+  rank. For two symmetric admissions (h = 1) HiGHS returned I values
+  `0.6666666666666666` and `0.6666666666666667`, so the higher-rank request was
+  tried first; the nine-waiting construction similarly selected `w9`. This
+  follows the current exact-comparison contract; changing it would be an
+  extraction-ordering decision (design §18.2).
+
+Not established: integrated CPU acceptance, mapper/executor/live-scheduler
+correctness, GPU behavior, policy recovery, fairness, restart freedom,
+completion, or performance. F01/F03/F04 are not closed; coefficient scales,
+optional kappa, and Q11 remain OPEN. Downstream callers still use the
+superseded interface and must be migrated before integrated checks.

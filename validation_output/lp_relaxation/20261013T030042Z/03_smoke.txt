@@ -1,0 +1,16 @@
+$ python -B lp_relaxation_scheduler.py
+lp_relaxation SUCCESS problem_id=smoke-problem
+  numerical_policy: lp_relaxation_mvp_v1
+  solver: highs-ds scipy=1.15.3 status=0 iterations=2
+  relaxed objective (max): 12.0
+  integer objective (max): 12.0
+  plan (ascending order_key):
+    smoke-prefill order_key=(0, 10) action=prefill prefill_tokens=2 decode=0 preempt=0 prefill_indicator=1
+    smoke-decode order_key=(0, 20) action=decode prefill_tokens=0 decode=1 preempt=0 prefill_indicator=0
+  totals: prefill_tokens=2 decode_actions=1 preemptions=0
+  final totals: tokens=3 actions=2 residents_after=2 H=1 decode_demand=0
+  victim_order: ()
+  execution_order: ('smoke-prefill', 'smoke-decode')
+  candidate_order: ('smoke-decode', 'smoke-prefill')
+  fractional_request_count (observation): 1
+exit_status=0

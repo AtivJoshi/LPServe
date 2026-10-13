@@ -1,0 +1,45 @@
+$ python -B -m unittest discover -s tests -p test_lp_relaxation_scheduler.py -v
+test_avoidable_negative_first_selection (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_bounded_enumeration_against_constructor (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... 
+[enumeration counts] {'success': 129, 'solver_reported_lp_infeasibility': 20, 'no_legal_useful_work': 1, 'guided_success': 129, 'guided_none': 21, 'plans_enumerated': 10348}
+ok
+test_chunk_floor_and_minimum_one (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_declared_orders_and_totals (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_enumeration_on_named_fixtures (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_exact_lp_comparison_precedes_rank (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_extension_in_service_rank_order (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_failed_trial_cleanup_and_preservation (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_final_plan_rejection_is_not_impossibility (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_fixed_admission_charge_despite_short_chunk (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_free_blocks_versus_one_block_decodes (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_input_validation (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_integral_idle_victim_and_zero_support_candidate (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_lp_feasible_integer_infeasible_abstract_fixture (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_lp_matrix_matches_independent_residuals (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_lp_values_primary_over_ranks_then_identity (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_main_smoke (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_malformed_vectors (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_mixed_decode_demand_groups (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_necessary_negative_utility_first_work (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_nine_waiting_watermark_construction (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_nonfinite_aggregate_arithmetic (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_obsolete_fields_removed_without_compatibility (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_omitted_resident_counts_and_zero_recovery_replacement (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_one_free_block_demand_one_then_zero (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_positive_coefficient_mass_preemption_accepted_limitation (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_relaxed_bounds_projection_and_raw_versus_normalized (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_relaxed_validation_rejects_each_row (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_self_victim_exclusion (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_single_solver_invocation_on_success (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_solver_outcome_distinctions_with_fake_results (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_solver_reported_infeasibility_real_status_2 (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_strict_improvement_threshold (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_watermark_zero_positive_and_shared (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_zero_coefficient_mass_preemption_rejected (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_zero_free_blocks_zero_demand_decode (test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+
+----------------------------------------------------------------------
+Ran 36 tests in 0.552s
+
+OK
+exit_status=0
