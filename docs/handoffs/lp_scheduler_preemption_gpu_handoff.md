@@ -277,3 +277,144 @@ Native text (`" updating"`, `"unkt"`) does not show that token-to-text
 conversion is correct, and no LP/reference token comparison was made.
 Equality of physical block IDs between the central and worker managers is
 not claimed.
+
+
+## Corrected-framework GPU regression (2026-10-13; awaiting review)
+
+The sections above are historical evidence for the superseded LP (relaxed
+boundary objective 15.5). This run repeats the same workload on the
+corrected framework. It validates only this dummy-weight path.
+
+**Provenance.** Clean `main` at `82609eb290df754b841aecc1c1a379ea8a325ecb`,
+with no tracked changes. The only untracked paths were this batch's
+validation outputs; `git diff HEAD` was empty. Because the tested code equals
+the accepted CPU baseline, no CPU suite was rerun. No code was changed.
+Evidence: `validation_output/lp_scheduler_preemption_gpu/20261013T065022Z/`
+(`gpu_command.txt` with environment, modules, asset listing, Ray state, and
+source SHA-256; `console.log`; `summary.json`; `decision_trace.json`;
+`cleanup.json`; `trace_inspection.py`/`.txt`, a read-only extraction from
+the JSON).
+
+**Environment.** `gpu051.unity.rc.umass.edu`, SLURM job `65621892`
+(`gpu-preempt`), `CUDA_VISIBLE_DEVICES=0`, NVIDIA A16
+(`GPU-c1783933-ac1a-85f1-4c50-56eb59884cf1`), driver 595.91.07, torch
+2.3.0+cu121 (CUDA 12.1), ray 2.58.0, scipy 1.15.3, numpy 2.2.6,
+transformers 4.57.6. Modules were `uri/main`, `Python/3.10.8-GCCcore-12.2.0`,
+and `CUDA/12.1.1`; the interpreter was `env/bin/python` 3.10.8, with the
+repository root on `PYTHONPATH`. `LP_GPU_MODEL_DIR` was
+`~/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6`
+(`refs/main` = config `_commit_hash` = that revision). The driver forces HF
+offline mode and uses dummy weights.
+
+**Command (single attempt):**
+
+```text
+timeout 300s python -B scripts/check_lp_scheduler_preemption_gpu.py \
+  --model-path "$LP_GPU_MODEL_DIR" --output-dir "$LP_PREEMPTION_OUT" \
+  > "$LP_PREEMPTION_OUT/console.log" 2>&1
+```
+
+The run exited with status `0` and printed `RESULT: PASS`. The only warning
+was `Casting torch.bfloat16 to torch.float16`. Inputs are unchanged from the
+configuration above, except that reserve and decode-policy configuration no
+longer exist.
+
+**Cache.**
+
+- Profiling ran once, with an actual capacity of 15606 blocks.
+  Initialization ran once with 4 blocks.
+- Central: `CacheConfig`, manager, and allocator each had 4 blocks, with
+  watermark 0.
+- Worker: `CacheConfig`, cache engine, manager, and allocator each had 4
+  blocks. All 22 layer tensors had shape `[4, 16, 4, 64]`.
+
+**Emitted schedule** (preempted; scheduled), all as expected:
+
+| Step | Output | Central / worker free after | Relaxed = integer objective |
+|---|---|---|---|
+| 0 | `[]`; `(0,16)` | 2 / 2 | 16 |
+| 1 | `[0]`; `(1,16)` | 1 / 1 | **15** |
+| 2 | `[]`; `(1,16)` | 1 / 1 | 16 |
+| 3 | `[]`; `(1,16)` | 1 / 1 | 16 |
+| 4 | `[]`; `(1,0)` | 4 / 4 | 40 (B finishes) |
+| 5 | `[]`; `(0,16)` | 2 / 2 | 16 |
+| 6 | `[]`; `(0,1)` | 2 / 2 | 1 |
+| 7 | `[]`; `(0,0)` | 4 / 4 | 40 (A finishes) |
+| idle | none | 4 / 4 | iteration 7 → 8; only `schedule` called |
+
+**Preemption boundary (step 1).**
+
+- *Mapped state:* legal victims `["0"]`, `m_free=2`, `h=0`. A was running
+  and PAUSED, with 16/17 processed, 2 physical blocks, recovery 2, and
+  resident charge 0. B was waiting with prompt length 48 and charge 3.
+- *Relaxed solution:* A was x=0, y=0, I=0, **z=1**; B was x=16, y=0, I=1,
+  z=0. The normalized objective was **15.0**, with worst normalized violation
+  0.
+- *Analytical check (my derivation, not executed evidence):* the
+  resident row gives I_B ≤ z_A. With z_A = I_B = t the objective is
+  1 + 14t, so t = 1 is the unique optimum with value 15. This replaces the
+  historical 15.5 (z_A = 0.5).
+- *Integer plan:* A preempted, B prefilled for 16 tokens, objective 15.
+  Victim order `["0"]`, execution order `["1"]`, free blocks before decodes
+  1, resident count after 1.
+- *Central execution:* `free(0, [3, 2])`, then `allocate(1, [3, 2, 1])`.
+  After scheduling, `waiting=[0]` and `running=[1]`. A's central sequence
+  state was unchanged (PAUSED, 16 processed) until replay.
+- *Worker replay:* `free(0, [3, 2])`, then `allocate(1, [2, 3, 1])`. The
+  victim is freed before admission, as the emitted `preempted_seq_ids` and
+  scheduled entry describe.
+- *After replay:* in both central and worker state, A was WAITING with 0
+  processed, prompt incomplete, no output, the same 17 prompt IDs, and no
+  blocks. B had 16 processed and 3 blocks in each manager.
+
+**Later steps.**
+
+- *Steps 2–3:* the mapper offered B as a legal victim for A's admission.
+  The relaxed optimum was 16 (continue B), against 15 for preempting B to
+  admit A. Analytically, the objective is 16 − t, so t = 0 is unique.
+- *Step 4:* B decodes with demand 0 (48 tokens in 3 full blocks), finishes,
+  and is freed once centrally and once on the worker.
+- *Readmission (step 5):* the mapper saw A waiting, unallocated, with 0
+  processed and full-context charge 2. Central and worker each made exactly
+  one `allocate(0)` of 2 blocks (central `[3, 1]`, worker `[2, 1]`; the
+  physical IDs differ). A then reached 16 processed in both, recomputing
+  from prompt token zero.
+- *Steps 6–7:* A completed its prompt and then decoded with demand 0,
+  finished, and was freed.
+- *Finish:* the order was B then A, each with one token and finish reason
+  `length` (B `[13271]`, A `[11087]`).
+- *Drain:* afterwards both managers held no sequences or tables and had 4
+  free blocks.
+
+**Checked by the driver at every step:**
+
+- Quiescent ownership.
+- Central/worker sequence-map, allocation-count, free-count, and
+  per-sequence field agreement.
+- Each pool's integrity (unique, disjoint, conserved).
+- The call order map → solve → execute → `schedule` → `execute_model`.
+- Derived declared order equal to the plan and to emitted metadata.
+- Token and action limits.
+- Sampler-ID association.
+- Resident count ≤ 1.
+
+These were checked at the boundaries before and after each step, not
+between central execution and worker replay.
+
+**Cleanup.** `ray.shutdown()` ran (initialized before, not after). There
+were no Ray processes before or after. `/tmp/ray` was left in place, and no
+metrics directory was created.
+
+**Limitations.**
+
+- This workload preempts a partial prefill before any generated output. It
+  does not validate preemption after generated tokens.
+- Physical block-ID equality is not claimed. IDs diverged after the
+  set-order free at steps 1 and 5, and only allocated-set, count, and
+  per-pool integrity agreement is established.
+- KV contents were not inspected. A's recomputed prefill sampling the same
+  token (10935) as its first prefill is consistent with recomputation, but
+  it is not proof.
+- None of the following is established: real weights, sampler correctness,
+  output equivalence, completion in general, fairness, restart freedom, or
+  performance.

@@ -1,0 +1,659 @@
+{
+ "passed": true,
+ "failure": null,
+ "provenance": {
+  "git_head": "82609eb290df754b841aecc1c1a379ea8a325ecb",
+  "git_branch": "main",
+  "git_status_short": "?? validation_output/lp_scheduler_contention/20261013T064744Z/decision_trace.json\n?? validation_output/lp_scheduler_contention/20261013T064744Z/environment.txt\n?? validation_output/lp_scheduler_contention/20261013T064744Z/gpu_command.txt\n?? validation_output/lp_scheduler_contention/20261013T064744Z/summary.json\n?? validation_output/lp_scheduler_contention/20261013T064744Z/trace_analysis.py\n?? validation_output/lp_scheduler_contention/20261013T064744Z/trace_analysis.txt\n?? validation_output/lp_scheduler_preemption_gpu/20261013T065022Z/gpu_command.txt\n",
+  "git_diff_head_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "file_sha256": {
+   "scripts/check_lp_scheduler_preemption_gpu.py": "517fef8b8bbd035c5b77e11c906585fc8b047b390e798a3d84e581c3beec09e5",
+   "scripts/check_lp_scheduler_gpu.py": "18b145d0689f1beaae933671955251dcae8fd9f3696ff371246a3845d6224dd8",
+   "tests/test_check_lp_scheduler_preemption_gpu.py": "8175acfd7da3d8d32c82a6ca57fcc0979a0f30a1b882c4d030bec51486014ef0",
+   "tests/test_lp_scheduler.py": "e8d1436508956a71cd5818b26cd78fe9e42a5297b8fbbedd2fadcbd419afaded",
+   "tests/test_lpserve_plan_execution.py": "8932eca1605b250b47e48da47891ff77f3cbb654454dcbc111b5bc4ffbd4faaa",
+   "sarathi/core/scheduler/lp_scheduler.py": "85720a9ba576354fe908c807698c67d7783aa18350ad21e084d60e3cc4350233",
+   "sarathi/core/scheduler/base_scheduler.py": "5b4ac0fd3154ae25b580614fb4b3fd773091eb730951f72b3624fd71ecf06cbd",
+   "sarathi/core/block_space_manager/base_block_space_manager.py": "75b6e133fd5665e38f53a185aaf34db07883b468a557bd19b97c1632b4c91e0c",
+   "sarathi/core/sequence_manager/base_sequence_manager.py": "1705241edd761aabde072332a806772eb90e1f245db608b183e5bcec29a6a103",
+   "sarathi/core/sequence_manager/worker_sequence_manager.py": "0f40e95a484fbf7d8d0f08c36757fd2f0bedb9514fd49b6cfa7a790fbcb0d0ff",
+   "sarathi/engine/base_llm_engine.py": "5f2db9ce5c8ed736ab1a97f66455d6bd19aa519e3bf4ce7d07467242be9c8afd",
+   "sarathi/worker/base_worker.py": "b6de07bc0e2609b1306c26eebf39839ec4433494ad6cc571ca5577008d8569c2",
+   "sarathi/model_executor/model_runner.py": "259dc36dbd87986847284146003cdb4d4485ac881ef8d18e80198d1cd99179b3",
+   "lp_relaxation_scheduler.py": "0da829064e3eaef71916cc03889e17d03602d6001dddc19ae60b93a87f159ce0",
+   "lpserve_state_mapping.py": "3a61552dea08aea75e15e8c416f24633eb06b032ccaf8e00d209d16c29c00c2a",
+   "lpserve_plan_execution.py": "21c20dc1ca28712461393cdf0eb7466566fbb34c76f03d209a38ceee6972fd74"
+  },
+  "executed_script_sha256": "517fef8b8bbd035c5b77e11c906585fc8b047b390e798a3d84e581c3beec09e5",
+  "imported_helper_sha256": "18b145d0689f1beaae933671955251dcae8fd9f3696ff371246a3845d6224dd8",
+  "loaded_modules": "uri/main:ICU/75.1-GCCcore-13.3.0:nodejs/20.13.1-GCCcore-13.3.0:GCCcore/12.2.0:zlib/.1.2.12-GCCcore-12.2.0:binutils/.2.39-GCCcore-12.2.0:bzip2/.1.0.8-GCCcore-12.2.0:ncurses/.6.3-GCCcore-12.2.0:libreadline/.8.2-GCCcore-12.2.0:Tcl/.8.6.12-GCCcore-12.2.0:SQLite/.3.39.4-GCCcore-12.2.0:XZ/.5.2.7-GCCcore-12.2.0:GMP/.6.2.1-GCCcore-12.2.0:libffi/3.4.4-GCCcore-12.2.0:OpenSSL/1.1:Python/3.10.8-GCCcore-12.2.0:CUDA/12.1.1"
+ },
+ "argv": [
+  "scripts/check_lp_scheduler_preemption_gpu.py",
+  "--model-path",
+  "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+  "--output-dir",
+  "/home/atjoshi_umass_edu/LPServe/validation_output/lp_scheduler_preemption_gpu/20261013T065022Z"
+ ],
+ "model_path": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+ "environment": {
+  "hostname": "gpu051",
+  "slurm": {
+   "SLURM_JOB_ID": "65621892",
+   "SLURM_JOB_NODELIST": "gpu051",
+   "SLURM_JOB_PARTITION": "gpu-preempt",
+   "SLURM_STEP_ID": "4294967290"
+  },
+  "cuda_visible_devices": "0",
+  "gpu": "0, NVIDIA A16, GPU-c1783933-ac1a-85f1-4c50-56eb59884cf1, 595.91.07, 15356 MiB",
+  "torch_cuda": "12.1",
+  "python_executable": "/home/atjoshi_umass_edu/LPServe/env/bin/python",
+  "python_version": "3.10.8",
+  "virtual_env": "/home/atjoshi_umass_edu/LPServe/env",
+  "pythonpath": "/home/atjoshi_umass_edu/LPServe:/modules/uri_apps/software/Python/3.10.8-GCCcore-12.2.0/easybuild/python",
+  "versions": {
+   "torch": "2.3.0+cu121",
+   "transformers": "4.57.6",
+   "ray": "2.58.0",
+   "numpy": "2.2.6",
+   "scipy": "1.15.3",
+   "flashinfer": "0.2.0.post1+cu121torch2.3",
+   "vllm-flash-attn": "2.5.9",
+   "sarathi": "0.1.7",
+   "nvidia-ml-py": "13.595.45",
+   "huggingface-hub": "0.36.2",
+   "tokenizers": "0.22.2"
+  },
+  "git_head": "82609eb290df754b841aecc1c1a379ea8a325ecb",
+  "git_status_short": "?? validation_output/lp_scheduler_contention/20261013T064744Z/decision_trace.json\n?? validation_output/lp_scheduler_contention/20261013T064744Z/environment.txt\n?? validation_output/lp_scheduler_contention/20261013T064744Z/gpu_command.txt\n?? validation_output/lp_scheduler_contention/20261013T064744Z/summary.json\n?? validation_output/lp_scheduler_contention/20261013T064744Z/trace_analysis.py\n?? validation_output/lp_scheduler_contention/20261013T064744Z/trace_analysis.txt\n?? validation_output/lp_scheduler_preemption_gpu/20261013T065022Z/gpu_command.txt",
+  "cwd": "/home/atjoshi_umass_edu/LPServe"
+ },
+ "cache_capacity": {
+  "profiled_available_blocks": [
+   15606
+  ],
+  "chosen_initialized_blocks": 4,
+  "profile_calls": 1,
+  "initializations": [
+   {
+    "num_gpu_blocks": 4,
+    "result": [
+     null
+    ]
+   }
+  ],
+  "engine_cache_config_num_gpu_blocks": 4,
+  "central_manager_total_blocks": 4,
+  "central_allocator_num_blocks": 4,
+  "central_free_blocks": 4,
+  "central_watermark_blocks": 0,
+  "worker": {
+   "cache_config_num_gpu_blocks": 4,
+   "cache_engine_num_gpu_blocks": 4,
+   "cache_layers": 22,
+   "cache_tensor_block_dims": [
+    4
+   ],
+   "cache_tensor_shapes": [
+    [
+     4,
+     16,
+     4,
+     64
+    ]
+   ],
+   "manager_total_blocks": 4,
+   "allocator_num_blocks": 4,
+   "free_blocks": 4,
+   "block_ops": []
+  }
+ },
+ "config": {
+  "model": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+  "model_path": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+  "load_format": "dummy",
+  "requested_dtype": "float16",
+  "resolved_dtype": "torch.float16",
+  "hf_config_commit_hash": "fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+  "attention_backend": "flash_attention",
+  "tensor_parallel_size": 1,
+  "pipeline_parallel_size": 1,
+  "max_model_len": 64,
+  "block_size": 16,
+  "gpu_memory_utilization": 0.5,
+  "seed": 42,
+  "trust_remote_code": true,
+  "tokenizer_mode": "auto",
+  "vocab_size": 32000,
+  "tokenizer_len": 32000,
+  "eos_token_id": 2,
+  "prompts": {
+   "A": {
+    "token_ids": [
+     1000,
+     1001,
+     1002,
+     1003,
+     1004,
+     1005,
+     1006,
+     1007,
+     1008,
+     1009,
+     1010,
+     1011,
+     1012,
+     1013,
+     1014,
+     1015,
+     1016
+    ],
+    "tokens": [
+     "ied",
+     "ER",
+     "\u2581stat",
+     "fig",
+     "me",
+     "\u2581von",
+     "\u2581inter",
+     "roid",
+     "ater",
+     "\u2581their",
+     "\u2581bet",
+     "\u2581ein",
+     "}\\",
+     "\">",
+     "\u2581sub",
+     "\u2581op",
+     "\u2581don"
+    ]
+   },
+   "B": {
+    "token_ids": [
+     2000,
+     2001,
+     2002,
+     2003,
+     2004,
+     2005,
+     2006,
+     2007,
+     2008,
+     2009,
+     2010,
+     2011,
+     2012,
+     2013,
+     2014,
+     2015,
+     2016,
+     2017,
+     2018,
+     2019,
+     2020,
+     2021,
+     2022,
+     2023,
+     2024,
+     2025,
+     2026,
+     2027,
+     2028,
+     2029,
+     2030,
+     2031,
+     2032,
+     2033,
+     2034,
+     2035,
+     2036,
+     2037,
+     2038,
+     2039,
+     2040,
+     2041,
+     2042,
+     2043,
+     2044,
+     2045,
+     2046,
+     2047
+    ],
+    "tokens": [
+     "\u2581called",
+     "Item",
+     "ura",
+     "vec",
+     "eme",
+     "\u2581della",
+     "embre",
+     "urg",
+     "Se",
+     "\u2581request",
+     "ische",
+     "\u2581port",
+     "\u2581instead",
+     "=\\",
+     "\u2581\u0423",
+     "hor",
+     "ente",
+     "ume",
+     "erd",
+     "\u0441\u0430",
+     "\u2581why",
+     "rist",
+     "\u2581person",
+     "\u2581...",
+     "\u2581private",
+     "\u2581tot",
+     "pha",
+     "ift",
+     "ita",
+     "loc",
+     "\u2581old",
+     "\u043e\u043d",
+     "\u2581nel",
+     "']",
+     "ti",
+     "iet",
+     "cite",
+     "plement",
+     "\u2581above",
+     "ks",
+     "ready",
+     "\u2581come",
+     "section",
+     "\u2581Pol",
+     "\u2581writ",
+     "\u2581https",
+     "\u2581$$",
+     "\u2581\u00bb"
+    ]
+   }
+  },
+  "sampling": {
+   "temperature": 0.0,
+   "max_tokens": 1,
+   "ignore_eos": true,
+   "stop": []
+  },
+  "b_max": 64,
+  "c_max": 16,
+  "s_max": 1,
+  "max_num_seqs": 1,
+  "utilities": {
+   "decode": 40.0,
+   "prefill_token": 1.0,
+   "preemption_penalty": 1.0
+  },
+  "numerical_policy": {
+   "policy_id": "lp_relaxation_mvp_v1",
+   "feasibility_tol": 1e-07,
+   "integrality_tol": 1e-06,
+   "objective_abs_tol": 1e-09,
+   "objective_rel_tol": 1e-09
+  },
+  "profiling_max_num_batched_tokens": 64,
+  "profiling_max_num_seqs": 1,
+  "metrics_mode": "enabled, all optional outputs off, never plotted",
+  "engine_init_seconds": 27.567
+ },
+ "finish_order": [
+  1,
+  0
+ ],
+ "final_outputs": {
+  "1": {
+   "seq_id": 1,
+   "prompt_token_ids": [
+    2000,
+    2001,
+    2002,
+    2003,
+    2004,
+    2005,
+    2006,
+    2007,
+    2008,
+    2009,
+    2010,
+    2011,
+    2012,
+    2013,
+    2014,
+    2015,
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026,
+    2027,
+    2028,
+    2029,
+    2030,
+    2031,
+    2032,
+    2033,
+    2034,
+    2035,
+    2036,
+    2037,
+    2038,
+    2039,
+    2040,
+    2041,
+    2042,
+    2043,
+    2044,
+    2045,
+    2046,
+    2047
+   ],
+   "token_ids": [
+    13271
+   ],
+   "text": " updating",
+   "finished": true,
+   "finish_reason": "length"
+  },
+  "0": {
+   "seq_id": 0,
+   "prompt_token_ids": [
+    1000,
+    1001,
+    1002,
+    1003,
+    1004,
+    1005,
+    1006,
+    1007,
+    1008,
+    1009,
+    1010,
+    1011,
+    1012,
+    1013,
+    1014,
+    1015,
+    1016
+   ],
+   "token_ids": [
+    11087
+   ],
+   "text": "unkt",
+   "finished": true,
+   "finish_reason": "length"
+  }
+ },
+ "decisions": [
+  {
+   "name": "a_admission_prefill",
+   "preempted": [],
+   "scheduled": [
+    [
+     0,
+     16
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     0,
+     10935
+    ]
+   ]
+  },
+  {
+   "name": "a_preemption_b_admission",
+   "preempted": [
+    0
+   ],
+   "scheduled": [
+    [
+     1,
+     16
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     1,
+     3591
+    ]
+   ]
+  },
+  {
+   "name": "b_resident_prefill",
+   "preempted": [],
+   "scheduled": [
+    [
+     1,
+     16
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     1,
+     24476
+    ]
+   ]
+  },
+  {
+   "name": "b_prompt_completion",
+   "preempted": [],
+   "scheduled": [
+    [
+     1,
+     16
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     1,
+     13271
+    ]
+   ]
+  },
+  {
+   "name": "b_decode_finish",
+   "preempted": [],
+   "scheduled": [
+    [
+     1,
+     0
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     1,
+     13271
+    ]
+   ]
+  },
+  {
+   "name": "a_readmission_prefill",
+   "preempted": [],
+   "scheduled": [
+    [
+     0,
+     16
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     0,
+     10935
+    ]
+   ]
+  },
+  {
+   "name": "a_prompt_completion",
+   "preempted": [],
+   "scheduled": [
+    [
+     0,
+     1
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     0,
+     11087
+    ]
+   ]
+  },
+  {
+   "name": "a_decode_finish",
+   "preempted": [],
+   "scheduled": [
+    [
+     0,
+     0
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     0,
+     11087
+    ]
+   ]
+  }
+ ],
+ "boundary": {
+  "relaxed": {
+   "decisions": [
+    {
+     "request_id": "0",
+     "x": -0.0,
+     "y": 0.0,
+     "prefill_indicator": -0.0,
+     "z": 1.0
+    },
+    {
+     "request_id": "1",
+     "x": 16.0,
+     "y": 0.0,
+     "prefill_indicator": 1.0,
+     "z": 0.0
+    }
+   ],
+   "raw_vector": [
+    -0.0,
+    16.0,
+    0.0,
+    0.0,
+    -0.0,
+    1.0,
+    1.0,
+    0.0
+   ],
+   "projection_count": 0,
+   "worst_raw_violation": 0.0,
+   "worst_normalized_violation": 0.0,
+   "normalized_objective": 15.0
+  },
+  "plan": {
+   "problem_id": "1",
+   "decisions": [
+    {
+     "request_id": "0",
+     "order_key": [
+      0
+     ],
+     "prefill_tokens": 0,
+     "decode": 0,
+     "preempt": 1,
+     "prefill_indicator": 0
+    },
+    {
+     "request_id": "1",
+     "order_key": [
+      1
+     ],
+     "prefill_tokens": 16,
+     "decode": 0,
+     "preempt": 0,
+     "prefill_indicator": 1
+    }
+   ],
+   "victim_order": [
+    "0"
+   ],
+   "execution_order": [
+    "1"
+   ],
+   "token_use": 16,
+   "action_count": 1,
+   "resident_count_after": 1,
+   "free_blocks_before_decodes": 1,
+   "decode_demand": 0,
+   "numerical_policy": {
+    "policy_id": "lp_relaxation_mvp_v1",
+    "feasibility_tol": 1e-07,
+    "integrality_tol": 1e-06,
+    "objective_abs_tol": 1e-09,
+    "objective_rel_tol": 1e-09
+   },
+   "objective": 15.0,
+   "extraction": {
+    "candidate_order": [
+     "1",
+     "0"
+    ],
+    "victim_candidate_order": [
+     "0"
+    ],
+    "accepted_order": [
+     "1"
+    ],
+    "trial_count": 1,
+    "failed_trial_count": 0,
+    "declined_optional_trial_count": 0,
+    "skipped_candidate_count": 1,
+    "fractional_request_count": 0
+   }
+  },
+  "central_block_ops": [
+   [
+    "free",
+    0,
+    [
+     3,
+     2
+    ]
+   ],
+   [
+    "allocate",
+    1,
+    [
+     3,
+     2,
+     1
+    ]
+   ]
+  ],
+  "worker_block_ops": [
+   [
+    "free",
+    0,
+    [
+     3,
+     2
+    ]
+   ],
+   [
+    "allocate",
+    1,
+    [
+     2,
+     3,
+     1
+    ]
+   ]
+  ]
+ }
+}

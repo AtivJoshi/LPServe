@@ -1,0 +1,551 @@
+{
+ "rows": [
+  {
+   "step": 1,
+   "running_before": [],
+   "waiting_before": [
+    "A",
+    "B",
+    "C"
+   ],
+   "execution_order": [
+    "B",
+    "C"
+   ],
+   "prefills": [
+    "B",
+    "C"
+   ],
+   "admissions": [
+    "B",
+    "C"
+   ],
+   "zero_demand_decodes": [],
+   "one_block_decodes": [],
+   "m_free": 15601,
+   "h": 156,
+   "H": 15599,
+   "demand": 0,
+   "free_after_sched": 15599,
+   "running_after_sched": [
+    "B",
+    "C"
+   ],
+   "relaxed_objective": 16.0,
+   "integer_objective": 16.0,
+   "extraction": {
+    "candidate_order": [
+     "1",
+     "2",
+     "0"
+    ],
+    "victim_candidate_order": [],
+    "accepted_order": [
+     "1",
+     "2"
+    ],
+    "trial_count": 2,
+    "failed_trial_count": 0,
+    "declined_optional_trial_count": 0,
+    "skipped_candidate_count": 1,
+    "fractional_request_count": 0
+   }
+  },
+  {
+   "step": 2,
+   "running_before": [
+    "B",
+    "C"
+   ],
+   "waiting_before": [
+    "A"
+   ],
+   "execution_order": [
+    "B",
+    "C"
+   ],
+   "prefills": [
+    "B",
+    "C"
+   ],
+   "admissions": [],
+   "zero_demand_decodes": [],
+   "one_block_decodes": [],
+   "m_free": 15599,
+   "h": 156,
+   "H": 15599,
+   "demand": 0,
+   "free_after_sched": 15599,
+   "running_after_sched": [
+    "B",
+    "C"
+   ],
+   "relaxed_objective": 16.0,
+   "integer_objective": 16.0,
+   "extraction": {
+    "candidate_order": [
+     "1",
+     "2",
+     "0"
+    ],
+    "victim_candidate_order": [
+     "2",
+     "1"
+    ],
+    "accepted_order": [
+     "1",
+     "2"
+    ],
+    "trial_count": 2,
+    "failed_trial_count": 0,
+    "declined_optional_trial_count": 0,
+    "skipped_candidate_count": 1,
+    "fractional_request_count": 0
+   }
+  },
+  {
+   "step": 3,
+   "running_before": [
+    "B",
+    "C"
+   ],
+   "waiting_before": [
+    "A"
+   ],
+   "execution_order": [
+    "A",
+    "C"
+   ],
+   "prefills": [
+    "A"
+   ],
+   "admissions": [
+    "A"
+   ],
+   "zero_demand_decodes": [
+    "C"
+   ],
+   "one_block_decodes": [],
+   "m_free": 15599,
+   "h": 156,
+   "H": 15598,
+   "demand": 0,
+   "free_after_sched": 15598,
+   "running_after_sched": [
+    "B",
+    "C",
+    "A"
+   ],
+   "relaxed_objective": 9.0,
+   "integer_objective": 9.0,
+   "extraction": {
+    "candidate_order": [
+     "2",
+     "0",
+     "1"
+    ],
+    "victim_candidate_order": [
+     "2",
+     "1"
+    ],
+    "accepted_order": [
+     "2",
+     "0"
+    ],
+    "trial_count": 2,
+    "failed_trial_count": 0,
+    "declined_optional_trial_count": 0,
+    "skipped_candidate_count": 1,
+    "fractional_request_count": 0
+   }
+  },
+  {
+   "step": 4,
+   "running_before": [
+    "B",
+    "C",
+    "A"
+   ],
+   "waiting_before": [],
+   "execution_order": [
+    "A",
+    "C"
+   ],
+   "prefills": [
+    "A"
+   ],
+   "admissions": [],
+   "zero_demand_decodes": [],
+   "one_block_decodes": [
+    "C"
+   ],
+   "m_free": 15598,
+   "h": 156,
+   "H": 15598,
+   "demand": 1,
+   "free_after_sched": 15597,
+   "running_after_sched": [
+    "B",
+    "C",
+    "A"
+   ],
+   "relaxed_objective": 9.0,
+   "integer_objective": 9.0,
+   "extraction": {
+    "candidate_order": [
+     "2",
+     "0",
+     "1"
+    ],
+    "victim_candidate_order": [
+     "0",
+     "2",
+     "1"
+    ],
+    "accepted_order": [
+     "2",
+     "0"
+    ],
+    "trial_count": 2,
+    "failed_trial_count": 0,
+    "declined_optional_trial_count": 0,
+    "skipped_candidate_count": 1,
+    "fractional_request_count": 0
+   }
+  },
+  {
+   "step": 5,
+   "running_before": [
+    "B",
+    "C",
+    "A"
+   ],
+   "waiting_before": [],
+   "execution_order": [
+    "B",
+    "C"
+   ],
+   "prefills": [],
+   "admissions": [],
+   "zero_demand_decodes": [
+    "B",
+    "C"
+   ],
+   "one_block_decodes": [],
+   "m_free": 15597,
+   "h": 156,
+   "H": 15597,
+   "demand": 0,
+   "free_after_sched": 15597,
+   "running_after_sched": [
+    "B",
+    "C",
+    "A"
+   ],
+   "relaxed_objective": 2.0,
+   "integer_objective": 2.0,
+   "extraction": {
+    "candidate_order": [
+     "1",
+     "2",
+     "0"
+    ],
+    "victim_candidate_order": [
+     "0",
+     "2",
+     "1"
+    ],
+    "accepted_order": [
+     "1",
+     "2"
+    ],
+    "trial_count": 2,
+    "failed_trial_count": 0,
+    "declined_optional_trial_count": 0,
+    "skipped_candidate_count": 1,
+    "fractional_request_count": 0
+   }
+  },
+  {
+   "step": 6,
+   "running_before": [
+    "B",
+    "C",
+    "A"
+   ],
+   "waiting_before": [],
+   "execution_order": [
+    "C",
+    "B"
+   ],
+   "prefills": [],
+   "admissions": [],
+   "zero_demand_decodes": [
+    "C"
+   ],
+   "one_block_decodes": [
+    "B"
+   ],
+   "m_free": 15597,
+   "h": 156,
+   "H": 15597,
+   "demand": 1,
+   "free_after_sched": 15596,
+   "running_after_sched": [
+    "B",
+    "C",
+    "A"
+   ],
+   "relaxed_objective": 2.0,
+   "integer_objective": 2.0,
+   "extraction": {
+    "candidate_order": [
+     "1",
+     "2",
+     "0"
+    ],
+    "victim_candidate_order": [
+     "0",
+     "2",
+     "1"
+    ],
+    "accepted_order": [
+     "1",
+     "2"
+    ],
+    "trial_count": 2,
+    "failed_trial_count": 0,
+    "declined_optional_trial_count": 0,
+    "skipped_candidate_count": 1,
+    "fractional_request_count": 0
+   }
+  },
+  {
+   "step": 7,
+   "running_before": [
+    "B",
+    "A"
+   ],
+   "waiting_before": [],
+   "execution_order": [
+    "B",
+    "A"
+   ],
+   "prefills": [],
+   "admissions": [],
+   "zero_demand_decodes": [
+    "A",
+    "B"
+   ],
+   "one_block_decodes": [],
+   "m_free": 15598,
+   "h": 156,
+   "H": 15598,
+   "demand": 0,
+   "free_after_sched": 15598,
+   "running_after_sched": [
+    "B",
+    "A"
+   ],
+   "relaxed_objective": 2.0,
+   "integer_objective": 2.0,
+   "extraction": {
+    "candidate_order": [
+     "1",
+     "0"
+    ],
+    "victim_candidate_order": [
+     "0",
+     "1"
+    ],
+    "accepted_order": [
+     "1",
+     "0"
+    ],
+    "trial_count": 2,
+    "failed_trial_count": 0,
+    "declined_optional_trial_count": 0,
+    "skipped_candidate_count": 0,
+    "fractional_request_count": 0
+   }
+  },
+  {
+   "step": 8,
+   "running_before": [
+    "B",
+    "A"
+   ],
+   "waiting_before": [],
+   "execution_order": [
+    "B",
+    "A"
+   ],
+   "prefills": [],
+   "admissions": [],
+   "zero_demand_decodes": [
+    "B"
+   ],
+   "one_block_decodes": [
+    "A"
+   ],
+   "m_free": 15598,
+   "h": 156,
+   "H": 15598,
+   "demand": 1,
+   "free_after_sched": 15597,
+   "running_after_sched": [
+    "B",
+    "A"
+   ],
+   "relaxed_objective": 2.0,
+   "integer_objective": 2.0,
+   "extraction": {
+    "candidate_order": [
+     "1",
+     "0"
+    ],
+    "victim_candidate_order": [
+     "0",
+     "1"
+    ],
+    "accepted_order": [
+     "1",
+     "0"
+    ],
+    "trial_count": 2,
+    "failed_trial_count": 0,
+    "declined_optional_trial_count": 0,
+    "skipped_candidate_count": 0,
+    "fractional_request_count": 0
+   }
+  },
+  {
+   "step": 9,
+   "running_before": [
+    "A"
+   ],
+   "waiting_before": [],
+   "execution_order": [
+    "A"
+   ],
+   "prefills": [],
+   "admissions": [],
+   "zero_demand_decodes": [
+    "A"
+   ],
+   "one_block_decodes": [],
+   "m_free": 15599,
+   "h": 156,
+   "H": 15599,
+   "demand": 0,
+   "free_after_sched": 15599,
+   "running_after_sched": [
+    "A"
+   ],
+   "relaxed_objective": 1.0,
+   "integer_objective": 1.0,
+   "extraction": {
+    "candidate_order": [
+     "0"
+    ],
+    "victim_candidate_order": [
+     "0"
+    ],
+    "accepted_order": [
+     "0"
+    ],
+    "trial_count": 1,
+    "failed_trial_count": 0,
+    "declined_optional_trial_count": 0,
+    "skipped_candidate_count": 0,
+    "fractional_request_count": 0
+   }
+  },
+  {
+   "step": 10,
+   "running_before": [
+    "A"
+   ],
+   "waiting_before": [],
+   "execution_order": [
+    "A"
+   ],
+   "prefills": [],
+   "admissions": [],
+   "zero_demand_decodes": [
+    "A"
+   ],
+   "one_block_decodes": [],
+   "m_free": 15599,
+   "h": 156,
+   "H": 15599,
+   "demand": 0,
+   "free_after_sched": 15599,
+   "running_after_sched": [
+    "A"
+   ],
+   "relaxed_objective": 1.0,
+   "integer_objective": 1.0,
+   "extraction": {
+    "candidate_order": [
+     "0"
+    ],
+    "victim_candidate_order": [
+     "0"
+    ],
+    "accepted_order": [
+     "0"
+    ],
+    "trial_count": 1,
+    "failed_trial_count": 0,
+    "declined_optional_trial_count": 0,
+    "skipped_candidate_count": 0,
+    "fractional_request_count": 0
+   }
+  }
+ ],
+ "coverage": {
+  "nonempty_decisions": 10,
+  "steps_with_admission": [
+   1,
+   3
+  ],
+  "steps_with_resident_prefill": [
+   2,
+   4
+  ],
+  "steps_with_zero_demand_decode": [
+   3,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10
+  ],
+  "steps_with_one_block_decode": [
+   4,
+   6,
+   8
+  ],
+  "steps_with_both_decode_groups_in_one_batch": [
+   6,
+   8
+  ],
+  "steps_with_prefill_and_decode_in_one_batch": [
+   3,
+   4
+  ],
+  "steps_where_emitted_order_differs_from_running_order": [
+   3,
+   4,
+   6
+  ],
+  "steps_with_preemption": [],
+  "watermark_h": 156,
+  "min_H_minus_h_at_admission": 15442
+ },
+ "failures": []
+}
+ANALYSIS: PASS
+exit_status=0

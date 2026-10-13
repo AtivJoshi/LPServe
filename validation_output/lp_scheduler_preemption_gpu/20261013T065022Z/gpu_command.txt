@@ -1,0 +1,44 @@
+start_utc=2026-10-13T06:50:26Z
+host=gpu051.unity.rc.umass.edu SLURM_JOB_ID=65621892 SLURM_JOB_PARTITION=gpu-preempt CUDA_VISIBLE_DEVICES=0
+cwd=/home/atjoshi_umass_edu/LPServe
+PYTHONPATH=/home/atjoshi_umass_edu/LPServe:/modules/uri_apps/software/Python/3.10.8-GCCcore-12.2.0/easybuild/python
+python=/home/atjoshi_umass_edu/LPServe/env/bin/python Python 3.10.8 VIRTUAL_ENV=/home/atjoshi_umass_edu/LPServe/env
+LOADEDMODULES=uri/main:ICU/75.1-GCCcore-13.3.0:nodejs/20.13.1-GCCcore-13.3.0:GCCcore/12.2.0:zlib/.1.2.12-GCCcore-12.2.0:binutils/.2.39-GCCcore-12.2.0:bzip2/.1.0.8-GCCcore-12.2.0:ncurses/.6.3-GCCcore-12.2.0:libreadline/.8.2-GCCcore-12.2.0:Tcl/.8.6.12-GCCcore-12.2.0:SQLite/.3.39.4-GCCcore-12.2.0:XZ/.5.2.7-GCCcore-12.2.0:GMP/.6.2.1-GCCcore-12.2.0:libffi/3.4.4-GCCcore-12.2.0:OpenSSL/1.1:Python/3.10.8-GCCcore-12.2.0:CUDA/12.1.1
+git_head=82609eb290df754b841aecc1c1a379ea8a325ecb
+git_status_short:
+?? validation_output/lp_scheduler_contention/20261013T064744Z/decision_trace.json
+?? validation_output/lp_scheduler_contention/20261013T064744Z/environment.txt
+?? validation_output/lp_scheduler_contention/20261013T064744Z/gpu_command.txt
+?? validation_output/lp_scheduler_contention/20261013T064744Z/summary.json
+?? validation_output/lp_scheduler_contention/20261013T064744Z/trace_analysis.py
+?? validation_output/lp_scheduler_contention/20261013T064744Z/trace_analysis.txt
+?? validation_output/lp_scheduler_preemption_gpu/20261013T065022Z/gpu_command.txt
+LP_GPU_MODEL_DIR=/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6
+total 0
+lrwxrwxrwx 1 atjoshi_umass_edu atjoshi_umass_edu 52 Sep  1 22:18 config.json -> ../../blobs/4ea05f1bc289d48ba9b92eea2f58ad8acd3dce5d
+lrwxrwxrwx 1 atjoshi_umass_edu atjoshi_umass_edu 76 Oct  6 05:23 model.safetensors -> ../../blobs/6e6001da2106d4757498752a021df6c2bdc332c650aae4bae6b0c004dcf14933
+lrwxrwxrwx 1 atjoshi_umass_edu atjoshi_umass_edu 52 Sep  1 22:18 special_tokens_map.json -> ../../blobs/492d4b2966a1763442d426d880dbc29f94906e4c
+lrwxrwxrwx 1 atjoshi_umass_edu atjoshi_umass_edu 52 Sep  1 22:18 tokenizer_config.json -> ../../blobs/fa96b85858f4053b0142a18e2b09dbe94e3fae46
+lrwxrwxrwx 1 atjoshi_umass_edu atjoshi_umass_edu 52 Sep  1 22:18 tokenizer.json -> ../../blobs/a6e931b92caff4c79c5c56282f1e89569a0ae558
+lrwxrwxrwx 1 atjoshi_umass_edu atjoshi_umass_edu 76 Sep  1 22:18 tokenizer.model -> ../../blobs/9e556afd44213b6bd1be2b850ebbbd98f5481437a8021afaf58ee7fb1818d347
+refs/main=fe8a4ea1ffedaf415f4da2f062534de366a451e6
+LP_PREEMPTION_OUT=/home/atjoshi_umass_edu/LPServe/validation_output/lp_scheduler_preemption_gpu/20261013T065022Z
+0, NVIDIA A16, GPU-c1783933-ac1a-85f1-4c50-56eb59884cf1, 595.91.07, 15356 MiB, 0 MiB
+ray processes before:
+(end)
+tested_source_sha256:
+18b145d0689f1beaae933671955251dcae8fd9f3696ff371246a3845d6224dd8  scripts/check_lp_scheduler_gpu.py
+517fef8b8bbd035c5b77e11c906585fc8b047b390e798a3d84e581c3beec09e5  scripts/check_lp_scheduler_preemption_gpu.py
+0da829064e3eaef71916cc03889e17d03602d6001dddc19ae60b93a87f159ce0  lp_relaxation_scheduler.py
+3a61552dea08aea75e15e8c416f24633eb06b032ccaf8e00d209d16c29c00c2a  lpserve_state_mapping.py
+21c20dc1ca28712461393cdf0eb7466566fbb34c76f03d209a38ceee6972fd74  lpserve_plan_execution.py
+85720a9ba576354fe908c807698c67d7783aa18350ad21e084d60e3cc4350233  sarathi/core/scheduler/lp_scheduler.py
+329eaea572ff850cb63754f2e5a2f06c372820a02d630daf2d36dce7fe001e62  sarathi/config.py
+619a81626b44164072f6f11e48c9d3289084492ed7d5cb3d3324ff4890030659  sarathi/engine/arg_utils.py
+5f2db9ce5c8ed736ab1a97f66455d6bd19aa519e3bf4ce7d07467242be9c8afd  sarathi/engine/base_llm_engine.py
+$ timeout 300s python -B scripts/check_lp_scheduler_preemption_gpu.py --model-path "$LP_GPU_MODEL_DIR" --output-dir "$LP_PREEMPTION_OUT" > "$LP_PREEMPTION_OUT/console.log" 2>&1
+end_utc=2026-10-13T06:51:09Z
+exit_status=0
+ray processes after:
+(end)
+drwxrwxrwx 4 atjoshi_umass_edu atjoshi_umass_edu 4096 Oct 13 06:50 /tmp/ray

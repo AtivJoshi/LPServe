@@ -1,0 +1,13 @@
+start_utc=2026-10-13T06:48:22Z
+host=gpu051.unity.rc.umass.edu SLURM_JOB_ID=65621892 CUDA_VISIBLE_DEVICES=0
+cwd=/home/atjoshi_umass_edu/LPServe
+PYTHONPATH=/home/atjoshi_umass_edu/LPServe:/modules/uri_apps/software/Python/3.10.8-GCCcore-12.2.0/easybuild/python
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+python=/home/atjoshi_umass_edu/LPServe/env/bin/python
+LP_CONTENTION_OUT=/home/atjoshi_umass_edu/LPServe/validation_output/lp_scheduler_contention/20261013T064744Z
+$ timeout 300s python -B scripts/check_lp_scheduler_contention_gpu.py --output-dir "$LP_CONTENTION_OUT" > "$LP_CONTENTION_OUT/console.log" 2>&1
+end_utc=2026-10-13T06:49:03Z
+exit_status=0
+ray_processes_after:
+(end of ray process list)
+drwxrwxrwx 3 atjoshi_umass_edu atjoshi_umass_edu 4096 Oct 13 06:48 /tmp/ray

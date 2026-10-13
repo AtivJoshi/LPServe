@@ -238,3 +238,139 @@ replay, and bookkeeping, not generation.
 OPEN decisions: none resolved. All values are scoped provisional test inputs.
 Contract changes: the §13 test-scope clarification and the §15.6 evidence
 wording, both as authorized.
+
+
+## Corrected-framework GPU regression (2026-10-13; awaiting review)
+
+The sections above are historical evidence for the superseded contracts
+(planning reserve, conservative decode charge, `order_key`-only ordering).
+This run repeats the same workload on the corrected framework. It validates
+only this dummy-weight workload.
+
+**Provenance.** Clean `main` at `82609eb290df754b841aecc1c1a379ea8a325ecb`,
+with no tracked or untracked changes other than this run's own output
+(`git diff HEAD` empty; `summary.json` diff hash is the empty-input SHA-256).
+Since the tested code equals the accepted CPU baseline, no CPU suite was
+rerun. No code was changed. Evidence:
+`validation_output/lp_scheduler_contention/20261013T064744Z/`
+(`environment.txt`, `gpu_command.txt`, `console.log`, `summary.json`,
+`decision_trace.json`, `trace_analysis.py`/`.txt`). SHA-256 of the tested
+sources is listed in `environment.txt`, including
+`scripts/check_lp_scheduler_preemption_gpu.py` (`517fef8b…`). The driver
+imports `check_declared_order` from that file but does not hash it in
+`summary.json`.
+
+**Environment.** `gpu051`, SLURM job `65621892` (`gpu-preempt`), NVIDIA A16
+(`GPU-c1783933-ac1a-85f1-4c50-56eb59884cf1`), driver 595.91.07, torch
+2.3.0+cu121, ray 2.58.0, scipy 1.15.3, numpy 2.2.6, transformers 4.57.6;
+modules `uri/main`, `Python/3.10.8-GCCcore-12.2.0`, `CUDA/12.1.1`;
+`env/bin/python` 3.10.8. The repository root was on `PYTHONPATH`, and
+`HF_HUB_OFFLINE=1` and `TRANSFORMERS_OFFLINE=1` were exported to prevent
+downloads; neither changes the driver. Assets: HF cache snapshot
+`fe8a4ea1ffedaf415f4da2f062534de366a451e6` (`refs/main` and config
+`_commit_hash`), dummy weights. Before the run there were no Ray processes
+and no `/tmp/ray`. Afterwards `ray.shutdown()` had run, no Ray processes
+remained, and the `/tmp/ray` it created was left in place.
+
+**Command (single attempt):**
+
+```text
+timeout 300s python -B scripts/check_lp_scheduler_contention_gpu.py \
+  --output-dir "$LP_CONTENTION_OUT" > "$LP_CONTENTION_OUT/console.log" 2>&1
+```
+
+Exit status `0`, `RESULT: PASS`. The only warning was
+`Casting torch.bfloat16 to torch.float16`. The post-hoc trace analysis
+(`python3 -I trace_analysis.py <dir>`, which reads JSON only) exited 0 with
+no failures.
+
+**Inputs.** Unchanged from the driver: prompts A/B/C = 16 token IDs from
+1000/2000/3000; greedy, `max_tokens=4`, `ignore_eos`; `b_max=96`,
+`c_max=8`, `s_max=2`, `max_num_seqs=3`; uniform utilities 1/1/1;
+`lp_relaxation_mvp_v1`; TP 1 / PP 1; `max_model_len=32`; block size 16. Profiled
+pool N = 15601 with native watermark h = 156. Seq IDs were A = 0, B = 1, C = 2.
+
+**Observed decisions** (D0 = zero-demand decode, D1 = one-block-demand decode):
+
+| Step | Running before | Emitted `(seq, chunk)` in order | Groups | Omitted | Relaxed = integer objective |
+|---|---|---|---|---|---|
+| 1 | — (A, B, C waiting) | B 8, C 8 | admit B, C | **A waiting** | 16 |
+| 2 | B, C | B 8, C 8 | resident prefills | **A waiting** | 16 |
+| 3 | B, C | A 8, C 0 | admit A (tail); C D0 | B | 9 |
+| 4 | B, C, A | A 8, C 0 | A prefill; C D1 | B | 9 |
+| 5 | B, C, A | B 0, C 0 | D0, D0 | **A resident** | 2 |
+| 6 | B, C, A | **C 0, B 0** | C D0, then B D1 | **A resident** | 2 |
+| 7 | B, A | B 0, A 0 | D0, D0 | — | 2 |
+| 8 | B, A | **B 0, A 0** | B D0, then A D1 | — | 2 |
+| 9 | A | A 0 | D0 | — | 1 |
+| 10 | A | A 0 | D0 | — | 1 |
+
+C finished at step 6, B at step 8, and A at step 10. Each produced four tokens with
+finish reason `length` (A `[10935, 15928, 554, 21418]`, B `[3591, 7027,
+30481, 3049]`, C `[10123, 30925, 4974, 20646]`). The idle call returned
+`[]`, called only `schedule`, and advanced the iteration 9 → 10 with no
+other change. Free blocks returned to 15601. Every relaxed solution was
+integral (fractional count 0).
+
+**Checked by the driver at every nonempty step:** one call each to mapping,
+solve, and execution, followed by `schedule` and one `execute_model`; matching
+snapshot, problem, and plan identities; mapped limits, policy, utilities, and
+free blocks; derived declared order (victims by victim rank; prefills, D0,
+D1, each by service rank, then identity) equal to the plan's lists and to
+emitted metadata; no ignore or preempt controls; chunk, token, and action
+limits; output counts; sampler-ID association; batch state 0 → 1 → 0; no
+progress change during scheduling; admission and append allocation deltas
+with block-ID prefix preservation; unselected requests unchanged; exact
+completion frees; remaining-work decrease equal to emitted tokens; returned
+outputs. The 60-step termination bound was not approached (10 steps).
+
+**Checked post hoc** (`trace_analysis.txt`). Service and victim ranks equal
+the observed `running` and arrived-`waiting` positions. Each mapped decode
+demand equals the observed logical-minus-physical gap. Admission charges equal
+the full-context block count (1), and resident charges are 0. At the executed
+integer plan: H = m_free − admission charges + victim recovery ≥ decode
+demand, H ≥ h when admitting, H ≥ 1 when decoding, and the plan's
+`free_blocks_before_decodes`/`decode_demand` equal those values. The observed
+free count after scheduling equals H − demand. Retained residents keep their
+running order, and admissions join the tail in declared order (step 3: B, C,
+A). The resident count is at most 3. The groups are contiguous in the order
+prefill, D0, D1.
+
+**Witnesses.**
+
+1. A was an eligible waiting request omitted at steps 1–2. It stayed
+   `WAITING` with no blocks.
+2. Steps 5 and 6 were boundaries where all three requests were resident,
+   prompt-complete, and unfinished.
+3. A was the omitted resident at both boundaries and was unchanged through
+   each (status, progress, output IDs, logical blocks, central block IDs).
+4. A was selected at steps 7–10.
+5. All three requests finished.
+
+**Exercised cases.**
+
+- Admission (steps 1, 3), with the admission at step 3 joining the running tail.
+- Resident partial prefill (steps 2, 4) and prompt completion (steps 2, 4).
+- D0 (steps 3, 5–10) and D1 (steps 4, 6, 8). Both decode groups occurred
+  **together in one batch** at steps 6 and 8. At step 6 the emitted order (C,
+  then B) differs from running order (B before C). This exercises the corrected
+  zero-demand-first rule rather than coinciding with running order.
+- Prefill with decode in one batch (steps 3, 4).
+- Completion and freeing (steps 6, 8, 10), final drain, and idle.
+
+**Not exercised.** Preemption and victims (none were legal or useful here).
+A binding watermark (h = 156 but H − h ≥ 15442 at every admission). A
+fractional relaxation.
+
+**Limitations.**
+
+- The driver does not instrument GPU-worker block tables. Central allocation
+  deltas, sampler IDs, and central counts are not evidence of worker
+  allocation.
+- Identical central/worker physical block IDs are not claimed (inherited
+  set-order free).
+- The schedule reflects the solver's choice among tied optima. It is not a
+  fairness claim.
+- Dummy-weight tokens are not evidence of sampler correctness or output
+  quality. Their equality with the 2026-10-06 run reflects the same seed and
+  weights.

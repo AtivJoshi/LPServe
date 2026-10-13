@@ -1,0 +1,42 @@
+boundary relaxed objective 15.0 worst normalized violation 0.0
+  relaxed {'request_id': '0', 'x': -0.0, 'y': 0.0, 'prefill_indicator': -0.0, 'z': 1.0}
+  relaxed {'request_id': '1', 'x': 16.0, 'y': 0.0, 'prefill_indicator': 1.0, 'z': 0.0}
+  plan [('0', 0, 0, 1), ('1', 16, 0, 0)] objective 15.0 victim_order ['0'] execution_order ['1'] free_blocks_before_decodes 1 resident_count_after 1
+  central ops [['free', 0, [3, 2]], ['allocate', 1, [3, 2, 1]]]
+  worker ops [['free', 0, [3, 2]], ['allocate', 1, [2, 3, 1]]]
+fields: (raw, ownership, processed, physical, charge, recovery, decode_demand, prefill_elig, decode_elig, preempt_elig)
+0 a_admission_prefill m_free 4 h 0 legal_victims [] relaxed 16.0 integer 16.0 fractional 0
+   requests [(0, 'waiting', 0, 0, 2, 0, 0, True, False, False)]
+   central tables before {} after {'0': [3, 2]} | worker after {'0': [3, 2]}
+   central ops [['allocate', 0, [3, 2]]] | worker ops [['allocate', 0, [3, 2]]]
+1 a_preemption_b_admission m_free 2 h 0 legal_victims ['0'] relaxed 15.0 integer 15.0 fractional 0
+   requests [(0, 'running', 16, 2, 0, 2, 0, True, False, True), (1, 'waiting', 0, 0, 3, 0, 0, True, False, False)]
+   central tables before {'0': [3, 2]} after {'1': [3, 2, 1]} | worker after {'1': [2, 3, 1]}
+   central ops [['free', 0, [3, 2]], ['allocate', 1, [3, 2, 1]]] | worker ops [['free', 0, [3, 2]], ['allocate', 1, [2, 3, 1]]]
+2 b_resident_prefill m_free 1 h 0 legal_victims ['1'] relaxed 16.0 integer 16.0 fractional 0
+   requests [(0, 'waiting', 0, 0, 2, 0, 0, True, False, False), (1, 'running', 16, 3, 0, 3, 0, True, False, True)]
+   central tables before {'1': [3, 2, 1]} after {'1': [3, 2, 1]} | worker after {'1': [2, 3, 1]}
+   central ops [] | worker ops []
+3 b_prompt_completion m_free 1 h 0 legal_victims ['1'] relaxed 16.0 integer 16.0 fractional 0
+   requests [(0, 'waiting', 0, 0, 2, 0, 0, True, False, False), (1, 'running', 32, 3, 0, 3, 0, True, False, True)]
+   central tables before {'1': [3, 2, 1]} after {'1': [3, 2, 1]} | worker after {'1': [2, 3, 1]}
+   central ops [] | worker ops []
+4 b_decode_finish m_free 1 h 0 legal_victims ['1'] relaxed 40.0 integer 40.0 fractional 0
+   requests [(0, 'waiting', 0, 0, 2, 0, 0, True, False, False), (1, 'running', 48, 3, 0, 3, 0, False, True, True)]
+   central tables before {'1': [3, 2, 1]} after {} | worker after {}
+   central ops [['free', 1, [3, 2, 1]]] | worker ops [['free', 1, [2, 3, 1]]]
+5 a_readmission_prefill m_free 4 h 0 legal_victims [] relaxed 16.0 integer 16.0 fractional 0
+   requests [(0, 'waiting', 0, 0, 2, 0, 0, True, False, False)]
+   central tables before {} after {'0': [3, 1]} | worker after {'0': [2, 1]}
+   central ops [['allocate', 0, [3, 1]]] | worker ops [['allocate', 0, [2, 1]]]
+6 a_prompt_completion m_free 2 h 0 legal_victims ['0'] relaxed 1.0 integer 1.0 fractional 0
+   requests [(0, 'running', 16, 2, 0, 2, 0, True, False, True)]
+   central tables before {'0': [3, 1]} after {'0': [3, 1]} | worker after {'0': [2, 1]}
+   central ops [] | worker ops []
+7 a_decode_finish m_free 2 h 0 legal_victims ['0'] relaxed 40.0 integer 40.0 fractional 0
+   requests [(0, 'running', 17, 2, 0, 2, 0, False, True, True)]
+   central tables before {'0': [3, 1]} after {} | worker after {}
+   central ops [['free', 0, [3, 1]]] | worker ops [['free', 0, [2, 1]]]
+finish order [1, 0] {'1': ([13271], 'length'), '0': ([11087], 'length')}
+idle calls ['schedule'] iteration 7 -> 8
+exit_status=0
