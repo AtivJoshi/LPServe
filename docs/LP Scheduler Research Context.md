@@ -61,10 +61,24 @@ especially:
 
 ```
 Myopic Utility Maximization: The Primal ILP Formulation
+\label{subsec:myopic_ilp}
 
-Primal Heuristic 1: Approximation via LP Relaxation
+Primal Heuristic 1: LP Relaxation and Integer Extraction
 \label{subsec:lp_relaxation}
 ```
+
+These two subsections were amended together on 2026-10-12 (committed at
+`b1addc8` and `69e2180`), following the decisions recorded in
+`docs/lp_scheduler_architecture_discussion_phase_F.4.md`. All later manuscript
+sections are unrevised: the red revision-boundary paragraph at the end of
+`subsec:lp_relaxation` marks them outdated wherever they depend on the old
+feasible set, the reserve $W_t$, the old extraction, or the three-resource
+decomposition. They include the second primal heuristic, the Lagrangian dual
+and its slow and fast paths, the reduction to native vLLM, the MPC and
+hierarchical MPC formulations, and later recovery, subsumption, and equivalence
+claims. They must not be read as established algorithms, proofs, or
+equivalence results for the amended formulation until a separate mathematical
+assignment revises them.
 
 The current implementation target is **Primal Heuristic 1 only**.
 
@@ -152,6 +166,15 @@ For each request $i \in U_t$, the scheduler chooses at most one of the following
 
 The LP scheduler is intended to choose these execution actions directly. It is not merely a mechanism for assigning queue priorities. The canonical do-nothing action sets all action variables for the request to zero.
 
+*(amended 2026-10-12)* $U_t$ is partitioned by allocation state into the resident
+set $\mathcal R_t$ (allocated, including residents omitted from the next forward
+pass) and the waiting set $\mathcal Q_t$ (arrived and unallocated, including
+recomputation-preempted requests). When $U_t$ is empty, the step is ordinary
+idle and no LP is solved. Otherwise, after input and admission validation, the
+plan must execute at least one prefill or decode; preemption alone is not
+progress. If no legal useful plan exists, that is reported rather than
+replaced by an invented action.
+
 ---
 
 # 5. Myopic ILP
@@ -194,14 +217,17 @@ The request/system parameters are:
 
 - $P_i^{\mathrm{rem}}(t)$: remaining unprocessed prompt tokens;
 - $C_{\max}$: maximum candidate prefill chunk size;
-- $U_i(t)=\min(P_i^{\mathrm{rem}}(t),C_{\max})$: maximum prefill action available to request $i$;
+- $U_i(t)=\min(P_i^{\mathrm{rem}}(t),C_{\max})$: maximum prefill action available to request $i$ (the manuscript's $q_i$);
 - $a_i^P(t)$: fixed planning-memory cost of executing a positive prefill action;
-- $c_i^D(t)$: marginal planning-memory cost of one decode action;
+- $c_i^D(t)\in\{0,1\}$: actual additional blocks allocated by one decode action (amended 2026-10-12);
 - $c_i^Z(t)$: planning memory recovered by legally preempting request $i$;
 - $B_{\max}$: per-step token-volume budget;
 - $S_{\max}$: scheduled-action concurrency budget;
-- $M_t^{\mathrm{free}}$: free scheduling memory at the beginning of the step;
-- $W_t$: optional conservative memory reserve.
+- $F=M_t^{\mathrm{free}}$: free KV-cache blocks at the beginning of the step;
+- $h$: the shared block manager's admission watermark in blocks;
+- $N_{\max}$: the resident limit (`max_num_seqs`), distinct from $S_{\max}$.
+
+The former optional memory reserve $W_t$ is removed (amended 2026-10-12).
 
 Under the audited Sarathi/LPServe allocation behavior,
 
@@ -269,21 +295,36 @@ I_i^P(t)+y_i(t)
 \le S_{\max}.
 $$
 
-The planning-memory constraint is
+*(amended 2026-10-12)* Let
 
 $$
-\sum_{i\in U_t}
-\left(
-a_i^P(t)I_i^P(t)
-+
-c_i^D(t)y_i(t)
-\right)
--
-\sum_{i\in\mathcal{Z}_t}
-c_i^Z(t)z_i(t)
-\le
-M_t^{\mathrm{free}}-W_t.
+H=F+\sum_{i\in\mathcal R_t}c_i^Z(t)z_i(t)-\sum_{i\in U_t}a_i^P(t)I_i^P(t),
 $$
+
+the free blocks after selected preemptions and prefills, before decodes. $H$ is
+a linear expression, not a decision variable. The resource and progress
+constraints are
+
+$$
+H-\sum_{i\in U_t}c_i^D(t)y_i(t)\ge0,
+\qquad
+\sum_{i\in U_t}y_i(t)\le S_{\max}H,
+\qquad
+H\ge h\,I_i^P(t)\quad(i\in\mathcal Q_t),
+$$
+
+$$
+|\mathcal R_t|-\sum_{i\in\mathcal R_t}z_i(t)+\sum_{i\in\mathcal Q_t}I_i^P(t)\le N_{\max},
+\qquad
+\sum_{i\in U_t}\left(I_i^P(t)+y_i(t)\right)\ge1.
+$$
+
+They express actual memory consumption, the free-block-before-decode
+prerequisite, the shared admission watermark (one margin for the whole
+admission group, redundant when $h=0$), resident capacity counting every
+retained resident, and useful execution. They match the shared allocator checks
+when selected actions execute as preemptions, prefills, zero-demand decodes,
+and then one-block decodes, under the assumptions stated in the manuscript.
 
 Chunked prefill obeys
 
@@ -310,8 +351,11 @@ y_i(t)
 \mathbf{1}
 \left\{
 P_i^{\mathrm{rem}}(t)=0
-\right\}.
+\right\},
 $$
+
+which the manuscript states as decode eligibility $y_i\le\mathbf 1\{i\in\mathcal D_t\}$,
+together with prefill eligibility $I_i^P\le\mathbf 1\{i\in\mathcal P_t\}$.
 
 Finally,
 
@@ -323,7 +367,7 @@ $$
 
 enforces mutual exclusion between prefill, decode, and legal preemption. Because $z_i(t)=0$ for $i\notin\mathcal{Z}_t$, this constraint applies uniformly to all requests.
 
-These constraints define the mathematical core of the first scheduler. The three global coupling constraints are token volume, scheduled action width, and planning memory. Prefill linkage, decode causality, action mutual exclusion, and preemption eligibility remain request-local restrictions.
+These constraints define the mathematical core of the first scheduler. *(amended 2026-10-12)* Token volume, action width, actual memory, the decode prerequisite, the watermark rows, resident capacity, and useful execution couple requests. Prefill linkage, eligibility, action mutual exclusion, and preemption eligibility remain request-local restrictions. The former description of exactly three global coupling constraints is superseded.
 
 ---
 
@@ -354,6 +398,18 @@ Possible utility designs may encode priorities such as:
 
 These choices should be treated as research decisions rather than hidden inside scheduler implementation details.
 
+*(amended 2026-10-12)* The manuscript requires the coefficients to be finite and
+nonnegative on a common scale; they may depend on state but are fixed during each
+decision. The rank-based family of discussion R17 and the optional
+discarded-computation penalty of R18 remain candidates. Final formulas, scales,
+and any $\kappa$ value remain open. Coefficients MUST NOT encode a schedule
+computed first by another scheduler.
+
+Coefficients and policy ranks are built from one read-only capture of the
+scheduling state, by a small pure function, before the LP is constructed, and
+stay fixed for the whole decision. Explicit uniform utilities remain a usable
+policy. The data path is specified in `docs/lp_scheduler_design.md` §12.3.
+
 If simple utility weights are needed during early smoke testing, they should be clearly labeled as temporary test settings rather than the final policy used in research experiments.
 
 ---
@@ -379,6 +435,10 @@ z_i=0
 \quad
 \forall i\in U_t\setminus\mathcal{Z}_t.
 $$
+
+*(amended 2026-10-12)* The relaxation keeps the objective and every amended row
+of §5, including useful execution, resident capacity, actual memory, the decode
+prerequisite, and each watermark row.
 
 The request-local linkage constraints
 
@@ -408,368 +468,73 @@ A standard LP solver may be used initially. SciPy/HiGHS is a reasonable first ca
 
 Solver choice must remain isolated from the surrounding scheduler logic so that it can be replaced without redesigning the mathematical layer. Solver status, numerical failure, infeasibility, and exceptions must be represented explicitly rather than converted into fabricated action values.
 
+*(decided 2026-10-12)* A SciPy/HiGHS infeasible status is recorded as
+solver-reported LP infeasibility, with raw diagnostics. It is a numerical report,
+not an exact certificate; the exact implication from an infeasible relaxation to
+an infeasible ILP holds only for actual mathematical infeasibility. It is kept
+separate from the extraction's exhaustive finding that no legal useful integer
+plan exists. LP feasibility alone does not establish integer feasibility.
+
 The relaxed solution is not an executable scheduler decision. It must first be converted into a feasible integer action plan.
 
 ---
 
 # 8. LP Extraction Algorithm
 
-The extraction procedure converts the relaxed solution into executable integer actions while maintaining the resource constraints.
-
-## 8.1 Integral/fractional partition
-
-For each request, inspect the relaxed action indicators
-
-$$
-\tilde{y}_i,
-\qquad
-\tilde{I}_i^P,
-\qquad
-\tilde{z}_i,
-$$
-
-where $\tilde{z}_i=0$ by definition for $i\notin\mathcal{Z}_t$.
-
-A request is considered indicator-integral when all three values are numerically close to $0$ or $1$. Use an explicit numerical tolerance rather than exact floating-point equality. A tolerance such as
-
-```text
-1e-6
-```
-
-is a reasonable initial test setting, but it must remain explicit and must be validated.
-
-Let
-
-$$
-U_{\mathrm{int}}
-$$
-
-contain requests with integral relaxed action indicators, and let
-
-$$
-U_{\mathrm{frac}}
-$$
-
-contain the remaining requests.
-
-For $i\in U_{\mathrm{int}}$, lock
-
-$$
-\hat{y}_i=\tilde{y}_i,
-\qquad
-\hat{z}_i=\tilde{z}_i,
-\qquad
-\hat{I}_i^P=\tilde{I}_i^P,
-$$
-
-and set
-
-$$
-\hat{x}_i=\left\lfloor\tilde{x}_i\right\rfloor.
-$$
-
-Because the relaxation contains
-
-$$
-I_i^P\le x_i,
-$$
-
-an integral value $\tilde{I}_i^P=1$ implies $\tilde{x}_i\ge1$, and hence $\hat{x}_i\ge1$. Flooring therefore cannot produce an integral action with $\hat{I}_i^P=1$ and $\hat{x}_i=0$.
-
-The remaining token and sequence capacities are
-
-$$
-B_{\mathrm{rem}}
-=
-B_{\max}
--
-\sum_{i\in U_{\mathrm{int}}}
-\left(
-\hat{x}_i+\hat{y}_i
-\right),
-$$
-
-and
-
-$$
-S_{\mathrm{rem}}
-=
-S_{\max}
--
-\sum_{i\in U_{\mathrm{int}}}
-\left(
-\hat{I}_i^P+\hat{y}_i
-\right).
-$$
-
-The remaining planning memory is
-
-$$
-M_{\mathrm{rem}}
-=
-\left(
-M_t^{\mathrm{free}}-W_t
-\right)
--
-\sum_{i\in U_{\mathrm{int}}}
-\left(
-a_i^P\hat{I}_i^P
-+
-c_i^D\hat{y}_i
--
-c_i^Z\hat{z}_i
-\right),
-$$
-
-using the convention $\hat{z}_i=0$ for $i\notin\mathcal{Z}_t$.
-
-The final plan must be canonicalized and validated so that
-
-$$
-\hat{I}_i^P
-=
-\mathbf{1}
-\left\{
-\hat{x}_i>0
-\right\}
-\qquad
-\forall i\in U_t.
-$$
-
-## 8.2 Relaxed state and integer state
-
-The fractional-extraction routine needs two conceptually different pieces of information:
-
-- the **tilded variables**, which describe the relaxed LP solution;
-- the **hatted variables**, which represent the integer action plan being constructed.
-
-The extraction procedure should therefore retain access to both.
-
-The hatted state already contains the decisions fixed for $U_{\mathrm{int}}$ and must not lose or overwrite those decisions.
-
-## 8.3 Preemption-first rounding
-
-Dominant preemption rounding applies only to requests in
-
-$$
-U_{\mathrm{frac}}\cap\mathcal{Z}_t.
-$$
-
-For each such request, compare
-
-$$
-\tilde{y}_i,
-\qquad
-\tilde{I}_i^P,
-\qquad
-\tilde{z}_i.
-$$
-
-If preemption is the dominant relaxed action and $c_i^Z(t)>0$, set
-
-$$
-\hat{z}_i=1
-$$
-
-before performing fractional capacity-consuming actions, and increase the residual planning memory by
-
-$$
-c_i^Z(t).
-$$
-
-This ordering is important because legal preemption is a capacity-producing action. Memory released through selected preemptions should be accounted for before additional decode or prefill actions are admitted.
-
-Waiting, already-preempted, and otherwise ineligible requests are excluded because they do not belong to $\mathcal{Z}_t$. The extraction procedure must not infer preemption legality solely from the numerical value of $\tilde{z}_i$.
-
-Ties must be resolved deterministically. The exact tie-breaking rule must be documented and tested.
-## 8.4 Safety preemption
-
-After dominant fractional preemptions are selected, the residual planning memory may still satisfy
-
-$$
-M_{\mathrm{curr}}<0.
-$$
-
-This can occur because the relaxed LP may rely on the combined memory contribution of several non-dominant fractional preemptions. The repair step may therefore need to select multiple legal preemptions before feasibility is restored.
-
-The candidate set for safety preemption is restricted to unused requests satisfying
-
-$$
-i\in U_{\mathrm{frac}}\cap\mathcal{Z}_t
-\qquad\text{and}\qquad
-c_i^Z(t)>0.
-$$
-
-The intended procedure is:
-
-```text
-while M_curr < 0:
-    select an unused request i from U_frac intersect Z_t
-    with c_i^Z(t) > 0 and maximum remaining tilde_z_i
-
-    if no such request exists:
-        report extraction failure
-
-    set hat_z_i = 1
-    increase M_curr by c_i^Z(t)
-```
-
-The loop stops when
-
-$$
-M_{\mathrm{curr}}\ge0
-$$
-
-or extraction fails.
-
-Restricting the candidate set to $\mathcal{Z}_t$ prevents the mathematical repair procedure from producing an action that the LPServe executor cannot legally apply. Requiring $c_i^Z(t)>0$ also ensures that every repair iteration makes strict progress toward restoring memory feasibility.
-
-Choosing the eligible request with the largest remaining $\tilde{z}_i$ keeps the repair decision close to the relaxed solution. This is an approximation-quality heuristic; it does not imply that the resulting integer solution maximizes the rounded objective.
-
-## 8.5 Decode and prefill extraction
-
-For each remaining unpreempted fractional request, compare
-
-$$
-\tilde{y}_i
-$$
-
-and
-
-$$
-\tilde{I}_i^P.
-$$
-
-A fractional decode may be selected only if all relevant residual capacities remain available:
-
-$$
-B_{\mathrm{curr}}\ge1,
-$$
-
-$$
-S_{\mathrm{curr}}\ge1,
-$$
-
-and
-
-$$
-M_{\mathrm{curr}}\ge c_i^D(t).
-$$
-
-After accepting a decode, update
-
-$$
-B_{\mathrm{curr}}
-\gets
-B_{\mathrm{curr}}-1,
-$$
-
-$$
-S_{\mathrm{curr}}
-\gets
-S_{\mathrm{curr}}-1,
-$$
-
-and
-
-$$
-M_{\mathrm{curr}}
-\gets
-M_{\mathrm{curr}}-c_i^D(t).
-$$
-
-A fractional prefill action may be accepted only if
-
-$$
-B_{\mathrm{curr}}\ge1,
-\qquad
-S_{\mathrm{curr}}\ge1,
-\qquad
-M_{\mathrm{curr}}\ge a_i^P(t).
-$$
-
-If these conditions hold, select
-
-$$
-\hat{x}_i
-=
-\min
-\left(
-P_i^{\mathrm{rem}}(t),
-C_{\max},
-B_{\mathrm{curr}}
-\right).
-$$
-
-If $\hat{x}_i>0$, set
-
-$$
-\hat{I}_i^P=1
-$$
-
-and update
-
-$$
-B_{\mathrm{curr}}
-\gets
-B_{\mathrm{curr}}-\hat{x}_i,
-$$
-
-$$
-S_{\mathrm{curr}}
-\gets
-S_{\mathrm{curr}}-1,
-$$
-
-and
-
-$$
-M_{\mathrm{curr}}
-\gets
-M_{\mathrm{curr}}-a_i^P(t).
-$$
-
-Under the audited Sarathi allocation behavior, memory is a fixed admission gate for prefill rather than a per-token fluid capacity. Reducing $\hat{x}_i$ does not reduce $a_i^P(t)$. Consequently, prefill chunk size may be truncated by the remaining token budget, but not by dividing the remaining memory by a per-token coefficient.
-
-If the complete fixed charge $a_i^P(t)$ does not fit, the initial safe extraction policy skips that fractional prefill action. A later extraction policy may consider additional legal preemptions, but such behavior must be specified and tested separately.
-
-The extraction routine therefore requires access to $C_{\max}$, $\mathcal{Z}_t$, and the per-request memory quantities $a_i^P(t)$, $c_i^D(t)$, and $c_i^Z(t)$.
+*(amended 2026-10-12)* The integral/fractional partition, indicator locking,
+preemption-first rounding, safety preemption, and support-only packing described
+here previously are superseded. The authoritative algorithm is
+`alg:lp_extraction` in `subsec:lp_relaxation`; its implementation contract is
+§10 of `docs/lp_scheduler_design.md`. In summary, one LP-guided pass builds whole
+actions:
+
+1. Order every eligible execution candidate, including candidates with zero LP
+   support, by descending $\tilde I_i^P+\tilde y_i$, then service rank, then
+   identity. Order legal victims by descending $\tilde z_i$, then victim rank,
+   then identity. Ranks are immutable per-decision policy inputs, distinct from
+   request identity.
+2. Try each candidate once with one whole decode or a prefill chunk
+   $\min(U_i,\text{remaining tokens},\max(1,\lfloor\tilde x_i\rfloor))$. If the
+   trial plan violates an integer resource check, add legal victims in victim
+   order until it fits or the list is exhausted. Integral-idle and zero-support
+   victims, including zero-block victims that free a resident place, are
+   allowed. A failed trial is discarded completely.
+3. Accept the first legal trial regardless of utility. Afterward, accept a trial
+   with new victims only for strictly positive gain, and a trial without new
+   victims for nonnegative gain. Accepted actions and victims are never removed.
+4. Extend selected prefill chunks with remaining tokens in service-rank order,
+   then validate the complete integer plan.
+
+Under the manuscript's assumptions, every returned plan is legal and useful, and
+the pass finds useful work whenever a legal useful integer plan exists; if every
+first trial fails, no such plan exists. These are analytical arguments, not
+executed evidence. Accepted limitations include avoidable negative utility on
+the first acceptance, no utility approximation guarantee, possible mass
+preemption with no victim-count bound, and no restart, starvation, completion,
+or policy-recovery guarantee. Finite-precision handling (numeric sorting
+without tolerance comparators, exact integer resource checks, and a
+conservative strict-improvement threshold from the existing objective
+tolerances) is specified in the design.
+
+Under the audited allocation behavior, memory is a fixed admission gate for
+prefill rather than a per-token fluid capacity: reducing a chunk does not reduce
+$a_i^P(t)$, so chunks may be truncated by the token budget but not by dividing
+memory by a per-token coefficient.
 
 ---
 
-# 9. Almost-Integral Structure
+# 9. Fractional Structure
 
-The relaxed LP has three global coupling constraints:
+*(amended 2026-10-12)* The former expectation of at most three fractional
+requests is retired. The amended relaxation has per-admission watermark rows,
+and the manuscript gives an analytical construction in which all of $n$ waiting
+requests are fractional at an optimal vertex, for any $n$. Extraction therefore
+must not depend on the number of fractional requests, on receiving a vertex, or
+on solver basis behavior. Observed fractional counts may be recorded as
+descriptive data only.
 
-1. token-volume capacity;
-2. scheduled-action concurrency;
-3. planning-memory capacity.
-
-The remaining constraints are request-local, including:
-
-- prefill linkage $I_i^P\le x_i\le U_iI_i^P$;
-- decode causality;
-- action mutual exclusion;
-- restriction of preemption support to $\mathcal{Z}_t$.
-
-Replacing $c_i^Px_i$ with $a_i^PI_i^P$ changes a coefficient in the existing global memory constraint; it does not introduce another global coupling constraint. Similarly, restricting $z_i$ to $\mathcal{Z}_t$ is a request-local domain restriction.
-
-This block-angular structure suggests that an appropriate optimal basic feasible solution may contain only a small number of request blocks that are not at local extreme points. The current formulation motivates an expected at-most-three-fractional-request property.
-
-However, the Fundamental Theorem of Linear Programming alone does not prove this bound. A formal result also requires:
-
-- an extreme-point characterization of the request-local polytope;
-- a block-angular argument relating the three global constraints to the number of nonintegral request blocks;
-- a solver that returns an appropriate basic feasible solution.
-
-Numerical tolerances, degeneracy, and solver crossover behavior may affect the observed fractional count. The scheduler must therefore record or otherwise expose the number of fractional requests and must not assume at runtime that $\lvert U_{\mathrm{frac}}\rvert\le3$.
-
-The extraction implementation must safely process an arbitrary fractional set.
-Cases that exceed the expected structural bound must be observable. A dedicated
-test is follow-up work when such a case is encountered or becomes relevant to a
-supported MVP path; it is not an initial test gate.
-
-Do not add new global coupling constraints merely for implementation convenience without reconsidering the structural argument.
+Do not add new coupling constraints merely for implementation convenience; any
+new constraint requires rechecking the legality and progress arguments.
 
 ---
 
@@ -797,38 +562,14 @@ c_i^D(t)y_i(t)
 c_i^Z(t)z_i(t)
 \right)
 \le
-M_t^{\mathrm{free}}-W_t.
+F.
 $$
 
-This abstraction is more general for serving architectures that allocate KV-cache capacity incrementally as prefill tokens are processed.
+This abstraction is more general for serving architectures that allocate KV-cache capacity incrementally as prefill tokens are processed. *(amended 2026-10-12)* It is not supported here: it would need its own allocation model and its own derivation of the admission and decode checks.
 
 The audited Sarathi serving architecture used by `LPServe`, however, allocates the physical blocks required for a request's complete current logical context when the request is admitted. Choosing a smaller positive prefill chunk does not proportionally reduce this allocation. Conversely, a resident partial-prefill request has already incurred the allocation and normally requires no additional blocks for another prefill chunk.
 
-Because of this limitation of the Sarathi serving architecture, the first LPServe-native scheduler uses the specialized fixed-charge expression
-
-$$
-a_i^P(t)I_i^P(t)
-+
-c_i^D(t)y_i(t)
--
-c_i^Z(t)z_i(t),
-$$
-
-or, with preemption explicitly restricted to $\mathcal{Z}_t$,
-
-$$
-\sum_{i\in U_t}
-\left(
-a_i^P(t)I_i^P(t)
-+
-c_i^D(t)y_i(t)
-\right)
--
-\sum_{i\in\mathcal{Z}_t}
-c_i^Z(t)z_i(t)
-\le
-M_t^{\mathrm{free}}-W_t.
-$$
+Because of this limitation of the Sarathi serving architecture, the first LPServe-native scheduler uses the fixed admission charge $a_i^P(t)I_i^P(t)$ inside $H$ and the amended rows of §5 *(amended 2026-10-12)*: actual memory $H-\sum_ic_i^Dy_i\ge0$, the decode prerequisite, the admission watermark, and resident capacity.
 
 This is still a planning model. `LPServe` ultimately manages KV cache through physical block tables, and feasibility can depend on:
 
@@ -844,12 +585,14 @@ The natural planning unit is the number of KV-cache blocks rather than raw bytes
 
 The state-mapping layer should construct:
 
-- $M_t^{\mathrm{free}}$ from the block manager's free-block count;
+- $F=M_t^{\mathrm{free}}$ from the block manager's free-block count, and $h$ from its admission watermark;
 - $a_i^P(t)=0$ for an already allocated resident partial prefill;
 - $a_i^P(t)=A_i(t)$ for an unallocated request requiring full-context admission or recomputation;
-- $c_i^D(t)$ from the marginal physical block demand of one decode step, subject to the selected conservative policy;
+- $c_i^D(t)\in\{0,1\}$ from the exact logical/physical block gap of one decode step; another gap is an unsupported-state error (amended 2026-10-12);
 - $c_i^Z(t)$ from the request's currently allocated physical block-table length;
-- $\mathcal{Z}_t$ from legal preemption status, ownership, allocation, and in-flight conditions.
+- $\mathcal{Z}_t$ from legal preemption status, ownership, allocation, and in-flight conditions;
+- $\mathcal R_t$, $\mathcal Q_t$, $|\mathcal R_t|$, and $N_{\max}$ from `running`, arrived `waiting`, and `max_num_seqs`;
+- immutable service and victim ranks from the same captured queue state.
 
 The final LPServe action executor remains responsible for checking that selected actions are physically and operationally legal. It must validate the complete integer plan before mutating scheduler state and must serialize physical mutations in the selected commit order.
 
@@ -857,9 +600,9 @@ Therefore:
 
 > LP planning-memory feasibility and actual block-manager feasibility are distinct requirements.
 
-Do not claim that satisfying the scalar LP memory inequality proves that every selected action can be executed. Conversely, avoid expanding the LP merely to reproduce every allocator implementation detail. The initial mathematical layer should use the simplest meaningful planning abstraction and rely on exact physical validation at the execution boundary.
+Do not claim that satisfying the LP resource inequalities proves that every selected action can be executed. Conversely, avoid expanding the LP merely to reproduce every allocator implementation detail. The initial mathematical layer should use the simplest meaningful planning abstraction and rely on exact physical validation at the execution boundary.
 
-The memory reserve $W_t$ remains a separate research decision because the current Sarathi allocation watermark does not apply uniformly to every allocation and append path.
+*(amended 2026-10-12)* The memory reserve $W_t$ is removed. Its intended role, admission-watermark protection, is represented by the watermark rows. The free-block-before-decode check, to which the watermark does not apply, is represented separately by the decode prerequisite.
 
 ---
 
@@ -932,6 +675,10 @@ Introduce abstractions only when they:
 # 13. What the SLAI Architecture Audit Must Determine
 
 Before implementing the scheduler, inspect the actual `LPServe` fork and answer at least the following questions.
+
+*(Historical Phase C question list. Answers are in the architecture audit; later
+decisions, including the 2026-10-12 removal of $W_t$ and exact decode demand,
+supersede any choice the questions leave open.)*
 
 ## Request state
 
@@ -1014,20 +761,21 @@ $$
 S_{\max}.
 $$
 
-The fixed-charge planning-memory constraint must also hold:
+*(amended 2026-10-12)* With $\hat H=F+\sum_{i\in\mathcal R_t}c_i^Z\hat z_i-\sum_ia_i^P\hat I_i^P$,
+the integer resource and progress rows must also hold:
 
 $$
-\sum_{i\in U_t}
-\left(
-a_i^P(t)\hat{I}_i^P
-+
-c_i^D(t)\hat{y}_i
-\right)
--
-\sum_{i\in\mathcal{Z}_t}
-c_i^Z(t)\hat{z}_i
-\le
-M_t^{\mathrm{free}}-W_t.
+\hat H\ge\sum_ic_i^D\hat y_i,
+\qquad
+\hat H\ge1\ \text{if any decode is selected},
+\qquad
+\hat H\ge h\ \text{if any admission is selected},
+$$
+
+$$
+|\mathcal R_t|-\sum_{i\in\mathcal R_t}\hat z_i+\sum_{i\in\mathcal Q_t}\hat I_i^P\le N_{\max},
+\qquad
+\sum_i(\hat I_i^P+\hat y_i)\ge1.
 $$
 
 The prefill indicator must be canonical:
@@ -1055,6 +803,8 @@ Additionally, the final plan must:
 - preempt only requests whose status, ownership, allocation, and in-flight state make preemption legal;
 - charge the complete $a_i^P(t)$ for every selected unallocated prefill action;
 - charge zero additional prefill memory for an already allocated resident partial prefill when $a_i^P(t)=0$;
+- count every retained resident, including omitted residents, against $N_{\max}$;
+- execute victims first, then prefills, zero-demand decodes, and one-block decodes, with emitted metadata in the same order;
 - maintain LPServe/SLAI sequence-state invariants;
 - maintain block-manager invariants;
 - never duplicate a request;
@@ -1072,39 +822,37 @@ A mathematically feasible plan must not be allowed to corrupt LPServe state if i
 
 The mathematical scheduler should be testable without starting an LLM server or requiring a GPU.
 
-At minimum, synthetic tests should cover:
+*(amended 2026-10-12)* The corrected CPU milestone requires the checks listed in
+§15.7 of `docs/lp_scheduler_design.md`, derived from P10 step 9. In summary,
+synthetic tests should cover:
 
-- empty request set;
-- all-integral relaxed solution;
-- explicit continuous relaxation of $x_i$;
-- enforcement of $I_i^P\le x_i\le U_iI_i^P$;
-- rejection of $I_i^P=1$ with $x_i<1$;
+- explicit continuous relaxation of $x_i$ and enforcement of
+  $I_i^P\le x_i\le U_iI_i^P$;
 - canonicalization of $\hat{I}_i^P=\mathbf{1}\{\hat{x}_i>0\}$;
-- numerical tolerance near $0$ and $1$;
-- token-budget saturation;
-- sequence-budget saturation;
-- fixed-charge memory-budget saturation;
-- decode causality;
-- mutual exclusion;
-- prefill chunk cap;
-- exclusion of requests outside $\mathcal{Z}_t$ from preemption;
-- dominant fractional preemption over $\mathcal{Z}_t$;
-- deterministic tie handling;
-- prefill truncation by residual token capacity;
-- full acceptance when the complete fixed prefill charge $a_i^P$ fits;
-- rejection when the complete fixed prefill charge $a_i^P$ does not fit;
-- verification that reducing a chunk does not reduce $a_i^P$;
-- zero additional planning-memory cost for a resident partial prefill with $a_i^P=0$;
-- full-context admission cost for an unallocated waiting or recomputation request;
-- more fractional requests than predicted by the expected structural rule;
-- solver failure;
-- solver infeasibility;
-- solver numerical error;
-- extraction failure;
-- one legal safety preemption;
-- multiple legal safety preemptions when one is insufficient;
-- exclusion of zero-recovery candidates from safety preemption;
-- failure when eligible positive-recovery candidates are exhausted while memory remains negative.
+- each amended row: token, action, actual memory, decode prerequisite,
+  watermark ($h=0$ and $h>0$), resident capacity, and useful execution;
+- multiple admissions sharing one watermark and omitted residents;
+- zero free blocks with a zero-demand decode, and mixed decode demand;
+- full-context admission cost, zero resident-prefill cost, and chunks that do
+  not reduce $a_i^P$;
+- necessary negative-utility first work, zero-LP-support execution, and
+  integral-idle victims;
+- rejected optional trials and strict-improvement values on both sides of the
+  numerical threshold;
+- the many-fractional watermark construction and LP-feasible but
+  integer-infeasible states, labelled as abstract formulation fixtures where
+  they lie outside the admission-validated domain (the manuscript's $F=3$,
+  $h=2$ example has a three-block pool and fails admission validation). They
+  are not validated runtime no-useful-work examples;
+- coefficients and ranks that may change between decisions, stay fixed
+  within one, and come from the same immutable capture without mutation;
+  uniform coefficient inputs are preserved, and negative or nonfinite
+  coefficients are rejected;
+- no legal useful plan, and agreement with a bounded independent enumeration
+  written in test code only;
+- the zero- and positive-coefficient mass-preemption examples;
+- solver-reported infeasibility, solver numerical failure, and malformed
+  output, each kept distinct from exhaustive no-useful-work.
 
 `LPServe`-specific tests should independently cover:
 
@@ -1114,8 +862,9 @@ At minimum, synthetic tests should cover:
 - decode scheduling;
 - preemption/recomputation;
 - block accounting;
-- queue/state updates;
-- construction of `SchedulerOutputs`.
+- queue/state updates, including victim reinsertion order, retained omitted residents, readmission to the running tail, and arrived work behind a future waiting head;
+- construction of `SchedulerOutputs`;
+- pre-registration rejection of provably inadmissible requests and rejection of obsolete configuration arguments.
 
 GPU experiments should not be used to discover basic LP or state-transition bugs that can be exposed by synthetic tests.
 
@@ -1139,6 +888,21 @@ For example, a `VLLMScheduler` implemented inside `LPServe` should be treated as
 Likewise, the Sarathi implementation in `LPServe` should be described as the Sarathi policy used in the SLAI framework unless the original external system is reproduced separately.
 
 Experiments with separate serving systems may later be useful for external validity, but they should not be mixed into the main same-framework scheduler comparison without accounting for the serving-stack confound.
+
+*(recorded 2026-10-12; discussion R02, R04, R05, R11)* The primary recovery
+target is an **adapted** reference: the service and preemption preferences of
+upstream vLLM v0.31.0 (commit `db9527a46873454610df6dbedf79a36d6bf1a7f6`) with
+FCFS, chunked prefill, ordinary text generation, tensor and pipeline parallelism
+one, synchronous scheduling, and prefix caching, speculative decoding, and the
+long-prefill threshold disabled, applied within LPServe's full-context
+allocation framework. It does not claim upstream allocation trajectories, exact
+chunks or batches, physical execution order, or whole-engine equivalence.
+"Youngest" means the tail of the current running order, and a necessary
+preemption is one needed to serve the preferred request. This adapted reference
+is distinct from LPServe's inherited `vllm_scheduler.py`. Never compute another
+scheduler's schedule first and encode it into coefficients. Recovering this
+behavior through coefficients is a research question, not a universal default
+policy. How recovery and overhead are measured is OPEN under Q11 (§21).
 
 ---
 
@@ -1333,6 +1097,35 @@ These are optimization questions and should not complicate the first correctness
 
 Several choices should remain explicit rather than being buried inside implementation constants.
 
+## Q11 — Adapted-policy recovery and overhead evaluation (OPEN, deferred)
+
+**Status:** OPEN and deliberately deferred by the user on 2026-10-12. This
+section is its primary durable record; the design and the discussion record
+link here. Deferral is not rejection and establishes no policy fidelity. Q11 is
+not a prerequisite for the corrected framework, but it is a prerequisite for any
+quantified claim of policy recovery, fidelity, or scheduling overhead.
+
+Target: the adapted vLLM v0.31.0 reference described in §16, within LPServe's
+full-context framework. The following remain pending; none is selected:
+
+- definitions of corresponding logical states and of service and preemption
+  traces when policies use different chunks and batches;
+- the remaining adaptation details and settings of the reference procedure;
+- pinned revisions and profiles of Sarathi, SLAI, and any other secondary
+  reference;
+- coefficient formulas and settings evaluated for recovery (D/P/G scales and
+  any discarded-work $\kappa$);
+- workloads and numeric capacities;
+- recovery criteria and thresholds for major deviations, and attribution of a
+  deviation to objective expressiveness, extraction, ordering, or the common
+  framework;
+- bounded fairness, starvation, restart, and completion observations (delays,
+  service gaps, unfinished and error counts, preemption and recomputation);
+- separation of scheduler decision time from model execution time and from
+  effects of changed batch composition.
+
+No recovery or performance experiment is authorized by this entry.
+
 ## Utility design
 
 What should
@@ -1389,59 +1182,52 @@ $$
 
 and preemption actions should be defined only over the legally preemptible set $\mathcal{Z}_t$.
 
-The remaining memory-model research choice concerns $c_i^D(t)$:
-
-- use the exact marginal block demand of the next decode step; or
-- use a conservative one-block charge aligned with the current append-feasibility gate.
-
-Whichever decode policy is selected must be explicit, tested, and followed by exact physical validation. The project should also verify that the calculated $a_i^P(t)$, $c_i^D(t)$, and $c_i^Z(t)$ agree with actual block-manager transitions in synthetic integration tests.
+*(resolved 2026-10-12, discussion R07)* $c_i^D(t)$ is the exact marginal block
+demand of the next decode, zero or one. The append gate's free-block requirement
+is modeled by the decode prerequisite rather than by charging every decode one
+block. The project should still verify, in synthetic integration tests, that the
+calculated $a_i^P(t)$, $c_i^D(t)$, and $c_i^Z(t)$ agree with actual block-manager
+transitions.
 
 ## Memory reserve
 
-Is
+*(resolved 2026-10-12, discussion R10 and R12)* The independent reserve $W_t$ is
+removed. Its intended role, admission-watermark protection, is represented by
+$H\ge hI_i^P$ for admissions. No final-state reserve is imposed. Historical runs
+that used a reserve remain evidence only for their configuration.
 
-$$  
-W_t  
-$$
+## Victim selection quality
 
-necessary?
+*(amended 2026-10-12)* Safety repair is superseded. Victims are added in
+descending LP preemption value, then victim rank, until a trial fits. This keeps
+choices close to the LP solution but does not minimize victims or penalties and
+can produce mass preemption. Better victim selection remains a possible later
+study if utility quality becomes important; no alternative is approved.
 
-If so:
+## Fractional structure
 
-- what physical risk is it protecting against?
-- should it be fixed or state dependent?
-- how should it be calibrated?
-
-## Fractional-repair victim selection
-
-Repeatedly selecting the largest $\tilde{z}_i$ keeps the repair step close to the relaxed LP solution, but it does not guarantee the best rounded objective.
-
-Alternative repair policies may be studied later if approximation quality becomes important.
-
-## Almost-integral property
-
-Under the exact implemented formulation:
-
-- does the expected at-most-three-fractional-request property hold empirically?
-- does the chosen solver reliably return suitable extreme-point solutions?
-- do any `LPServe`-specific changes alter the theoretical argument?
+*(resolved 2026-10-12)* The at-most-three-fractional-request expectation does not
+hold for the amended relaxation (§9). Observed fractional counts may be recorded
+descriptively; they carry no correctness meaning.
 
 ## Approximation guarantee
 
-The exact theoretical quality of the integer extraction relative to:
+The extracted plan has no fixed approximation ratio relative to the relaxed LP
+or the original ILP: the manuscript gives a family whose ratio tends to zero. The
+LP optimum is an upper bound on the ILP optimum only when the amended LP is solved
+exactly. Do not claim an approximation ratio.
 
-- the relaxed LP; and
-- the original ILP
+## Downstream mathematical revision
 
-should be stated carefully.
-
-Do not claim an approximation ratio merely because the LP solution is almost integral.
+The manuscript sections after `subsec:lp_relaxation` require a separate
+mathematical assignment before they can be relied on for the amended
+formulation (§3.1).
 
 ## Solver overhead
 
 Does a generic LP solver remain practical as $|U_t|$ grows under realistic workloads?
 
-This should be answered experimentally after the scheduler is working correctly.
+This should be answered experimentally after the scheduler is working correctly, under the measurement boundaries of Q11. Explicit watermark rows can make the constraint matrix quadratic in size, and extraction costs $O(u+nr+n\log n+r\log r)$ with incrementally maintained totals; neither statement is a measured speed.
 
 ---
 
@@ -1465,17 +1251,24 @@ states fail visibly rather than adding speculative recovery or fallback logic.
 The implementation is based on the following design principles:
 
 - model each scheduling step as a myopic utility-maximization problem;
-- solve a continuous LP relaxation;
-- convert the relaxed solution into deterministic feasible integer actions;
-- process capacity-producing preemptions before fractional admissions;
-- use safety preemption when necessary to restore planning-memory feasibility;
-- use fluid chunking to exploit residual token capacity after the complete fixed prefill-admission memory charge has been shown feasible;
+- solve a continuous LP relaxation of the amended ILP, including useful execution, resident capacity, actual decode demand, the decode prerequisite, and the admission watermark;
+- convert the relaxed solution into legal integer actions with the one-pass LP-guided whole-action constructor, adding victims only as trials require;
+- extend selected prefill chunks with residual token capacity only after the complete fixed prefill-admission charge has been checked;
 - keep the mathematical planning-memory model conceptually separate from physical KV-block feasibility;
-- keep utility design, decode-memory accounting, memory-reserve policy, and numerical tolerances explicit as research choices;
+- keep utility design, policy ranks, and numerical tolerances explicit as research choices;
 - design the software directly around `LPServe`'s scheduler and block-manager architecture;
 - establish focused evidence for the supported MVP path before optimizing solver overhead.
 
 The immediate objective is to establish a clean `LPServe` baseline, understand the SLAI-derived scheduler architecture sufficiently for the selected MVP, and then implement the mathematical scheduler natively inside the `LPServe` fork as soon as possible.
+
+**Current milestone (2026-10-12).** The next milestone is the corrected CPU
+framework (discussion Q12/P10). The mathematical correction and this
+documentation alignment are recorded. Implementing the planning, mapping,
+execution, admission, and configuration changes, and passing design §15.7,
+remain pending. Historical CPU and GPU evidence applies only to its original
+code and workloads. A GPU regression requires separate authorization after the
+CPU checks pass. Recovery and performance experiments remain deferred under
+Q11.
 
 ---
 

@@ -228,6 +228,14 @@ The user approved P09's five-area framework correction and requested a detailed 
 
 The user limits the forthcoming TeX changes to subsec:myopic_ilp and subsec:lp_relaxation, with a detailed visibly marked paragraph at the end of the latter explaining the amendments and the outdated downstream sections. Subsequent TeX sections must remain unchanged in that task. This narrows P09's earlier general recommendation to qualify downstream recovery assertions: record their staleness now, revise them in a separate assignment. Current authorization is to develop the plan and record it in this discussion only; mathematical/normative/code edits, tests, and an implementation prompt remain deferred.
 
+### R21 — Solver-reported infeasibility is a distinct, non-certified outcome
+
+Status: user decision on 2026-10-12, made for the Q12/P10 step 4 documentation batch; recorded in `docs/lp_scheduler_design.md` (§9.3, D-31); not implemented.
+
+Preserve SciPy/HiGHS status 2 as **solver-reported LP infeasibility**, retaining the raw status and diagnostics. It is a numerical solver report, not an exact mathematical certificate; the exact statement that an infeasible relaxation implies an infeasible ILP remains conditional on actual mathematical infeasibility. Keep this outcome separate from the constructor's exhaustive proof that no legal useful integer plan exists, and from other solver or numerical failures. Do not add a certificate checker or another solve. Like other pre-mutation failures, it follows the existing fail-stop contract.
+
+Q11 cross-link (2026-10-12): the primary durable record of Q11 is now `docs/LP Scheduler Research Context.md` §21, "Q11 — Adapted-policy recovery and overhead evaluation (OPEN, deferred)", linked from design §17.1.
+
 ## Q02 source review — Reference properties and problem origins
 
 Status: source observations and analytical arguments recorded for discussion. No new implementation mechanism or fairness requirement is selected. No tests, models, or performance experiments were run.
@@ -1163,7 +1171,7 @@ Status: P09 is approved in R20; no new scheduling mechanism or implementation au
 
 ### Q11 — How will we establish recovery and measure overhead?
 
-Status: explicitly deferred by the user on 2026-10-12; OPEN and important. P10 step 4 will put the durable item in research-context section 21 during the authorized main-document update. No recovery thresholds or experiments are approved.
+Status: explicitly deferred by the user on 2026-10-12; OPEN and important. P10 step 4 will put the durable item in research-context section 21 during the authorized main-document update. No recovery thresholds or experiments are approved. Recorded 2026-10-12: the durable item now lives in `docs/LP Scheduler Research Context.md` §21 (see R21's cross-link).
 
 - How do we compare corresponding logical states and service/preemption traces when policies use different chunks and batches?
 - Which analytical guarantees and later bounded checks distinguish unnecessary idle, lost progress, unfairness, and inherited limitations?
