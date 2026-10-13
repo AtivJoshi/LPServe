@@ -65,8 +65,6 @@ B_MAX = 64
 C_MAX = 8
 S_MAX = 2
 MAX_NUM_SEQS = 2
-MEMORY_RESERVE = 1
-DECODE_POLICY_ID = "conservative_one_block_v1"
 DECODE_UTILITY = 1.0
 PREFILL_TOKEN_UTILITY = 1.0
 PREEMPTION_PENALTY = 1.0
@@ -211,9 +209,8 @@ def check_step(exp, ids, n_free, before, events, sched, after, step_outputs,
     problem = snap["lp_problem"]
     check((problem["b_max"], problem["c_max"], problem["s_max"]) ==
           (B_MAX, C_MAX, S_MAX), f"{tag}: mapped limits")
-    check(snap["memory_reserve"] == MEMORY_RESERVE
-          and snap["resident_limit"] == MAX_NUM_SEQS
-          and snap["decode_memory_policy_id"] == DECODE_POLICY_ID
+    check(snap["resident_limit"] == MAX_NUM_SEQS
+          and problem["admission_watermark"] == snap["watermark_blocks"]
           and snap["numerical_policy"] == policy_json,
           f"{tag}: mapped policy inputs")
     check(snap["free_physical_blocks"] == before["free_blocks"],
@@ -252,8 +249,7 @@ def check_step(exp, ids, n_free, before, events, sched, after, step_outputs,
            for d in plan["decisions"]}
     want = {rid[ids[n]]: (*exp["plan"][n], 0) for n in present}
     check(got == want, f"{tag}: plan {got} differs from expected {want}")
-    check(not plan["dominant_preemption_ids"]
-          and not plan["safety_preemption_ids"],
+    check(not plan["victim_order"],
           f"{tag}: plan preemption ids")
     selected = [v for v in got.values() if v[0] > 0 or v[1]]
     check(sum(p + d for p, d, _ in got.values()) <= B_MAX
@@ -394,8 +390,7 @@ def main():
         scheduler_config = LPSchedulerConfig(
             max_num_seqs=MAX_NUM_SEQS, max_model_len=MAX_MODEL_LEN,
             num_pipeline_stages=PIPELINE_PARALLEL_SIZE, b_max=B_MAX,
-            c_max=C_MAX, s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
-            decode_memory_policy_id=DECODE_POLICY_ID,
+            c_max=C_MAX, s_max=S_MAX,
             decode_utility=DECODE_UTILITY,
             prefill_token_utility=PREFILL_TOKEN_UTILITY,
             preemption_penalty=PREEMPTION_PENALTY,
@@ -471,8 +466,6 @@ def main():
                           same_params_for_both=True),
             add_b_after_step=ADD_B_AFTER_STEP,
             b_max=B_MAX, c_max=C_MAX, s_max=S_MAX, max_num_seqs=MAX_NUM_SEQS,
-            memory_reserve=MEMORY_RESERVE,
-            decode_memory_policy_id=DECODE_POLICY_ID,
             utilities=dict(decode=DECODE_UTILITY,
                            prefill_token=PREFILL_TOKEN_UTILITY,
                            preemption_penalty=PREEMPTION_PENALTY),
@@ -490,15 +483,13 @@ def main():
         summary["config"] = config_record
         print("config:", json.dumps(config_record), flush=True)
 
-        # Pool adequacy: three blocks in use at the peak, the planning
-        # reserve, and the native watermark must all fit.
+        # Pool adequacy: three blocks in use at the peak and the native
+        # watermark must fit (the planning reserve was removed).
         check(n_free == bm.num_total_gpu_blocks and not bm.block_tables,
               "block pool must be fully free before the requests")
-        check(n_free - PEAK_BLOCKS_IN_USE >= bm.watermark_blocks
-              + MEMORY_RESERVE,
+        check(n_free - PEAK_BLOCKS_IN_USE >= bm.watermark_blocks,
               f"profiled pool {n_free} too small for watermark "
-              f"{bm.watermark_blocks} + reserve {MEMORY_RESERVE} + "
-              f"{PEAK_BLOCKS_IN_USE} blocks")
+              f"{bm.watermark_blocks} + {PEAK_BLOCKS_IN_USE} blocks")
 
         observer = Observer()
         observer.wrap(lsm, "map_scheduler_state", lambda a, k, r: dict(

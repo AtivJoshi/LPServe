@@ -82,8 +82,6 @@ LP_MAX_NUM_SEQS = 1
 B_MAX = 32
 C_MAX = 8
 S_MAX = 1
-MEMORY_RESERVE = 1
-DECODE_POLICY_ID = "conservative_one_block_v1"
 DECODE_UTILITY = 1.0
 PREFILL_TOKEN_UTILITY = 1.0
 PREEMPTION_PENALTY = 1.0
@@ -419,9 +417,8 @@ def check_lp_events(tag, exp, before, events, seq_id, policy_json):
     problem = snap["lp_problem"]
     check((problem["b_max"], problem["c_max"], problem["s_max"]) ==
           (B_MAX, C_MAX, S_MAX), f"{tag}: mapped limits")
-    check(snap["memory_reserve"] == MEMORY_RESERVE
-          and snap["resident_limit"] == LP_MAX_NUM_SEQS
-          and snap["decode_memory_policy_id"] == DECODE_POLICY_ID
+    check(snap["resident_limit"] == LP_MAX_NUM_SEQS
+          and problem["admission_watermark"] == snap["watermark_blocks"]
           and snap["numerical_policy"] == policy_json
           and snap["num_pipeline_stages"] == 1
           and snap["num_running_batches"] == 0,
@@ -458,8 +455,7 @@ def check_lp_events(tag, exp, before, events, seq_id, policy_json):
     check((decision["prefill_tokens"], decision["decode"],
            decision["preempt"]) == want,
           f"{tag}: plan {decision} differs from expected {want}")
-    check(not plan["dominant_preemption_ids"]
-          and not plan["safety_preemption_ids"],
+    check(not plan["victim_order"],
           f"{tag}: plan preemption ids")
 
     check(executed["result_type"] == "SchedulerOutputs",
@@ -690,8 +686,7 @@ def main():
             scheduler_config = LPSchedulerConfig(
                 max_num_seqs=LP_MAX_NUM_SEQS, max_model_len=MAX_MODEL_LEN,
                 num_pipeline_stages=PIPELINE_PARALLEL_SIZE, b_max=B_MAX,
-                c_max=C_MAX, s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
-                decode_memory_policy_id=DECODE_POLICY_ID,
+                c_max=C_MAX, s_max=S_MAX,
                 decode_utility=DECODE_UTILITY,
                 prefill_token_utility=PREFILL_TOKEN_UTILITY,
                 preemption_penalty=PREEMPTION_PENALTY,
@@ -702,8 +697,7 @@ def main():
                 type="LP", max_num_seqs=LP_MAX_NUM_SEQS,
                 max_model_len=MAX_MODEL_LEN,
                 num_pipeline_stages=PIPELINE_PARALLEL_SIZE, b_max=B_MAX,
-                c_max=C_MAX, s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
-                decode_memory_policy_id=DECODE_POLICY_ID,
+                c_max=C_MAX, s_max=S_MAX,
                 utilities=dict(decode=DECODE_UTILITY,
                                prefill_token=PREFILL_TOKEN_UTILITY,
                                preemption_penalty=PREEMPTION_PENALTY),
@@ -767,14 +761,13 @@ def main():
         print("shared_after_init:", json.dumps(shared_after_init), flush=True)
         print("pool:", json.dumps(summary["pool"]), flush=True)
 
-        # Pool adequacy: the two-block peak plus the native watermark (and,
-        # for LP, the planning reserve) must fit.
-        reserve = MEMORY_RESERVE if mode == "lp" else 0
+        # Pool adequacy: the two-block peak plus the native watermark must
+        # fit (the LP planning reserve was removed).
         check(n_free == bm.num_total_gpu_blocks and not bm.block_tables,
               "block pool must be fully free before the request")
-        check(n_free - PEAK_BLOCKS >= bm.watermark_blocks + reserve,
+        check(n_free - PEAK_BLOCKS >= bm.watermark_blocks,
               f"profiled pool {n_free} too small for watermark "
-              f"{bm.watermark_blocks} + reserve {reserve} + {PEAK_BLOCKS}")
+              f"{bm.watermark_blocks} + {PEAK_BLOCKS}")
 
         # Observation starts after construction, so profiling is excluded.
         observer = Observer()

@@ -24,8 +24,8 @@ research policy or a guarantee for other workloads; saved in summary.json):
   tokenizer mode "auto", trust_remote_code True.
 - Tensor and pipeline parallelism 1; seed 42; model length 32; block size 16;
   GPU memory utilization 0.5.
-- LP scheduler: resident limit 3, b_max 96, c_max 8, s_max 2, planning reserve
-  1 block, decode charge conservative_one_block_v1, decode/prefill-token
+- LP scheduler: resident limit 3, b_max 96, c_max 8, s_max 2, exact decode
+  demand and the shared manager's admission watermark, decode/prefill-token
   utility and preemption penalty 1/1/1, numerical policy lp_relaxation_mvp_v1
   (tolerances 1e-7, 1e-6, 1e-9, 1e-9).
 - Greedy sampling: temperature 0, 4 output tokens, ignore_eos True, no stop
@@ -73,8 +73,6 @@ MAX_NUM_SEQS = 3
 B_MAX = 96
 C_MAX = 8
 S_MAX = 2
-MEMORY_RESERVE = 1
-DECODE_POLICY_ID = "conservative_one_block_v1"
 DECODE_UTILITY = 1.0
 PREFILL_TOKEN_UTILITY = 1.0
 PREEMPTION_PENALTY = 1.0
@@ -98,8 +96,8 @@ SETTINGS = dict(
     gpu_memory_utilization=GPU_MEMORY_UTILIZATION,
     tokenizer_mode=TOKENIZER_MODE, trust_remote_code=TRUST_REMOTE_CODE,
     scheduler="LPScheduler", max_num_seqs=MAX_NUM_SEQS, b_max=B_MAX,
-    c_max=C_MAX, s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
-    decode_memory_policy_id=DECODE_POLICY_ID, decode_utility=DECODE_UTILITY,
+    c_max=C_MAX, s_max=S_MAX,
+    decode_utility=DECODE_UTILITY,
     prefill_token_utility=PREFILL_TOKEN_UTILITY,
     preemption_penalty=PREEMPTION_PENALTY,
     numerical_policy=NUMERICAL_POLICY_FIELDS,
@@ -189,8 +187,7 @@ def create_engine(model_path, metrics_dir):
     scheduler_config = LPSchedulerConfig(
         max_num_seqs=MAX_NUM_SEQS, max_model_len=MAX_MODEL_LEN,
         num_pipeline_stages=PIPELINE_PARALLEL_SIZE, b_max=B_MAX, c_max=C_MAX,
-        s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
-        decode_memory_policy_id=DECODE_POLICY_ID,
+        s_max=S_MAX,
         decode_utility=DECODE_UTILITY,
         prefill_token_utility=PREFILL_TOKEN_UTILITY,
         preemption_penalty=PREEMPTION_PENALTY,

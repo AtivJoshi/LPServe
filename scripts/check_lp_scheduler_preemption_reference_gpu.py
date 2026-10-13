@@ -104,8 +104,6 @@ LP_MAX_NUM_SEQS = 1
 B_MAX = 64
 C_MAX = 16
 S_MAX = 1
-MEMORY_RESERVE = 0
-DECODE_POLICY_ID = "conservative_one_block_v1"
 DECODE_UTILITY = 40.0
 PREFILL_TOKEN_UTILITY = 1.0
 PREEMPTION_PENALTY = 1.0
@@ -125,7 +123,6 @@ REQUIRED_HELPER_CONSTANTS = {
         INITIALIZED_NUM_GPU_BLOCKS=INITIALIZED_NUM_GPU_BLOCKS,
         TENSOR_PARALLEL_SIZE=TENSOR_PARALLEL_SIZE,
         MAX_NUM_SEQS=LP_MAX_NUM_SEQS, B_MAX=B_MAX, C_MAX=C_MAX, S_MAX=S_MAX,
-        MEMORY_RESERVE=MEMORY_RESERVE, DECODE_POLICY_ID=DECODE_POLICY_ID,
         DECODE_UTILITY=DECODE_UTILITY,
         PREFILL_TOKEN_UTILITY=PREFILL_TOKEN_UTILITY,
         PREEMPTION_PENALTY=PREEMPTION_PENALTY,
@@ -715,8 +712,7 @@ def main():
             scheduler_config = LPSchedulerConfig(
                 max_num_seqs=LP_MAX_NUM_SEQS, max_model_len=MAX_MODEL_LEN,
                 num_pipeline_stages=PIPELINE_PARALLEL_SIZE, b_max=B_MAX,
-                c_max=C_MAX, s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
-                decode_memory_policy_id=DECODE_POLICY_ID,
+                c_max=C_MAX, s_max=S_MAX,
                 decode_utility=DECODE_UTILITY,
                 prefill_token_utility=PREFILL_TOKEN_UTILITY,
                 preemption_penalty=PREEMPTION_PENALTY,
@@ -765,8 +761,7 @@ def main():
                 scheduler_class=type(scheduler).__name__, type=config_type,
                 max_num_seqs=LP_MAX_NUM_SEQS, max_model_len=MAX_MODEL_LEN,
                 num_pipeline_stages=PIPELINE_PARALLEL_SIZE, b_max=B_MAX,
-                c_max=C_MAX, s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
-                decode_memory_policy_id=DECODE_POLICY_ID,
+                c_max=C_MAX, s_max=S_MAX,
                 utilities=dict(decode=DECODE_UTILITY,
                                prefill_token=PREFILL_TOKEN_UTILITY,
                                preemption_penalty=PREEMPTION_PENALTY),

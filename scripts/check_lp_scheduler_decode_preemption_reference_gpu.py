@@ -133,8 +133,6 @@ LP_MAX_NUM_SEQS = 1
 B_MAX = 64
 C_MAX = 16
 S_MAX = 1
-MEMORY_RESERVE = 0
-DECODE_POLICY_ID = "conservative_one_block_v1"
 REQUEST_UTILITIES = dict(
     A=dict(decode_utility=40.0, prefill_token_utility=1.0,
            preemption_penalty=1.0),
@@ -194,8 +192,12 @@ LP_BLOCK_OPS = {
     7: [["allocate", 0, 2]],
     10: [["free", 0, 2]],
 }
-EXPECTED_RELAXED = {"0": (0, 0, 0, 0.5), "1": (16, 0, 1, 0)}
-EXPECTED_RELAXED_OBJECTIVE = 319.5
+# Corrected LP, derived analytically (not yet executed on GPU): the resident
+# row (limit 1) forces z_A >= I_B, so A is preempted fully and the value is
+# 16 * 20 - 1 = 319 (superseded memory-only LP: z_A = 0.5, 319.5). A's 18
+# tokens fill two 16-token blocks exactly, so its exact decode demand is 0.
+EXPECTED_RELAXED = {"0": (0, 0, 0, 1), "1": (16, 0, 1, 0)}
+EXPECTED_RELAXED_OBJECTIVE = 319.0
 EXPECTED_INTEGER_OBJECTIVE = 319.0
 
 # Constants of the reused helper modules that the reused functions read.
@@ -441,25 +443,27 @@ def compare_histories(references, history):
 
 def install_fixed_utilities(scheduler, labels_by_seq_id, record):
     """Validation-only: replace the configured uniform triple by each
-    request's fixed triple for exactly the arrived, unfinished raw IDs that
-    the real method selects. Returns a function that removes the override."""
+    request's fixed triple through the scheduler's coefficient-policy hook,
+    evaluated on the mapper's captured data. Returns a function that removes
+    the override."""
     import lpserve_state_mapping as lsm
 
-    real = scheduler._build_utilities
+    def policy():
+        def coefficients(captured, request):
+            seq_id = request.raw_seq_id
+            check(seq_id in labels_by_seq_id,
+                  f"no fixed utility for raw seq ID {seq_id}")
+            utility = lsm.RequestUtility(
+                **REQUEST_UTILITIES[labels_by_seq_id[seq_id]])
+            record.append(dict(snapshot_time=captured.snapshot_time,
+                               seq_id=seq_id, utility=to_jsonable(utility)))
+            return utility
+        return coefficients
 
-    def build(now):
-        keys = real(now)
-        unknown = sorted(set(keys) - set(labels_by_seq_id))
-        check(not unknown, f"no fixed utility for raw seq IDs {unknown}")
-        utilities = {seq_id: lsm.RequestUtility(
-            **REQUEST_UTILITIES[labels_by_seq_id[seq_id]]) for seq_id in keys}
-        record.append(dict(now=now, utilities=to_jsonable(utilities)))
-        return utilities
-
-    scheduler._build_utilities = build
+    scheduler._coefficient_policy = policy
 
     def remove():
-        del scheduler._build_utilities
+        del scheduler._coefficient_policy
 
     return remove
 
@@ -597,11 +601,10 @@ def check_decision(tag, expected, before, events, policy_json):
           f"{tag}: in-flight or stage state at the mapping boundary")
     check(snap["scheduler_iteration_id"] == before["iteration_id"] + 1
           == mapped["iteration_id"], f"{tag}: mapping iteration")
-    check((problem["b_max"], problem["c_max"], problem["s_max"], problem["w"])
-          == (B_MAX, C_MAX, S_MAX, MEMORY_RESERVE), f"{tag}: mapped limits")
-    check(snap["memory_reserve"] == MEMORY_RESERVE
-          and snap["resident_limit"] == LP_MAX_NUM_SEQS
-          and snap["decode_memory_policy_id"] == DECODE_POLICY_ID
+    check((problem["b_max"], problem["c_max"], problem["s_max"])
+          == (B_MAX, C_MAX, S_MAX), f"{tag}: mapped limits")
+    check(snap["resident_limit"] == LP_MAX_NUM_SEQS
+          and problem["admission_watermark"] == snap["watermark_blocks"]
           and snap["numerical_policy"] == policy_json,
           f"{tag}: mapped policy inputs")
     check(snap["free_physical_blocks"] == problem["m_free"]
@@ -661,16 +664,17 @@ def check_boundary(tag, snap, solved, gates, sched_state, sched_ops,
     a_before = before["seqs"]["0"]
     check(problem["legal_preemption_ids"] == ["0"],
           f"{tag}: legal victims {problem['legal_preemption_ids']}")
-    check((problem["m_free"], problem["w"]) == (2, 0), f"{tag}: m_free/w")
+    check((problem["m_free"], problem["admission_watermark"]) == (2, 0),
+          f"{tag}: m_free/watermark")
     check(len(a_before["output_token_ids"]) == 1
           and a_before["prompt_token_ids"] == PROMPT_TOKEN_IDS["A"],
           f"{tag}: A before the decision {a_before}")
     check((a["ownership"], a["status"], a["prompt_len"],
            a["prompt_tokens_processed"], a["prompt_processing_finished"],
            a["physical_block_count"], a["preemption_eligible"],
-           a["preemption_recovery"], a["decode_eligible"], a["decode_charge"],
+           a["preemption_recovery"], a["decode_eligible"], a["decode_demand"],
            a["prefill_eligible"])
-          == ("running", "PAUSED", 17, 17, True, 2, True, 2, True, 1, False),
+          == ("running", "PAUSED", 17, 17, True, 2, True, 2, True, 0, False),
           f"{tag}: mapped A {a}")
     check((b["ownership"], b["status"], b["prompt_len"],
            b["physical_block_count"], b["preemption_eligible"],
@@ -694,8 +698,7 @@ def check_boundary(tag, snap, solved, gates, sched_state, sched_ops,
     check([(d["request_id"], d["prefill_tokens"], d["decode"], d["preempt"])
            for d in plan["decisions"]] == [("0", 0, 0, 1), ("1", 16, 0, 0)],
           f"{tag}: integer plan {plan['decisions']}")
-    check(plan["dominant_preemption_ids"] == ["0"]
-          and plan["safety_preemption_ids"] == [],
+    check(plan["victim_order"] == ["0"],
           f"{tag}: preemption classification")
     check(abs(plan["objective"] - EXPECTED_INTEGER_OBJECTIVE) <= tol,
           f"{tag}: integer objective {plan['objective']}")
@@ -996,8 +999,7 @@ def main():
             scheduler_config = LPSchedulerConfig(
                 max_num_seqs=LP_MAX_NUM_SEQS, max_model_len=MAX_MODEL_LEN,
                 num_pipeline_stages=PIPELINE_PARALLEL_SIZE, b_max=B_MAX,
-                c_max=C_MAX, s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
-                decode_memory_policy_id=DECODE_POLICY_ID,
+                c_max=C_MAX, s_max=S_MAX,
                 numerical_policy=numerical_policy, **CONFIGURED_UTILITIES,
             )
             scheduler_class = LPScheduler
@@ -1043,8 +1045,7 @@ def main():
                 scheduler_class=type(scheduler).__name__, type=config_type,
                 max_num_seqs=LP_MAX_NUM_SEQS, max_model_len=MAX_MODEL_LEN,
                 num_pipeline_stages=PIPELINE_PARALLEL_SIZE, b_max=B_MAX,
-                c_max=C_MAX, s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
-                decode_memory_policy_id=DECODE_POLICY_ID,
+                c_max=C_MAX, s_max=S_MAX,
                 configured_uniform_utilities=CONFIGURED_UTILITIES,
                 request_utilities=REQUEST_UTILITIES,
                 numerical_policy=policy_json)
@@ -1295,7 +1296,7 @@ def main():
             if remove_utilities is not None:
                 remove_utilities()
                 cleanup["utility_override_removed"] = (
-                    "_build_utilities" not in vars(engine.scheduler))
+                    "_coefficient_policy" not in vars(engine.scheduler))
             # Stop only the Ray runtime this process started.
             if "ray" in sys.modules:
                 ray = sys.modules["ray"]

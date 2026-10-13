@@ -74,8 +74,6 @@ MAX_NUM_SEQS = 1
 B_MAX = 64
 C_MAX = 16
 S_MAX = 1
-MEMORY_RESERVE = 0
-DECODE_POLICY_ID = "conservative_one_block_v1"
 DECODE_UTILITY = 40.0
 PREFILL_TOKEN_UTILITY = 1.0
 PREEMPTION_PENALTY = 1.0
@@ -389,11 +387,10 @@ def check_decision(tag, expected, before, events, policy_json):
           f"{tag}: in-flight or stage state at the mapping boundary")
     check(snap["scheduler_iteration_id"] == before["iteration_id"] + 1
           == mapped["iteration_id"], f"{tag}: mapping iteration")
-    check((problem["b_max"], problem["c_max"], problem["s_max"], problem["w"])
-          == (B_MAX, C_MAX, S_MAX, MEMORY_RESERVE), f"{tag}: mapped limits")
-    check(snap["memory_reserve"] == MEMORY_RESERVE
-          and snap["resident_limit"] == MAX_NUM_SEQS
-          and snap["decode_memory_policy_id"] == DECODE_POLICY_ID
+    check((problem["b_max"], problem["c_max"], problem["s_max"])
+          == (B_MAX, C_MAX, S_MAX), f"{tag}: mapped limits")
+    check(snap["resident_limit"] == MAX_NUM_SEQS
+          and problem["admission_watermark"] == snap["watermark_blocks"]
           and snap["numerical_policy"] == policy_json,
           f"{tag}: mapped policy inputs")
     check(snap["free_physical_blocks"] == problem["m_free"]
@@ -452,26 +449,29 @@ def check_boundary(tag, snap, solved, sched_state, central_ops, worker_ops,
     a, b = reqs["0"], reqs["1"]
     check(problem["legal_preemption_ids"] == ["0"],
           f"{tag}: legal victims {problem['legal_preemption_ids']}")
-    check((problem["m_free"], problem["w"]) == (2, 0), f"{tag}: m_free/w")
+    check((problem["m_free"], problem["admission_watermark"]) == (2, 0),
+          f"{tag}: m_free/watermark")
     check((a["ownership"], a["status"], a["prompt_tokens_processed"],
            a["physical_block_count"], a["preemption_recovery"])
           == ("running", "PAUSED", 16, 2, 2), f"{tag}: mapped A {a}")
     check((b["ownership"], b["prompt_len"], b["prefill_fixed_charge"])
           == ("waiting", 48, 3), f"{tag}: mapped B {b}")
     relaxed = {d["request_id"]: d for d in solved["relaxed"]["decisions"]}
-    for rid, want in (("0", (0, 0, 0, 0.5)), ("1", (16, 0, 1, 0))):
+    # Corrected LP, derived analytically (not yet executed on GPU): the
+    # resident row (limit 1) forces z_A >= I_B, so A is preempted fully and
+    # the value is 16 - 1 = 15 (superseded memory-only LP: z_A = 0.5, 15.5).
+    for rid, want in (("0", (0, 0, 0, 1)), ("1", (16, 0, 1, 0))):
         d = relaxed[rid]
         got = (d["x"], d["y"], d["prefill_indicator"], d["z"])
         check(all(abs(g - w) <= tol for g, w in zip(got, want)),
               f"{tag}: relaxed {rid} {got}; expected {want}")
-    check(abs(solved["relaxed"]["normalized_objective"] - 15.5) <= tol,
+    check(abs(solved["relaxed"]["normalized_objective"] - 15.0) <= tol,
           f"{tag}: relaxed objective {solved['relaxed']['normalized_objective']}")
     plan = solved["plan"]
     check([(d["request_id"], d["prefill_tokens"], d["decode"], d["preempt"])
            for d in plan["decisions"]] == [("0", 0, 0, 1), ("1", 16, 0, 0)],
           f"{tag}: integer plan {plan['decisions']}")
-    check(plan["dominant_preemption_ids"] == ["0"]
-          and plan["safety_preemption_ids"] == [],
+    check(plan["victim_order"] == ["0"],
           f"{tag}: preemption classification")
     check(abs(plan["objective"] - 15.0) <= tol,
           f"{tag}: integer objective {plan['objective']}")
@@ -572,8 +572,7 @@ def main():
         scheduler_config = LPSchedulerConfig(
             max_num_seqs=MAX_NUM_SEQS, max_model_len=MAX_MODEL_LEN,
             num_pipeline_stages=PIPELINE_PARALLEL_SIZE, b_max=B_MAX,
-            c_max=C_MAX, s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
-            decode_memory_policy_id=DECODE_POLICY_ID,
+            c_max=C_MAX, s_max=S_MAX,
             decode_utility=DECODE_UTILITY,
             prefill_token_utility=PREFILL_TOKEN_UTILITY,
             preemption_penalty=PREEMPTION_PENALTY,
@@ -680,8 +679,6 @@ def main():
             sampling=dict(temperature=TEMPERATURE, max_tokens=MAX_TOKENS,
                           ignore_eos=IGNORE_EOS, stop=[]),
             b_max=B_MAX, c_max=C_MAX, s_max=S_MAX, max_num_seqs=MAX_NUM_SEQS,
-            memory_reserve=MEMORY_RESERVE,
-            decode_memory_policy_id=DECODE_POLICY_ID,
             utilities=dict(decode=DECODE_UTILITY,
                            prefill_token=PREFILL_TOKEN_UTILITY,
                            preemption_penalty=PREEMPTION_PENALTY),

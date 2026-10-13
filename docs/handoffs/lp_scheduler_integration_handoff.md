@@ -222,3 +222,101 @@ Commit `4f553b4` changes only this handoff to record post-commit verification.
 The test file is tracked as of `276e5f4`; the earlier ignored-file staging note
 is historical. This addendum corrects provenance only and records no new test
 run. Historical commands and results above are preserved.
+
+
+## Corrected connected CPU framework (2026-10-13; awaiting review)
+
+Scope: the corrected planner connected to state mapping, immutable ranks and
+coefficients, executor validation and native execution, live coordination,
+LP-only pre-registration admission rejection, and obsolete
+configuration/`EngineArgs` rejection (design §§12–14, §15.7; discussion
+P10 step 9). Earlier sections of this handoff are historical evidence for their
+revisions and are not current validation.
+
+**Provenance.** Tested base `9a6ca3cf338f4212679eeaaabd0929cce4c0f26a` plus
+the uncommitted changes in `working_tree.diff` (21 files; SHA-256 per file in
+`sha256sums.txt`). Evidence:
+`validation_output/lp_scheduler_integration/20261013T034740Z/` (`summary.json`,
+`run_checks.sh`, per-check outputs with exit statuses). Host `gpu048`,
+allocation `65616965`, CPU only; Python 3.10.8 (`env`), NumPy 2.2.6, SciPy
+1.15.3. The work began on `gpu049` (allocation `65615469`), which Unity
+preempted; development runs there were not retained and are not reused. This
+section was written after the run; documentation is not part of the tested
+code.
+
+**Observed.** Compile, warnings-as-errors import, standalone smoke, and 138
+focused tests passed (pure 38, mapping 12, executor 16, live scheduler and
+submission 20, `EngineArgs` 10, script CPU tests 24 + 18); `git diff --check`
+clean. Bounded enumeration: 150 seeded abstract states, 10,348 integer plans.
+No check failed or was skipped. GPU, model, policy, and performance runs were
+not executed.
+
+### Coverage (design §15.7, P10 step 9)
+
+| Obligation | Implementation | Check (tests/…) | Observed | Remaining limitation |
+|---|---|---|---|---|
+| Every amended row; raw/normalized validation | `lp_relaxation_scheduler` `_build_lp`, `_residuals`, `validate_integer_plan` | `test_lp_matrix_matches_independent_residuals`, `test_relaxed_validation_rejects_each_row`, `test_relaxed_bounds_projection_and_raw_versus_normalized`; enumeration: LP rows at integer points ⇔ native-order simulation | pass | — |
+| Watermark zero/positive/shared; fixed admission charge | planner; mapper reads `watermark_blocks` | `test_watermark_zero_positive_and_shared`, `test_fixed_admission_charge_despite_short_chunk`; mapping equality case (8 + 2 = 10) | pass | h > 0 fixtures in small pools are abstract |
+| Omitted residents; replacement; zero-recovery victims | planner resident row; executor resident check | `test_omitted_resident_counts_and_zero_recovery_replacement`; executor `test_prefills_then_zero_then_one_block_decodes` (omitted D keeps order) | pass | — |
+| Zero/one/multiple free blocks; decode demands 0/1; decode-start gate | planner; mapper exact gap; executor append gate | `test_zero_free_blocks_zero_demand_decode`, `test_one_free_block_demand_one_then_zero`, `test_free_blocks_versus_one_block_decodes`, `test_mixed_decode_demand_groups`; executor A/B case (B before A); live `test_solver_reported_infeasibility_stops_before_executor` | pass | — |
+| Full-context rounding; zero resident-prefill charge; recovery; supported/unsupported gaps; malformed allocation | `lpserve_state_mapping._capture_request`, pool accounting | `test_full_context_rounding_recovery_and_decode_demand`, `test_unsupported_gap_and_malformed_allocation` | pass | — |
+| Many fractional; integral-idle/zero-support; self-victim; failed-trial cleanup; preservation; chunk floor/extension | whole-action constructor | nine-waiting construction (solver I = 2/(n+1)), integral-idle (ABSTRACT), self-victim, cleanup, chunk, extension tests | pass | integral-idle fixture is abstract |
+| Necessary and avoidable negative first work; strict improvement on both sides of τ; zero/positive mass preemption | constructor (one pass, no two-pass policy) | named tests; avoidable case −3 vs integer optimum 0; positive case 101 victims, 99.5 | pass (accepted limitations reproduced) | utility quality, victim count, ties |
+| No useful plan; abstract F=3,h=2; independent enumeration and returned-plan validation | constructor; test-only oracle (`oracle_choice` + native-order simulation) | `test_lp_feasible_integer_infeasible_abstract_fixture`, `test_bounded_enumeration_against_constructor`, `test_enumeration_on_named_fixtures`, `test_independent_oracle_rejects_malformed_decisions` | pass | bounded abstract states; F=3,h=2 has no validated-runtime counterpart |
+| Outcomes, diagnostics, nonfinite and oversized numbers | `Failure.outcome`; checked arithmetic | solver-outcome, nonfinite, oversized-vector tests | pass | status 2 is a solver report, not a certificate |
+| One capture; ranks; changing/fixed coefficients; uniform/per-request policies; invalid coefficients; no mutation | `capture_scheduler_state`, `vllm_oriented_ranks`, `construct_coefficients`; `LPScheduler._coefficient_policy` | `test_one_capture_and_state_dependent_policy_inputs`, `test_malformed_utilities_return_mapping_failure`, mapper fingerprints; live spies require exactly capture→map→solve→execute | pass | state-dependent fixture is not a production utility policy |
+| Declared order; identical central/metadata order; multiple-victim reinsertion; running-tail readmission; arrived work behind a future head | executor declared orders; `LPScheduler._is_idle` | executor order, victim, and readmission tests; live and mapping future-head tests | pass | — |
+| Planned charge/demand/recovery/watermark equal current state | executor `plan_state_mismatch` | `test_planned_resources_must_match_current_state` | pass | — |
+| Admission: equality boundaries, total pool despite contention, no registration, other schedulers | `LPScheduler.check_new_request`; `BaseLLMEngine.add_request` | `SubmissionBoundaryTest` (real `add_request`, doubles for sequence manager, workers, metrics) | pass | real engine initialization not run |
+| Registered or recomputation-expanded invalid context | mapper admissibility check (fail-stop) | `test_resident_ledger_and_inadmissible_registered_context` | pass | mapper level only |
+| Obsolete arguments, including zero; positional order; serialization | `LPSchedulerConfig` reject-only detector; `EngineArgs` reject-only fields | `test_obsolete_arguments_fail_with_migration_guidance`, config-file and legacy-positional tests | pass | — |
+| Defensive `no_progress`; zero mutation on rejection; post-mutation termination | executor gate before mathematical validation | executor control-only and precommit tests; live `test_no_progress_plan_is_not_ordinary_idle` (induced empty plan), post-mutation tests | pass | live no_progress requires an induced plan |
+| Existing admission, partial prefill, decode, mixed, contention, preemption/recompute, `EngineArgs` paths | all layers | `LivePipelineTest`, `LivePreemptionTest`, `LiveDecodePreemptionTest`, `EngineArgs` tests | pass | relaxed values changed (below); inherited §16 limits |
+| Active scripts migrated | config/record fields, reserve preconditions, utility hook | compile; script CPU tests | pass | GPU workloads unexecuted; two scripts' relaxed expectations re-derived analytically only |
+
+### F01–F04 dispositions
+
+- **F01 (useful execution through relaxation/extraction):** implemented and
+  CPU-checked for the supported model: constructor progress matched
+  independent enumeration in every bounded state, and live paths executed.
+  Closure is left to review; not marked closed here.
+- **F02 (repeated lost work, omission):** OPEN; unchanged by this batch.
+- **F03 (consistent allocation feasibility):** exact demand, decode-start
+  gate, watermark rows, declared order, and executor current-state checks
+  implemented and CPU-checked. Identical central/worker physical block IDs
+  remain unestablished (§13 clarification). Closure left to review.
+- **F04 (resident capacity and request rejection):** resident row,
+  omitted-resident counting, and pre-registration rejection implemented and
+  CPU-checked. Closure left to review.
+
+### Findings recorded for review
+
+- *Admission equality can admit a request that can never decode.* With
+  h = 0 (pools under 100 blocks), a request whose full context equals the
+  pool passes `A_i + h <= T`; after prefill it holds every block, its decode
+  needs one free block, and it cannot be its own victim. The LP is then
+  solver-infeasible and D-17 stops the whole run. Executed in
+  `test_solver_reported_infeasibility_stops_before_executor` (2-block pool,
+  8-token prompt). Not changed: equality acceptance is the approved rule, and
+  any stricter check is a new admission decision.
+- *Changed relaxed values in existing cases.* The resident row forces
+  `z_A >= I_B` when the resident limit is 1, so earlier fractional victims
+  (`z_A = 0.5`) become `z_A = 1` (CPU objectives 3.5 → 3 and 79.5 → 79). The
+  integer plans and all 11 decode-preemption steps are unchanged on CPU. The
+  same derivation updated `check_lp_scheduler_preemption_gpu.py`
+  (15.5 → 15) and `check_lp_scheduler_decode_preemption_reference_gpu.py`
+  (319.5 → 319, A's decode demand 1 → 0); these are analytical, not GPU
+  evidence.
+- *Provisional interface choices.* `EngineArgs.lp_memory_reserve` and
+  `lp_decode_memory_policy_id` remain as reject-only fields (any value fails
+  with migration guidance) to keep later positional bindings; they are not
+  written to `config.yml`. A precommit failure carries outcome
+  `implementation_or_validation_failure`.
+- *Clocks.* Engine arrival uses `time.perf_counter` and the scheduler
+  `time.monotonic`; on this node both are `clock_gettime(CLOCK_MONOTONIC)`.
+  Inherited; not changed.
+
+Not established: real engine initialization, GPU behavior, sampler/output
+semantics beyond §16, physical block-ID equality, policy recovery, fairness,
+restart freedom, completion, or performance. Coefficient formulas and scales,
+optional κ, and Q11 remain OPEN.

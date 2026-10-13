@@ -21,13 +21,17 @@ Prompt-ignore controls are not executed. A plan with no prefill or decode
 action (all-zero or preempt-only) returns category ``no_progress`` before
 mutation and leaves the mathematical plan unchanged.
 
-Order: all selected victims are preempted first, ascending by ``order_key``,
-and ``preempted_seq_ids`` uses that order. The inherited ``_preempt`` inserts
+Order: the plan's declared orders. All selected victims are preempted first
+in ``plan.victim_order`` (victim rank, then identity), and
+``preempted_seq_ids`` uses that order. The inherited ``_preempt`` inserts
 each victim at the front of ``waiting``, so several victims end there in
-reverse call order. Then all selected prefills, then all selected decodes,
-each group ascending by ``order_key`` (D-21). This order changes neither
-selected actions nor chunk sizes. Memory recovered from victims is credited
-before the scheduled actions are checked.
+reverse call order. Then ``plan.execution_order``: prefills, zero-demand
+decodes, then one-block-demand decodes, each by service rank, then identity.
+Admissions are appended to ``running`` in that order; retained residents keep
+their relative positions. This order changes neither selected actions nor
+chunk sizes. Memory recovered from victims is credited before the scheduled
+actions are checked, and every planned charge, demand, and recovery must
+equal the current native value.
 
 Failure behavior:
 
@@ -71,6 +75,7 @@ CATEGORY_RESIDENT_CAPACITY = "resident_capacity"
 CATEGORY_ADMISSION_GATE = "admission_gate"
 CATEGORY_APPEND_GATE = "append_gate"
 CATEGORY_PREEMPTION_RECOVERY = "preemption_recovery"
+CATEGORY_PLAN_STATE_MISMATCH = "plan_state_mismatch"
 
 ACTION_ADMISSION = "admission"
 ACTION_RESIDENT_PREFILL = "resident_prefill"
@@ -105,7 +110,8 @@ def execute_plan(scheduler, snapshot, result):
         validated = _validate_before_mutation(scheduler, snapshot, result)
     except _PrecommitError as err:
         return lrs.Failure(
-            snapshot_id, STAGE_PRECOMMIT_VALIDATION, err.category, err.reason,
+            snapshot_id, STAGE_PRECOMMIT_VALIDATION, lrs.OUTCOME_INVALID,
+            err.category, err.reason,
         )
     if isinstance(validated, lrs.Failure):
         return validated
@@ -199,20 +205,26 @@ def _validate_before_mutation(scheduler, snapshot, result):
         canonical == problem, CATEGORY_MALFORMED_INPUT,
         "snapshot.lp_problem is not in canonical order_key order",
     )
+    # Defensive progress gate, checked before mathematical validation so an
+    # erroneous empty or preempt-only plan is classified as no_progress (the
+    # validator would also reject it). Malformed decisions are left to the
+    # validator. No selected preemption is removed and no action forced.
+    decisions = plan.decisions
+    if isinstance(decisions, tuple) and all(
+        isinstance(d, lrs.IntegerDecision)
+        and all(type(v) is int for v in (d.prefill_tokens, d.decode, d.preempt))
+        for d in decisions
+    ):
+        preempt_ids = [d.request_id for d in decisions if d.preempt]
+        _require(
+            any(d.prefill_tokens > 0 or d.decode for d in decisions),
+            CATEGORY_NO_PROGRESS,
+            "the plan selects no prefill or decode action "
+            f"(selected preemptions: {preempt_ids})",
+        )
     validated = lrs.validate_integer_plan(problem, plan)
     if isinstance(validated, lrs.Failure):
         return validated
-
-    # Progress gate: no selected preemption is removed and no action forced.
-    preempt_ids = [d.request_id for d in plan.decisions if d.preempt]
-    execution_count = sum(
-        1 for d in plan.decisions if d.prefill_tokens > 0 or d.decode
-    )
-    _require(
-        execution_count > 0, CATEGORY_NO_PROGRESS,
-        "the validated plan selects no prefill or decode action "
-        f"(selected preemptions: {preempt_ids})",
-    )
 
     # Snapshot request records must associate one-to-one with the problem.
     snap_by_id = {}
@@ -251,27 +263,31 @@ def _validate_before_mutation(scheduler, snapshot, result):
             )
             owners[seq.seq_id] = (label, seq)
 
-    # Replay-compatible order: prefills, then decodes, each ascending by
-    # order_key. New lists; the accepted plan is not reordered in place.
-    selected = sorted(
-        (d for d in plan.decisions if d.prefill_tokens > 0 or d.decode),
-        key=lambda d: (0 if d.prefill_tokens > 0 else 1, d.order_key),
-    )
+    # The plan's declared orders (validated against its decisions by
+    # validate_integer_plan). New lists; the plan is not reordered in place.
+    by_id = {d.request_id: d for d in plan.decisions}
+    planned = {r.request_id: r for r in problem.requests}
+    selected = [by_id[rid] for rid in plan.execution_order]
 
     block_manager = scheduler.block_manager
     free_blocks = block_manager.get_num_free_gpu_blocks()
     watermark_blocks = block_manager.watermark_blocks
     resident_count = len(scheduler.running)
+    _require(
+        watermark_blocks == problem.admission_watermark,
+        CATEGORY_PLAN_STATE_MISMATCH,
+        f"current native watermark {watermark_blocks} differs from the "
+        f"planned admission watermark {problem.admission_watermark}",
+    )
 
-    # Every selected victim, whether extraction marked it dominant or safety,
-    # ascending by order_key. Each is credited with its actual physical table,
-    # which the native non-sharing manager frees in full, and releases one
-    # resident slot before any scheduled action is checked.
+    # Every selected victim in declared victim order. Each is credited with
+    # its actual physical table, which the native non-sharing manager frees
+    # in full, and releases one resident slot before any scheduled action is
+    # checked.
     victims = []
     recovered = set()
-    for decision in sorted(
-        (d for d in plan.decisions if d.preempt), key=lambda d: d.order_key,
-    ):
+    for rid_text in plan.victim_order:
+        decision = by_id[rid_text]
         snap = snap_by_id[decision.request_id]
         rid = snap.raw_seq_id
         _require(
@@ -295,6 +311,12 @@ def _validate_before_mutation(scheduler, snapshot, result):
             CATEGORY_PREEMPTION_RECOVERY,
             f"seq_id {rid}: physical block table {table} repeats a block or "
             "shares one with another selected victim",
+        )
+        _require(
+            len(table) == planned[rid_text].preemption_recovery,
+            CATEGORY_PLAN_STATE_MISMATCH,
+            f"seq_id {rid}: current recovery {len(table)} differs from the "
+            f"planned recovery {planned[rid_text].preemption_recovery}",
         )
         recovered.update(table)
         free_blocks += len(table)
@@ -345,6 +367,13 @@ def _validate_before_mutation(scheduler, snapshot, result):
                 )
                 demand = block_manager.get_num_initial_blocks(seq)
                 _require(
+                    demand == planned[decision.request_id].prefill_fixed_charge,
+                    CATEGORY_PLAN_STATE_MISMATCH,
+                    f"seq_id {rid}: current initial allocation {demand} "
+                    "differs from the planned admission charge "
+                    f"{planned[decision.request_id].prefill_fixed_charge}",
+                )
+                _require(
                     free_blocks - demand >= watermark_blocks,
                     CATEGORY_ADMISSION_GATE,
                     f"seq_id {rid}: admission needs {demand} blocks with "
@@ -375,9 +404,11 @@ def _validate_before_mutation(scheduler, snapshot, result):
             )
             gap = _block_gap(block_manager, seq)
             _require(
-                gap in (0, 1), CATEGORY_INELIGIBLE_ACTION,
-                f"seq_id {rid}: decode logical/physical block gap {gap} is "
-                "outside {0, 1}",
+                gap == planned[decision.request_id].decode_demand,
+                CATEGORY_PLAN_STATE_MISMATCH,
+                f"seq_id {rid}: current decode block gap {gap} differs from "
+                f"the planned decode demand "
+                f"{planned[decision.request_id].decode_demand}",
             )
             # The native append gate requires a free block even for gap 0;
             # only the actual gap is consumed.

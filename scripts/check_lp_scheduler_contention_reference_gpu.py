@@ -95,8 +95,6 @@ LP_MAX_NUM_SEQS = 3
 B_MAX = 96
 C_MAX = 8
 S_MAX = 2
-MEMORY_RESERVE = 1
-DECODE_POLICY_ID = "conservative_one_block_v1"
 DECODE_UTILITY = 1.0
 PREFILL_TOKEN_UTILITY = 1.0
 PREEMPTION_PENALTY = 1.0
@@ -126,8 +124,6 @@ HELPER_CONSTANTS = [
     (contention, "C_MAX", C_MAX),
     (contention, "S_MAX", S_MAX),
     (contention, "MAX_NUM_SEQS", LP_MAX_NUM_SEQS),
-    (contention, "MEMORY_RESERVE", MEMORY_RESERVE),
-    (contention, "DECODE_POLICY_ID", DECODE_POLICY_ID),
     (contention, "DECODE_UTILITY", DECODE_UTILITY),
     (contention, "PREFILL_TOKEN_UTILITY", PREFILL_TOKEN_UTILITY),
     (contention, "PREEMPTION_PENALTY", PREEMPTION_PENALTY),
@@ -289,8 +285,7 @@ def build_engine(mode, asset, out_dir, summary):
         scheduler_config = LPSchedulerConfig(
             max_num_seqs=LP_MAX_NUM_SEQS, max_model_len=MAX_MODEL_LEN,
             num_pipeline_stages=PIPELINE_PARALLEL_SIZE, b_max=B_MAX,
-            c_max=C_MAX, s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
-            decode_memory_policy_id=DECODE_POLICY_ID,
+            c_max=C_MAX, s_max=S_MAX,
             decode_utility=DECODE_UTILITY,
             prefill_token_utility=PREFILL_TOKEN_UTILITY,
             preemption_penalty=PREEMPTION_PENALTY,
@@ -301,8 +296,7 @@ def build_engine(mode, asset, out_dir, summary):
             type="LP", max_num_seqs=LP_MAX_NUM_SEQS,
             max_model_len=MAX_MODEL_LEN,
             num_pipeline_stages=PIPELINE_PARALLEL_SIZE, b_max=B_MAX,
-            c_max=C_MAX, s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
-            decode_memory_policy_id=DECODE_POLICY_ID,
+            c_max=C_MAX, s_max=S_MAX,
             utilities=dict(decode=DECODE_UTILITY,
                            prefill_token=PREFILL_TOKEN_UTILITY,
                            preemption_penalty=PREEMPTION_PENALTY),
@@ -480,16 +474,15 @@ def run_lp(engine, policy_json, sampling_params, trace, summary):
     scheduler = engine.scheduler
     bm = scheduler.block_manager
     n_free = bm.get_num_free_gpu_blocks()
-    # Pool adequacy: all requests resident at their two-block peak, the
-    # planning reserve, conservative decode charges (at most S_MAX), and the
-    # native watermark must all fit.
+    # Pool adequacy: all requests resident at their two-block peak, a margin
+    # of S_MAX decode blocks, and the native watermark must fit (the
+    # planning reserve was removed).
     check(n_free == bm.num_total_gpu_blocks and not bm.block_tables,
           "block pool must be fully free before the requests")
-    check(n_free - LP_PEAK_BLOCKS_IN_USE - S_MAX
-          >= bm.watermark_blocks + MEMORY_RESERVE,
+    check(n_free - LP_PEAK_BLOCKS_IN_USE - S_MAX >= bm.watermark_blocks,
           f"profiled pool {n_free} too small for {LP_PEAK_BLOCKS_IN_USE} "
-          f"blocks + {S_MAX} decode charges + reserve {MEMORY_RESERVE} "
-          f"+ watermark {bm.watermark_blocks}")
+          f"blocks + {S_MAX} decode blocks + watermark "
+          f"{bm.watermark_blocks}")
 
     seqs = {}
     capture = lambda: contention.capture_state(engine, seqs)

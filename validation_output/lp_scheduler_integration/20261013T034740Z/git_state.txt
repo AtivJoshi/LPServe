@@ -1,0 +1,25 @@
+branch=main
+head=9a6ca3cf338f4212679eeaaabd0929cce4c0f26a
+--- git status --short
+ M lp_relaxation_scheduler.py
+ M lpserve_plan_execution.py
+ M lpserve_state_mapping.py
+ M sarathi/config.py
+ M sarathi/core/scheduler/lp_scheduler.py
+ M sarathi/engine/arg_utils.py
+ M sarathi/engine/base_llm_engine.py
+ M scripts/check_lp_scheduler_contention_gpu.py
+ M scripts/check_lp_scheduler_contention_reference_gpu.py
+ M scripts/check_lp_scheduler_decode_preemption_reference_gpu.py
+ M scripts/check_lp_scheduler_gpu.py
+ M scripts/check_lp_scheduler_mixed_gpu.py
+ M scripts/check_lp_scheduler_preemption_gpu.py
+ M scripts/check_lp_scheduler_preemption_reference_gpu.py
+ M scripts/check_lp_scheduler_reference_gpu.py
+ M scripts/run_lp_inference.py
+ M tests/test_lp_engine_args.py
+ M tests/test_lp_relaxation_scheduler.py
+ M tests/test_lp_scheduler.py
+ M tests/test_lpserve_plan_execution.py
+ M tests/test_lpserve_state_mapping.py
+?? validation_output/lp_scheduler_integration/

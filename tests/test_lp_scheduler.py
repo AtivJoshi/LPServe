@@ -50,8 +50,6 @@ RESIDENT_LIMIT = 4
 B_MAX = 8
 C_MAX = 4
 S_MAX = 3
-MEMORY_RESERVE = 1
-DECODE_POLICY_ID = "conservative_one_block_v1"
 DECODE_UTILITY = 1.0
 PREFILL_TOKEN_UTILITY = 1.0
 PREEMPTION_PENALTY = 1.0
@@ -89,8 +87,6 @@ def _config(**overrides):
         b_max=B_MAX,
         c_max=C_MAX,
         s_max=S_MAX,
-        memory_reserve=MEMORY_RESERVE,
-        decode_memory_policy_id=DECODE_POLICY_ID,
         decode_utility=DECODE_UTILITY,
         prefill_token_utility=PREFILL_TOKEN_UTILITY,
         preemption_penalty=PREEMPTION_PENALTY,
@@ -236,15 +232,15 @@ class _Spies:
         self._patches = []
 
     def __enter__(self):
-        real_utilities = LPScheduler._build_utilities
+        real_capture = lsm.capture_scheduler_state
         real_map = lsm.map_scheduler_state
         real_solve = lrs.solve_and_extract
         real_execute = lpe.execute_plan
         calls = self.calls
 
-        def utilities(scheduler, now):
-            calls.append(("utilities", now))
-            return real_utilities(scheduler, now)
+        def capture(scheduler, *, snapshot_time):
+            calls.append(("capture", snapshot_time))
+            return real_capture(scheduler, snapshot_time=snapshot_time)
 
         def map_state(scheduler, **kwargs):
             result = real_map(scheduler, **kwargs)
@@ -267,7 +263,7 @@ class _Spies:
             return call[3]
 
         self._patches = [
-            mock.patch.object(LPScheduler, "_build_utilities", utilities),
+            mock.patch.object(lsm, "capture_scheduler_state", capture),
             mock.patch.object(lsm, "map_scheduler_state", map_state),
             mock.patch.object(lrs, "solve_and_extract", solve),
             mock.patch.object(lpe, "execute_plan", execute),
@@ -341,18 +337,28 @@ class OrdinaryIdleTest(unittest.TestCase):
         self._assert_idle(harness, now=5.0)
         self.assertEqual(harness.scheduler.waiting[0].get_status(), SequenceStatus.WAITING)
 
+    def test_future_head_does_not_hide_arrived_work(self):
+        harness = _Harness()
+        harness.add(0, 4, arrival_time=10.0, max_tokens=2)
+        harness.add(1, 4, arrival_time=1.0, max_tokens=2)
+        with _Spies() as spies:
+            outputs = harness.schedule(5.0)
+        self.assertEqual(spies.names(), ["capture", "map", "solve", "execute"])
+        self.assertEqual(_emitted(outputs), [(1, 4)])
+        self.assertEqual([s.seq_id for s in harness.scheduler.waiting], [0])
+
 
 class LivePipelineTest(unittest.TestCase):
     def _assert_synchronous_pipeline(self, harness, spies, now, outputs):
         scheduler = harness.scheduler
-        self.assertEqual(spies.names(), ["utilities", "map", "solve", "execute"])
+        self.assertEqual(spies.names(), ["capture", "map", "solve", "execute"])
         self.assertEqual(harness.clock.monotonic.call_count, 1)
-        _, utilities_now = spies.calls[0]
+        _, capture_now = spies.calls[0]
         _, map_now, map_batches, map_iteration, snapshot = spies.calls[1]
         _, problem_id, result = spies.calls[2]
         _, executed_snapshot, execute_batches, executed_outputs = spies.calls[3]
         decision_id = str(scheduler._iteration_id)
-        self.assertEqual((utilities_now, map_now, snapshot.snapshot_time), (now,) * 3)
+        self.assertEqual((capture_now, map_now, snapshot.snapshot_time), (now,) * 3)
         self.assertEqual(map_iteration, scheduler._iteration_id)
         self.assertEqual(
             (snapshot.snapshot_id, problem_id, result.problem_id,
@@ -442,7 +448,9 @@ class LivePipelineTest(unittest.TestCase):
         # Request 1 is admitted ahead of request 0's decode (prompt first),
         # although request 0 has the smaller order_key.
         self.assertEqual(_emitted(harness.step(2.0)), [(1, 4), (0, 0)])
-        self.assertEqual(_emitted(harness.step(3.0)), [(2, 4), (0, 0), (1, 0)])
+        # Request 0's decode token opened a second logical block (demand 1);
+        # request 1 has demand 0, so it decodes first (zero-demand group).
+        self.assertEqual(_emitted(harness.step(3.0)), [(2, 4), (1, 0), (0, 0)])
         self.assertEqual(harness.central_tables(), harness.worker_tables())
         self.assertEqual(scheduler.num_running_batches, 0)
 
@@ -461,7 +469,13 @@ class LivePipelineTest(unittest.TestCase):
         self.assertEqual(emitted[0], (3, 4))
         decoded = [seq_id for seq_id, chunk in emitted[1:]]
         self.assertEqual([chunk for _, chunk in emitted[1:]], [0, 0])
-        self.assertEqual(decoded, sorted(decoded))
+        # Decodes follow the declared order: demand group, then service rank.
+        records = {r.raw_seq_id: r for r in spies.calls[1][4].requests}
+        self.assertEqual(
+            decoded,
+            sorted(decoded, key=lambda k: (records[k].decode_demand,
+                                           records[k].service_rank, k)),
+        )
         self.assertEqual(len(decoded), 2)
         self.assertTrue(set(decoded) < {0, 1, 2})
         (unselected,) = {0, 1, 2} - set(decoded)
@@ -591,11 +605,11 @@ class LivePipelineTest(unittest.TestCase):
                 (B_MAX, c_max, s_max),
             )
             self.assertEqual(
-                (snapshot.memory_reserve, snapshot.resident_limit,
-                 snapshot.decode_memory_policy_id, snapshot.free_physical_blocks,
-                 problem.m_free),
-                (MEMORY_RESERVE, max_num_seqs, DECODE_POLICY_ID, free_before,
-                 free_before),
+                (snapshot.resident_limit, snapshot.free_physical_blocks,
+                 problem.m_free, problem.resident_limit,
+                 problem.admission_watermark),
+                (max_num_seqs, free_before, free_before, max_num_seqs,
+                 block_manager.watermark_blocks),
             )
             self.assertIs(snapshot.numerical_policy, NUMERICAL_POLICY)
             self.assertEqual(
@@ -607,16 +621,23 @@ class LivePipelineTest(unittest.TestCase):
 
             # The complete integer plan matches the emitted actions.
             plan = result.plan
-            self.assertEqual(
-                (plan.dominant_preemption_ids, plan.safety_preemption_ids), ((), ()),
-            )
+            self.assertEqual(plan.victim_order, ())
             selected = []
             for d in plan.decisions:
                 self.assertEqual(d.preempt, 0)
                 self.assertFalse(d.prefill_tokens > 0 and d.decode)
                 if d.prefill_tokens > 0 or d.decode:
                     selected.append(d)
-            selected.sort(key=lambda d: (0 if d.prefill_tokens > 0 else 1, d.order_key))
+            # Independent statement of the declared order: prefills, then
+            # zero-demand and one-block decodes, each by service rank, then
+            # identity, from the snapshot's captured demand and ranks.
+            records = {r.request_id: r for r in snapshot.requests}
+            selected.sort(key=lambda d: (
+                0 if d.prefill_tokens > 0
+                else 1 + records[d.request_id].decode_demand,
+                records[d.request_id].service_rank, d.order_key))
+            self.assertEqual(
+                [d.request_id for d in selected], list(plan.execution_order))
             emitted = _emitted(outputs)
             self.assertEqual(
                 emitted, [(raw[d.request_id], d.prefill_tokens) for d in selected],
@@ -788,7 +809,7 @@ class LivePreemptionTest(unittest.TestCase):
     # harness gives request A (ID 0) prompt tokens 0..4 and B (ID 1) 0..11.
     POOL = 4
     CONFIG = dict(
-        max_num_seqs=1, b_max=4, c_max=4, s_max=1, memory_reserve=0,
+        max_num_seqs=1, b_max=4, c_max=4, s_max=1,
         decode_utility=10.0, prefill_token_utility=1.0, preemption_penalty=1.0,
     )
     PROMPT_A = list(range(5))
@@ -850,26 +871,28 @@ class LivePreemptionTest(unittest.TestCase):
         snapshot, result = spies.calls[1][4], spies.calls[2][2]
         problem = snapshot.lp_problem
         self.assertEqual(problem.legal_preemption_ids, frozenset({"0"}))
-        self.assertEqual((problem.m_free, problem.w), (2, 0))
+        self.assertEqual((problem.m_free, problem.admission_watermark), (2, 0))
         requests = {r.request_id: r for r in problem.requests}
         self.assertEqual(requests["0"].preemption_recovery, 2)
         self.assertEqual(requests["1"].prefill_fixed_charge, 3)
         relaxed = {d.request_id: d for d in result.relaxed.decisions}
         tol = NUMERICAL_POLICY.feasibility_tol
-        for rid, values in (("0", (0, 0, 0, 0.5)), ("1", (4, 0, 1, 0))):
+        # Corrected LP: the resident row (limit 1) forces z_A >= I_B, so the
+        # unique optimum preempts A fully: 4 * 1 - 1 = 3 (the superseded
+        # memory-only LP had z_A = 0.5 and 3.5).
+        for rid, values in (("0", (0, 0, 0, 1)), ("1", (4, 0, 1, 0))):
             d = relaxed[rid]
             for got, want in zip((d.x, d.y, d.prefill_indicator, d.z), values):
                 self.assertAlmostEqual(got, want, delta=tol)
         self.assertAlmostEqual(
-            result.relaxed.normalized_objective, 3.5, delta=tol,
+            result.relaxed.normalized_objective, 3.0, delta=tol,
         )
         self.assertEqual(
             [(d.request_id, d.prefill_tokens, d.decode, d.preempt)
              for d in result.plan.decisions],
             [("0", 0, 0, 1), ("1", 4, 0, 0)],
         )
-        self.assertEqual(result.plan.dominant_preemption_ids, ("0",))
-        self.assertEqual(result.plan.safety_preemption_ids, ())
+        self.assertEqual(result.plan.victim_order, ("0",))
         self.assertEqual(outputs.preempted_seq_ids, [0])
         self.assertEqual(_emitted(outputs), [(1, 4)])
 
@@ -982,11 +1005,12 @@ class LiveDecodePreemptionTest(unittest.TestCase):
     # reserve. Utilities are fixed per request for this case only (D-03
     # remains OPEN): A decode 40, prefill-token 1, penalty 1; B decode 40,
     # prefill-token 20, penalty 1. The configured uniform triple is A's; a
-    # validation-only override of _build_utilities supplies B's.
+    # validation-only override of _coefficient_policy supplies a per-request
+    # policy evaluated on the captured data only.
     POOL = 4
     CONFIG = dict(
         max_num_seqs=1, max_model_len=16, b_max=4, c_max=4, s_max=1,
-        memory_reserve=0, decode_utility=40.0, prefill_token_utility=1.0,
+        decode_utility=40.0, prefill_token_utility=1.0,
         preemption_penalty=1.0,
     )
     A, B = 0, 1  # raw seq IDs for requests A and B
@@ -1024,16 +1048,14 @@ class LiveDecodePreemptionTest(unittest.TestCase):
     _assert_managers_agree = LivePreemptionTest._assert_managers_agree
 
     def _fixed_utilities(self):
-        """Validation-only: give exactly the arrived, unfinished raw IDs that
-        the real method selects their fixed A/B triple. The mapper still
-        validates the exact key set and copies the values immutably."""
-        real = LPScheduler._build_utilities
+        """Validation-only: each captured request receives its fixed A/B
+        triple. The mapper validates and copies the values immutably."""
         fixed = self.UTILITIES
 
-        def build(scheduler, now):
-            return {seq_id: fixed[seq_id] for seq_id in real(scheduler, now)}
+        def policy(scheduler):
+            return lambda captured, request: fixed[request.raw_seq_id]
 
-        return mock.patch.object(LPScheduler, "_build_utilities", build)
+        return mock.patch.object(LPScheduler, "_coefficient_policy", policy)
 
     def _state(self, harness):
         """Primitive central/worker state at a step boundary, for the trace."""
@@ -1053,10 +1075,10 @@ class LiveDecodePreemptionTest(unittest.TestCase):
         )
 
     def test_decode_preemption_recomputes_expanded_context_to_completion(self):
-        real_build_utilities = LPScheduler._build_utilities
+        real_policy = LPScheduler._coefficient_policy
         with self._fixed_utilities():
             self._run_case()
-        self.assertIs(LPScheduler._build_utilities, real_build_utilities)
+        self.assertIs(LPScheduler._coefficient_policy, real_policy)
 
     def _run_case(self):
         A, B = self.A, self.B
@@ -1148,7 +1170,7 @@ class LiveDecodePreemptionTest(unittest.TestCase):
             self.assertEqual(sorted(requests), unfinished)
             for raw_id, r in requests.items():
                 self.assertEqual(r.utility, self.UTILITIES[raw_id])
-            self.assertEqual((problem.m_free, problem.w), (before["central_free"], 0))
+            self.assertEqual((problem.m_free, problem.admission_watermark), (before["central_free"], 0))
 
             self.assertEqual(outputs.id, step)
             self.assertEqual(outputs.preempted_seq_ids, preempted)
@@ -1300,15 +1322,15 @@ class LiveDecodePreemptionTest(unittest.TestCase):
         # resident with one generated token, two blocks, and recovery two;
         # B waits unallocated with fixed admission charge three.
         self.assertEqual(problem.legal_preemption_ids, frozenset({str(A)}))
-        self.assertEqual((problem.m_free, problem.w), (2, 0))
+        self.assertEqual((problem.m_free, problem.admission_watermark), (2, 0))
         self.assertEqual(before["central_seqs"][A][3], (101,))
         self.assertEqual(
             (ra.ownership, ra.status, ra.prompt_len, ra.prompt_tokens_processed,
              ra.prompt_processing_finished, ra.physical_block_count,
              ra.preemption_eligible, ra.preemption_recovery,
-             ra.decode_eligible, ra.decode_charge, ra.prefill_eligible),
+             ra.decode_eligible, ra.decode_demand, ra.prefill_eligible),
             (lsm.OWNERSHIP_RUNNING, "PAUSED", 5, 5, True, 2,
-             True, 2, True, 1, False),
+             True, 2, True, 0, False),
         )
         self.assertEqual(
             (rb.ownership, rb.status, rb.prompt_len, rb.physical_block_count,
@@ -1316,19 +1338,22 @@ class LiveDecodePreemptionTest(unittest.TestCase):
             (lsm.OWNERSHIP_WAITING, "WAITING", 12, 0, False, 3),
         )
 
-        # Relaxed solution and integer extraction.
-        for rid, values in ((str(A), (0, 0, 0, 0.5)), (str(B), (4, 0, 1, 0))):
+        # Relaxed solution and integer extraction. A's six tokens fill two
+        # logical and two physical blocks: exact decode demand 0. The
+        # resident row (limit 1) forces z_A >= I_B, so with I_B = t the value
+        # is 80t - t + 40(1 - t), maximized at t = 1: 79 (superseded: 79.5
+        # with z_A = 0.5).
+        for rid, values in ((str(A), (0, 0, 0, 1)), (str(B), (4, 0, 1, 0))):
             d = relaxed[rid]
             for got, want in zip((d.x, d.y, d.prefill_indicator, d.z), values):
                 self.assertAlmostEqual(got, want, delta=tol)
-        self.assertAlmostEqual(result.relaxed.normalized_objective, 79.5, delta=tol)
+        self.assertAlmostEqual(result.relaxed.normalized_objective, 79.0, delta=tol)
         self.assertEqual(
             [(d.request_id, d.prefill_tokens, d.decode, d.preempt)
              for d in result.plan.decisions],
             [(str(A), 0, 0, 1), (str(B), 4, 0, 0)],
         )
-        self.assertEqual(result.plan.dominant_preemption_ids, (str(A),))
-        self.assertEqual(result.plan.safety_preemption_ids, ())
+        self.assertEqual(result.plan.victim_order, (str(A),))
         self.assertAlmostEqual(result.plan.objective, 79.0, delta=tol)
 
         # Central execution: A's two blocks are freed through native
@@ -1368,38 +1393,61 @@ class PreMutationFailureTest(unittest.TestCase):
         return error, spies
 
     def test_mapping_failure_stops_before_solver(self):
-        # Case-specific: a decode policy identifier the mapper does not accept.
-        harness = _Harness(decode_memory_policy_id="exact_gap_v1")
+        # Case-specific: a negative configured coefficient is rejected by the
+        # coefficient construction step inside mapping.
+        harness = _Harness(decode_utility=-1.0)
         harness.add(0, 4, arrival_time=1.0, max_tokens=2)
-        error, spies = self._assert_failure(harness, 2.0, ["utilities", "map"])
+        error, spies = self._assert_failure(harness, 2.0, ["capture", "map"])
         self.assertIsInstance(error.failure, lsm.MappingFailure)
         self.assertEqual(error.stage, lsm.STAGE_STATE_MAPPING)
-        self.assertIn("decode_memory_policy_id", error.reason)
+        self.assertIn("coefficient decode_utility", error.reason)
         self.assertIsNone(error.solver_diagnostics)
 
-    def test_mathematical_failure_stops_before_executor(self):
-        # Case-specific: a reserve above the 10 free blocks makes the LP
-        # infeasible even for the all-zero plan.
-        harness = _Harness(memory_reserve=11)
-        harness.add(0, 4, arrival_time=1.0, max_tokens=2)
-        error, spies = self._assert_failure(harness, 2.0, ["utilities", "map", "solve"])
+    def test_solver_reported_infeasibility_stops_before_executor(self):
+        # Case-specific 2-block pool: request 0 (8 prompt tokens) passes
+        # initial admission (2 + 0 <= 2, equality) and is prefilled into the
+        # whole pool. Its decode has demand 0, but the native append gate
+        # still needs one free block; it cannot be its own victim, so no
+        # legal useful plan exists and the LP is infeasible. Admission
+        # validity does not guarantee completion.
+        harness = _Harness(num_gpu_blocks=2)
+        harness.add(0, 8, arrival_time=1.0, max_tokens=4)
+        self.assertEqual(_emitted(harness.step(1.0)), [(0, 4)])
+        self.assertEqual(_emitted(harness.step(1.0)), [(0, 4)])
+        seq = harness.scheduler.running[0]
+        self.assertEqual(
+            (len(seq.logical_token_blocks), seq.get_output_len(),
+             harness.scheduler.block_manager.get_num_free_gpu_blocks()),
+            (2, 0, 0))
+        error, spies = self._assert_failure(
+            harness, 2.0, ["capture", "map", "solve"])
         self.assertIsInstance(error.failure, lrs.Failure)
-        self.assertEqual((error.stage, error.category), ("solver", "infeasible"))
-        self.assertEqual(error.snapshot_id, "0")
+        self.assertEqual(
+            (error.stage, error.category, error.failure.outcome),
+            ("solver", lrs.CATEGORY_LP_INFEASIBLE, lrs.OUTCOME_LP_INFEASIBLE))
+        self.assertEqual(error.snapshot_id, "2")
         self.assertIsInstance(error.solver_diagnostics, lrs.SolverDiagnostics)
         self.assertEqual(error.solver_diagnostics.raw_status, 2)
 
     def test_physically_infeasible_plan_raises_executor_failure(self):
-        # Case-specific resident limit 1: the LP has no resident constraint,
-        # so it selects request 0's decode and request 1's admission, which
-        # native precommit validation rejects.
-        harness = _Harness(max_num_seqs=1)
+        # Induced drift: the resident limit read by the executor is lowered
+        # after mapping (4) and solving, so the planned admission of request
+        # 1 alongside resident 0 fails current-state precommit validation.
+        harness = _Harness()
         harness.add(0, 4, arrival_time=1.0, max_tokens=4)
         harness.add(1, 4, arrival_time=2.0, max_tokens=4)
         self.assertEqual(_emitted(harness.step(1.0)), [(0, 4)])
-        error, spies = self._assert_failure(
-            harness, 2.0, ["utilities", "map", "solve", "execute"],
-        )
+        real_solve = lrs.solve_and_extract
+
+        def solve_then_drift(problem):
+            result = real_solve(problem)
+            harness.scheduler.scheduler_config.max_num_seqs = 1
+            return result
+
+        with mock.patch.object(lrs, "solve_and_extract", solve_then_drift):
+            error, spies = self._assert_failure(
+                harness, 2.0, ["capture", "map", "solve", "execute"],
+            )
         self.assertIsInstance(error.failure, lrs.Failure)
         self.assertEqual(
             (error.stage, error.category),
@@ -1409,21 +1457,31 @@ class PreMutationFailureTest(unittest.TestCase):
         self.assertEqual(harness.scheduler.num_running_batches, 0)
 
     def test_no_progress_plan_is_not_ordinary_idle(self):
-        # Case-specific reserve 9: one planning block remains, below the
-        # 2-block admission charge, so the validated plan is all-zero.
-        harness = _Harness(memory_reserve=9)
+        # The corrected solver path never returns an empty plan (useful
+        # execution is an LP row and validated). The defensive executor gate
+        # is exercised by replacing the validated plan with an erroneous
+        # all-zero one; it fails as no_progress, not as idle output.
+        harness = _Harness()
         harness.add(0, 8, arrival_time=1.0, max_tokens=2)
-        error, spies = self._assert_failure(
-            harness, 2.0, ["utilities", "map", "solve", "execute"],
-        )
+        real_solve = lrs.solve_and_extract
+
+        def solve_then_empty(problem):
+            result = real_solve(problem)
+            plan = result.plan
+            empty = tuple(dataclasses.replace(
+                d, prefill_tokens=0, decode=0, preempt=0, prefill_indicator=0)
+                for d in plan.decisions)
+            return dataclasses.replace(result, plan=dataclasses.replace(
+                plan, decisions=empty, execution_order=(), token_use=0,
+                action_count=0))
+
+        with mock.patch.object(lrs, "solve_and_extract", solve_then_empty):
+            error, spies = self._assert_failure(
+                harness, 2.0, ["capture", "map", "solve", "execute"],
+            )
         self.assertEqual(error.category, lpe.CATEGORY_NO_PROGRESS)
+        self.assertEqual(error.failure.outcome, lrs.OUTCOME_INVALID)
         self.assertEqual(error.snapshot_id, "0")
-        _, _, result = spies.calls[2]
-        self.assertIsInstance(result, lrs.SchedulingSuccess)
-        self.assertEqual(
-            [(d.prefill_tokens, d.decode, d.preempt) for d in result.plan.decisions],
-            [(0, 0, 0)],
-        )
 
 
 class UnsupportedEntryAndDestructiveFailureTest(unittest.TestCase):
@@ -1496,7 +1554,7 @@ class UnsupportedEntryAndDestructiveFailureTest(unittest.TestCase):
 
         self.assertIs(type(caught.exception), RuntimeError)
         self.assertEqual(str(caught.exception), "induced allocation failure")
-        self.assertEqual(spies.names(), ["utilities", "map", "solve", "execute"])
+        self.assertEqual(spies.names(), ["capture", "map", "solve", "execute"])
         self.assertIsNone(spies.calls[3][3])
         self.assertEqual(allocations, [1, 2])
         append_slot.assert_not_called()
@@ -1512,6 +1570,90 @@ class UnsupportedEntryAndDestructiveFailureTest(unittest.TestCase):
         self.assertEqual(scheduler._iteration_id, 1)
         # The mutated fixture is discarded, not recovered or reused.
         del harness, scheduler
+
+
+class SubmissionBoundaryTest(unittest.TestCase):
+    """The real ``BaseLLMEngine.add_request`` with test doubles for the
+    tokenizer-free sequence manager, workers, and metrics. The engine is not
+    initialized (no model, workers, or GPU); only the attributes that
+    ``add_request`` reads are set."""
+
+    def _engine(self, scheduler_config, num_gpu_blocks):
+        from sarathi.engine.base_llm_engine import BaseLLMEngine
+        from sarathi.utils import Counter
+
+        engine = object.__new__(BaseLLMEngine)
+        engine.scheduler_config = scheduler_config
+        engine.cache_config = _cache_config(num_gpu_blocks)
+        engine.tokenizer = mock.Mock(eos_token_id=-2)
+        engine.seq_manager = mock.Mock()
+        engine.seq_counter = Counter()
+        engine._run_workers = mock.Mock()
+        engine.metrics_store = mock.Mock()
+        engine.scheduler = SchedulerRegistry.get(
+            scheduler_config.type, scheduler_config, engine.cache_config)
+        return engine
+
+    def _add(self, engine, num_tokens):
+        engine.add_request(
+            None, SamplingParams(ignore_eos=True, max_tokens=4),
+            prompt_token_ids=list(range(num_tokens)), arrival_time=1.0,
+        )
+
+    def _registered(self, engine):
+        return (
+            engine.seq_manager.add_seq.call_count,
+            engine._run_workers.call_count,
+            len(engine.scheduler.waiting),
+            engine.metrics_store.on_request_arrival.call_count,
+        )
+
+    def test_lp_rejects_before_any_registration(self):
+        # Pool 100 blocks of 4 tokens: watermark int(0.01 * 100) = 1.
+        engine = self._engine(_config(max_model_len=400), 100)
+        self.assertEqual(engine.scheduler.block_manager.watermark_blocks, 1)
+        # Length equality: 396 tokens = 99 blocks, 99 + 1 == 100 accepted.
+        self._add(engine, 396)
+        self.assertEqual(self._registered(engine), (1, 1, 1, 1))
+        engine._run_workers.assert_called_with("add_seq", seq=mock.ANY)
+        # 400 tokens == max_model_len, but 100 blocks + 1 > 100: rejected.
+        with self.assertRaises(lp_scheduler.LPRequestError) as caught:
+            self._add(engine, 400)
+        error = caught.exception
+        self.assertEqual((error.seq_id, error.required, error.limit),
+                         (1, "101 blocks", "100 blocks"))
+        self.assertIn("watermark (1 blocks)", str(error))
+        self.assertEqual(self._registered(engine), (1, 1, 1, 1))
+        # 401 tokens exceed max_model_len: rejected, still unregistered; the
+        # consumed sequence-ID counter value is not a registration.
+        with self.assertRaises(lp_scheduler.LPRequestError) as caught:
+            self._add(engine, 401)
+        self.assertEqual((caught.exception.seq_id, caught.exception.required,
+                          caught.exception.limit),
+                         (2, "401 tokens", "400 tokens"))
+        self.assertEqual(self._registered(engine), (1, 1, 1, 1))
+        self.assertEqual([s.seq_id for s in engine.scheduler.waiting], [0])
+
+    def test_current_contention_is_not_permanent_rejection(self):
+        engine = self._engine(_config(), NUM_GPU_BLOCKS)
+        manager = engine.scheduler.block_manager
+        held = [manager.gpu_allocator.allocate() for _ in range(9)]
+        self.assertEqual(manager.get_num_free_gpu_blocks(), 1)
+        self._add(engine, 32)  # 8 blocks: fits the pool, not current memory
+        self.assertEqual(self._registered(engine), (1, 1, 1, 1))
+        self.assertEqual(len(held), 9)
+
+    def test_other_schedulers_keep_submission_behavior(self):
+        from sarathi.config import VLLMSchedulerConfig
+
+        engine = self._engine(
+            VLLMSchedulerConfig(RESIDENT_LIMIT, MAX_MODEL_LEN, 1, 64),
+            NUM_GPU_BLOCKS)
+        with mock.patch.object(
+            LPScheduler, "check_new_request") as lp_check:
+            self._add(engine, MAX_MODEL_LEN + 1)
+        lp_check.assert_not_called()
+        self.assertEqual(self._registered(engine), (1, 1, 1, 1))
 
 
 if __name__ == "__main__":

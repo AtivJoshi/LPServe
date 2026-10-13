@@ -2,6 +2,7 @@ import os
 import sys
 import tempfile
 import unittest
+from dataclasses import fields
 from pathlib import Path
 from unittest import mock
 
@@ -38,8 +39,6 @@ LP_ARGS = dict(
     lp_b_max=8,
     lp_c_max=4,
     lp_s_max=3,
-    lp_memory_reserve=1,
-    lp_decode_memory_policy_id="conservative_one_block_v1",
     lp_decode_utility=1,
     lp_prefill_token_utility=1,
     lp_preemption_penalty=1,
@@ -103,10 +102,8 @@ class LPEngineArgsTest(unittest.TestCase):
         self.assertEqual(scheduler_config.b_max, 8)
         self.assertEqual(scheduler_config.c_max, 4)
         self.assertEqual(scheduler_config.s_max, 3)
-        self.assertEqual(scheduler_config.memory_reserve, 1)
-        self.assertEqual(
-            scheduler_config.decode_memory_policy_id, "conservative_one_block_v1"
-        )
+        self.assertFalse(hasattr(scheduler_config, "memory_reserve"))
+        self.assertFalse(hasattr(scheduler_config, "decode_memory_policy_id"))
         self.assertEqual(scheduler_config.decode_utility, 1)
         self.assertEqual(scheduler_config.prefill_token_utility, 1)
         self.assertEqual(scheduler_config.preemption_penalty, 1)
@@ -130,13 +127,63 @@ class LPEngineArgsTest(unittest.TestCase):
                 self.model_config_cls.assert_not_called()
                 self.assertFalse(os.path.exists(self.config_path()))
 
-    def test_zero_reserve_and_zero_penalty_are_supplied_values(self):
-        args = EngineArgs(
-            **self.lp_kwargs(lp_memory_reserve=0, lp_preemption_penalty=0)
-        )
+    def test_zero_penalty_is_a_supplied_value(self):
+        args = EngineArgs(**self.lp_kwargs(lp_preemption_penalty=0))
         scheduler_config = args.create_engine_configs()[3]
-        self.assertEqual(scheduler_config.memory_reserve, 0)
         self.assertEqual(scheduler_config.preemption_penalty, 0)
+
+    def test_obsolete_arguments_fail_with_migration_guidance(self):
+        self.assertNotIn("lp_memory_reserve", arg_utils._LP_REQUIRED_FIELDS)
+        # The removed names stay as reject-only fields so later positional
+        # bindings are unchanged.
+        names = [f.name for f in fields(EngineArgs)]
+        self.assertEqual(names[names.index("lp_b_max"):], [
+            "lp_b_max", "lp_c_max", "lp_s_max", "lp_memory_reserve",
+            "lp_decode_memory_policy_id", "lp_decode_utility",
+            "lp_prefill_token_utility", "lp_preemption_penalty",
+            "lp_numerical_policy",
+        ])
+        cases = [
+            dict(lp_memory_reserve=0),
+            dict(lp_memory_reserve=1),
+            dict(lp_decode_memory_policy_id="conservative_one_block_v1"),
+            dict(lp_memory_reserve=0, lp_decode_memory_policy_id="x"),
+        ]
+        with mock.patch.object(llm_engine, "BaseLLMEngine") as base_engine:
+            for overrides in cases:
+                with self.subTest(overrides=overrides):
+                    with self.assertRaisesRegex(
+                            ValueError, "watermark is read from the shared"):
+                        llm_engine.LLMEngine.from_engine_args(
+                            **self.lp_kwargs(**overrides))
+                    # Also rejected for a non-LP scheduler type.
+                    with self.assertRaisesRegex(ValueError, "were removed"):
+                        EngineArgs(model=MODEL, scheduler_type="vllm",
+                                   output_dir=self.output_dir, **overrides)
+                    self.model_config_cls.assert_not_called()
+                    base_engine.assert_not_called()
+                    self.assertFalse(os.path.exists(self.config_path()))
+
+        # Direct configuration: by keyword (including zero) or as the two
+        # extra positional arguments of the old signature.
+        base = dict(
+            max_num_seqs=RESIDENT_LIMIT, max_model_len=MAX_MODEL_LEN,
+            num_pipeline_stages=1, b_max=8, c_max=4, s_max=3,
+            decode_utility=1, prefill_token_utility=1, preemption_penalty=1,
+            numerical_policy=numerical_policy(),
+        )
+        self.assertIs(type(LPSchedulerConfig(**base)), LPSchedulerConfig)
+        for extra in (dict(memory_reserve=0),
+                      dict(decode_memory_policy_id="conservative_one_block_v1")):
+            with self.subTest(extra=extra):
+                with self.assertRaisesRegex(ValueError, "were removed"):
+                    LPSchedulerConfig(**base, **extra)
+        with self.assertRaisesRegex(ValueError, "were removed"):
+            LPSchedulerConfig(
+                RESIDENT_LIMIT, MAX_MODEL_LEN, 1, 8, 4, 3,
+                0, "conservative_one_block_v1", 1, 1, 1, numerical_policy())
+        with self.assertRaises(TypeError):
+            LPSchedulerConfig(**base, unknown_argument=1)
 
     def test_configuration_errors_fail_before_model_engine_and_config_write(self):
         cases = [
@@ -171,6 +218,8 @@ class LPEngineArgsTest(unittest.TestCase):
         recorded = yaml.safe_load(text)
         for name, value in LP_ARGS.items():
             self.assertEqual(recorded[name], value)
+        self.assertNotIn("lp_memory_reserve", recorded)
+        self.assertNotIn("lp_decode_memory_policy_id", recorded)
         self.assertEqual(
             recorded["lp_numerical_policy"],
             {

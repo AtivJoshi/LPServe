@@ -1,0 +1,3991 @@
+diff --git a/lp_relaxation_scheduler.py b/lp_relaxation_scheduler.py
+index 4d0536d..7e1a7ef 100644
+--- a/lp_relaxation_scheduler.py
++++ b/lp_relaxation_scheduler.py
+@@ -873,8 +873,11 @@ def validate_relaxed_solution(problem, raw_vector):
+ 
+     try:
+         raw = tuple(float(v) for v in raw_vector)
+-    except (TypeError, ValueError):
+-        return bad("malformed_vector", "raw vector is not a sequence of numbers")
++    except (TypeError, ValueError, OverflowError):
++        return bad(
++            "malformed_vector",
++            "raw vector is not a sequence of numbers representable as floats",
++        )
+     if len(raw) != 4 * n or not all(math.isfinite(v) for v in raw):
+         return bad(
+             "malformed_vector",
+diff --git a/lpserve_plan_execution.py b/lpserve_plan_execution.py
+index 93a42b2..a82da2a 100644
+--- a/lpserve_plan_execution.py
++++ b/lpserve_plan_execution.py
+@@ -21,13 +21,17 @@ Prompt-ignore controls are not executed. A plan with no prefill or decode
+ action (all-zero or preempt-only) returns category ``no_progress`` before
+ mutation and leaves the mathematical plan unchanged.
+ 
+-Order: all selected victims are preempted first, ascending by ``order_key``,
+-and ``preempted_seq_ids`` uses that order. The inherited ``_preempt`` inserts
++Order: the plan's declared orders. All selected victims are preempted first
++in ``plan.victim_order`` (victim rank, then identity), and
++``preempted_seq_ids`` uses that order. The inherited ``_preempt`` inserts
+ each victim at the front of ``waiting``, so several victims end there in
+-reverse call order. Then all selected prefills, then all selected decodes,
+-each group ascending by ``order_key`` (D-21). This order changes neither
+-selected actions nor chunk sizes. Memory recovered from victims is credited
+-before the scheduled actions are checked.
++reverse call order. Then ``plan.execution_order``: prefills, zero-demand
++decodes, then one-block-demand decodes, each by service rank, then identity.
++Admissions are appended to ``running`` in that order; retained residents keep
++their relative positions. This order changes neither selected actions nor
++chunk sizes. Memory recovered from victims is credited before the scheduled
++actions are checked, and every planned charge, demand, and recovery must
++equal the current native value.
+ 
+ Failure behavior:
+ 
+@@ -71,6 +75,7 @@ CATEGORY_RESIDENT_CAPACITY = "resident_capacity"
+ CATEGORY_ADMISSION_GATE = "admission_gate"
+ CATEGORY_APPEND_GATE = "append_gate"
+ CATEGORY_PREEMPTION_RECOVERY = "preemption_recovery"
++CATEGORY_PLAN_STATE_MISMATCH = "plan_state_mismatch"
+ 
+ ACTION_ADMISSION = "admission"
+ ACTION_RESIDENT_PREFILL = "resident_prefill"
+@@ -105,7 +110,8 @@ def execute_plan(scheduler, snapshot, result):
+         validated = _validate_before_mutation(scheduler, snapshot, result)
+     except _PrecommitError as err:
+         return lrs.Failure(
+-            snapshot_id, STAGE_PRECOMMIT_VALIDATION, err.category, err.reason,
++            snapshot_id, STAGE_PRECOMMIT_VALIDATION, lrs.OUTCOME_INVALID,
++            err.category, err.reason,
+         )
+     if isinstance(validated, lrs.Failure):
+         return validated
+@@ -199,21 +205,27 @@ def _validate_before_mutation(scheduler, snapshot, result):
+         canonical == problem, CATEGORY_MALFORMED_INPUT,
+         "snapshot.lp_problem is not in canonical order_key order",
+     )
++    # Defensive progress gate, checked before mathematical validation so an
++    # erroneous empty or preempt-only plan is classified as no_progress (the
++    # validator would also reject it). Malformed decisions are left to the
++    # validator. No selected preemption is removed and no action forced.
++    decisions = plan.decisions
++    if isinstance(decisions, tuple) and all(
++        isinstance(d, lrs.IntegerDecision)
++        and all(type(v) is int for v in (d.prefill_tokens, d.decode, d.preempt))
++        for d in decisions
++    ):
++        preempt_ids = [d.request_id for d in decisions if d.preempt]
++        _require(
++            any(d.prefill_tokens > 0 or d.decode for d in decisions),
++            CATEGORY_NO_PROGRESS,
++            "the plan selects no prefill or decode action "
++            f"(selected preemptions: {preempt_ids})",
++        )
+     validated = lrs.validate_integer_plan(problem, plan)
+     if isinstance(validated, lrs.Failure):
+         return validated
+ 
+-    # Progress gate: no selected preemption is removed and no action forced.
+-    preempt_ids = [d.request_id for d in plan.decisions if d.preempt]
+-    execution_count = sum(
+-        1 for d in plan.decisions if d.prefill_tokens > 0 or d.decode
+-    )
+-    _require(
+-        execution_count > 0, CATEGORY_NO_PROGRESS,
+-        "the validated plan selects no prefill or decode action "
+-        f"(selected preemptions: {preempt_ids})",
+-    )
+-
+     # Snapshot request records must associate one-to-one with the problem.
+     snap_by_id = {}
+     for req in snapshot.requests:
+@@ -251,27 +263,31 @@ def _validate_before_mutation(scheduler, snapshot, result):
+             )
+             owners[seq.seq_id] = (label, seq)
+ 
+-    # Replay-compatible order: prefills, then decodes, each ascending by
+-    # order_key. New lists; the accepted plan is not reordered in place.
+-    selected = sorted(
+-        (d for d in plan.decisions if d.prefill_tokens > 0 or d.decode),
+-        key=lambda d: (0 if d.prefill_tokens > 0 else 1, d.order_key),
+-    )
++    # The plan's declared orders (validated against its decisions by
++    # validate_integer_plan). New lists; the plan is not reordered in place.
++    by_id = {d.request_id: d for d in plan.decisions}
++    planned = {r.request_id: r for r in problem.requests}
++    selected = [by_id[rid] for rid in plan.execution_order]
+ 
+     block_manager = scheduler.block_manager
+     free_blocks = block_manager.get_num_free_gpu_blocks()
+     watermark_blocks = block_manager.watermark_blocks
+     resident_count = len(scheduler.running)
++    _require(
++        watermark_blocks == problem.admission_watermark,
++        CATEGORY_PLAN_STATE_MISMATCH,
++        f"current native watermark {watermark_blocks} differs from the "
++        f"planned admission watermark {problem.admission_watermark}",
++    )
+ 
+-    # Every selected victim, whether extraction marked it dominant or safety,
+-    # ascending by order_key. Each is credited with its actual physical table,
+-    # which the native non-sharing manager frees in full, and releases one
+-    # resident slot before any scheduled action is checked.
++    # Every selected victim in declared victim order. Each is credited with
++    # its actual physical table, which the native non-sharing manager frees
++    # in full, and releases one resident slot before any scheduled action is
++    # checked.
+     victims = []
+     recovered = set()
+-    for decision in sorted(
+-        (d for d in plan.decisions if d.preempt), key=lambda d: d.order_key,
+-    ):
++    for rid_text in plan.victim_order:
++        decision = by_id[rid_text]
+         snap = snap_by_id[decision.request_id]
+         rid = snap.raw_seq_id
+         _require(
+@@ -296,6 +312,12 @@ def _validate_before_mutation(scheduler, snapshot, result):
+             f"seq_id {rid}: physical block table {table} repeats a block or "
+             "shares one with another selected victim",
+         )
++        _require(
++            len(table) == planned[rid_text].preemption_recovery,
++            CATEGORY_PLAN_STATE_MISMATCH,
++            f"seq_id {rid}: current recovery {len(table)} differs from the "
++            f"planned recovery {planned[rid_text].preemption_recovery}",
++        )
+         recovered.update(table)
+         free_blocks += len(table)
+         resident_count -= 1
+@@ -344,6 +366,13 @@ def _validate_before_mutation(scheduler, snapshot, result):
+                     f"to {resident_count}, above max_num_seqs {max_num_seqs}",
+                 )
+                 demand = block_manager.get_num_initial_blocks(seq)
++                _require(
++                    demand == planned[decision.request_id].prefill_fixed_charge,
++                    CATEGORY_PLAN_STATE_MISMATCH,
++                    f"seq_id {rid}: current initial allocation {demand} "
++                    "differs from the planned admission charge "
++                    f"{planned[decision.request_id].prefill_fixed_charge}",
++                )
+                 _require(
+                     free_blocks - demand >= watermark_blocks,
+                     CATEGORY_ADMISSION_GATE,
+@@ -375,9 +404,11 @@ def _validate_before_mutation(scheduler, snapshot, result):
+             )
+             gap = _block_gap(block_manager, seq)
+             _require(
+-                gap in (0, 1), CATEGORY_INELIGIBLE_ACTION,
+-                f"seq_id {rid}: decode logical/physical block gap {gap} is "
+-                "outside {0, 1}",
++                gap == planned[decision.request_id].decode_demand,
++                CATEGORY_PLAN_STATE_MISMATCH,
++                f"seq_id {rid}: current decode block gap {gap} differs from "
++                f"the planned decode demand "
++                f"{planned[decision.request_id].decode_demand}",
+             )
+             # The native append gate requires a free block even for gap 0;
+             # only the actual gap is consumed.
+diff --git a/lpserve_state_mapping.py b/lpserve_state_mapping.py
+index 08df25f..cdb4201 100644
+--- a/lpserve_state_mapping.py
++++ b/lpserve_state_mapping.py
+@@ -1,44 +1,50 @@
+ """Read-only LPServe state mapper for the LP-relaxation scheduling layer.
+ 
+-Observes a scheduler holder's inherited ``waiting``/``running`` collections
+-and its block manager, and returns a frozen, framework-independent snapshot
+-suitable for ``lp_relaxation_scheduler.LPProblem`` construction (see
+-docs/lp_scheduler_design.md, especially sections 4, 9, and 12). It performs
+-no LPServe mutation: it calls only read-only scheduler, sequence, and block
++One scheduling decision maps live state in four steps
++(docs/lp_scheduler_design.md section 12.3):
++
++1. ``capture_scheduler_state`` reads the scheduler holder's inherited
++   ``waiting``/``running`` collections, its configuration, and its block
++   manager exactly once and copies every needed fact into an immutable
++   ``CapturedState``;
++2. a rank profile (``vllm_oriented_ranks``) builds service and victim ranks
++   from the captured queue positions;
++3. ``construct_coefficients`` builds one utility triple per request from the
++   captured data and an explicit coefficient policy;
++4. ``build_state_snapshot`` builds the immutable ``LPProblem``.
++
++``map_scheduler_state`` runs these steps in order. Only the capture reads
++live state, and it calls only read-only scheduler, sequence, and block
+ manager accessors, never allocation, append, free, preemption, status
+ transition, or queue-mutation methods.
+ 
+-Supported state shape (docs/lp_scheduler_design.md section 12.4 and this
+-module's handoff record):
++Supported state shape (docs/lp_scheduler_design.md sections 12.4 and 13):
+ 
+ - exactly one pipeline stage and zero running batches (a quiescent,
+   pre-mutation boundary with no batch in flight);
+ - ``waiting`` exclusively owns unallocated unfinished requests, and
+   ``running`` exclusively owns allocated unfinished (resident) requests;
++  every ``running`` entry has arrived and is unfinished, so ``len(running)``
++  is the authoritative resident count;
+ - every raw ``Sequence.seq_id`` is an exact non-negative, non-boolean
+-  integer, unique across both collections, and every scheduler-owned request
+-  has a finite real ``arrival_time`` (a malformed, missing, ``NaN``, or
+-  infinite arrival time is a mapping failure regardless of status);
++  integer, unique across both collections, and every owned request has a
++  finite real ``arrival_time``;
+ - the central block manager's ``block_tables`` key set exactly equals the
+-  raw IDs owned by ``running``: a missing resident table, a table owned by a
+-  waiting request, an orphan table, or a malformed table key is a mapping
+-  failure, checked before future/finished filtering;
+-- an included waiting request has status ``WAITING``, is unallocated, and
+-  has positive, incomplete prompt remainder;
+-- an included resident request has status ``PAUSED`` and is allocated; a
+-  resident with a positive prompt remainder must have its full logical
+-  context already allocated (a zero logical/physical block gap), and a
+-  resident with zero remainder (decode) may have a logical/physical block
+-  gap of zero or one.
+-
+-Every unresolved policy value (capacities, memory reserve, the decode-memory
+-charge policy identifier, per-request utilities, and the numerical policy)
+-is a required explicit argument. Unsupported, contradictory, malformed, or
+-incoherent state -- including malformed input that would otherwise raise an
+-ordinary ``AttributeError``/``TypeError``/``ValueError``/``KeyError``/
+-``AssertionError`` -- is returned as a ``MappingFailure`` at the public
+-boundary; this module never fabricates, repairs, or silently narrows LP
+-input.
++  raw IDs owned by ``running``; tables hold distinct blocks, no block is
++  shared, and free plus allocated blocks equal the total pool;
++- an included waiting request has status ``WAITING``, is unallocated, has
++  positive prompt remainder, and is admissible: context length at most
++  ``max_model_len`` and full initial allocation plus the shared watermark
++  at most the total pool;
++- an included resident has status ``PAUSED`` and is allocated; a partial
++  prefill has a zero logical/physical block gap and allocates nothing, and a
++  decode has an exact gap (decode demand) of zero or one.
++
++Unsupported, contradictory, malformed, or incoherent state -- including
++malformed input that would otherwise raise an ordinary
++``AttributeError``/``TypeError``/``ValueError``/``KeyError``/
++``AssertionError``/``OverflowError`` -- is returned as a ``MappingFailure``;
++this module never fabricates, repairs, or silently narrows LP input.
+ """
+ 
+ from __future__ import annotations
+@@ -57,11 +63,6 @@ CATEGORY_MAPPING_FAILURE = "mapping_failure"
+ OWNERSHIP_WAITING = "waiting"
+ OWNERSHIP_RUNNING = "running"
+ 
+-# The only decode-memory charge policy identifier this module accepts. It is
+-# a scoped fixture/mapper input, not a permanent resolution of the decode
+-# planning-charge OPEN decision.
+-DECODE_MEMORY_POLICY_CONSERVATIVE_ONE_BLOCK = "conservative_one_block_v1"
+-
+ 
+ # ---------------------------------------------------------------------------
+ # Immutable records
+@@ -78,33 +79,46 @@ class RequestUtility:
+ 
+ 
+ @dataclass(frozen=True)
+-class RequestStateSnapshot:
+-    """Frozen, primitive-only observation of one included request."""
++class CapturedRequest:
++    """Frozen, primitive-only facts about one included request.
++
++    ``queue_position`` is the index in the owning collection. For a waiting
++    request, ``prefill_fixed_charge`` is the native full initial allocation;
++    ``decode_demand`` is the exact logical/physical block gap of a decode;
++    ``preemption_recovery`` is the current physical block-table length.
++    """
+ 
+     raw_seq_id: int
+     request_id: str
+     order_key: tuple
+     ownership: str
++    queue_position: int
+     status: str
+     arrival_time: float
+     prompt_len: int
+     prompt_tokens_processed: int
+     prompt_tokens_remaining: int
+     prompt_processing_finished: bool
++    output_len: int
++    context_len: int
+     logical_block_count: int
+     physical_block_count: int
+     prefill_eligible: bool
+     decode_eligible: bool
+     preemption_eligible: bool
+     prefill_fixed_charge: int
+-    decode_charge: int
++    decode_demand: int
+     preemption_recovery: int
+-    utility: RequestUtility
+ 
+ 
+ @dataclass(frozen=True)
+-class StateSnapshot:
+-    """One coherent, immutable observation ready for the mathematical layer."""
++class CapturedState:
++    """The one immutable capture of a scheduling decision.
++
++    ``requests`` is ascending by raw ID. ``running_order`` lists every
++    resident in current ``running`` order; ``arrived_waiting_order`` lists
++    the included waiting requests in current ``waiting`` order.
++    """
+ 
+     snapshot_id: str
+     snapshot_time: float
+@@ -113,11 +127,33 @@ class StateSnapshot:
+     num_running_batches: int
+     resident_count: int
+     resident_limit: int
++    max_model_len: int
++    block_size: int
++    total_blocks: int
+     free_physical_blocks: int
+-    memory_reserve: int
+-    decode_memory_policy_id: str
+-    numerical_policy: lrs.NumericalPolicy
++    watermark_blocks: int
+     requests: tuple
++    running_order: tuple
++    arrived_waiting_order: tuple
++
++
++@dataclass(frozen=True)
++class RequestStateSnapshot(CapturedRequest):
++    """Captured facts plus the ranks and utility fixed for this decision."""
++
++    service_rank: Optional[int]
++    victim_rank: Optional[int]
++    utility: RequestUtility
++
++
++@dataclass(frozen=True)
++class StateSnapshot(CapturedState):
++    """One coherent, immutable observation ready for the mathematical layer.
++
++    ``requests`` holds ``RequestStateSnapshot`` records.
++    """
++
++    numerical_policy: lrs.NumericalPolicy
+     lp_problem: lrs.LPProblem
+ 
+ 
+@@ -147,15 +183,42 @@ def _is_int(value) -> bool:
+ 
+ 
+ def _is_real(value) -> bool:
+-    return (
+-        isinstance(value, (int, float))
+-        and not isinstance(value, bool)
+-        and math.isfinite(value)
+-    )
++    if isinstance(value, bool) or not isinstance(value, (int, float)):
++        return False
++    try:
++        return math.isfinite(float(value))
++    except OverflowError:
++        return False
++
++
++_ORDINARY_ERRORS = (
++    AttributeError, TypeError, ValueError, KeyError, AssertionError,
++    OverflowError,
++)
++
++
++def _guard(snapshot_id, fn, *args):
++    """Run one mapping step, converting rejections into ``MappingFailure``."""
++    try:
++        return fn(*args)
++    except _MappingError as err:
++        return MappingFailure(
++            snapshot_id, STAGE_STATE_MAPPING, CATEGORY_MAPPING_FAILURE,
++            err.reason,
++        )
++    except _ORDINARY_ERRORS as err:
++        # A malformed scheduler field, collection shape, policy input, or
++        # read-only state access raised an ordinary data/access error rather
++        # than an explicit _require check.
++        return MappingFailure(
++            snapshot_id, STAGE_STATE_MAPPING, CATEGORY_MAPPING_FAILURE,
++            f"malformed input or scheduler state raised "
++            f"{type(err).__name__}: {err}",
++        )
+ 
+ 
+ # ---------------------------------------------------------------------------
+-# Mapping
++# Public entry points
+ # ---------------------------------------------------------------------------
+ 
+ 
+@@ -166,47 +229,97 @@ def map_scheduler_state(
+     b_max: int,
+     c_max: int,
+     s_max: int,
+-    memory_reserve: int,
+-    decode_memory_policy_id: str,
+-    utilities: Mapping[int, RequestUtility],
++    coefficient_policy,
++    rank_profile,
+     numerical_policy: lrs.NumericalPolicy,
+ ) -> "StateSnapshot | MappingFailure":
+-    """Read ``scheduler`` state and return a ``StateSnapshot`` or ``MappingFailure``.
+-
+-    ``scheduler`` is read through ``waiting``, ``running``, ``_iteration_id``,
+-    ``num_running_batches``, ``scheduler_config.num_pipeline_stages``,
+-    ``scheduler_config.max_num_seqs``, and ``block_manager``; only read-only
+-    block-manager accessors (``block_size``, ``is_allocated``,
+-    ``get_block_table``, ``get_num_free_gpu_blocks``) are called. No
+-    mutating method is called and no LPServe object is retained in the
+-    result.
+-
+-    ``utilities`` maps each raw integer ``seq_id`` to its ``RequestUtility``;
+-    its key set must exactly equal the requests included after
+-    arrival/completion filtering, so a missing or extra key is a mapping
+-    failure. Validated values are copied into new immutable records; the
+-    caller's mapping is neither mutated nor retained.
++    """Capture ``scheduler`` once and return a ``StateSnapshot`` or
++    ``MappingFailure``.
++
++    ``coefficient_policy`` and ``rank_profile`` are explicit policy inputs;
++    see ``construct_coefficients`` and ``vllm_oriented_ranks``. Neither
++    receives a live object.
+     """
+-    try:
+-        return _map_scheduler_state(
+-            scheduler, snapshot_time, b_max, c_max, s_max, memory_reserve,
+-            decode_memory_policy_id, utilities, numerical_policy,
+-        )
+-    except _MappingError as err:
+-        return MappingFailure(
+-            None, STAGE_STATE_MAPPING, CATEGORY_MAPPING_FAILURE, err.reason,
+-        )
+-    except (AttributeError, TypeError, ValueError, KeyError,
+-            AssertionError) as err:
+-        # A malformed scheduler field, collection shape, utility input, or
+-        # read-only state access raised an ordinary data/access error rather
+-        # than an explicit _require check; translate it into the same
+-        # structured, immutable failure instead of letting it propagate.
+-        return MappingFailure(
+-            None, STAGE_STATE_MAPPING, CATEGORY_MAPPING_FAILURE,
+-            f"malformed input or scheduler state raised "
+-            f"{type(err).__name__}: {err}",
+-        )
++    captured = capture_scheduler_state(scheduler, snapshot_time=snapshot_time)
++    if isinstance(captured, MappingFailure):
++        return captured
++    ranks = _guard(captured.snapshot_id, _ranks, captured, rank_profile)
++    if isinstance(ranks, MappingFailure):
++        return ranks
++    coefficients = construct_coefficients(captured, coefficient_policy)
++    if isinstance(coefficients, MappingFailure):
++        return coefficients
++    return build_state_snapshot(
++        captured, ranks=ranks, coefficients=coefficients, b_max=b_max,
++        c_max=c_max, s_max=s_max, numerical_policy=numerical_policy,
++    )
++
++
++def capture_scheduler_state(scheduler, *, snapshot_time):
++    """The single live read of one decision: ``CapturedState`` or
++    ``MappingFailure``. ``scheduler`` is read through ``waiting``,
++    ``running``, ``_iteration_id``, ``num_running_batches``,
++    ``scheduler_config`` (``num_pipeline_stages``, ``max_num_seqs``,
++    ``max_model_len``), and read-only ``block_manager`` accessors."""
++    return _guard(None, _capture, scheduler, snapshot_time)
++
++
++def vllm_oriented_ranks(captured):
++    """Initial vLLM-oriented rank profile.
++
++    Service rank: current ``running`` position (including partial
++    prefills), then arrived ``waiting`` position. Victim rank: reverse
++    ``running`` position; waiting requests have none. Returns one
++    ``(service_rank, victim_rank)`` pair per request of
++    ``captured.requests``. This profile is not imposed on other policies.
++    """
++    service, victim = {}, {}
++    residents = len(captured.running_order)
++    for position, raw_id in enumerate(captured.running_order):
++        service[raw_id] = position
++        victim[raw_id] = residents - 1 - position
++    for position, raw_id in enumerate(captured.arrived_waiting_order):
++        service[raw_id] = residents + position
++    return tuple(
++        (service[r.raw_seq_id], victim.get(r.raw_seq_id))
++        for r in captured.requests
++    )
++
++
++def construct_coefficients(captured, policy):
++    """Pure coefficient construction for one decision.
++
++    ``policy`` is one of:
++
++    - a ``RequestUtility``: the explicit uniform triple for every request;
++    - a ``Mapping[int, RequestUtility]`` keyed by raw ``seq_id`` whose key
++      set equals the captured request set exactly;
++    - a callable ``policy(captured, request) -> RequestUtility`` evaluated on
++      immutable captured data only (a state-dependent policy).
++
++    Returns a tuple of validated ``RequestUtility`` copies aligned with
++    ``captured.requests``, or ``MappingFailure``. Every value must be finite
++    and non-negative. No live object is passed and no solve is performed.
++    """
++    return _guard(
++        getattr(captured, "snapshot_id", None), _coefficients, captured, policy,
++    )
++
++
++def build_state_snapshot(
++    captured, *, ranks, coefficients, b_max, c_max, s_max, numerical_policy,
++):
++    """Build the immutable ``StateSnapshot`` and canonical ``LPProblem`` from
++    captured data, ranks, and validated coefficients."""
++    return _guard(
++        captured.snapshot_id, _build, captured, ranks, coefficients, b_max,
++        c_max, s_max, numerical_policy,
++    )
++
++
++# ---------------------------------------------------------------------------
++# Capture
++# ---------------------------------------------------------------------------
+ 
+ 
+ _MISSING = object()
+@@ -218,50 +331,22 @@ def _read(obj, name):
+     return value
+ 
+ 
+-def _map_scheduler_state(
+-    scheduler, snapshot_time, b_max, c_max, s_max, memory_reserve,
+-    decode_memory_policy_id, utilities, numerical_policy,
+-):
++def _capture(scheduler, snapshot_time):
+     _require(
+         _is_real(snapshot_time), "snapshot_time must be a finite real number",
+     )
+-    for name, value in (
+-        ("b_max", b_max), ("s_max", s_max), ("memory_reserve", memory_reserve),
+-    ):
+-        _require(
+-            _is_int(value) and value >= 0,
+-            f"{name} must be a non-negative integer",
+-        )
+-    _require(_is_int(c_max) and c_max > 0, "c_max must be a positive integer")
+-    _require(
+-        isinstance(decode_memory_policy_id, str) and decode_memory_policy_id,
+-        "decode_memory_policy_id must be a non-empty string",
+-    )
+-    _require(
+-        decode_memory_policy_id == DECODE_MEMORY_POLICY_CONSERVATIVE_ONE_BLOCK,
+-        "unsupported decode_memory_policy_id "
+-        f"{decode_memory_policy_id!r}; only "
+-        f"{DECODE_MEMORY_POLICY_CONSERVATIVE_ONE_BLOCK!r} is accepted",
+-    )
+-    _require(
+-        isinstance(numerical_policy, lrs.NumericalPolicy),
+-        "numerical_policy must be a NumericalPolicy",
+-    )
+-    _require(
+-        isinstance(utilities, Mapping),
+-        "utilities must be a mapping from raw_seq_id to RequestUtility, got "
+-        f"{type(utilities).__name__}",
+-    )
+-
+     scheduler_config = _read(scheduler, "scheduler_config")
+     num_pipeline_stages = _read(scheduler_config, "num_pipeline_stages")
+     max_num_seqs = _read(scheduler_config, "max_num_seqs")
++    max_model_len = _read(scheduler_config, "max_model_len")
+     num_running_batches = _read(scheduler, "num_running_batches")
+     iteration_id = _read(scheduler, "_iteration_id")
+     waiting = _read(scheduler, "waiting")
+     running = _read(scheduler, "running")
+     block_manager = _read(scheduler, "block_manager")
+-    block_manager_block_size = _read(block_manager, "block_size")
++    block_size = _read(block_manager, "block_size")
++    total_blocks = _read(block_manager, "num_total_gpu_blocks")
++    watermark_blocks = _read(block_manager, "watermark_blocks")
+ 
+     _require(
+         num_pipeline_stages == 1,
+@@ -273,10 +358,17 @@ def _map_scheduler_state(
+         f"unsupported in-flight state: num_running_batches="
+         f"{num_running_batches!r}; only 0 is supported",
+     )
+-    _require(
+-        _is_int(max_num_seqs) and max_num_seqs > 0,
+-        "scheduler_config.max_num_seqs must be a positive integer",
+-    )
++    for name, value, minimum in (
++        ("scheduler_config.max_num_seqs", max_num_seqs, 1),
++        ("scheduler_config.max_model_len", max_model_len, 1),
++        ("block_manager.block_size", block_size, 1),
++        ("block_manager.num_total_gpu_blocks", total_blocks, 1),
++        ("block_manager.watermark_blocks", watermark_blocks, 0),
++    ):
++        _require(
++            _is_int(value) and value >= minimum,
++            f"{name} must be an integer of at least {minimum}, got {value!r}",
++        )
+     _require(_is_int(iteration_id), "scheduler _iteration_id must be an integer")
+ 
+     resident_count = len(running)
+@@ -286,13 +378,12 @@ def _map_scheduler_state(
+     )
+ 
+     # Ownership: unique raw_seq_id across the complete waiting/running
+-    # universe, checked before any arrival/completion filtering so a
+-    # duplicate is caught even if one copy would otherwise be excluded.
++    # universe, checked before any arrival/completion filtering.
+     owners = {}
+     for label, collection in (
+         (OWNERSHIP_WAITING, waiting), (OWNERSHIP_RUNNING, running),
+     ):
+-        for seq in collection:
++        for position, seq in enumerate(collection):
+             raw_id = getattr(seq, "seq_id", None)
+             _require(
+                 _is_int(raw_id) and raw_id >= 0,
+@@ -304,20 +395,13 @@ def _map_scheduler_state(
+                     f"(already seen owned by {owners[raw_id][0]!r}, again "
+                     f"in {label!r})"
+                 )
+-            owners[raw_id] = (label, seq)
+-
+-    # Allocation ownership must agree in both directions before any
+-    # future/finished filtering: every running-owned raw_seq_id must have a
+-    # central block table, and no central block table may belong to a
+-    # waiting-owned or otherwise unowned (orphan) raw_seq_id.
+-    running_ids = {
+-        raw_id for raw_id, (label, _) in owners.items()
+-        if label == OWNERSHIP_RUNNING
+-    }
+-    waiting_ids = {
+-        raw_id for raw_id, (label, _) in owners.items()
+-        if label == OWNERSHIP_WAITING
+-    }
++            owners[raw_id] = (label, seq, position)
++
++    # Allocation ownership must agree in both directions: every
++    # running-owned raw_seq_id has a central block table, and no table
++    # belongs to a waiting-owned or unowned (orphan) raw_seq_id.
++    running_ids = {r for r, (lb, _, _) in owners.items() if lb == OWNERSHIP_RUNNING}
++    waiting_ids = {r for r, (lb, _, _) in owners.items() if lb == OWNERSHIP_WAITING}
+     block_tables = _read(block_manager, "block_tables")
+     block_table_keys = set(block_tables.keys())
+     for key in block_table_keys:
+@@ -338,255 +422,373 @@ def _map_scheduler_state(
+             f"raw_seq_id(s) {sorted(orphan_tables)}"
+         )
+ 
+-    included = []
++    # Non-sharing pool accounting: distinct blocks per table, no block in
++    # two tables, and free + allocated == total.
++    free_blocks = block_manager.get_num_free_gpu_blocks()
++    _require(
++        _is_int(free_blocks) and free_blocks >= 0,
++        f"block manager reported a malformed free-block count {free_blocks!r}",
++    )
++    allocated = []
++    for raw_id in sorted(running_ids):
++        table = block_manager.get_block_table(owners[raw_id][1])
++        _require(
++            len(set(table)) == len(table),
++            f"raw_seq_id {raw_id}: physical block table {table} repeats a "
++            "block",
++        )
++        allocated.extend(table)
++    _require(
++        len(set(allocated)) == len(allocated),
++        "a physical block is shared by two resident block tables; shared "
++        "blocks are unsupported",
++    )
++    _require(
++        free_blocks + len(allocated) == total_blocks,
++        f"free blocks {free_blocks} plus allocated blocks {len(allocated)} "
++        f"differ from the total pool {total_blocks}",
++    )
++
++    captured, running_order, waiting_order = [], [], []
+     for raw_id in sorted(owners):
+-        label, seq = owners[raw_id]
++        label, seq, position = owners[raw_id]
+         arrival_time = getattr(seq, "arrival_time", None)
+         _require(
+             _is_real(arrival_time),
+             f"raw_seq_id {raw_id}: malformed arrival_time {arrival_time!r}; "
+             "must be a finite real number",
+         )
+-        if arrival_time > snapshot_time:
+-            continue
+-        if seq.is_finished():
++        arrived = arrival_time <= snapshot_time
++        finished = seq.is_finished()
++        if label == OWNERSHIP_RUNNING:
++            _require(
++                arrived and not finished,
++                f"raw_seq_id {raw_id}: running holds a "
++                f"{'finished' if finished else 'future'} request; every "
++                "resident must be arrived and unfinished",
++            )
++        elif not arrived or finished:
+             continue
+-        included.append((raw_id, label, seq))
++        captured.append(_capture_request(
++            raw_id, label, position, seq, block_manager, block_size,
++            max_model_len, total_blocks, watermark_blocks,
++        ))
+ 
+-    # Copy each validated value into a fresh frozen record so the result
+-    # never shares state with the caller's mapping.
+-    util_map = {}
+-    for raw_id, utility in utilities.items():
+-        _require(
+-            _is_int(raw_id),
+-            f"utilities key must be an integer raw_seq_id, got {raw_id!r}",
+-        )
++    for seq in running:
++        running_order.append(seq.seq_id)
++    included_waiting = {r.raw_seq_id for r in captured
++                        if r.ownership == OWNERSHIP_WAITING}
++    for seq in waiting:
++        if seq.seq_id in included_waiting:
++            waiting_order.append(seq.seq_id)
++
++    snapshot_id = str(iteration_id)
++    _require(
++        captured,
++        "the arrived, unfinished request universe is empty; the "
++        "accepted LPProblem type cannot represent an empty request set",
++    )
++    return CapturedState(
++        snapshot_id=snapshot_id,
++        snapshot_time=float(snapshot_time),
++        scheduler_iteration_id=iteration_id,
++        num_pipeline_stages=num_pipeline_stages,
++        num_running_batches=num_running_batches,
++        resident_count=resident_count,
++        resident_limit=max_num_seqs,
++        max_model_len=max_model_len,
++        block_size=block_size,
++        total_blocks=total_blocks,
++        free_physical_blocks=free_blocks,
++        watermark_blocks=watermark_blocks,
++        requests=tuple(captured),
++        running_order=tuple(running_order),
++        arrived_waiting_order=tuple(waiting_order),
++    )
++
++
++def _capture_request(raw_id, label, position, seq, block_manager, block_size,
++                     max_model_len, total_blocks, watermark_blocks):
++    status = seq.get_status()
++    prompt_len = seq.get_prompt_len()
++    processed = seq.get_num_prompt_tokens_processed()
++    output_len = seq.get_output_len()
++    context_len = seq.get_len()
++    for name, value in (
++        ("prompt length", prompt_len), ("processed-prompt count", processed),
++        ("output length", output_len), ("context length", context_len),
++    ):
+         _require(
+-            isinstance(utility, RequestUtility),
+-            f"utilities value for raw_seq_id {raw_id} must be a "
+-            "RequestUtility",
+-        )
+-        values = (
+-            utility.decode_utility, utility.prefill_token_utility,
+-            utility.preemption_penalty,
++            _is_int(value) and value >= 0,
++            f"raw_seq_id {raw_id}: malformed {name} {value!r}",
+         )
+-        for name, value in zip(
+-            ("decode_utility", "prefill_token_utility", "preemption_penalty"),
+-            values,
+-        ):
+-            _require(
+-                _is_real(value),
+-                f"utility {name} for raw_seq_id {raw_id} must be a finite "
+-                f"number, got {value!r}",
+-            )
+-        util_map[raw_id] = RequestUtility(*values)
+-
+-    included_ids = {raw_id for raw_id, _, _ in included}
+-    missing = included_ids - util_map.keys()
+-    extra = util_map.keys() - included_ids
++    remainder = prompt_len - processed
+     _require(
+-        not missing,
+-        f"missing utilities for raw_seq_id(s) {sorted(missing)}",
++        0 <= remainder <= prompt_len,
++        f"raw_seq_id {raw_id}: negative or excessive prompt progress "
++        f"yields remainder {remainder} (prompt_len={prompt_len}, "
++        f"processed={processed})",
+     )
++    finished_flag = seq.prompt_processing_finished
+     _require(
+-        not extra, f"extra utilities for raw_seq_id(s) {sorted(extra)}",
++        finished_flag == (remainder == 0),
++        f"raw_seq_id {raw_id}: prompt_processing_finished="
++        f"{finished_flag!r} disagrees with prompt remainder {remainder}",
+     )
++    _require(
++        seq.block_size == block_size,
++        f"raw_seq_id {raw_id}: sequence block_size {seq.block_size!r} "
++        f"disagrees with block-manager block_size {block_size!r}",
++    )
++    logical_block_count = len(seq.logical_token_blocks)
++    is_allocated = block_manager.is_allocated(seq)
++    decode_demand = 0
++    preemption_recovery = 0
++    prefill_fixed_charge = 0
+ 
+-    request_states = []
+-    request_inputs = []
+-    legal_ids = set()
+-    for raw_id, label, seq in included:
+-        request_id = str(raw_id)
+-        order_key = (raw_id,)
+-        status = seq.get_status()
+-        prompt_len = seq.get_prompt_len()
+-        processed = seq.get_num_prompt_tokens_processed()
++    if label == OWNERSHIP_WAITING:
+         _require(
+-            _is_int(prompt_len) and prompt_len >= 0,
+-            f"raw_seq_id {raw_id}: malformed prompt length {prompt_len!r}",
++            status == SequenceStatus.WAITING,
++            f"raw_seq_id {raw_id}: waiting-owned request has status "
++            f"{status!r}, expected WAITING",
+         )
+         _require(
+-            _is_int(processed) and processed >= 0,
+-            f"raw_seq_id {raw_id}: malformed processed-prompt count "
+-            f"{processed!r}",
++            not is_allocated,
++            f"raw_seq_id {raw_id}: waiting-owned request is allocated",
+         )
+-        remainder = prompt_len - processed
+         _require(
+-            0 <= remainder <= prompt_len,
+-            f"raw_seq_id {raw_id}: negative or excessive prompt progress "
+-            f"yields remainder {remainder} (prompt_len={prompt_len}, "
+-            f"processed={processed})",
++            remainder > 0,
++            f"raw_seq_id {raw_id}: waiting-owned request has "
++            f"non-positive prompt remainder {remainder}",
+         )
+-        finished_flag = seq.prompt_processing_finished
++        physical_block_count = 0
++        prefill_fixed_charge = block_manager.get_num_initial_blocks(seq)
+         _require(
+-            finished_flag == (remainder == 0),
+-            f"raw_seq_id {raw_id}: prompt_processing_finished="
+-            f"{finished_flag!r} disagrees with prompt remainder {remainder}",
++            _is_int(prefill_fixed_charge) and prefill_fixed_charge >= 0,
++            f"raw_seq_id {raw_id}: malformed initial allocation "
++            f"{prefill_fixed_charge!r}",
+         )
+-        seq_block_size = seq.block_size
++        # A registered or recomputation-expanded context that can never be
++        # admitted is a pre-mutation failure, not a schedulable request.
+         _require(
+-            seq_block_size == block_manager_block_size,
+-            f"raw_seq_id {raw_id}: sequence block_size {seq_block_size!r} "
+-            f"disagrees with block-manager block_size "
+-            f"{block_manager_block_size!r}",
++            context_len <= max_model_len,
++            f"raw_seq_id {raw_id}: registered context length {context_len} "
++            f"exceeds max_model_len {max_model_len}",
+         )
+-        logical_block_count = len(seq.logical_token_blocks)
+-        is_allocated = block_manager.is_allocated(seq)
+-
+-        if label == OWNERSHIP_WAITING:
+-            _require(
+-                status == SequenceStatus.WAITING,
+-                f"raw_seq_id {raw_id}: waiting-owned request has status "
+-                f"{status!r}, expected WAITING",
+-            )
++        _require(
++            prefill_fixed_charge + watermark_blocks <= total_blocks,
++            f"raw_seq_id {raw_id}: full initial allocation "
++            f"{prefill_fixed_charge} blocks plus watermark {watermark_blocks} "
++            f"exceeds the total pool of {total_blocks} blocks",
++        )
++        prefill_eligible, decode_eligible, preemption_eligible = (
++            True, False, False,
++        )
++    else:
++        _require(
++            status == SequenceStatus.PAUSED,
++            f"raw_seq_id {raw_id}: resident request has unsupported "
++            f"status {status!r}, expected PAUSED",
++        )
++        _require(
++            is_allocated,
++            f"raw_seq_id {raw_id}: resident request is not allocated",
++        )
++        physical_block_count = len(block_manager.get_block_table(seq))
++        preemption_recovery = physical_block_count
++        gap = logical_block_count - physical_block_count
++        if remainder > 0:
+             _require(
+-                not is_allocated,
+-                f"raw_seq_id {raw_id}: waiting-owned request is allocated",
++                gap == 0,
++                f"raw_seq_id {raw_id}: resident partial-prefill "
++                f"logical/physical block gap {gap} must be 0",
+             )
+-            _require(
+-                remainder > 0,
+-                f"raw_seq_id {raw_id}: waiting-owned request has "
+-                f"non-positive prompt remainder {remainder}",
++            prefill_eligible, decode_eligible, preemption_eligible = (
++                True, False, True,
+             )
++        else:
+             _require(
+-                not finished_flag,
+-                f"raw_seq_id {raw_id}: waiting-owned request has "
+-                "prompt_processing_finished True",
++                gap in (0, 1),
++                f"raw_seq_id {raw_id}: resident decode logical/physical "
++                f"block gap {gap} is outside {{0, 1}}",
+             )
+-            physical_block_count = 0
++            decode_demand = gap
+             prefill_eligible, decode_eligible, preemption_eligible = (
+-                True, False, False,
++                False, True, True,
+             )
+-            prefill_fixed_charge = logical_block_count
+-            decode_charge = 0
+-            preemption_recovery = 0
+-        else:
++
++    return CapturedRequest(
++        raw_seq_id=raw_id,
++        request_id=str(raw_id),
++        order_key=(raw_id,),
++        ownership=label,
++        queue_position=position,
++        status=status.name,
++        arrival_time=float(seq.arrival_time),
++        prompt_len=prompt_len,
++        prompt_tokens_processed=processed,
++        prompt_tokens_remaining=remainder,
++        prompt_processing_finished=finished_flag,
++        output_len=output_len,
++        context_len=context_len,
++        logical_block_count=logical_block_count,
++        physical_block_count=physical_block_count,
++        prefill_eligible=prefill_eligible,
++        decode_eligible=decode_eligible,
++        preemption_eligible=preemption_eligible,
++        prefill_fixed_charge=prefill_fixed_charge,
++        decode_demand=decode_demand,
++        preemption_recovery=preemption_recovery,
++    )
++
++
++# ---------------------------------------------------------------------------
++# Ranks, coefficients, and problem construction
++# ---------------------------------------------------------------------------
++
++
++def _ranks(captured, rank_profile):
++    _require(callable(rank_profile), "rank_profile must be callable")
++    ranks = rank_profile(captured)
++    _require(
++        isinstance(ranks, tuple) and len(ranks) == len(captured.requests),
++        "rank_profile must return one (service_rank, victim_rank) pair per "
++        "captured request",
++    )
++    return ranks
++
++
++def _coefficients(captured, policy):
++    _require(
++        isinstance(captured, CapturedState),
++        "coefficients require a CapturedState",
++    )
++    requests = captured.requests
++    if isinstance(policy, RequestUtility):
++        triples = [policy] * len(requests)
++    elif isinstance(policy, Mapping):
++        for raw_id in policy:
+             _require(
+-                status == SequenceStatus.PAUSED,
+-                f"raw_seq_id {raw_id}: resident request has unsupported "
+-                f"status {status!r}, expected PAUSED",
++                _is_int(raw_id),
++                f"coefficient key must be an integer raw_seq_id, got "
++                f"{raw_id!r}",
+             )
++        included = {r.raw_seq_id for r in requests}
++        missing = included - policy.keys()
++        extra = policy.keys() - included
++        _require(
++            not missing,
++            f"missing coefficients for raw_seq_id(s) {sorted(missing)}",
++        )
++        _require(
++            not extra, f"extra coefficients for raw_seq_id(s) {sorted(extra)}",
++        )
++        triples = [policy[r.raw_seq_id] for r in requests]
++    elif callable(policy):
++        triples = [policy(captured, r) for r in requests]
++    else:
++        raise _MappingError(
++            "coefficient_policy must be a RequestUtility, a mapping from "
++            "raw_seq_id to RequestUtility, or a callable of captured data, "
++            f"got {type(policy).__name__}"
++        )
++    copies = []
++    for request, utility in zip(requests, triples):
++        raw_id = request.raw_seq_id
++        _require(
++            isinstance(utility, RequestUtility),
++            f"coefficient for raw_seq_id {raw_id} must be a RequestUtility",
++        )
++        values = (
++            utility.decode_utility, utility.prefill_token_utility,
++            utility.preemption_penalty,
++        )
++        for name, value in zip(
++            ("decode_utility", "prefill_token_utility", "preemption_penalty"),
++            values,
++        ):
+             _require(
+-                is_allocated,
+-                f"raw_seq_id {raw_id}: resident request is not allocated",
++                _is_real(value) and value >= 0,
++                f"coefficient {name} for raw_seq_id {raw_id} must be a "
++                f"finite non-negative number, got {value!r}",
+             )
+-            physical_block_count = len(block_manager.get_block_table(seq))
+-            gap = logical_block_count - physical_block_count
+-            if remainder > 0:
+-                _require(
+-                    gap == 0,
+-                    f"raw_seq_id {raw_id}: resident partial-prefill "
+-                    f"logical/physical block gap {gap} must be 0",
+-                )
+-                prefill_eligible, decode_eligible, preemption_eligible = (
+-                    True, False, True,
+-                )
+-                prefill_fixed_charge = 0
+-                decode_charge = 0
+-                preemption_recovery = physical_block_count
+-            else:
+-                _require(
+-                    gap in (0, 1),
+-                    f"raw_seq_id {raw_id}: resident decode logical/physical "
+-                    f"block gap {gap} is outside {{0, 1}}",
+-                )
+-                prefill_eligible, decode_eligible, preemption_eligible = (
+-                    False, True, True,
+-                )
+-                prefill_fixed_charge = 0
+-                decode_charge = 1
+-                preemption_recovery = physical_block_count
+-
+-        if preemption_eligible:
+-            legal_ids.add(request_id)
+-
+-        prefill_upper_bound = min(remainder, c_max) if prefill_eligible else 0
+-        utility = util_map[raw_id]
+-
+-        request_states.append(RequestStateSnapshot(
+-            raw_seq_id=raw_id,
+-            request_id=request_id,
+-            order_key=order_key,
+-            ownership=label,
+-            status=status.name,
+-            arrival_time=float(seq.arrival_time),
+-            prompt_len=prompt_len,
+-            prompt_tokens_processed=processed,
+-            prompt_tokens_remaining=remainder,
+-            prompt_processing_finished=finished_flag,
+-            logical_block_count=logical_block_count,
+-            physical_block_count=physical_block_count,
+-            prefill_eligible=prefill_eligible,
+-            decode_eligible=decode_eligible,
+-            preemption_eligible=preemption_eligible,
+-            prefill_fixed_charge=prefill_fixed_charge,
+-            decode_charge=decode_charge,
+-            preemption_recovery=preemption_recovery,
+-            utility=utility,
+-        ))
+-        request_inputs.append(lrs.RequestInput(
+-            request_id=request_id,
+-            order_key=order_key,
+-            prompt_tokens_remaining=remainder,
+-            prefill_upper_bound=prefill_upper_bound,
+-            prefill_eligible=prefill_eligible,
+-            decode_eligible=decode_eligible,
+-            preemption_eligible=preemption_eligible,
+-            prefill_fixed_charge=prefill_fixed_charge,
+-            decode_charge=decode_charge,
+-            preemption_recovery=preemption_recovery,
+-            decode_utility=utility.decode_utility,
+-            prefill_token_utility=utility.prefill_token_utility,
+-            preemption_penalty=utility.preemption_penalty,
+-        ))
++        copies.append(RequestUtility(*values))
++    return tuple(copies)
+ 
+-    m_free = block_manager.get_num_free_gpu_blocks()
++
++def _build(captured, ranks, coefficients, b_max, c_max, s_max,
++           numerical_policy):
++    for name, value in (("b_max", b_max), ("c_max", c_max), ("s_max", s_max)):
++        _require(
++            _is_int(value) and value > 0, f"{name} must be a positive integer",
++        )
+     _require(
+-        _is_int(m_free) and m_free >= 0,
+-        f"block manager reported a malformed free-block count {m_free!r}",
++        isinstance(numerical_policy, lrs.NumericalPolicy),
++        "numerical_policy must be a NumericalPolicy",
+     )
+-
+-    # The scheduler iteration number identifies one scheduling decision within
+-    # one scheduler instance. It is not a content fingerprint, proof of
+-    # unchanged state, or globally unique identifier.
+-    snapshot_id = str(iteration_id)
+-
+-    if not request_inputs:
+-        return MappingFailure(
+-            snapshot_id, STAGE_STATE_MAPPING, CATEGORY_MAPPING_FAILURE,
+-            "the arrived, unfinished request universe is empty; the "
+-            "accepted LPProblem type cannot represent an empty request set",
++    requests = captured.requests
++    _require(
++        isinstance(ranks, tuple) and len(ranks) == len(requests)
++        and isinstance(coefficients, tuple)
++        and len(coefficients) == len(requests),
++        "ranks and coefficients must align with the captured requests",
++    )
++    states, inputs = [], []
++    for captured_request, (service, victim), utility in zip(
++        requests, ranks, coefficients,
++    ):
++        state = RequestStateSnapshot(
++            **{name: getattr(captured_request, name)
++               for name in CapturedRequest.__dataclass_fields__},
++            service_rank=service, victim_rank=victim, utility=utility,
+         )
++        states.append(state)
++        inputs.append(lrs.RequestInput(
++            request_id=state.request_id,
++            order_key=state.order_key,
++            resident=state.ownership == OWNERSHIP_RUNNING,
++            prompt_tokens_remaining=state.prompt_tokens_remaining,
++            prefill_upper_bound=(
++                min(state.prompt_tokens_remaining, c_max)
++                if state.prefill_eligible else 0
++            ),
++            prefill_eligible=state.prefill_eligible,
++            decode_eligible=state.decode_eligible,
++            preemption_eligible=state.preemption_eligible,
++            prefill_fixed_charge=state.prefill_fixed_charge,
++            decode_demand=state.decode_demand,
++            preemption_recovery=state.preemption_recovery,
++            decode_utility=utility.decode_utility,
++            prefill_token_utility=utility.prefill_token_utility,
++            preemption_penalty=utility.preemption_penalty,
++            service_rank=service,
++            victim_rank=victim,
++        ))
+ 
+     problem = lrs.LPProblem(
+-        requests=tuple(request_inputs),
+-        legal_preemption_ids=frozenset(legal_ids),
+-        b_max=b_max, c_max=c_max, s_max=s_max, m_free=m_free,
+-        w=memory_reserve,
+-        problem_id=snapshot_id,
+-        decode_memory_policy_id=decode_memory_policy_id,
++        requests=tuple(inputs),
++        legal_preemption_ids=frozenset(
++            s.request_id for s in states if s.preemption_eligible),
++        b_max=b_max, c_max=c_max, s_max=s_max,
++        resident_limit=captured.resident_limit,
++        resident_count=captured.resident_count,
++        m_free=captured.free_physical_blocks,
++        admission_watermark=captured.watermark_blocks,
++        problem_id=captured.snapshot_id,
+         numerical_policy=numerical_policy,
+     )
+     canonical = lrs.validate_problem(problem)
+-    if isinstance(canonical, lrs.Failure):
+-        return MappingFailure(
+-            snapshot_id, STAGE_STATE_MAPPING, CATEGORY_MAPPING_FAILURE,
+-            "the mapped problem was rejected by validate_problem: "
+-            f"{canonical.category}: {canonical.reason}",
+-        )
+-
++    _require(
++        not isinstance(canonical, lrs.Failure),
++        "the mapped problem was rejected by validate_problem: "
++        f"{getattr(canonical, 'category', '')}: "
++        f"{getattr(canonical, 'reason', '')}",
++    )
+     return StateSnapshot(
+-        snapshot_id=snapshot_id,
+-        snapshot_time=float(snapshot_time),
+-        scheduler_iteration_id=iteration_id,
+-        num_pipeline_stages=num_pipeline_stages,
+-        num_running_batches=num_running_batches,
+-        resident_count=resident_count,
+-        resident_limit=max_num_seqs,
+-        free_physical_blocks=m_free,
+-        memory_reserve=memory_reserve,
+-        decode_memory_policy_id=decode_memory_policy_id,
++        **{name: getattr(captured, name)
++           for name in CapturedState.__dataclass_fields__
++           if name != "requests"},
++        requests=tuple(states),
+         numerical_policy=numerical_policy,
+-        requests=tuple(request_states),
+         lp_problem=canonical,
+     )
+diff --git a/sarathi/config.py b/sarathi/config.py
+index 7735e23..70e2121 100644
+--- a/sarathi/config.py
++++ b/sarathi/config.py
+@@ -427,6 +427,16 @@ class SLAISchedulerConfig(BaseSchedulerConfig):
+         return SchedulerType.SLAI_SCHEDULER
+ 
+ 
++LP_OBSOLETE_ARGUMENT_MIGRATION = (
++    "the LP planning reserve and decode-charge policy were removed: decode "
++    "demand is the exact logical/physical block gap, and the admission "
++    "watermark is read from the shared block manager. Remove "
++    "memory_reserve/decode_memory_policy_id (EngineArgs: lp_memory_reserve/"
++    "lp_decode_memory_policy_id); no value, including 0, is accepted or "
++    "translated"
++)
++
++
+ class LPSchedulerConfig(BaseSchedulerConfig):
+     """LP-relaxation scheduler configuration.
+ 
+@@ -439,14 +449,15 @@ class LPSchedulerConfig(BaseSchedulerConfig):
+         c_max: Per-request prefill chunk limit.
+         s_max: Scheduled execution-action limit for one forward pass. It is
+             separate from the resident limit ``max_num_seqs``.
+-        memory_reserve: Planning-memory reserve in KV-cache blocks. It is not
+-            the block manager watermark.
+-        decode_memory_policy_id: Decode planning-charge policy identifier.
+         decode_utility: Uniform utility of one decode action.
+         prefill_token_utility: Uniform utility per prefill token.
+         preemption_penalty: Uniform preemption penalty.
+         numerical_policy: ``lp_relaxation_scheduler.NumericalPolicy`` passed
+             unchanged to the LP layer.
++
++    The removed ``memory_reserve`` and ``decode_memory_policy_id`` arguments
++    are rejected with a migration error, whether passed by keyword or as
++    extra positional arguments.
+     """
+ 
+     def __init__(
+@@ -457,13 +468,24 @@ class LPSchedulerConfig(BaseSchedulerConfig):
+         b_max: int,
+         c_max: int,
+         s_max: int,
+-        memory_reserve: int,
+-        decode_memory_policy_id: str,
+         decode_utility: float,
+         prefill_token_utility: float,
+         preemption_penalty: float,
+         numerical_policy,
++        *obsolete_args,
++        **obsolete_kwargs,
+     ) -> None:
++        obsolete = {"memory_reserve", "decode_memory_policy_id"}
++        unknown = set(obsolete_kwargs) - obsolete
++        if unknown:
++            raise TypeError(
++                "LPSchedulerConfig got unexpected keyword argument(s) "
++                f"{sorted(unknown)}"
++            )
++        if obsolete_args or obsolete_kwargs:
++            raise ValueError(
++                "LPSchedulerConfig: " + LP_OBSOLETE_ARGUMENT_MIGRATION
++            )
+         if num_pipeline_stages != 1:
+             raise ValueError(
+                 f"LP scheduler supports exactly one pipeline stage, got "
+@@ -473,8 +495,6 @@ class LPSchedulerConfig(BaseSchedulerConfig):
+         self.b_max = b_max
+         self.c_max = c_max
+         self.s_max = s_max
+-        self.memory_reserve = memory_reserve
+-        self.decode_memory_policy_id = decode_memory_policy_id
+         self.decode_utility = decode_utility
+         self.prefill_token_utility = prefill_token_utility
+         self.preemption_penalty = preemption_penalty
+diff --git a/sarathi/core/scheduler/lp_scheduler.py b/sarathi/core/scheduler/lp_scheduler.py
+index 48966eb..a12e6f3 100644
+--- a/sarathi/core/scheduler/lp_scheduler.py
++++ b/sarathi/core/scheduler/lp_scheduler.py
+@@ -8,16 +8,23 @@ one synchronous decision (docs/lp_scheduler_design.md sections 12.6, 13, and
+                   -> execute_plan -> SchedulerOutputs
+ 
+ It is a thin coordinator. Ownership stays in the inherited ``waiting`` and
+-``running`` collections; prompt-first output order, precommit validation, and
+-native mutation belong to the executor.
++``running`` collections. The mapper captures live state once and builds ranks,
++coefficients, and the problem from that capture; output order, precommit
++validation, and native mutation belong to the executor.
++
++Ordinary idle means no arrived unfinished request in ``running`` or
++``waiting``; a future waiting head does not hide arrived work behind it.
++
++``check_new_request`` is the LP-only initial admission check that the engine
++calls before registering a new request; it raises ``LPRequestError``.
+ 
+ Failure behavior:
+ 
+ - An unsupported entry state (more than one pipeline stage, or a nonzero
+   running-batch count) raises ``LPSchedulingError`` before inherited
+   bookkeeping, so ``_iteration_id`` is unchanged.
+-- A failure returned by utility construction, mapping, solving/extraction, or
+-  executor precommit validation raises ``LPSchedulingError`` carrying that
++- A failure returned by mapping (including rank and coefficient
++  construction), solving/extraction, or executor precommit validation raises ``LPSchedulingError`` carrying that
+   immutable failure record. No later stage runs and no ``SchedulerOutputs``
+   is produced. Inherited bookkeeping has already advanced ``_iteration_id``
+   once; no execution mutation has occurred.
+@@ -29,15 +36,14 @@ The caller must honor the synchronous, non-overlapping engine contract; this
+ class adds no locking or concurrent-call support.
+ """
+ 
++import math
+ import time
+ 
+ from sarathi.core.datatypes.scheduler_output import SchedulerOutputs
+ from sarathi.core.scheduler.base_scheduler import BaseScheduler
+ 
+ STAGE_SCHEDULER_ENTRY = "scheduler_entry"
+-STAGE_UTILITY_CONSTRUCTION = "utility_construction"
+ CATEGORY_UNSUPPORTED_STATE = "unsupported_state"
+-CATEGORY_MALFORMED_INPUT = "malformed_input"
+ 
+ # The LP layer modules live at the repository root and are imported inside the
+ # methods that use them, so registering this scheduler does not make every
+@@ -86,6 +92,25 @@ class LPSchedulingError(RuntimeError):
+         return solver.diagnostics if solver is not None else None
+ 
+ 
++class LPRequestError(ValueError):
++    """A new request the LP scheduler can never admit.
++
++    Raised before the request is registered anywhere. ``seq_id`` is the
++    request identity, ``required`` the needed length or blocks, and ``limit``
++    the configured limit.
++    """
++
++    def __init__(self, seq_id, reason, required, limit) -> None:
++        self.seq_id = seq_id
++        self.reason = reason
++        self.required = required
++        self.limit = limit
++        super().__init__(
++            f"LP scheduler rejected request seq_id={seq_id!r}: {reason} "
++            f"(required {required}, limit {limit})"
++        )
++
++
+ class LPScheduler(BaseScheduler):
+     """Constructed from an ``LPSchedulerConfig`` through ``SchedulerRegistry``."""
+ 
+@@ -97,18 +122,46 @@ class LPScheduler(BaseScheduler):
+         num_pipeline_stages = self.scheduler_config.num_pipeline_stages
+         if num_pipeline_stages != 1:
+             raise LPSchedulingError(lrs.Failure(
+-                None, STAGE_SCHEDULER_ENTRY, CATEGORY_UNSUPPORTED_STATE,
++                None, STAGE_SCHEDULER_ENTRY, lrs.OUTCOME_INVALID,
++                CATEGORY_UNSUPPORTED_STATE,
+                 f"unsupported pipeline stage count {num_pipeline_stages!r}; "
+                 "only 1 is supported",
+             ))
+         if self.num_running_batches != 0:
+             raise LPSchedulingError(lrs.Failure(
+-                None, STAGE_SCHEDULER_ENTRY, CATEGORY_UNSUPPORTED_STATE,
++                None, STAGE_SCHEDULER_ENTRY, lrs.OUTCOME_INVALID,
++                CATEGORY_UNSUPPORTED_STATE,
+                 "unsupported in-flight state: num_running_batches="
+                 f"{self.num_running_batches!r}; only 0 is supported",
+             ))
+         return super().schedule()
+ 
++    def check_new_request(self, seq) -> None:
++        """Reject a new request that can never be admitted.
++
++        Called after ``Sequence`` construction and before any registration.
++        Equality at either limit is accepted. Current free-memory contention
++        is not checked, and no future output is reserved.
++        """
++        context_len = seq.get_len()
++        max_model_len = self.scheduler_config.max_model_len
++        if context_len > max_model_len:
++            raise LPRequestError(
++                seq.seq_id, "context length exceeds max_model_len",
++                f"{context_len} tokens", f"{max_model_len} tokens",
++            )
++        manager = self.block_manager
++        demand = manager.get_num_initial_blocks(seq)
++        total = manager.num_total_gpu_blocks
++        watermark = manager.watermark_blocks
++        if demand + watermark > total:
++            raise LPRequestError(
++                seq.seq_id,
++                "full initial allocation plus the shared watermark "
++                f"({watermark} blocks) exceeds the total block pool",
++                f"{demand + watermark} blocks", f"{total} blocks",
++            )
++
+     def _schedule(self) -> SchedulerOutputs:
+         import lp_relaxation_scheduler as lrs
+         import lpserve_plan_execution as lpe
+@@ -116,10 +169,8 @@ class LPScheduler(BaseScheduler):
+ 
+         now = time.monotonic()
+ 
+-        # Ordinary idle (D-18): inherited head-of-queue arrival convention.
+-        if not self.running and (
+-            not self.waiting or self.waiting[0].arrival_time > now
+-        ):
++        # Ordinary idle (D-18 as amended): no arrived unfinished request.
++        if self._is_idle(now):
+             return SchedulerOutputs(
+                 self._iteration_id,
+                 ignored_seq_ids=[],
+@@ -128,17 +179,14 @@ class LPScheduler(BaseScheduler):
+             )
+ 
+         config = self.scheduler_config
+-        utilities = self._build_utilities(now)
+-
+         snapshot = lsm.map_scheduler_state(
+             self,
+             snapshot_time=now,
+             b_max=config.b_max,
+             c_max=config.c_max,
+             s_max=config.s_max,
+-            memory_reserve=config.memory_reserve,
+-            decode_memory_policy_id=config.decode_memory_policy_id,
+-            utilities=utilities,
++            coefficient_policy=self._coefficient_policy(),
++            rank_profile=lsm.vllm_oriented_ranks,
+             numerical_policy=config.numerical_policy,
+         )
+         if isinstance(snapshot, lsm.MappingFailure):
+@@ -154,28 +202,33 @@ class LPScheduler(BaseScheduler):
+             raise LPSchedulingError(outputs)
+         return outputs
+ 
+-    def _build_utilities(self, now):
+-        """Return the uniform configured utility for every arrived, unfinished
+-        owned request, keyed by raw ``seq_id``. The mapper validates IDs,
+-        arrival times, ownership, and the exact key set."""
+-        import lp_relaxation_scheduler as lrs
++    def _is_idle(self, now) -> bool:
++        """True only when no arrived unfinished request exists. A request with
++        a malformed arrival time is not idle; the mapper rejects it."""
++        if self.running:
++            return False
++        for seq in self.waiting:
++            if seq.is_finished():
++                continue
++            arrival = seq.arrival_time
++            if not (
++                isinstance(arrival, (int, float))
++                and not isinstance(arrival, bool)
++                and math.isfinite(arrival) and arrival > now
++            ):
++                return False
++        return True
++
++    def _coefficient_policy(self):
++        """The explicit coefficient policy passed to the mapper: the
++        configured uniform triple. A validation harness may override this
++        method to supply another explicit policy accepted by
++        ``lpserve_state_mapping.construct_coefficients``."""
+         import lpserve_state_mapping as lsm
+ 
+         config = self.scheduler_config
+-        utility = lsm.RequestUtility(
++        return lsm.RequestUtility(
+             config.decode_utility,
+             config.prefill_token_utility,
+             config.preemption_penalty,
+         )
+-        try:
+-            return {
+-                seq.seq_id: utility
+-                for seq in self.waiting + self.running
+-                if seq.arrival_time <= now and not seq.is_finished()
+-            }
+-        except (AttributeError, TypeError) as err:
+-            raise LPSchedulingError(lrs.Failure(
+-                str(self._iteration_id), STAGE_UTILITY_CONSTRUCTION,
+-                CATEGORY_MALFORMED_INPUT,
+-                f"utility construction raised {type(err).__name__}: {err}",
+-            )) from None
+diff --git a/sarathi/engine/arg_utils.py b/sarathi/engine/arg_utils.py
+index e041eb9..e196b48 100644
+--- a/sarathi/engine/arg_utils.py
++++ b/sarathi/engine/arg_utils.py
+@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, List, Optional, Tuple
+ import yaml
+ 
+ from sarathi.config import (
++    LP_OBSOLETE_ARGUMENT_MIGRATION,
+     BaseSchedulerConfig,
+     CacheConfig,
+     FasterTransformerSchedulerConfig,
+@@ -30,13 +31,14 @@ _LP_REQUIRED_FIELDS = (
+     "lp_b_max",
+     "lp_c_max",
+     "lp_s_max",
+-    "lp_memory_reserve",
+-    "lp_decode_memory_policy_id",
+     "lp_decode_utility",
+     "lp_prefill_token_utility",
+     "lp_preemption_penalty",
+     "lp_numerical_policy",
+ )
++# Removed LP fields, kept only to reject supplied values with migration
++# guidance and to preserve the positions of later fields.
++_LP_OBSOLETE_FIELDS = ("lp_memory_reserve", "lp_decode_memory_policy_id")
+ 
+ @dataclass
+ class EngineArgs:
+@@ -107,8 +109,8 @@ class EngineArgs:
+     lp_b_max: Optional[int] = None  # combined prefill/decode token budget
+     lp_c_max: Optional[int] = None  # per-request prefill chunk cap
+     lp_s_max: Optional[int] = None  # execution-action limit
+-    lp_memory_reserve: Optional[int] = None  # planning reserve in blocks
+-    lp_decode_memory_policy_id: Optional[str] = None
++    lp_memory_reserve: Optional[int] = None  # removed; any value is rejected
++    lp_decode_memory_policy_id: Optional[str] = None  # removed; rejected
+     lp_decode_utility: Optional[float] = None
+     lp_prefill_token_utility: Optional[float] = None
+     lp_preemption_penalty: Optional[float] = None
+@@ -117,12 +119,22 @@ class EngineArgs:
+     def __post_init__(self):
+         if self.tokenizer is None:
+             self.tokenizer = self.model
++        supplied = [n for n in _LP_OBSOLETE_FIELDS if getattr(self, n) is not None]
++        if supplied:
++            raise ValueError(
++                f"EngineArgs {', '.join(supplied)}: "
++                + LP_OBSOLETE_ARGUMENT_MIGRATION
++            )
+         if self.scheduler_type == SchedulerType.LP.name.lower():
+             self._verify_lp_args()
+         if self.write_metrics:
+             os.makedirs(self.output_dir, exist_ok=True)
++            recorded = {
++                k: v for k, v in asdict(self).items()
++                if k not in _LP_OBSOLETE_FIELDS
++            }
+             with open(f"{self.output_dir}/config.yml", "w") as f:
+-                yaml.dump(asdict(self), f, default_flow_style=False, sort_keys=False)
++                yaml.dump(recorded, f, default_flow_style=False, sort_keys=False)
+ 
+     def _verify_lp_args(self) -> None:
+         missing = [name for name in _LP_REQUIRED_FIELDS if getattr(self, name) is None]
+@@ -236,8 +248,6 @@ class EngineArgs:
+                 b_max=self.lp_b_max,
+                 c_max=self.lp_c_max,
+                 s_max=self.lp_s_max,
+-                memory_reserve=self.lp_memory_reserve,
+-                decode_memory_policy_id=self.lp_decode_memory_policy_id,
+                 decode_utility=self.lp_decode_utility,
+                 prefill_token_utility=self.lp_prefill_token_utility,
+                 preemption_penalty=self.lp_preemption_penalty,
+diff --git a/sarathi/engine/base_llm_engine.py b/sarathi/engine/base_llm_engine.py
+index ec10349..7f64307 100644
+--- a/sarathi/engine/base_llm_engine.py
++++ b/sarathi/engine/base_llm_engine.py
+@@ -10,6 +10,7 @@ from sarathi.config import (
+     MetricsConfig,
+     ModelConfig,
+     ParallelConfig,
++    SchedulerType,
+ )
+ from sarathi.core.datatypes.request_output import RequestOutput
+ from sarathi.core.datatypes.sampling_params import SamplingParams
+@@ -388,6 +389,10 @@ class BaseLLMEngine:
+             is_strict_prefill_e2e_time=is_strict_prefill_e2e_time, 
+             oracle_decode_tokens = num_decode_tokens, 
+         )
++        # The LP scheduler rejects a request it can never admit before any
++        # registration; other schedulers keep their submission behavior.
++        if self.scheduler_config.type == SchedulerType.LP:
++            self.scheduler.check_new_request(seq)
+         # Add the sequence to the scheduler.
+         self.seq_manager.add_seq(seq)
+         self._run_workers(
+diff --git a/scripts/check_lp_scheduler_contention_gpu.py b/scripts/check_lp_scheduler_contention_gpu.py
+index bb025f3..d00ac94 100644
+--- a/scripts/check_lp_scheduler_contention_gpu.py
++++ b/scripts/check_lp_scheduler_contention_gpu.py
+@@ -75,8 +75,6 @@ B_MAX = 96
+ C_MAX = 8
+ S_MAX = 2
+ MAX_NUM_SEQS = 3
+-MEMORY_RESERVE = 1
+-DECODE_POLICY_ID = "conservative_one_block_v1"
+ DECODE_UTILITY = 1.0
+ PREFILL_TOKEN_UTILITY = 1.0
+ PREEMPTION_PENALTY = 1.0
+@@ -255,9 +253,8 @@ def check_step(tag, ids, before, events, after, step_outputs, policy_json):
+     problem = snap["lp_problem"]
+     check((problem["b_max"], problem["c_max"], problem["s_max"]) ==
+           (B_MAX, C_MAX, S_MAX), f"{tag}: mapped limits")
+-    check(snap["memory_reserve"] == MEMORY_RESERVE
+-          and snap["resident_limit"] == MAX_NUM_SEQS
+-          and snap["decode_memory_policy_id"] == DECODE_POLICY_ID
++    check(snap["resident_limit"] == MAX_NUM_SEQS
++          and problem["admission_watermark"] == snap["watermark_blocks"]
+           and snap["numerical_policy"] == policy_json
+           and snap["num_pipeline_stages"] == 1
+           and snap["num_running_batches"] == 0,
+@@ -289,8 +286,7 @@ def check_step(tag, ids, before, events, after, step_outputs, policy_json):
+           and executed["problem_id_in"] == problem_id
+           and executed["snapshot_id_in"] == snap["snapshot_id"],
+           f"{tag}: problem/plan/snapshot identities differ")
+-    check(not plan["dominant_preemption_ids"]
+-          and not plan["safety_preemption_ids"],
++    check(not plan["victim_order"],
+           f"{tag}: plan preemption ids")
+     selected = []
+     for d in plan["decisions"]:
+@@ -515,8 +511,7 @@ def main():
+         scheduler_config = LPSchedulerConfig(
+             max_num_seqs=MAX_NUM_SEQS, max_model_len=MAX_MODEL_LEN,
+             num_pipeline_stages=PIPELINE_PARALLEL_SIZE, b_max=B_MAX,
+-            c_max=C_MAX, s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
+-            decode_memory_policy_id=DECODE_POLICY_ID,
++            c_max=C_MAX, s_max=S_MAX,
+             decode_utility=DECODE_UTILITY,
+             prefill_token_utility=PREFILL_TOKEN_UTILITY,
+             preemption_penalty=PREEMPTION_PENALTY,
+@@ -595,8 +590,6 @@ def main():
+                           sampling_type=sampling_params.sampling_type.name,
+                           same_params_for_all=True),
+             b_max=B_MAX, c_max=C_MAX, s_max=S_MAX, max_num_seqs=MAX_NUM_SEQS,
+-            memory_reserve=MEMORY_RESERVE,
+-            decode_memory_policy_id=DECODE_POLICY_ID,
+             utilities=dict(decode=DECODE_UTILITY,
+                            prefill_token=PREFILL_TOKEN_UTILITY,
+                            preemption_penalty=PREEMPTION_PENALTY),
+@@ -616,16 +609,15 @@ def main():
+         summary["config"] = config_record
+         print("config:", json.dumps(config_record), flush=True)
+ 
+-        # Pool adequacy: all requests resident at their two-block peak, the
+-        # planning reserve, conservative decode charges (at most S_MAX), and
+-        # the native watermark must all fit.
++        # Pool adequacy: all requests resident at their two-block peak, a
++        # margin of S_MAX decode blocks, and the native watermark must fit
++        # (the planning reserve was removed).
+         check(n_free == bm.num_total_gpu_blocks and not bm.block_tables,
+               "block pool must be fully free before the requests")
+-        check(n_free - PEAK_BLOCKS_IN_USE - S_MAX >= bm.watermark_blocks
+-              + MEMORY_RESERVE,
++        check(n_free - PEAK_BLOCKS_IN_USE - S_MAX >= bm.watermark_blocks,
+               f"profiled pool {n_free} too small for {PEAK_BLOCKS_IN_USE} "
+-              f"blocks + {S_MAX} decode charges + reserve {MEMORY_RESERVE} "
+-              f"+ watermark {bm.watermark_blocks}")
++              f"blocks + {S_MAX} decode blocks + watermark "
++              f"{bm.watermark_blocks}")
+ 
+         observer = Observer()
+         observer.wrap(lsm, "map_scheduler_state", lambda a, k, r: dict(
+diff --git a/scripts/check_lp_scheduler_contention_reference_gpu.py b/scripts/check_lp_scheduler_contention_reference_gpu.py
+index 96fab7e..8400397 100644
+--- a/scripts/check_lp_scheduler_contention_reference_gpu.py
++++ b/scripts/check_lp_scheduler_contention_reference_gpu.py
+@@ -95,8 +95,6 @@ LP_MAX_NUM_SEQS = 3
+ B_MAX = 96
+ C_MAX = 8
+ S_MAX = 2
+-MEMORY_RESERVE = 1
+-DECODE_POLICY_ID = "conservative_one_block_v1"
+ DECODE_UTILITY = 1.0
+ PREFILL_TOKEN_UTILITY = 1.0
+ PREEMPTION_PENALTY = 1.0
+@@ -126,8 +124,6 @@ HELPER_CONSTANTS = [
+     (contention, "C_MAX", C_MAX),
+     (contention, "S_MAX", S_MAX),
+     (contention, "MAX_NUM_SEQS", LP_MAX_NUM_SEQS),
+-    (contention, "MEMORY_RESERVE", MEMORY_RESERVE),
+-    (contention, "DECODE_POLICY_ID", DECODE_POLICY_ID),
+     (contention, "DECODE_UTILITY", DECODE_UTILITY),
+     (contention, "PREFILL_TOKEN_UTILITY", PREFILL_TOKEN_UTILITY),
+     (contention, "PREEMPTION_PENALTY", PREEMPTION_PENALTY),
+@@ -289,8 +285,7 @@ def build_engine(mode, asset, out_dir, summary):
+         scheduler_config = LPSchedulerConfig(
+             max_num_seqs=LP_MAX_NUM_SEQS, max_model_len=MAX_MODEL_LEN,
+             num_pipeline_stages=PIPELINE_PARALLEL_SIZE, b_max=B_MAX,
+-            c_max=C_MAX, s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
+-            decode_memory_policy_id=DECODE_POLICY_ID,
++            c_max=C_MAX, s_max=S_MAX,
+             decode_utility=DECODE_UTILITY,
+             prefill_token_utility=PREFILL_TOKEN_UTILITY,
+             preemption_penalty=PREEMPTION_PENALTY,
+@@ -301,8 +296,7 @@ def build_engine(mode, asset, out_dir, summary):
+             type="LP", max_num_seqs=LP_MAX_NUM_SEQS,
+             max_model_len=MAX_MODEL_LEN,
+             num_pipeline_stages=PIPELINE_PARALLEL_SIZE, b_max=B_MAX,
+-            c_max=C_MAX, s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
+-            decode_memory_policy_id=DECODE_POLICY_ID,
++            c_max=C_MAX, s_max=S_MAX,
+             utilities=dict(decode=DECODE_UTILITY,
+                            prefill_token=PREFILL_TOKEN_UTILITY,
+                            preemption_penalty=PREEMPTION_PENALTY),
+@@ -480,16 +474,15 @@ def run_lp(engine, policy_json, sampling_params, trace, summary):
+     scheduler = engine.scheduler
+     bm = scheduler.block_manager
+     n_free = bm.get_num_free_gpu_blocks()
+-    # Pool adequacy: all requests resident at their two-block peak, the
+-    # planning reserve, conservative decode charges (at most S_MAX), and the
+-    # native watermark must all fit.
++    # Pool adequacy: all requests resident at their two-block peak, a margin
++    # of S_MAX decode blocks, and the native watermark must fit (the
++    # planning reserve was removed).
+     check(n_free == bm.num_total_gpu_blocks and not bm.block_tables,
+           "block pool must be fully free before the requests")
+-    check(n_free - LP_PEAK_BLOCKS_IN_USE - S_MAX
+-          >= bm.watermark_blocks + MEMORY_RESERVE,
++    check(n_free - LP_PEAK_BLOCKS_IN_USE - S_MAX >= bm.watermark_blocks,
+           f"profiled pool {n_free} too small for {LP_PEAK_BLOCKS_IN_USE} "
+-          f"blocks + {S_MAX} decode charges + reserve {MEMORY_RESERVE} "
+-          f"+ watermark {bm.watermark_blocks}")
++          f"blocks + {S_MAX} decode blocks + watermark "
++          f"{bm.watermark_blocks}")
+ 
+     seqs = {}
+     capture = lambda: contention.capture_state(engine, seqs)
+diff --git a/scripts/check_lp_scheduler_decode_preemption_reference_gpu.py b/scripts/check_lp_scheduler_decode_preemption_reference_gpu.py
+index 6e7fb15..b81cfc1 100644
+--- a/scripts/check_lp_scheduler_decode_preemption_reference_gpu.py
++++ b/scripts/check_lp_scheduler_decode_preemption_reference_gpu.py
+@@ -133,8 +133,6 @@ LP_MAX_NUM_SEQS = 1
+ B_MAX = 64
+ C_MAX = 16
+ S_MAX = 1
+-MEMORY_RESERVE = 0
+-DECODE_POLICY_ID = "conservative_one_block_v1"
+ REQUEST_UTILITIES = dict(
+     A=dict(decode_utility=40.0, prefill_token_utility=1.0,
+            preemption_penalty=1.0),
+@@ -194,8 +192,12 @@ LP_BLOCK_OPS = {
+     7: [["allocate", 0, 2]],
+     10: [["free", 0, 2]],
+ }
+-EXPECTED_RELAXED = {"0": (0, 0, 0, 0.5), "1": (16, 0, 1, 0)}
+-EXPECTED_RELAXED_OBJECTIVE = 319.5
++# Corrected LP, derived analytically (not yet executed on GPU): the resident
++# row (limit 1) forces z_A >= I_B, so A is preempted fully and the value is
++# 16 * 20 - 1 = 319 (superseded memory-only LP: z_A = 0.5, 319.5). A's 18
++# tokens fill two 16-token blocks exactly, so its exact decode demand is 0.
++EXPECTED_RELAXED = {"0": (0, 0, 0, 1), "1": (16, 0, 1, 0)}
++EXPECTED_RELAXED_OBJECTIVE = 319.0
+ EXPECTED_INTEGER_OBJECTIVE = 319.0
+ 
+ # Constants of the reused helper modules that the reused functions read.
+@@ -441,25 +443,27 @@ def compare_histories(references, history):
+ 
+ def install_fixed_utilities(scheduler, labels_by_seq_id, record):
+     """Validation-only: replace the configured uniform triple by each
+-    request's fixed triple for exactly the arrived, unfinished raw IDs that
+-    the real method selects. Returns a function that removes the override."""
++    request's fixed triple through the scheduler's coefficient-policy hook,
++    evaluated on the mapper's captured data. Returns a function that removes
++    the override."""
+     import lpserve_state_mapping as lsm
+ 
+-    real = scheduler._build_utilities
+-
+-    def build(now):
+-        keys = real(now)
+-        unknown = sorted(set(keys) - set(labels_by_seq_id))
+-        check(not unknown, f"no fixed utility for raw seq IDs {unknown}")
+-        utilities = {seq_id: lsm.RequestUtility(
+-            **REQUEST_UTILITIES[labels_by_seq_id[seq_id]]) for seq_id in keys}
+-        record.append(dict(now=now, utilities=to_jsonable(utilities)))
+-        return utilities
++    def policy():
++        def coefficients(captured, request):
++            seq_id = request.raw_seq_id
++            check(seq_id in labels_by_seq_id,
++                  f"no fixed utility for raw seq ID {seq_id}")
++            utility = lsm.RequestUtility(
++                **REQUEST_UTILITIES[labels_by_seq_id[seq_id]])
++            record.append(dict(snapshot_time=captured.snapshot_time,
++                               seq_id=seq_id, utility=to_jsonable(utility)))
++            return utility
++        return coefficients
+ 
+-    scheduler._build_utilities = build
++    scheduler._coefficient_policy = policy
+ 
+     def remove():
+-        del scheduler._build_utilities
++        del scheduler._coefficient_policy
+ 
+     return remove
+ 
+@@ -597,11 +601,10 @@ def check_decision(tag, expected, before, events, policy_json):
+           f"{tag}: in-flight or stage state at the mapping boundary")
+     check(snap["scheduler_iteration_id"] == before["iteration_id"] + 1
+           == mapped["iteration_id"], f"{tag}: mapping iteration")
+-    check((problem["b_max"], problem["c_max"], problem["s_max"], problem["w"])
+-          == (B_MAX, C_MAX, S_MAX, MEMORY_RESERVE), f"{tag}: mapped limits")
+-    check(snap["memory_reserve"] == MEMORY_RESERVE
+-          and snap["resident_limit"] == LP_MAX_NUM_SEQS
+-          and snap["decode_memory_policy_id"] == DECODE_POLICY_ID
++    check((problem["b_max"], problem["c_max"], problem["s_max"])
++          == (B_MAX, C_MAX, S_MAX), f"{tag}: mapped limits")
++    check(snap["resident_limit"] == LP_MAX_NUM_SEQS
++          and problem["admission_watermark"] == snap["watermark_blocks"]
+           and snap["numerical_policy"] == policy_json,
+           f"{tag}: mapped policy inputs")
+     check(snap["free_physical_blocks"] == problem["m_free"]
+@@ -661,16 +664,17 @@ def check_boundary(tag, snap, solved, gates, sched_state, sched_ops,
+     a_before = before["seqs"]["0"]
+     check(problem["legal_preemption_ids"] == ["0"],
+           f"{tag}: legal victims {problem['legal_preemption_ids']}")
+-    check((problem["m_free"], problem["w"]) == (2, 0), f"{tag}: m_free/w")
++    check((problem["m_free"], problem["admission_watermark"]) == (2, 0),
++          f"{tag}: m_free/watermark")
+     check(len(a_before["output_token_ids"]) == 1
+           and a_before["prompt_token_ids"] == PROMPT_TOKEN_IDS["A"],
+           f"{tag}: A before the decision {a_before}")
+     check((a["ownership"], a["status"], a["prompt_len"],
+            a["prompt_tokens_processed"], a["prompt_processing_finished"],
+            a["physical_block_count"], a["preemption_eligible"],
+-           a["preemption_recovery"], a["decode_eligible"], a["decode_charge"],
++           a["preemption_recovery"], a["decode_eligible"], a["decode_demand"],
+            a["prefill_eligible"])
+-          == ("running", "PAUSED", 17, 17, True, 2, True, 2, True, 1, False),
++          == ("running", "PAUSED", 17, 17, True, 2, True, 2, True, 0, False),
+           f"{tag}: mapped A {a}")
+     check((b["ownership"], b["status"], b["prompt_len"],
+            b["physical_block_count"], b["preemption_eligible"],
+@@ -694,8 +698,7 @@ def check_boundary(tag, snap, solved, gates, sched_state, sched_ops,
+     check([(d["request_id"], d["prefill_tokens"], d["decode"], d["preempt"])
+            for d in plan["decisions"]] == [("0", 0, 0, 1), ("1", 16, 0, 0)],
+           f"{tag}: integer plan {plan['decisions']}")
+-    check(plan["dominant_preemption_ids"] == ["0"]
+-          and plan["safety_preemption_ids"] == [],
++    check(plan["victim_order"] == ["0"],
+           f"{tag}: preemption classification")
+     check(abs(plan["objective"] - EXPECTED_INTEGER_OBJECTIVE) <= tol,
+           f"{tag}: integer objective {plan['objective']}")
+@@ -996,8 +999,7 @@ def main():
+             scheduler_config = LPSchedulerConfig(
+                 max_num_seqs=LP_MAX_NUM_SEQS, max_model_len=MAX_MODEL_LEN,
+                 num_pipeline_stages=PIPELINE_PARALLEL_SIZE, b_max=B_MAX,
+-                c_max=C_MAX, s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
+-                decode_memory_policy_id=DECODE_POLICY_ID,
++                c_max=C_MAX, s_max=S_MAX,
+                 numerical_policy=numerical_policy, **CONFIGURED_UTILITIES,
+             )
+             scheduler_class = LPScheduler
+@@ -1043,8 +1045,7 @@ def main():
+                 scheduler_class=type(scheduler).__name__, type=config_type,
+                 max_num_seqs=LP_MAX_NUM_SEQS, max_model_len=MAX_MODEL_LEN,
+                 num_pipeline_stages=PIPELINE_PARALLEL_SIZE, b_max=B_MAX,
+-                c_max=C_MAX, s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
+-                decode_memory_policy_id=DECODE_POLICY_ID,
++                c_max=C_MAX, s_max=S_MAX,
+                 configured_uniform_utilities=CONFIGURED_UTILITIES,
+                 request_utilities=REQUEST_UTILITIES,
+                 numerical_policy=policy_json)
+@@ -1295,7 +1296,7 @@ def main():
+             if remove_utilities is not None:
+                 remove_utilities()
+                 cleanup["utility_override_removed"] = (
+-                    "_build_utilities" not in vars(engine.scheduler))
++                    "_coefficient_policy" not in vars(engine.scheduler))
+             # Stop only the Ray runtime this process started.
+             if "ray" in sys.modules:
+                 ray = sys.modules["ray"]
+diff --git a/scripts/check_lp_scheduler_gpu.py b/scripts/check_lp_scheduler_gpu.py
+index a036d2d..636f2c3 100644
+--- a/scripts/check_lp_scheduler_gpu.py
++++ b/scripts/check_lp_scheduler_gpu.py
+@@ -57,8 +57,6 @@ B_MAX = 32
+ C_MAX = 8
+ S_MAX = 1
+ MAX_NUM_SEQS = 1
+-MEMORY_RESERVE = 1
+-DECODE_POLICY_ID = "conservative_one_block_v1"
+ DECODE_UTILITY = 1.0
+ PREFILL_TOKEN_UTILITY = 1.0
+ PREEMPTION_PENALTY = 1.0
+@@ -289,8 +287,7 @@ def main():
+         scheduler_config = LPSchedulerConfig(
+             max_num_seqs=MAX_NUM_SEQS, max_model_len=MAX_MODEL_LEN,
+             num_pipeline_stages=PIPELINE_PARALLEL_SIZE, b_max=B_MAX,
+-            c_max=C_MAX, s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
+-            decode_memory_policy_id=DECODE_POLICY_ID,
++            c_max=C_MAX, s_max=S_MAX,
+             decode_utility=DECODE_UTILITY,
+             prefill_token_utility=PREFILL_TOKEN_UTILITY,
+             preemption_penalty=PREEMPTION_PENALTY,
+@@ -350,8 +347,6 @@ def main():
+             sampling=dict(temperature=TEMPERATURE, max_tokens=MAX_TOKENS,
+                           ignore_eos=IGNORE_EOS, stop=[]),
+             b_max=B_MAX, c_max=C_MAX, s_max=S_MAX, max_num_seqs=MAX_NUM_SEQS,
+-            memory_reserve=MEMORY_RESERVE,
+-            decode_memory_policy_id=DECODE_POLICY_ID,
+             utilities=dict(decode=DECODE_UTILITY,
+                            prefill_token=PREFILL_TOKEN_UTILITY,
+                            preemption_penalty=PREEMPTION_PENALTY),
+@@ -369,13 +364,13 @@ def main():
+         summary["config"] = config_record
+         print("config:", json.dumps(config_record), flush=True)
+ 
+-        # Pool adequacy: two blocks in use at the peak, the planning reserve,
+-        # and the native watermark must all fit.
++        # Pool adequacy: two blocks in use at the peak and the native
++        # watermark must fit (the planning reserve was removed).
+         check(n_free == bm.num_total_gpu_blocks and not bm.block_tables,
+               "block pool must be fully free before the request")
+-        check(n_free - 2 >= bm.watermark_blocks + MEMORY_RESERVE,
++        check(n_free - 2 >= bm.watermark_blocks,
+               f"profiled pool {n_free} too small for watermark "
+-              f"{bm.watermark_blocks} + reserve {MEMORY_RESERVE} + 2 blocks")
++              f"{bm.watermark_blocks} + 2 blocks")
+         check(len(prompt_ids) == PROMPT_LEN, "prompt length mismatch")
+ 
+         observer = Observer()
+@@ -434,9 +429,8 @@ def main():
+             problem = snap["lp_problem"]
+             check((problem["b_max"], problem["c_max"], problem["s_max"]) ==
+                   (B_MAX, C_MAX, S_MAX), f"{name}: mapped limits")
+-            check(snap["memory_reserve"] == MEMORY_RESERVE
+-                  and snap["resident_limit"] == MAX_NUM_SEQS
+-                  and snap["decode_memory_policy_id"] == DECODE_POLICY_ID
++            check(snap["resident_limit"] == MAX_NUM_SEQS
++                  and problem["admission_watermark"] == snap["watermark_blocks"]
+                   and snap["numerical_policy"] == to_jsonable(numerical_policy),
+                   f"{name}: mapped policy inputs")
+             check(snap["free_physical_blocks"] == before["free_blocks"],
+@@ -463,8 +457,7 @@ def main():
+                    decision["preempt"]) == (exp["prefill"], exp["decode"], 0),
+                   f"{name}: plan {decision} differs from expected "
+                   f"prefill {exp['prefill']} decode {exp['decode']}")
+-            check(not plan["dominant_preemption_ids"]
+-                  and not plan["safety_preemption_ids"],
++            check(not plan["victim_order"],
+                   f"{name}: plan preemption ids")
+ 
+             executed = events[2]
+diff --git a/scripts/check_lp_scheduler_mixed_gpu.py b/scripts/check_lp_scheduler_mixed_gpu.py
+index a818808..59205c5 100644
+--- a/scripts/check_lp_scheduler_mixed_gpu.py
++++ b/scripts/check_lp_scheduler_mixed_gpu.py
+@@ -65,8 +65,6 @@ B_MAX = 64
+ C_MAX = 8
+ S_MAX = 2
+ MAX_NUM_SEQS = 2
+-MEMORY_RESERVE = 1
+-DECODE_POLICY_ID = "conservative_one_block_v1"
+ DECODE_UTILITY = 1.0
+ PREFILL_TOKEN_UTILITY = 1.0
+ PREEMPTION_PENALTY = 1.0
+@@ -211,9 +209,8 @@ def check_step(exp, ids, n_free, before, events, sched, after, step_outputs,
+     problem = snap["lp_problem"]
+     check((problem["b_max"], problem["c_max"], problem["s_max"]) ==
+           (B_MAX, C_MAX, S_MAX), f"{tag}: mapped limits")
+-    check(snap["memory_reserve"] == MEMORY_RESERVE
+-          and snap["resident_limit"] == MAX_NUM_SEQS
+-          and snap["decode_memory_policy_id"] == DECODE_POLICY_ID
++    check(snap["resident_limit"] == MAX_NUM_SEQS
++          and problem["admission_watermark"] == snap["watermark_blocks"]
+           and snap["numerical_policy"] == policy_json,
+           f"{tag}: mapped policy inputs")
+     check(snap["free_physical_blocks"] == before["free_blocks"],
+@@ -252,8 +249,7 @@ def check_step(exp, ids, n_free, before, events, sched, after, step_outputs,
+            for d in plan["decisions"]}
+     want = {rid[ids[n]]: (*exp["plan"][n], 0) for n in present}
+     check(got == want, f"{tag}: plan {got} differs from expected {want}")
+-    check(not plan["dominant_preemption_ids"]
+-          and not plan["safety_preemption_ids"],
++    check(not plan["victim_order"],
+           f"{tag}: plan preemption ids")
+     selected = [v for v in got.values() if v[0] > 0 or v[1]]
+     check(sum(p + d for p, d, _ in got.values()) <= B_MAX
+@@ -394,8 +390,7 @@ def main():
+         scheduler_config = LPSchedulerConfig(
+             max_num_seqs=MAX_NUM_SEQS, max_model_len=MAX_MODEL_LEN,
+             num_pipeline_stages=PIPELINE_PARALLEL_SIZE, b_max=B_MAX,
+-            c_max=C_MAX, s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
+-            decode_memory_policy_id=DECODE_POLICY_ID,
++            c_max=C_MAX, s_max=S_MAX,
+             decode_utility=DECODE_UTILITY,
+             prefill_token_utility=PREFILL_TOKEN_UTILITY,
+             preemption_penalty=PREEMPTION_PENALTY,
+@@ -471,8 +466,6 @@ def main():
+                           same_params_for_both=True),
+             add_b_after_step=ADD_B_AFTER_STEP,
+             b_max=B_MAX, c_max=C_MAX, s_max=S_MAX, max_num_seqs=MAX_NUM_SEQS,
+-            memory_reserve=MEMORY_RESERVE,
+-            decode_memory_policy_id=DECODE_POLICY_ID,
+             utilities=dict(decode=DECODE_UTILITY,
+                            prefill_token=PREFILL_TOKEN_UTILITY,
+                            preemption_penalty=PREEMPTION_PENALTY),
+@@ -490,15 +483,13 @@ def main():
+         summary["config"] = config_record
+         print("config:", json.dumps(config_record), flush=True)
+ 
+-        # Pool adequacy: three blocks in use at the peak, the planning
+-        # reserve, and the native watermark must all fit.
++        # Pool adequacy: three blocks in use at the peak and the native
++        # watermark must fit (the planning reserve was removed).
+         check(n_free == bm.num_total_gpu_blocks and not bm.block_tables,
+               "block pool must be fully free before the requests")
+-        check(n_free - PEAK_BLOCKS_IN_USE >= bm.watermark_blocks
+-              + MEMORY_RESERVE,
++        check(n_free - PEAK_BLOCKS_IN_USE >= bm.watermark_blocks,
+               f"profiled pool {n_free} too small for watermark "
+-              f"{bm.watermark_blocks} + reserve {MEMORY_RESERVE} + "
+-              f"{PEAK_BLOCKS_IN_USE} blocks")
++              f"{bm.watermark_blocks} + {PEAK_BLOCKS_IN_USE} blocks")
+ 
+         observer = Observer()
+         observer.wrap(lsm, "map_scheduler_state", lambda a, k, r: dict(
+diff --git a/scripts/check_lp_scheduler_preemption_gpu.py b/scripts/check_lp_scheduler_preemption_gpu.py
+index 6eec971..45409ca 100644
+--- a/scripts/check_lp_scheduler_preemption_gpu.py
++++ b/scripts/check_lp_scheduler_preemption_gpu.py
+@@ -74,8 +74,6 @@ MAX_NUM_SEQS = 1
+ B_MAX = 64
+ C_MAX = 16
+ S_MAX = 1
+-MEMORY_RESERVE = 0
+-DECODE_POLICY_ID = "conservative_one_block_v1"
+ DECODE_UTILITY = 40.0
+ PREFILL_TOKEN_UTILITY = 1.0
+ PREEMPTION_PENALTY = 1.0
+@@ -389,11 +387,10 @@ def check_decision(tag, expected, before, events, policy_json):
+           f"{tag}: in-flight or stage state at the mapping boundary")
+     check(snap["scheduler_iteration_id"] == before["iteration_id"] + 1
+           == mapped["iteration_id"], f"{tag}: mapping iteration")
+-    check((problem["b_max"], problem["c_max"], problem["s_max"], problem["w"])
+-          == (B_MAX, C_MAX, S_MAX, MEMORY_RESERVE), f"{tag}: mapped limits")
+-    check(snap["memory_reserve"] == MEMORY_RESERVE
+-          and snap["resident_limit"] == MAX_NUM_SEQS
+-          and snap["decode_memory_policy_id"] == DECODE_POLICY_ID
++    check((problem["b_max"], problem["c_max"], problem["s_max"])
++          == (B_MAX, C_MAX, S_MAX), f"{tag}: mapped limits")
++    check(snap["resident_limit"] == MAX_NUM_SEQS
++          and problem["admission_watermark"] == snap["watermark_blocks"]
+           and snap["numerical_policy"] == policy_json,
+           f"{tag}: mapped policy inputs")
+     check(snap["free_physical_blocks"] == problem["m_free"]
+@@ -452,26 +449,29 @@ def check_boundary(tag, snap, solved, sched_state, central_ops, worker_ops,
+     a, b = reqs["0"], reqs["1"]
+     check(problem["legal_preemption_ids"] == ["0"],
+           f"{tag}: legal victims {problem['legal_preemption_ids']}")
+-    check((problem["m_free"], problem["w"]) == (2, 0), f"{tag}: m_free/w")
++    check((problem["m_free"], problem["admission_watermark"]) == (2, 0),
++          f"{tag}: m_free/watermark")
+     check((a["ownership"], a["status"], a["prompt_tokens_processed"],
+            a["physical_block_count"], a["preemption_recovery"])
+           == ("running", "PAUSED", 16, 2, 2), f"{tag}: mapped A {a}")
+     check((b["ownership"], b["prompt_len"], b["prefill_fixed_charge"])
+           == ("waiting", 48, 3), f"{tag}: mapped B {b}")
+     relaxed = {d["request_id"]: d for d in solved["relaxed"]["decisions"]}
+-    for rid, want in (("0", (0, 0, 0, 0.5)), ("1", (16, 0, 1, 0))):
++    # Corrected LP, derived analytically (not yet executed on GPU): the
++    # resident row (limit 1) forces z_A >= I_B, so A is preempted fully and
++    # the value is 16 - 1 = 15 (superseded memory-only LP: z_A = 0.5, 15.5).
++    for rid, want in (("0", (0, 0, 0, 1)), ("1", (16, 0, 1, 0))):
+         d = relaxed[rid]
+         got = (d["x"], d["y"], d["prefill_indicator"], d["z"])
+         check(all(abs(g - w) <= tol for g, w in zip(got, want)),
+               f"{tag}: relaxed {rid} {got}; expected {want}")
+-    check(abs(solved["relaxed"]["normalized_objective"] - 15.5) <= tol,
++    check(abs(solved["relaxed"]["normalized_objective"] - 15.0) <= tol,
+           f"{tag}: relaxed objective {solved['relaxed']['normalized_objective']}")
+     plan = solved["plan"]
+     check([(d["request_id"], d["prefill_tokens"], d["decode"], d["preempt"])
+            for d in plan["decisions"]] == [("0", 0, 0, 1), ("1", 16, 0, 0)],
+           f"{tag}: integer plan {plan['decisions']}")
+-    check(plan["dominant_preemption_ids"] == ["0"]
+-          and plan["safety_preemption_ids"] == [],
++    check(plan["victim_order"] == ["0"],
+           f"{tag}: preemption classification")
+     check(abs(plan["objective"] - 15.0) <= tol,
+           f"{tag}: integer objective {plan['objective']}")
+@@ -572,8 +572,7 @@ def main():
+         scheduler_config = LPSchedulerConfig(
+             max_num_seqs=MAX_NUM_SEQS, max_model_len=MAX_MODEL_LEN,
+             num_pipeline_stages=PIPELINE_PARALLEL_SIZE, b_max=B_MAX,
+-            c_max=C_MAX, s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
+-            decode_memory_policy_id=DECODE_POLICY_ID,
++            c_max=C_MAX, s_max=S_MAX,
+             decode_utility=DECODE_UTILITY,
+             prefill_token_utility=PREFILL_TOKEN_UTILITY,
+             preemption_penalty=PREEMPTION_PENALTY,
+@@ -680,8 +679,6 @@ def main():
+             sampling=dict(temperature=TEMPERATURE, max_tokens=MAX_TOKENS,
+                           ignore_eos=IGNORE_EOS, stop=[]),
+             b_max=B_MAX, c_max=C_MAX, s_max=S_MAX, max_num_seqs=MAX_NUM_SEQS,
+-            memory_reserve=MEMORY_RESERVE,
+-            decode_memory_policy_id=DECODE_POLICY_ID,
+             utilities=dict(decode=DECODE_UTILITY,
+                            prefill_token=PREFILL_TOKEN_UTILITY,
+                            preemption_penalty=PREEMPTION_PENALTY),
+diff --git a/scripts/check_lp_scheduler_preemption_reference_gpu.py b/scripts/check_lp_scheduler_preemption_reference_gpu.py
+index 73d7f51..3c52fea 100644
+--- a/scripts/check_lp_scheduler_preemption_reference_gpu.py
++++ b/scripts/check_lp_scheduler_preemption_reference_gpu.py
+@@ -104,8 +104,6 @@ LP_MAX_NUM_SEQS = 1
+ B_MAX = 64
+ C_MAX = 16
+ S_MAX = 1
+-MEMORY_RESERVE = 0
+-DECODE_POLICY_ID = "conservative_one_block_v1"
+ DECODE_UTILITY = 40.0
+ PREFILL_TOKEN_UTILITY = 1.0
+ PREEMPTION_PENALTY = 1.0
+@@ -125,7 +123,6 @@ REQUIRED_HELPER_CONSTANTS = {
+         INITIALIZED_NUM_GPU_BLOCKS=INITIALIZED_NUM_GPU_BLOCKS,
+         TENSOR_PARALLEL_SIZE=TENSOR_PARALLEL_SIZE,
+         MAX_NUM_SEQS=LP_MAX_NUM_SEQS, B_MAX=B_MAX, C_MAX=C_MAX, S_MAX=S_MAX,
+-        MEMORY_RESERVE=MEMORY_RESERVE, DECODE_POLICY_ID=DECODE_POLICY_ID,
+         DECODE_UTILITY=DECODE_UTILITY,
+         PREFILL_TOKEN_UTILITY=PREFILL_TOKEN_UTILITY,
+         PREEMPTION_PENALTY=PREEMPTION_PENALTY,
+@@ -715,8 +712,7 @@ def main():
+             scheduler_config = LPSchedulerConfig(
+                 max_num_seqs=LP_MAX_NUM_SEQS, max_model_len=MAX_MODEL_LEN,
+                 num_pipeline_stages=PIPELINE_PARALLEL_SIZE, b_max=B_MAX,
+-                c_max=C_MAX, s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
+-                decode_memory_policy_id=DECODE_POLICY_ID,
++                c_max=C_MAX, s_max=S_MAX,
+                 decode_utility=DECODE_UTILITY,
+                 prefill_token_utility=PREFILL_TOKEN_UTILITY,
+                 preemption_penalty=PREEMPTION_PENALTY,
+@@ -765,8 +761,7 @@ def main():
+                 scheduler_class=type(scheduler).__name__, type=config_type,
+                 max_num_seqs=LP_MAX_NUM_SEQS, max_model_len=MAX_MODEL_LEN,
+                 num_pipeline_stages=PIPELINE_PARALLEL_SIZE, b_max=B_MAX,
+-                c_max=C_MAX, s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
+-                decode_memory_policy_id=DECODE_POLICY_ID,
++                c_max=C_MAX, s_max=S_MAX,
+                 utilities=dict(decode=DECODE_UTILITY,
+                                prefill_token=PREFILL_TOKEN_UTILITY,
+                                preemption_penalty=PREEMPTION_PENALTY),
+diff --git a/scripts/check_lp_scheduler_reference_gpu.py b/scripts/check_lp_scheduler_reference_gpu.py
+index b9c7792..9fe92c9 100644
+--- a/scripts/check_lp_scheduler_reference_gpu.py
++++ b/scripts/check_lp_scheduler_reference_gpu.py
+@@ -82,8 +82,6 @@ LP_MAX_NUM_SEQS = 1
+ B_MAX = 32
+ C_MAX = 8
+ S_MAX = 1
+-MEMORY_RESERVE = 1
+-DECODE_POLICY_ID = "conservative_one_block_v1"
+ DECODE_UTILITY = 1.0
+ PREFILL_TOKEN_UTILITY = 1.0
+ PREEMPTION_PENALTY = 1.0
+@@ -419,9 +417,8 @@ def check_lp_events(tag, exp, before, events, seq_id, policy_json):
+     problem = snap["lp_problem"]
+     check((problem["b_max"], problem["c_max"], problem["s_max"]) ==
+           (B_MAX, C_MAX, S_MAX), f"{tag}: mapped limits")
+-    check(snap["memory_reserve"] == MEMORY_RESERVE
+-          and snap["resident_limit"] == LP_MAX_NUM_SEQS
+-          and snap["decode_memory_policy_id"] == DECODE_POLICY_ID
++    check(snap["resident_limit"] == LP_MAX_NUM_SEQS
++          and problem["admission_watermark"] == snap["watermark_blocks"]
+           and snap["numerical_policy"] == policy_json
+           and snap["num_pipeline_stages"] == 1
+           and snap["num_running_batches"] == 0,
+@@ -458,8 +455,7 @@ def check_lp_events(tag, exp, before, events, seq_id, policy_json):
+     check((decision["prefill_tokens"], decision["decode"],
+            decision["preempt"]) == want,
+           f"{tag}: plan {decision} differs from expected {want}")
+-    check(not plan["dominant_preemption_ids"]
+-          and not plan["safety_preemption_ids"],
++    check(not plan["victim_order"],
+           f"{tag}: plan preemption ids")
+ 
+     check(executed["result_type"] == "SchedulerOutputs",
+@@ -690,8 +686,7 @@ def main():
+             scheduler_config = LPSchedulerConfig(
+                 max_num_seqs=LP_MAX_NUM_SEQS, max_model_len=MAX_MODEL_LEN,
+                 num_pipeline_stages=PIPELINE_PARALLEL_SIZE, b_max=B_MAX,
+-                c_max=C_MAX, s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
+-                decode_memory_policy_id=DECODE_POLICY_ID,
++                c_max=C_MAX, s_max=S_MAX,
+                 decode_utility=DECODE_UTILITY,
+                 prefill_token_utility=PREFILL_TOKEN_UTILITY,
+                 preemption_penalty=PREEMPTION_PENALTY,
+@@ -702,8 +697,7 @@ def main():
+                 type="LP", max_num_seqs=LP_MAX_NUM_SEQS,
+                 max_model_len=MAX_MODEL_LEN,
+                 num_pipeline_stages=PIPELINE_PARALLEL_SIZE, b_max=B_MAX,
+-                c_max=C_MAX, s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
+-                decode_memory_policy_id=DECODE_POLICY_ID,
++                c_max=C_MAX, s_max=S_MAX,
+                 utilities=dict(decode=DECODE_UTILITY,
+                                prefill_token=PREFILL_TOKEN_UTILITY,
+                                preemption_penalty=PREEMPTION_PENALTY),
+@@ -767,14 +761,13 @@ def main():
+         print("shared_after_init:", json.dumps(shared_after_init), flush=True)
+         print("pool:", json.dumps(summary["pool"]), flush=True)
+ 
+-        # Pool adequacy: the two-block peak plus the native watermark (and,
+-        # for LP, the planning reserve) must fit.
+-        reserve = MEMORY_RESERVE if mode == "lp" else 0
++        # Pool adequacy: the two-block peak plus the native watermark must
++        # fit (the LP planning reserve was removed).
+         check(n_free == bm.num_total_gpu_blocks and not bm.block_tables,
+               "block pool must be fully free before the request")
+-        check(n_free - PEAK_BLOCKS >= bm.watermark_blocks + reserve,
++        check(n_free - PEAK_BLOCKS >= bm.watermark_blocks,
+               f"profiled pool {n_free} too small for watermark "
+-              f"{bm.watermark_blocks} + reserve {reserve} + {PEAK_BLOCKS}")
++              f"{bm.watermark_blocks} + {PEAK_BLOCKS}")
+ 
+         # Observation starts after construction, so profiling is excluded.
+         observer = Observer()
+diff --git a/scripts/run_lp_inference.py b/scripts/run_lp_inference.py
+index 465f399..be344fd 100644
+--- a/scripts/run_lp_inference.py
++++ b/scripts/run_lp_inference.py
+@@ -24,8 +24,8 @@ research policy or a guarantee for other workloads; saved in summary.json):
+   tokenizer mode "auto", trust_remote_code True.
+ - Tensor and pipeline parallelism 1; seed 42; model length 32; block size 16;
+   GPU memory utilization 0.5.
+-- LP scheduler: resident limit 3, b_max 96, c_max 8, s_max 2, planning reserve
+-  1 block, decode charge conservative_one_block_v1, decode/prefill-token
++- LP scheduler: resident limit 3, b_max 96, c_max 8, s_max 2, exact decode
++  demand and the shared manager's admission watermark, decode/prefill-token
+   utility and preemption penalty 1/1/1, numerical policy lp_relaxation_mvp_v1
+   (tolerances 1e-7, 1e-6, 1e-9, 1e-9).
+ - Greedy sampling: temperature 0, 4 output tokens, ignore_eos True, no stop
+@@ -73,8 +73,6 @@ MAX_NUM_SEQS = 3
+ B_MAX = 96
+ C_MAX = 8
+ S_MAX = 2
+-MEMORY_RESERVE = 1
+-DECODE_POLICY_ID = "conservative_one_block_v1"
+ DECODE_UTILITY = 1.0
+ PREFILL_TOKEN_UTILITY = 1.0
+ PREEMPTION_PENALTY = 1.0
+@@ -98,8 +96,8 @@ SETTINGS = dict(
+     gpu_memory_utilization=GPU_MEMORY_UTILIZATION,
+     tokenizer_mode=TOKENIZER_MODE, trust_remote_code=TRUST_REMOTE_CODE,
+     scheduler="LPScheduler", max_num_seqs=MAX_NUM_SEQS, b_max=B_MAX,
+-    c_max=C_MAX, s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
+-    decode_memory_policy_id=DECODE_POLICY_ID, decode_utility=DECODE_UTILITY,
++    c_max=C_MAX, s_max=S_MAX,
++    decode_utility=DECODE_UTILITY,
+     prefill_token_utility=PREFILL_TOKEN_UTILITY,
+     preemption_penalty=PREEMPTION_PENALTY,
+     numerical_policy=NUMERICAL_POLICY_FIELDS,
+@@ -189,8 +187,7 @@ def create_engine(model_path, metrics_dir):
+     scheduler_config = LPSchedulerConfig(
+         max_num_seqs=MAX_NUM_SEQS, max_model_len=MAX_MODEL_LEN,
+         num_pipeline_stages=PIPELINE_PARALLEL_SIZE, b_max=B_MAX, c_max=C_MAX,
+-        s_max=S_MAX, memory_reserve=MEMORY_RESERVE,
+-        decode_memory_policy_id=DECODE_POLICY_ID,
++        s_max=S_MAX,
+         decode_utility=DECODE_UTILITY,
+         prefill_token_utility=PREFILL_TOKEN_UTILITY,
+         preemption_penalty=PREEMPTION_PENALTY,
+diff --git a/tests/test_lp_engine_args.py b/tests/test_lp_engine_args.py
+index c10f6be..c2d1724 100644
+--- a/tests/test_lp_engine_args.py
++++ b/tests/test_lp_engine_args.py
+@@ -2,6 +2,7 @@ import os
+ import sys
+ import tempfile
+ import unittest
++from dataclasses import fields
+ from pathlib import Path
+ from unittest import mock
+ 
+@@ -38,8 +39,6 @@ LP_ARGS = dict(
+     lp_b_max=8,
+     lp_c_max=4,
+     lp_s_max=3,
+-    lp_memory_reserve=1,
+-    lp_decode_memory_policy_id="conservative_one_block_v1",
+     lp_decode_utility=1,
+     lp_prefill_token_utility=1,
+     lp_preemption_penalty=1,
+@@ -103,10 +102,8 @@ class LPEngineArgsTest(unittest.TestCase):
+         self.assertEqual(scheduler_config.b_max, 8)
+         self.assertEqual(scheduler_config.c_max, 4)
+         self.assertEqual(scheduler_config.s_max, 3)
+-        self.assertEqual(scheduler_config.memory_reserve, 1)
+-        self.assertEqual(
+-            scheduler_config.decode_memory_policy_id, "conservative_one_block_v1"
+-        )
++        self.assertFalse(hasattr(scheduler_config, "memory_reserve"))
++        self.assertFalse(hasattr(scheduler_config, "decode_memory_policy_id"))
+         self.assertEqual(scheduler_config.decode_utility, 1)
+         self.assertEqual(scheduler_config.prefill_token_utility, 1)
+         self.assertEqual(scheduler_config.preemption_penalty, 1)
+@@ -130,14 +127,64 @@ class LPEngineArgsTest(unittest.TestCase):
+                 self.model_config_cls.assert_not_called()
+                 self.assertFalse(os.path.exists(self.config_path()))
+ 
+-    def test_zero_reserve_and_zero_penalty_are_supplied_values(self):
+-        args = EngineArgs(
+-            **self.lp_kwargs(lp_memory_reserve=0, lp_preemption_penalty=0)
+-        )
++    def test_zero_penalty_is_a_supplied_value(self):
++        args = EngineArgs(**self.lp_kwargs(lp_preemption_penalty=0))
+         scheduler_config = args.create_engine_configs()[3]
+-        self.assertEqual(scheduler_config.memory_reserve, 0)
+         self.assertEqual(scheduler_config.preemption_penalty, 0)
+ 
++    def test_obsolete_arguments_fail_with_migration_guidance(self):
++        self.assertNotIn("lp_memory_reserve", arg_utils._LP_REQUIRED_FIELDS)
++        # The removed names stay as reject-only fields so later positional
++        # bindings are unchanged.
++        names = [f.name for f in fields(EngineArgs)]
++        self.assertEqual(names[names.index("lp_b_max"):], [
++            "lp_b_max", "lp_c_max", "lp_s_max", "lp_memory_reserve",
++            "lp_decode_memory_policy_id", "lp_decode_utility",
++            "lp_prefill_token_utility", "lp_preemption_penalty",
++            "lp_numerical_policy",
++        ])
++        cases = [
++            dict(lp_memory_reserve=0),
++            dict(lp_memory_reserve=1),
++            dict(lp_decode_memory_policy_id="conservative_one_block_v1"),
++            dict(lp_memory_reserve=0, lp_decode_memory_policy_id="x"),
++        ]
++        with mock.patch.object(llm_engine, "BaseLLMEngine") as base_engine:
++            for overrides in cases:
++                with self.subTest(overrides=overrides):
++                    with self.assertRaisesRegex(
++                            ValueError, "watermark is read from the shared"):
++                        llm_engine.LLMEngine.from_engine_args(
++                            **self.lp_kwargs(**overrides))
++                    # Also rejected for a non-LP scheduler type.
++                    with self.assertRaisesRegex(ValueError, "were removed"):
++                        EngineArgs(model=MODEL, scheduler_type="vllm",
++                                   output_dir=self.output_dir, **overrides)
++                    self.model_config_cls.assert_not_called()
++                    base_engine.assert_not_called()
++                    self.assertFalse(os.path.exists(self.config_path()))
++
++        # Direct configuration: by keyword (including zero) or as the two
++        # extra positional arguments of the old signature.
++        base = dict(
++            max_num_seqs=RESIDENT_LIMIT, max_model_len=MAX_MODEL_LEN,
++            num_pipeline_stages=1, b_max=8, c_max=4, s_max=3,
++            decode_utility=1, prefill_token_utility=1, preemption_penalty=1,
++            numerical_policy=numerical_policy(),
++        )
++        self.assertIs(type(LPSchedulerConfig(**base)), LPSchedulerConfig)
++        for extra in (dict(memory_reserve=0),
++                      dict(decode_memory_policy_id="conservative_one_block_v1")):
++            with self.subTest(extra=extra):
++                with self.assertRaisesRegex(ValueError, "were removed"):
++                    LPSchedulerConfig(**base, **extra)
++        with self.assertRaisesRegex(ValueError, "were removed"):
++            LPSchedulerConfig(
++                RESIDENT_LIMIT, MAX_MODEL_LEN, 1, 8, 4, 3,
++                0, "conservative_one_block_v1", 1, 1, 1, numerical_policy())
++        with self.assertRaises(TypeError):
++            LPSchedulerConfig(**base, unknown_argument=1)
++
+     def test_configuration_errors_fail_before_model_engine_and_config_write(self):
+         cases = [
+             (
+@@ -171,6 +218,8 @@ class LPEngineArgsTest(unittest.TestCase):
+         recorded = yaml.safe_load(text)
+         for name, value in LP_ARGS.items():
+             self.assertEqual(recorded[name], value)
++        self.assertNotIn("lp_memory_reserve", recorded)
++        self.assertNotIn("lp_decode_memory_policy_id", recorded)
+         self.assertEqual(
+             recorded["lp_numerical_policy"],
+             {
+diff --git a/tests/test_lp_relaxation_scheduler.py b/tests/test_lp_relaxation_scheduler.py
+index 93d0429..04d98f7 100644
+--- a/tests/test_lp_relaxation_scheduler.py
++++ b/tests/test_lp_relaxation_scheduler.py
+@@ -123,11 +123,15 @@ def problem(specs, b, c, s, n, free, h, pid="test"):
+ 
+ 
+ def runtime_pool_consistent(prob):
+-    """Test-side label check: pool T = free + all resident blocks (every
+-    resident preemptible, so its recovery is its block count), default
+-    watermark h = floor(0.01 T), and A_i + h <= T for each waiting prefill.
+-    This is only the pool/watermark part of initial admission validation."""
+-    if any(r.resident and not r.preemption_eligible for r in prob.requests):
++    """Test-side label check: every resident has the live mapper's shape (a
++    preemptible partial prefill or decode), pool T = free + all resident
++    blocks, default watermark h = floor(0.01 T), and A_i + h <= T for each
++    waiting prefill. This is only the resident-shape and pool/watermark part
++    of initial admission validation."""
++    if any(r.resident and not (
++            r.preemption_eligible
++            and (r.prefill_eligible or r.decode_eligible))
++           for r in prob.requests):
+         return False
+     total = prob.m_free + sum(
+         r.preemption_recovery for r in prob.requests if r.resident)
+@@ -243,20 +247,46 @@ def oracle_best(prob):
+     return best is not None, best
+ 
+ 
+-def plan_choice(plan):
++def oracle_choice(prob, decisions):
++    """Independently check a returned decision tuple and convert it to an
++    action choice. Raises AssertionError on any violation of request
++    association, integer domains, canonical indicators, action exclusivity,
++    eligibility, or chunk bounds (including the request's own remainder).
++    Resources are checked separately by ``oracle_simulate``."""
++    reqs = prob.requests
++    assert isinstance(decisions, tuple) and len(decisions) == len(reqs), \
++        "one decision per request"
+     out = []
+-    for d in plan.decisions:
+-        if d.prefill_tokens:
+-            out.append(("prefill", d.prefill_tokens))
+-        elif d.decode:
++    for r, d in zip(reqs, decisions):
++        rid = r.request_id
++        assert (d.request_id, d.order_key) == (rid, r.order_key), \
++            f"{rid}: association"
++        x, y, z, ind = d.prefill_tokens, d.decode, d.preempt, d.prefill_indicator
++        assert all(type(v) is int for v in (x, y, z, ind)), f"{rid}: domain"
++        assert x >= 0 and {y, z, ind} <= {0, 1}, f"{rid}: domain"
++        assert ind == (1 if x > 0 else 0), f"{rid}: canonical indicator"
++        assert ind + y + z <= 1, f"{rid}: conflicting action flags"
++        if x:
++            assert r.prefill_eligible, f"{rid}: prefill not eligible"
++            assert x <= r.prompt_tokens_remaining, f"{rid}: exceeds remainder"
++            assert x <= prob.c_max, f"{rid}: exceeds chunk cap"
++            out.append(("prefill", x))
++        elif y:
++            assert r.decode_eligible, f"{rid}: decode not eligible"
+             out.append(("decode",))
+-        elif d.preempt:
++        elif z:
++            assert r.preemption_eligible and r.resident \
++                and rid in prob.legal_preemption_ids, f"{rid}: illegal victim"
+             out.append(("preempt",))
+         else:
+             out.append(None)
+     return tuple(out)
+ 
+ 
++def plan_choice(plan, prob):
++    return oracle_choice(prob, plan.decisions)
++
++
+ def choice_vector(prob, choice):
+     n = len(prob.requests)
+     v = [0.0] * (4 * n)
+@@ -342,7 +372,8 @@ class LPRelaxationSchedulerTest(unittest.TestCase):
+         plan = lrs.extract_integer_plan(canonical, relaxed)
+         if isinstance(plan, lrs.IntegerPlan):
+             self.assertIs(lrs.validate_integer_plan(canonical, plan), plan)
+-            legal, useful, util = oracle_simulate(canonical, plan_choice(plan))
++            legal, useful, util = oracle_simulate(
++                canonical, plan_choice(plan, canonical))
+             self.assertTrue(legal and useful)
+             self.assertAlmostEqual(util, plan.objective, places=9)
+         return canonical, relaxed, plan
+@@ -686,7 +717,7 @@ class LPRelaxationSchedulerTest(unittest.TestCase):
+         # RUNTIME (pool 4, h = 0): another resident can be preempted.
+         prob = problem(
+             [decoder("d", 1, 0, 3, alpha=5.0, gamma=1.0),
+-             idle("v", 2, 1, gamma=1.0)],
++             decoder("v", 2, 0, 1, alpha=0.0, gamma=1.0)],
+             b=1, c=1, s=1, n=2, free=0, h=0)
+         self.assertTrue(runtime_pool_consistent(prob))
+         result = lrs.solve_and_extract(prob)
+@@ -769,12 +800,14 @@ class LPRelaxationSchedulerTest(unittest.TestCase):
+                 self.assertEqual(list(acts.values()), ["prefill:1"])
+ 
+     def test_integral_idle_victim_and_zero_support_candidate(self):
+-        # RUNTIME: pool 200, h = 2; the background resident is integral idle.
++        # ABSTRACT: pool 200 and h = 2 are consistent, but the background
++        # resident is preemptible with no eligible execution action, a shape
++        # the live mapper never produces. It is integral idle in the LP.
+         prob = problem(
+             [waiting("w1", 1, 1, 2, beta=1.0), waiting("w2", 2, 1, 2, beta=1.0),
+              idle("bg", 3, 197, gamma=1000.0)],
+             b=2, c=1, s=2, n=3, free=3, h=2)
+-        self.assertTrue(runtime_pool_consistent(prob))
++        self.assertFalse(runtime_pool_consistent(prob), ABSTRACT)
+         canonical, relaxed, plan = self.extract(prob, {
+             "w1": {"x": 0.5, "I": 0.5}, "w2": {"x": 0.5, "I": 0.5}})
+         solved = lrs.solve_relaxation(canonical)
+@@ -1238,6 +1271,45 @@ class LPRelaxationSchedulerTest(unittest.TestCase):
+                          (lrs.STAGE_PLAN, lrs.OUTCOME_INVALID))
+         self.assertEqual(result.solver.diagnostics.raw_status, 0)
+ 
++    def test_oversized_vector_entry_is_structured_failure(self):
++        prob = canon(self, self.row_fixture())
++        raw = list(vector(prob, {"d1": {"y": 1.0}}))
++        raw[0] = 10 ** 400
++        result = lrs.validate_relaxed_solution(prob, raw)
++        self.assertIsInstance(result, lrs.Failure)
++        self.assertEqual((result.category, result.outcome),
++                         ("malformed_vector", lrs.OUTCOME_NUMERICAL))
++
++    def test_independent_oracle_rejects_malformed_decisions(self):
++        prob = mass_preemption(positive=True)
++        canonical, _, plan = self.extract(prob, MASS_POINT)
++        self.assertEqual(len(oracle_choice(canonical, plan.decisions)),
++                         len(canonical.requests))
++
++        def tampered(rid, **kw):
++            return tuple(dataclasses.replace(d, **kw) if d.request_id == rid
++                         else d for d in plan.decisions)
++
++        cases = {
++            "conflicting decode and preempt": tampered("B", preempt=1),
++            "conflicting prefill and decode": tampered("W", decode=1),
++            "prefill beyond remainder": tampered("W", prefill_tokens=2),
++            "noncanonical indicator": tampered("R000", prefill_indicator=1),
++            "bool flag": tampered("B", decode=True),
++            "decode not eligible": tampered("W", prefill_tokens=0,
++                                            prefill_indicator=0, decode=1),
++            "association": tuple(reversed(plan.decisions)),
++            "missing decision": plan.decisions[:-1],
++        }
++        for name, decisions in cases.items():
++            with self.subTest(name):
++                with self.assertRaises(AssertionError):
++                    oracle_choice(canonical, decisions)
++                bad = lrs.validate_integer_plan(canonical, dataclasses.replace(
++                    plan, decisions=decisions))
++                self.assertIsInstance(bad, lrs.Failure)
++                self.assertEqual(bad.outcome, lrs.OUTCOME_INVALID)
++
+     # -- independent bounded enumeration ----------------------------------------
+ 
+     def random_state(self, rng, index):
+@@ -1309,7 +1381,7 @@ class LPRelaxationSchedulerTest(unittest.TestCase):
+                 counts["success"] += 1
+                 self.assertTrue(exists, index)
+                 legal, useful, util = oracle_simulate(
+-                    prob, plan_choice(result.plan))
++                    prob, plan_choice(result.plan, prob))
+                 self.assertTrue(legal and useful, index)
+                 self.assertLessEqual(util, best + 1e-9)
+                 self.assertGreaterEqual(
+@@ -1336,7 +1408,8 @@ class LPRelaxationSchedulerTest(unittest.TestCase):
+                 counts["guided_success"] += 1
+                 self.assertTrue(exists, index)
+                 self.assertIs(lrs.validate_integer_plan(prob, plan), plan)
+-                legal, useful, _ = oracle_simulate(prob, plan_choice(plan))
++                legal, useful, _ = oracle_simulate(
++                    prob, plan_choice(plan, prob))
+                 self.assertTrue(legal and useful, index)
+             else:
+                 counts["guided_none"] += 1
+diff --git a/tests/test_lp_scheduler.py b/tests/test_lp_scheduler.py
+index b2d67a7..5c5dad0 100644
+--- a/tests/test_lp_scheduler.py
++++ b/tests/test_lp_scheduler.py
+@@ -50,8 +50,6 @@ RESIDENT_LIMIT = 4
+ B_MAX = 8
+ C_MAX = 4
+ S_MAX = 3
+-MEMORY_RESERVE = 1
+-DECODE_POLICY_ID = "conservative_one_block_v1"
+ DECODE_UTILITY = 1.0
+ PREFILL_TOKEN_UTILITY = 1.0
+ PREEMPTION_PENALTY = 1.0
+@@ -89,8 +87,6 @@ def _config(**overrides):
+         b_max=B_MAX,
+         c_max=C_MAX,
+         s_max=S_MAX,
+-        memory_reserve=MEMORY_RESERVE,
+-        decode_memory_policy_id=DECODE_POLICY_ID,
+         decode_utility=DECODE_UTILITY,
+         prefill_token_utility=PREFILL_TOKEN_UTILITY,
+         preemption_penalty=PREEMPTION_PENALTY,
+@@ -236,15 +232,15 @@ class _Spies:
+         self._patches = []
+ 
+     def __enter__(self):
+-        real_utilities = LPScheduler._build_utilities
++        real_capture = lsm.capture_scheduler_state
+         real_map = lsm.map_scheduler_state
+         real_solve = lrs.solve_and_extract
+         real_execute = lpe.execute_plan
+         calls = self.calls
+ 
+-        def utilities(scheduler, now):
+-            calls.append(("utilities", now))
+-            return real_utilities(scheduler, now)
++        def capture(scheduler, *, snapshot_time):
++            calls.append(("capture", snapshot_time))
++            return real_capture(scheduler, snapshot_time=snapshot_time)
+ 
+         def map_state(scheduler, **kwargs):
+             result = real_map(scheduler, **kwargs)
+@@ -267,7 +263,7 @@ class _Spies:
+             return call[3]
+ 
+         self._patches = [
+-            mock.patch.object(LPScheduler, "_build_utilities", utilities),
++            mock.patch.object(lsm, "capture_scheduler_state", capture),
+             mock.patch.object(lsm, "map_scheduler_state", map_state),
+             mock.patch.object(lrs, "solve_and_extract", solve),
+             mock.patch.object(lpe, "execute_plan", execute),
+@@ -341,18 +337,28 @@ class OrdinaryIdleTest(unittest.TestCase):
+         self._assert_idle(harness, now=5.0)
+         self.assertEqual(harness.scheduler.waiting[0].get_status(), SequenceStatus.WAITING)
+ 
++    def test_future_head_does_not_hide_arrived_work(self):
++        harness = _Harness()
++        harness.add(0, 4, arrival_time=10.0, max_tokens=2)
++        harness.add(1, 4, arrival_time=1.0, max_tokens=2)
++        with _Spies() as spies:
++            outputs = harness.schedule(5.0)
++        self.assertEqual(spies.names(), ["capture", "map", "solve", "execute"])
++        self.assertEqual(_emitted(outputs), [(1, 4)])
++        self.assertEqual([s.seq_id for s in harness.scheduler.waiting], [0])
++
+ 
+ class LivePipelineTest(unittest.TestCase):
+     def _assert_synchronous_pipeline(self, harness, spies, now, outputs):
+         scheduler = harness.scheduler
+-        self.assertEqual(spies.names(), ["utilities", "map", "solve", "execute"])
++        self.assertEqual(spies.names(), ["capture", "map", "solve", "execute"])
+         self.assertEqual(harness.clock.monotonic.call_count, 1)
+-        _, utilities_now = spies.calls[0]
++        _, capture_now = spies.calls[0]
+         _, map_now, map_batches, map_iteration, snapshot = spies.calls[1]
+         _, problem_id, result = spies.calls[2]
+         _, executed_snapshot, execute_batches, executed_outputs = spies.calls[3]
+         decision_id = str(scheduler._iteration_id)
+-        self.assertEqual((utilities_now, map_now, snapshot.snapshot_time), (now,) * 3)
++        self.assertEqual((capture_now, map_now, snapshot.snapshot_time), (now,) * 3)
+         self.assertEqual(map_iteration, scheduler._iteration_id)
+         self.assertEqual(
+             (snapshot.snapshot_id, problem_id, result.problem_id,
+@@ -442,7 +448,9 @@ class LivePipelineTest(unittest.TestCase):
+         # Request 1 is admitted ahead of request 0's decode (prompt first),
+         # although request 0 has the smaller order_key.
+         self.assertEqual(_emitted(harness.step(2.0)), [(1, 4), (0, 0)])
+-        self.assertEqual(_emitted(harness.step(3.0)), [(2, 4), (0, 0), (1, 0)])
++        # Request 0's decode token opened a second logical block (demand 1);
++        # request 1 has demand 0, so it decodes first (zero-demand group).
++        self.assertEqual(_emitted(harness.step(3.0)), [(2, 4), (1, 0), (0, 0)])
+         self.assertEqual(harness.central_tables(), harness.worker_tables())
+         self.assertEqual(scheduler.num_running_batches, 0)
+ 
+@@ -461,7 +469,13 @@ class LivePipelineTest(unittest.TestCase):
+         self.assertEqual(emitted[0], (3, 4))
+         decoded = [seq_id for seq_id, chunk in emitted[1:]]
+         self.assertEqual([chunk for _, chunk in emitted[1:]], [0, 0])
+-        self.assertEqual(decoded, sorted(decoded))
++        # Decodes follow the declared order: demand group, then service rank.
++        records = {r.raw_seq_id: r for r in spies.calls[1][4].requests}
++        self.assertEqual(
++            decoded,
++            sorted(decoded, key=lambda k: (records[k].decode_demand,
++                                           records[k].service_rank, k)),
++        )
+         self.assertEqual(len(decoded), 2)
+         self.assertTrue(set(decoded) < {0, 1, 2})
+         (unselected,) = {0, 1, 2} - set(decoded)
+@@ -591,11 +605,11 @@ class LivePipelineTest(unittest.TestCase):
+                 (B_MAX, c_max, s_max),
+             )
+             self.assertEqual(
+-                (snapshot.memory_reserve, snapshot.resident_limit,
+-                 snapshot.decode_memory_policy_id, snapshot.free_physical_blocks,
+-                 problem.m_free),
+-                (MEMORY_RESERVE, max_num_seqs, DECODE_POLICY_ID, free_before,
+-                 free_before),
++                (snapshot.resident_limit, snapshot.free_physical_blocks,
++                 problem.m_free, problem.resident_limit,
++                 problem.admission_watermark),
++                (max_num_seqs, free_before, free_before, max_num_seqs,
++                 block_manager.watermark_blocks),
+             )
+             self.assertIs(snapshot.numerical_policy, NUMERICAL_POLICY)
+             self.assertEqual(
+@@ -607,16 +621,23 @@ class LivePipelineTest(unittest.TestCase):
+ 
+             # The complete integer plan matches the emitted actions.
+             plan = result.plan
+-            self.assertEqual(
+-                (plan.dominant_preemption_ids, plan.safety_preemption_ids), ((), ()),
+-            )
++            self.assertEqual(plan.victim_order, ())
+             selected = []
+             for d in plan.decisions:
+                 self.assertEqual(d.preempt, 0)
+                 self.assertFalse(d.prefill_tokens > 0 and d.decode)
+                 if d.prefill_tokens > 0 or d.decode:
+                     selected.append(d)
+-            selected.sort(key=lambda d: (0 if d.prefill_tokens > 0 else 1, d.order_key))
++            # Independent statement of the declared order: prefills, then
++            # zero-demand and one-block decodes, each by service rank, then
++            # identity, from the snapshot's captured demand and ranks.
++            records = {r.request_id: r for r in snapshot.requests}
++            selected.sort(key=lambda d: (
++                0 if d.prefill_tokens > 0
++                else 1 + records[d.request_id].decode_demand,
++                records[d.request_id].service_rank, d.order_key))
++            self.assertEqual(
++                [d.request_id for d in selected], list(plan.execution_order))
+             emitted = _emitted(outputs)
+             self.assertEqual(
+                 emitted, [(raw[d.request_id], d.prefill_tokens) for d in selected],
+@@ -788,7 +809,7 @@ class LivePreemptionTest(unittest.TestCase):
+     # harness gives request A (ID 0) prompt tokens 0..4 and B (ID 1) 0..11.
+     POOL = 4
+     CONFIG = dict(
+-        max_num_seqs=1, b_max=4, c_max=4, s_max=1, memory_reserve=0,
++        max_num_seqs=1, b_max=4, c_max=4, s_max=1,
+         decode_utility=10.0, prefill_token_utility=1.0, preemption_penalty=1.0,
+     )
+     PROMPT_A = list(range(5))
+@@ -850,26 +871,28 @@ class LivePreemptionTest(unittest.TestCase):
+         snapshot, result = spies.calls[1][4], spies.calls[2][2]
+         problem = snapshot.lp_problem
+         self.assertEqual(problem.legal_preemption_ids, frozenset({"0"}))
+-        self.assertEqual((problem.m_free, problem.w), (2, 0))
++        self.assertEqual((problem.m_free, problem.admission_watermark), (2, 0))
+         requests = {r.request_id: r for r in problem.requests}
+         self.assertEqual(requests["0"].preemption_recovery, 2)
+         self.assertEqual(requests["1"].prefill_fixed_charge, 3)
+         relaxed = {d.request_id: d for d in result.relaxed.decisions}
+         tol = NUMERICAL_POLICY.feasibility_tol
+-        for rid, values in (("0", (0, 0, 0, 0.5)), ("1", (4, 0, 1, 0))):
++        # Corrected LP: the resident row (limit 1) forces z_A >= I_B, so the
++        # unique optimum preempts A fully: 4 * 1 - 1 = 3 (the superseded
++        # memory-only LP had z_A = 0.5 and 3.5).
++        for rid, values in (("0", (0, 0, 0, 1)), ("1", (4, 0, 1, 0))):
+             d = relaxed[rid]
+             for got, want in zip((d.x, d.y, d.prefill_indicator, d.z), values):
+                 self.assertAlmostEqual(got, want, delta=tol)
+         self.assertAlmostEqual(
+-            result.relaxed.normalized_objective, 3.5, delta=tol,
++            result.relaxed.normalized_objective, 3.0, delta=tol,
+         )
+         self.assertEqual(
+             [(d.request_id, d.prefill_tokens, d.decode, d.preempt)
+              for d in result.plan.decisions],
+             [("0", 0, 0, 1), ("1", 4, 0, 0)],
+         )
+-        self.assertEqual(result.plan.dominant_preemption_ids, ("0",))
+-        self.assertEqual(result.plan.safety_preemption_ids, ())
++        self.assertEqual(result.plan.victim_order, ("0",))
+         self.assertEqual(outputs.preempted_seq_ids, [0])
+         self.assertEqual(_emitted(outputs), [(1, 4)])
+ 
+@@ -982,11 +1005,12 @@ class LiveDecodePreemptionTest(unittest.TestCase):
+     # reserve. Utilities are fixed per request for this case only (D-03
+     # remains OPEN): A decode 40, prefill-token 1, penalty 1; B decode 40,
+     # prefill-token 20, penalty 1. The configured uniform triple is A's; a
+-    # validation-only override of _build_utilities supplies B's.
++    # validation-only override of _coefficient_policy supplies a per-request
++    # policy evaluated on the captured data only.
+     POOL = 4
+     CONFIG = dict(
+         max_num_seqs=1, max_model_len=16, b_max=4, c_max=4, s_max=1,
+-        memory_reserve=0, decode_utility=40.0, prefill_token_utility=1.0,
++        decode_utility=40.0, prefill_token_utility=1.0,
+         preemption_penalty=1.0,
+     )
+     A, B = 0, 1  # raw seq IDs for requests A and B
+@@ -1024,16 +1048,14 @@ class LiveDecodePreemptionTest(unittest.TestCase):
+     _assert_managers_agree = LivePreemptionTest._assert_managers_agree
+ 
+     def _fixed_utilities(self):
+-        """Validation-only: give exactly the arrived, unfinished raw IDs that
+-        the real method selects their fixed A/B triple. The mapper still
+-        validates the exact key set and copies the values immutably."""
+-        real = LPScheduler._build_utilities
++        """Validation-only: each captured request receives its fixed A/B
++        triple. The mapper validates and copies the values immutably."""
+         fixed = self.UTILITIES
+ 
+-        def build(scheduler, now):
+-            return {seq_id: fixed[seq_id] for seq_id in real(scheduler, now)}
++        def policy(scheduler):
++            return lambda captured, request: fixed[request.raw_seq_id]
+ 
+-        return mock.patch.object(LPScheduler, "_build_utilities", build)
++        return mock.patch.object(LPScheduler, "_coefficient_policy", policy)
+ 
+     def _state(self, harness):
+         """Primitive central/worker state at a step boundary, for the trace."""
+@@ -1053,10 +1075,10 @@ class LiveDecodePreemptionTest(unittest.TestCase):
+         )
+ 
+     def test_decode_preemption_recomputes_expanded_context_to_completion(self):
+-        real_build_utilities = LPScheduler._build_utilities
++        real_policy = LPScheduler._coefficient_policy
+         with self._fixed_utilities():
+             self._run_case()
+-        self.assertIs(LPScheduler._build_utilities, real_build_utilities)
++        self.assertIs(LPScheduler._coefficient_policy, real_policy)
+ 
+     def _run_case(self):
+         A, B = self.A, self.B
+@@ -1148,7 +1170,7 @@ class LiveDecodePreemptionTest(unittest.TestCase):
+             self.assertEqual(sorted(requests), unfinished)
+             for raw_id, r in requests.items():
+                 self.assertEqual(r.utility, self.UTILITIES[raw_id])
+-            self.assertEqual((problem.m_free, problem.w), (before["central_free"], 0))
++            self.assertEqual((problem.m_free, problem.admission_watermark), (before["central_free"], 0))
+ 
+             self.assertEqual(outputs.id, step)
+             self.assertEqual(outputs.preempted_seq_ids, preempted)
+@@ -1300,15 +1322,15 @@ class LiveDecodePreemptionTest(unittest.TestCase):
+         # resident with one generated token, two blocks, and recovery two;
+         # B waits unallocated with fixed admission charge three.
+         self.assertEqual(problem.legal_preemption_ids, frozenset({str(A)}))
+-        self.assertEqual((problem.m_free, problem.w), (2, 0))
++        self.assertEqual((problem.m_free, problem.admission_watermark), (2, 0))
+         self.assertEqual(before["central_seqs"][A][3], (101,))
+         self.assertEqual(
+             (ra.ownership, ra.status, ra.prompt_len, ra.prompt_tokens_processed,
+              ra.prompt_processing_finished, ra.physical_block_count,
+              ra.preemption_eligible, ra.preemption_recovery,
+-             ra.decode_eligible, ra.decode_charge, ra.prefill_eligible),
++             ra.decode_eligible, ra.decode_demand, ra.prefill_eligible),
+             (lsm.OWNERSHIP_RUNNING, "PAUSED", 5, 5, True, 2,
+-             True, 2, True, 1, False),
++             True, 2, True, 0, False),
+         )
+         self.assertEqual(
+             (rb.ownership, rb.status, rb.prompt_len, rb.physical_block_count,
+@@ -1316,19 +1338,22 @@ class LiveDecodePreemptionTest(unittest.TestCase):
+             (lsm.OWNERSHIP_WAITING, "WAITING", 12, 0, False, 3),
+         )
+ 
+-        # Relaxed solution and integer extraction.
+-        for rid, values in ((str(A), (0, 0, 0, 0.5)), (str(B), (4, 0, 1, 0))):
++        # Relaxed solution and integer extraction. A's six tokens fill two
++        # logical and two physical blocks: exact decode demand 0. The
++        # resident row (limit 1) forces z_A >= I_B, so with I_B = t the value
++        # is 80t - t + 40(1 - t), maximized at t = 1: 79 (superseded: 79.5
++        # with z_A = 0.5).
++        for rid, values in ((str(A), (0, 0, 0, 1)), (str(B), (4, 0, 1, 0))):
+             d = relaxed[rid]
+             for got, want in zip((d.x, d.y, d.prefill_indicator, d.z), values):
+                 self.assertAlmostEqual(got, want, delta=tol)
+-        self.assertAlmostEqual(result.relaxed.normalized_objective, 79.5, delta=tol)
++        self.assertAlmostEqual(result.relaxed.normalized_objective, 79.0, delta=tol)
+         self.assertEqual(
+             [(d.request_id, d.prefill_tokens, d.decode, d.preempt)
+              for d in result.plan.decisions],
+             [(str(A), 0, 0, 1), (str(B), 4, 0, 0)],
+         )
+-        self.assertEqual(result.plan.dominant_preemption_ids, (str(A),))
+-        self.assertEqual(result.plan.safety_preemption_ids, ())
++        self.assertEqual(result.plan.victim_order, (str(A),))
+         self.assertAlmostEqual(result.plan.objective, 79.0, delta=tol)
+ 
+         # Central execution: A's two blocks are freed through native
+@@ -1368,38 +1393,61 @@ class PreMutationFailureTest(unittest.TestCase):
+         return error, spies
+ 
+     def test_mapping_failure_stops_before_solver(self):
+-        # Case-specific: a decode policy identifier the mapper does not accept.
+-        harness = _Harness(decode_memory_policy_id="exact_gap_v1")
++        # Case-specific: a negative configured coefficient is rejected by the
++        # coefficient construction step inside mapping.
++        harness = _Harness(decode_utility=-1.0)
+         harness.add(0, 4, arrival_time=1.0, max_tokens=2)
+-        error, spies = self._assert_failure(harness, 2.0, ["utilities", "map"])
++        error, spies = self._assert_failure(harness, 2.0, ["capture", "map"])
+         self.assertIsInstance(error.failure, lsm.MappingFailure)
+         self.assertEqual(error.stage, lsm.STAGE_STATE_MAPPING)
+-        self.assertIn("decode_memory_policy_id", error.reason)
++        self.assertIn("coefficient decode_utility", error.reason)
+         self.assertIsNone(error.solver_diagnostics)
+ 
+-    def test_mathematical_failure_stops_before_executor(self):
+-        # Case-specific: a reserve above the 10 free blocks makes the LP
+-        # infeasible even for the all-zero plan.
+-        harness = _Harness(memory_reserve=11)
+-        harness.add(0, 4, arrival_time=1.0, max_tokens=2)
+-        error, spies = self._assert_failure(harness, 2.0, ["utilities", "map", "solve"])
++    def test_solver_reported_infeasibility_stops_before_executor(self):
++        # Case-specific 2-block pool: request 0 (8 prompt tokens) passes
++        # initial admission (2 + 0 <= 2, equality) and is prefilled into the
++        # whole pool. Its decode has demand 0, but the native append gate
++        # still needs one free block; it cannot be its own victim, so no
++        # legal useful plan exists and the LP is infeasible. Admission
++        # validity does not guarantee completion.
++        harness = _Harness(num_gpu_blocks=2)
++        harness.add(0, 8, arrival_time=1.0, max_tokens=4)
++        self.assertEqual(_emitted(harness.step(1.0)), [(0, 4)])
++        self.assertEqual(_emitted(harness.step(1.0)), [(0, 4)])
++        seq = harness.scheduler.running[0]
++        self.assertEqual(
++            (len(seq.logical_token_blocks), seq.get_output_len(),
++             harness.scheduler.block_manager.get_num_free_gpu_blocks()),
++            (2, 0, 0))
++        error, spies = self._assert_failure(
++            harness, 2.0, ["capture", "map", "solve"])
+         self.assertIsInstance(error.failure, lrs.Failure)
+-        self.assertEqual((error.stage, error.category), ("solver", "infeasible"))
+-        self.assertEqual(error.snapshot_id, "0")
++        self.assertEqual(
++            (error.stage, error.category, error.failure.outcome),
++            ("solver", lrs.CATEGORY_LP_INFEASIBLE, lrs.OUTCOME_LP_INFEASIBLE))
++        self.assertEqual(error.snapshot_id, "2")
+         self.assertIsInstance(error.solver_diagnostics, lrs.SolverDiagnostics)
+         self.assertEqual(error.solver_diagnostics.raw_status, 2)
+ 
+     def test_physically_infeasible_plan_raises_executor_failure(self):
+-        # Case-specific resident limit 1: the LP has no resident constraint,
+-        # so it selects request 0's decode and request 1's admission, which
+-        # native precommit validation rejects.
+-        harness = _Harness(max_num_seqs=1)
++        # Induced drift: the resident limit read by the executor is lowered
++        # after mapping (4) and solving, so the planned admission of request
++        # 1 alongside resident 0 fails current-state precommit validation.
++        harness = _Harness()
+         harness.add(0, 4, arrival_time=1.0, max_tokens=4)
+         harness.add(1, 4, arrival_time=2.0, max_tokens=4)
+         self.assertEqual(_emitted(harness.step(1.0)), [(0, 4)])
+-        error, spies = self._assert_failure(
+-            harness, 2.0, ["utilities", "map", "solve", "execute"],
+-        )
++        real_solve = lrs.solve_and_extract
++
++        def solve_then_drift(problem):
++            result = real_solve(problem)
++            harness.scheduler.scheduler_config.max_num_seqs = 1
++            return result
++
++        with mock.patch.object(lrs, "solve_and_extract", solve_then_drift):
++            error, spies = self._assert_failure(
++                harness, 2.0, ["capture", "map", "solve", "execute"],
++            )
+         self.assertIsInstance(error.failure, lrs.Failure)
+         self.assertEqual(
+             (error.stage, error.category),
+@@ -1409,21 +1457,31 @@ class PreMutationFailureTest(unittest.TestCase):
+         self.assertEqual(harness.scheduler.num_running_batches, 0)
+ 
+     def test_no_progress_plan_is_not_ordinary_idle(self):
+-        # Case-specific reserve 9: one planning block remains, below the
+-        # 2-block admission charge, so the validated plan is all-zero.
+-        harness = _Harness(memory_reserve=9)
++        # The corrected solver path never returns an empty plan (useful
++        # execution is an LP row and validated). The defensive executor gate
++        # is exercised by replacing the validated plan with an erroneous
++        # all-zero one; it fails as no_progress, not as idle output.
++        harness = _Harness()
+         harness.add(0, 8, arrival_time=1.0, max_tokens=2)
+-        error, spies = self._assert_failure(
+-            harness, 2.0, ["utilities", "map", "solve", "execute"],
+-        )
++        real_solve = lrs.solve_and_extract
++
++        def solve_then_empty(problem):
++            result = real_solve(problem)
++            plan = result.plan
++            empty = tuple(dataclasses.replace(
++                d, prefill_tokens=0, decode=0, preempt=0, prefill_indicator=0)
++                for d in plan.decisions)
++            return dataclasses.replace(result, plan=dataclasses.replace(
++                plan, decisions=empty, execution_order=(), token_use=0,
++                action_count=0))
++
++        with mock.patch.object(lrs, "solve_and_extract", solve_then_empty):
++            error, spies = self._assert_failure(
++                harness, 2.0, ["capture", "map", "solve", "execute"],
++            )
+         self.assertEqual(error.category, lpe.CATEGORY_NO_PROGRESS)
++        self.assertEqual(error.failure.outcome, lrs.OUTCOME_INVALID)
+         self.assertEqual(error.snapshot_id, "0")
+-        _, _, result = spies.calls[2]
+-        self.assertIsInstance(result, lrs.SchedulingSuccess)
+-        self.assertEqual(
+-            [(d.prefill_tokens, d.decode, d.preempt) for d in result.plan.decisions],
+-            [(0, 0, 0)],
+-        )
+ 
+ 
+ class UnsupportedEntryAndDestructiveFailureTest(unittest.TestCase):
+@@ -1496,7 +1554,7 @@ class UnsupportedEntryAndDestructiveFailureTest(unittest.TestCase):
+ 
+         self.assertIs(type(caught.exception), RuntimeError)
+         self.assertEqual(str(caught.exception), "induced allocation failure")
+-        self.assertEqual(spies.names(), ["utilities", "map", "solve", "execute"])
++        self.assertEqual(spies.names(), ["capture", "map", "solve", "execute"])
+         self.assertIsNone(spies.calls[3][3])
+         self.assertEqual(allocations, [1, 2])
+         append_slot.assert_not_called()
+@@ -1514,5 +1572,89 @@ class UnsupportedEntryAndDestructiveFailureTest(unittest.TestCase):
+         del harness, scheduler
+ 
+ 
++class SubmissionBoundaryTest(unittest.TestCase):
++    """The real ``BaseLLMEngine.add_request`` with test doubles for the
++    tokenizer-free sequence manager, workers, and metrics. The engine is not
++    initialized (no model, workers, or GPU); only the attributes that
++    ``add_request`` reads are set."""
++
++    def _engine(self, scheduler_config, num_gpu_blocks):
++        from sarathi.engine.base_llm_engine import BaseLLMEngine
++        from sarathi.utils import Counter
++
++        engine = object.__new__(BaseLLMEngine)
++        engine.scheduler_config = scheduler_config
++        engine.cache_config = _cache_config(num_gpu_blocks)
++        engine.tokenizer = mock.Mock(eos_token_id=-2)
++        engine.seq_manager = mock.Mock()
++        engine.seq_counter = Counter()
++        engine._run_workers = mock.Mock()
++        engine.metrics_store = mock.Mock()
++        engine.scheduler = SchedulerRegistry.get(
++            scheduler_config.type, scheduler_config, engine.cache_config)
++        return engine
++
++    def _add(self, engine, num_tokens):
++        engine.add_request(
++            None, SamplingParams(ignore_eos=True, max_tokens=4),
++            prompt_token_ids=list(range(num_tokens)), arrival_time=1.0,
++        )
++
++    def _registered(self, engine):
++        return (
++            engine.seq_manager.add_seq.call_count,
++            engine._run_workers.call_count,
++            len(engine.scheduler.waiting),
++            engine.metrics_store.on_request_arrival.call_count,
++        )
++
++    def test_lp_rejects_before_any_registration(self):
++        # Pool 100 blocks of 4 tokens: watermark int(0.01 * 100) = 1.
++        engine = self._engine(_config(max_model_len=400), 100)
++        self.assertEqual(engine.scheduler.block_manager.watermark_blocks, 1)
++        # Length equality: 396 tokens = 99 blocks, 99 + 1 == 100 accepted.
++        self._add(engine, 396)
++        self.assertEqual(self._registered(engine), (1, 1, 1, 1))
++        engine._run_workers.assert_called_with("add_seq", seq=mock.ANY)
++        # 400 tokens == max_model_len, but 100 blocks + 1 > 100: rejected.
++        with self.assertRaises(lp_scheduler.LPRequestError) as caught:
++            self._add(engine, 400)
++        error = caught.exception
++        self.assertEqual((error.seq_id, error.required, error.limit),
++                         (1, "101 blocks", "100 blocks"))
++        self.assertIn("watermark (1 blocks)", str(error))
++        self.assertEqual(self._registered(engine), (1, 1, 1, 1))
++        # 401 tokens exceed max_model_len: rejected, still unregistered; the
++        # consumed sequence-ID counter value is not a registration.
++        with self.assertRaises(lp_scheduler.LPRequestError) as caught:
++            self._add(engine, 401)
++        self.assertEqual((caught.exception.seq_id, caught.exception.required,
++                          caught.exception.limit),
++                         (2, "401 tokens", "400 tokens"))
++        self.assertEqual(self._registered(engine), (1, 1, 1, 1))
++        self.assertEqual([s.seq_id for s in engine.scheduler.waiting], [0])
++
++    def test_current_contention_is_not_permanent_rejection(self):
++        engine = self._engine(_config(), NUM_GPU_BLOCKS)
++        manager = engine.scheduler.block_manager
++        held = [manager.gpu_allocator.allocate() for _ in range(9)]
++        self.assertEqual(manager.get_num_free_gpu_blocks(), 1)
++        self._add(engine, 32)  # 8 blocks: fits the pool, not current memory
++        self.assertEqual(self._registered(engine), (1, 1, 1, 1))
++        self.assertEqual(len(held), 9)
++
++    def test_other_schedulers_keep_submission_behavior(self):
++        from sarathi.config import VLLMSchedulerConfig
++
++        engine = self._engine(
++            VLLMSchedulerConfig(RESIDENT_LIMIT, MAX_MODEL_LEN, 1, 64),
++            NUM_GPU_BLOCKS)
++        with mock.patch.object(
++            LPScheduler, "check_new_request") as lp_check:
++            self._add(engine, MAX_MODEL_LEN + 1)
++        lp_check.assert_not_called()
++        self.assertEqual(self._registered(engine), (1, 1, 1, 1))
++
++
+ if __name__ == "__main__":
+     unittest.main()
+diff --git a/tests/test_lpserve_plan_execution.py b/tests/test_lpserve_plan_execution.py
+index 6dc6420..8b1b78b 100644
+--- a/tests/test_lpserve_plan_execution.py
++++ b/tests/test_lpserve_plan_execution.py
+@@ -29,8 +29,6 @@ SNAPSHOT_TIME = 100.0
+ B_MAX = 8
+ C_MAX = 4
+ S_MAX = 3
+-MEMORY_RESERVE = 1
+-DECODE_POLICY_ID = "conservative_one_block_v1"
+ # Default native watermark (0.01 of 10 blocks -> 0 blocks). The combined-memory
+ # case uses a visibly different 0.2 (2 blocks) to exercise the native gate.
+ DEFAULT_WATERMARK = 0.01
+@@ -119,9 +117,8 @@ def _map(holder, utilities):
+         b_max=B_MAX,
+         c_max=C_MAX,
+         s_max=S_MAX,
+-        memory_reserve=MEMORY_RESERVE,
+-        decode_memory_policy_id=DECODE_POLICY_ID,
+-        utilities=utilities,
++        coefficient_policy=utilities,
++        rank_profile=lsm.vllm_oriented_ranks,
+         numerical_policy=NUMERICAL_POLICY,
+     )
+     assert isinstance(snapshot, lsm.StateSnapshot), snapshot
+@@ -145,39 +142,37 @@ def _actions(plan):
+ 
+ def _with_plan(problem, result, actions):
+     """Replace the plan with one built from ``actions`` (request_id ->
+-    (prefill_tokens, decode, preempt)); residuals are recomputed."""
++    (prefill_tokens, decode, preempt)). Declared orders, final totals, and
++    the objective are recomputed so only the selected actions differ; the
++    plan is not thereby mathematically valid."""
+     decisions = []
+-    tokens = width = memory = 0
+-    objective = 0.0
++    tokens = width = demand = 0
++    residents, free = problem.resident_count, problem.m_free
++    xs, ys, zs = [], [], []
+     for r in problem.requests:
+         x, y, z = actions.get(r.request_id, (0, 0, 0))
+         ind = 1 if x > 0 else 0
+         decisions.append(lrs.IntegerDecision(
+             r.request_id, r.order_key, x, y, z, ind,
+         ))
++        xs.append(x), ys.append(y), zs.append(z)
+         tokens += x + y
+         width += ind + y
+-        memory += (
+-            r.prefill_fixed_charge * ind + r.decode_charge * y
+-            - r.preemption_recovery * z
+-        )
+-        objective += (
+-            r.prefill_token_utility * x + r.decode_utility * y
+-            - r.preemption_penalty * z
+-        )
++        demand += r.decode_demand * y
++        free += r.preemption_recovery * z - r.prefill_fixed_charge * ind
++        residents += (0 if r.resident else ind) - z
++    victim_order, execution_order = lrs._declared_orders(problem, ys, zs, xs)
+     plan = dataclasses.replace(
+         result.plan,
+         decisions=tuple(decisions),
+-        residual_token_capacity=problem.b_max - tokens,
+-        residual_action_capacity=problem.s_max - width,
+-        residual_memory_capacity=problem.m_free - problem.w - memory,
+-        fractional_request_count=0,
+-        dominant_preemption_ids=tuple(
+-            r.request_id for r in problem.requests
+-            if actions.get(r.request_id, (0, 0, 0))[2]
+-        ),
+-        safety_preemption_ids=(),
+-        objective=objective,
++        victim_order=victim_order,
++        execution_order=execution_order,
++        token_use=tokens,
++        action_count=width,
++        resident_count_after=residents,
++        free_blocks_before_decodes=free,
++        decode_demand=demand,
++        objective=lrs._objective_max(problem, xs, ys, zs),
+     )
+     return dataclasses.replace(result, plan=plan)
+ 
+@@ -330,7 +325,8 @@ class PlanExecutionTest(unittest.TestCase):
+ 
+         self.assertIsInstance(outputs, SchedulerOutputs)
+         self.assertEqual(outputs.id, ITERATION_ID)
+-        self.assertEqual(_emitted(outputs), [(0, 4), (1, 4)])
++        # Service rank: running 1 (rank 0) before waiting 0 (rank 2).
++        self.assertEqual(_emitted(outputs), [(1, 4), (0, 4)])
+         self.assertEqual(outputs.ignored_seq_ids, [])
+         self.assertEqual(outputs.preempted_seq_ids, [])
+         self.assertEqual(outputs.num_batched_prompt_tokens, 8)
+@@ -444,7 +440,9 @@ class PlanExecutionTest(unittest.TestCase):
+ 
+         self.assertIsInstance(outputs, SchedulerOutputs)
+         emitted = _emitted(outputs)
+-        self.assertEqual(emitted, [(1, 4), (2, 3), (0, 0)])
++        # Prefills by service rank (resident 2 rank 1, waiting 1 rank 2),
++        # then the decode.
++        self.assertEqual(emitted, [(2, 3), (1, 4), (0, 0)])
+         self.assertNotEqual(
+             [seq_id for seq_id, _ in emitted],
+             sorted(seq_id for seq_id, _ in emitted),
+@@ -464,7 +462,7 @@ class PlanExecutionTest(unittest.TestCase):
+         holder = _SchedulerHolder(watermark=TIGHT_WATERMARK)
+         self.assertEqual(holder.block_manager.watermark_blocks, 2)
+         _add_resident(holder, 2, 12, processed=4)  # 3 blocks, unselected
+-        _add_resident(holder, 3, 8, processed=8)  # 2 blocks, unselected
++        _add_resident(holder, 3, 8, processed=8)  # 2 blocks
+         first = _add_waiting(holder, 0, 8)  # 2 blocks
+         second = _add_waiting(holder, 1, 8)  # 2 blocks
+         utilities = _utilities(
+@@ -472,16 +470,28 @@ class PlanExecutionTest(unittest.TestCase):
+             r2=(0.0, 0.1, 1.0), r3=(0.1, 0.0, 1.0),
+         )
+         snapshot, result = _map_and_solve(holder, utilities)
+-        self.assertEqual(
+-            _actions(result.plan), {"0": (4, 0, 0), "1": (4, 0, 0)},
++        # The watermark is now an LP row: both admissions need victim 3
++        # (H = 5 + 2 - 4 = 3 >= 2); without it H = 1 < 2.
++        result = _with_plan(snapshot.lp_problem, result, {
++            "0": (4, 0, 0), "1": (4, 0, 0), "3": (0, 0, 1)})
++        self.assertIs(
++            lrs.validate_integer_plan(snapshot.lp_problem, result.plan),
++            result.plan,
+         )
+-        # Planning memory with reserve 1 is exactly feasible: 2 + 2 <= 5 - 1.
+-        self.assertEqual(snapshot.lp_problem.m_free, 5)
+-        self.assertEqual(result.plan.residual_memory_capacity, 0)
+-        # Each admission alone passes the native gate against the original
+-        # free count, so independent checks would accept the plan.
+-        self.assertTrue(holder.block_manager.can_allocate(first))
+-        self.assertTrue(holder.block_manager.can_allocate(second))
++        without_victim = _with_plan(snapshot.lp_problem, result, {
++            "0": (4, 0, 0), "1": (4, 0, 0)})
++        self.assertIn("admission_watermark", lrs.validate_integer_plan(
++            snapshot.lp_problem, without_victim.plan).reason)
++        # Current state drifts after planning: two free blocks are held
++        # elsewhere, leaving 3. After victim 3 returns 2 blocks, each
++        # admission alone would pass (5 - 2 >= 2), but the second one in
++        # execution order sees 3 free and 3 - 2 < 2.
++        allocator = holder.block_manager.gpu_allocator
++        held = [allocator.allocate() for _ in range(2)]
++        self.assertEqual(holder.block_manager.get_num_free_gpu_blocks(), 3)
++        for seq in (first, second):
++            self.assertEqual(
++                holder.block_manager.get_num_initial_blocks(seq), 2)
+ 
+         before = _fingerprint(holder)
+         failure = lpe.execute_plan(holder, snapshot, result)
+@@ -499,7 +509,10 @@ class PlanExecutionTest(unittest.TestCase):
+             return r
+ 
+         def upstream_failure(h, s, r):
+-            return lrs.Failure(s.snapshot_id, "solver", "infeasible", "fixture")
++            return lrs.Failure(
++                s.snapshot_id, "solver", lrs.OUTCOME_LP_INFEASIBLE,
++                lrs.CATEGORY_LP_INFEASIBLE, "fixture",
++            )
+ 
+         def in_flight(h, s, r):
+             h.num_running_batches = 1
+@@ -555,7 +568,7 @@ class PlanExecutionTest(unittest.TestCase):
+             "resident_capacity": (resident_capacity, "resident_capacity"),
+             "overlength_admission": (overlength, "overlength_admission"),
+             "plan_chunk_bound": (plan_chunk_bound, "ineligible_action"),
+-            "plan_token_limit": (plan_token_limit, "capacity_violation"),
++            "plan_token_limit": (plan_token_limit, "constraint_violation"),
+         }
+         validator_categories = {"plan_chunk_bound", "plan_token_limit"}
+ 
+@@ -569,6 +582,7 @@ class PlanExecutionTest(unittest.TestCase):
+                 self.assertEqual(_fingerprint(holder), before)
+                 self.assertIsInstance(failure, lrs.Failure)
+                 self.assertEqual(failure.category, category)
++                self.assertEqual(failure.outcome, lrs.OUTCOME_INVALID)
+                 self.assertEqual(failure.problem_id, str(ITERATION_ID))
+                 self.assertEqual(
+                     failure.stage,
+@@ -587,11 +601,13 @@ class PlanExecutionTest(unittest.TestCase):
+                 holder = _build_case_one()
+                 snapshot, result = _map_and_solve(holder, CASE_ONE_UTILITIES)
+                 result = _with_plan(snapshot.lp_problem, result, actions)
+-                # The constructed plan is mathematically legitimate.
+-                self.assertIs(
+-                    lrs.validate_integer_plan(snapshot.lp_problem, result.plan),
+-                    result.plan,
+-                )
++                # The mathematical validator also rejects it (useful
++                # execution); the executor's defensive gate runs first so
++                # the failure is classified as no_progress.
++                rejected = lrs.validate_integer_plan(
++                    snapshot.lp_problem, result.plan)
++                self.assertEqual(rejected.category, "constraint_violation")
++                self.assertIn("useful_execution", rejected.reason)
+                 before = _fingerprint(holder)
+                 with mock.patch.object(
+                     holder, "_preempt", wraps=holder._preempt,
+@@ -602,6 +618,7 @@ class PlanExecutionTest(unittest.TestCase):
+                 self.assertIsInstance(failure, lrs.Failure)
+                 self.assertEqual(failure.stage, "precommit_validation")
+                 self.assertEqual(failure.category, "no_progress")
++                self.assertEqual(failure.outcome, lrs.OUTCOME_INVALID)
+                 self.assertEqual(failure.problem_id, str(ITERATION_ID))
+ 
+     def test_preemption_recovery_enables_admission(self):
+@@ -620,7 +637,7 @@ class PlanExecutionTest(unittest.TestCase):
+         result = _with_plan(
+             snapshot.lp_problem, result, {"0": (0, 0, 1), "2": (4, 0, 0)},
+         )
+-        # Planning memory with reserve 1: 4 - 2 <= 3 - 1.
++        # H = 3 + 2 - 4 = 1 >= watermark 0.
+         self.assertIs(
+             lrs.validate_integer_plan(snapshot.lp_problem, result.plan),
+             result.plan,
+@@ -665,7 +682,7 @@ class PlanExecutionTest(unittest.TestCase):
+         self.assertEqual(victim.get_status(), SequenceStatus.PAUSED)
+         self.assertEqual(holder.num_running_batches, 0)
+ 
+-    def test_multiple_victims_use_ascending_native_and_control_order(self):
++    def test_multiple_victims_use_declared_native_and_control_order(self):
+         holder, snapshot, result = _victim_case_with_plan()
+         seqs = {s.seq_id: s for s in holder.waiting + holder.running}
+         before = {k: _seq_fingerprint(s) for k, s in seqs.items()}
+@@ -681,15 +698,18 @@ class PlanExecutionTest(unittest.TestCase):
+             outputs = lpe.execute_plan(holder, snapshot, result)
+ 
+         self.assertIsInstance(outputs, SchedulerOutputs)
+-        # Every selected victim, ascending by order_key, before any action;
+-        # no victim cap. Victim 3 has generated tokens.
++        # Every selected victim in declared victim order (reverse running
++        # order: 3 has victim rank 0, 1 has rank 2) before any action; no
++        # victim cap. Victim 3 has generated tokens. Prefills follow service
++        # rank: resident 2 (rank 1), then waiting 0 (rank 3).
++        self.assertEqual(result.plan.victim_order, ("3", "1"))
+         self.assertEqual(
+-            calls, [("_preempt", 1), ("_preempt", 3), ("_allocate", 0)],
++            calls, [("_preempt", 3), ("_preempt", 1), ("_allocate", 0)],
+         )
+-        self.assertEqual(outputs.preempted_seq_ids, [1, 3])
+-        self.assertEqual(_emitted(outputs), [(0, 4), (2, 4)])
++        self.assertEqual(outputs.preempted_seq_ids, [3, 1])
++        self.assertEqual(_emitted(outputs), [(2, 4), (0, 4)])
+         # Native front insertion leaves the victims in reverse call order.
+-        self.assertEqual([s.seq_id for s in holder.waiting], [3, 1, 4])
++        self.assertEqual([s.seq_id for s in holder.waiting], [1, 3, 4])
+         self.assertEqual([s.seq_id for s in holder.running], [2, 0])
+         for seq_id in (1, 3):
+             self.assertIs(
+@@ -715,7 +735,8 @@ class PlanExecutionTest(unittest.TestCase):
+                 allocator.allocate()
+ 
+         def later_victim_finished(h):
+-            # Victim 1 is valid; victim 3 is checked after it and fails.
++            # Victim 3 is checked first (declared order) and fails before
++            # any victim is freed.
+             [seq] = [s for s in h.running if s.seq_id == 3]
+             seq.set_status(SequenceStatus.FINISHED_STOPPED)
+ 
+@@ -829,17 +850,133 @@ class PlanExecutionTest(unittest.TestCase):
+             with self.assertRaisesRegex(RuntimeError, "induced preemption"):
+                 lpe.execute_plan(holder, snapshot, result)
+ 
+-        # No later action ran and nothing was restored: victim 1 is freed and
+-        # waiting; victim 3 left running but kept its blocks.
+-        self.assertEqual(preempted, [1, 3])
++        # No later action ran and nothing was restored: victim 3 is freed and
++        # waiting; victim 1 left running but kept its blocks.
++        self.assertEqual(preempted, [3, 1])
+         allocate_spy.assert_not_called()
+         append_spy.assert_not_called()
+-        self.assertEqual([s.seq_id for s in holder.waiting], [1, 0, 4])
++        self.assertEqual([s.seq_id for s in holder.waiting], [3, 0, 4])
+         self.assertEqual([s.seq_id for s in holder.running], [2])
+-        self.assertEqual(set(holder.block_manager.block_tables), {2, 3})
++        self.assertEqual(set(holder.block_manager.block_tables), {1, 2})
+         # The mutated fixture is discarded, not reused.
+         del holder
+ 
++    def test_prefills_then_zero_then_one_block_decodes(self):
++        # Pool 5: A (seq 0) decode needing one block, B (seq 1) zero-demand
++        # decode, C (seq 2) resident partial prefill, omitted resident D
++        # (seq 3, zero-demand decode with zero utility). One block is free.
++        # Service ranks follow running order A, B, C, D, but execution is
++        # prefills, then zero-demand decodes, then one-block decodes: B
++        # must run before A consumes the only free block.
++        holder = _SchedulerHolder(num_gpu_blocks=6)
++        a = _add_resident(holder, 0, 4, processed=4, num_output_tokens=1)
++        b = _add_resident(holder, 1, 4, processed=4)
++        c = _add_resident(holder, 2, 8, processed=4)
++        d = _add_resident(holder, 3, 4, processed=4)
++        self.assertEqual(holder.block_manager.get_num_free_gpu_blocks(), 1)
++        utilities = _utilities(
++            r0=(1.0, 0.0, 5.0), r1=(1.0, 0.0, 5.0), r2=(0.0, 1.0, 5.0),
++            r3=(0.0, 0.0, 5.0),
++        )
++        snapshot, result = _map_and_solve(holder, utilities)
++        demand = {r.request_id: r.decode_demand
++                  for r in snapshot.lp_problem.requests}
++        self.assertEqual((demand["0"], demand["1"]), (1, 0))
++        self.assertEqual(
++            _actions(result.plan),
++            {"0": (0, 1, 0), "1": (0, 1, 0), "2": (4, 0, 0)},
++        )
++        self.assertEqual(result.plan.execution_order, ("2", "1", "0"))
++
++        calls = []
++        patches = _record_native_calls(holder, calls)
++        with patches[0], patches[1], patches[2]:
++            outputs = lpe.execute_plan(holder, snapshot, result)
++        self.assertIsInstance(outputs, SchedulerOutputs)
++        self.assertEqual(_emitted(outputs), [(2, 4), (1, 0), (0, 0)])
++        self.assertEqual(calls, [("_append_slot", 1), ("_append_slot", 0)])
++        # Central native order equals emitted metadata order.
++        self.assertEqual(
++            [seq_id for _, seq_id in calls],
++            [seq_id for seq_id, chunk in _emitted(outputs) if chunk == 0],
++        )
++        self.assertEqual(holder.block_manager.get_num_free_gpu_blocks(), 0)
++        self.assertEqual(len(_table(holder, 0)), 2)
++        # Retained residents, including omitted D, keep relative order.
++        self.assertEqual([s.seq_id for s in holder.running], [0, 1, 2, 3])
++        self.assertEqual(
++            [id(s) for s in holder.running], [id(a), id(b), id(c), id(d)],
++        )
++
++    def test_readmitted_victim_joins_running_tail(self):
++        # Earlier decision: resident 0 generated two tokens and was
++        # preempted; replay reset it for recomputation (expanded context of
++        # six tokens). It is now at the waiting front, behind no one.
++        holder = _SchedulerHolder()
++        victim = _add_resident(holder, 0, 4, processed=4, num_output_tokens=2)
++        _add_resident(holder, 1, 4, processed=4)
++        _add_resident(holder, 2, 8, processed=4)
++        _add_waiting(holder, 3, 4)
++        holder.running.remove(victim)
++        holder._preempt(victim)
++        victim.reset_for_recompute()
++        self.assertEqual([s.seq_id for s in holder.waiting], [0, 3])
++        self.assertEqual(victim.get_len(), 6)
++        utilities = _utilities(
++            r0=(0.0, 3.0, 1.0), r1=(0.0, 0.0, 9.0), r2=(0.0, 1.0, 9.0),
++            r3=(0.0, 0.5, 1.0),
++        )
++        snapshot, result = _map_and_solve(holder, utilities)
++        by_id = {r.raw_seq_id: r for r in snapshot.requests}
++        self.assertEqual(by_id[0].prefill_fixed_charge, 2)
++        self.assertEqual(by_id[0].service_rank, 2)  # after running 1, 2
++        self.assertEqual(_actions(result.plan)["0"], (4, 0, 0))
++        outputs = lpe.execute_plan(holder, snapshot, result)
++        self.assertIsInstance(outputs, SchedulerOutputs)
++        running = [s.seq_id for s in holder.running]
++        self.assertEqual(running[:2], [1, 2])
++        self.assertEqual(running[2], 0)  # first admission joins the tail
++        self.assertEqual(len(_table(holder, 0)), 2)
++
++    def test_planned_resources_must_match_current_state(self):
++        def decode_gap_grew(h, s, r):
++            [seq] = [q for q in h.running if q.seq_id == 2]
++            seq.set_status(SequenceStatus.RUNNING)
++            seq.append_token_id(7)  # gap 0 -> 1 after planning
++            seq.set_status(SequenceStatus.PAUSED)
++            return _with_plan(s.lp_problem, r, {"2": (0, 1, 0)})
++
++        def watermark_changed(h, s, r):
++            h.block_manager.watermark_blocks = 1
++            return r
++
++        def recovery_changed(h, s, r):
++            table = h.block_manager.block_tables[1]
++            h.block_manager.gpu_allocator.free(table.pop())
++            return _with_plan(
++                s.lp_problem, r, {"1": (0, 0, 1), "0": (4, 0, 0)})
++
++        cases = {
++            "decode_gap": (decode_gap_grew, "planned decode demand 0"),
++            "watermark": (watermark_changed, "planned admission watermark"),
++            "recovery": (recovery_changed, "planned recovery 2"),
++        }
++        for name, (perturb, reason) in cases.items():
++            with self.subTest(name):
++                holder = _build_case_one()
++                snapshot, result = _map_and_solve(holder, CASE_ONE_UTILITIES)
++                result = perturb(holder, snapshot, result)
++                before = _fingerprint(holder)
++                failure = lpe.execute_plan(holder, snapshot, result)
++                self.assertEqual(_fingerprint(holder), before)
++                self.assertIsInstance(failure, lrs.Failure)
++                self.assertEqual(
++                    (failure.stage, failure.category, failure.outcome),
++                    ("precommit_validation", "plan_state_mismatch",
++                     lrs.OUTCOME_INVALID))
++                self.assertIn(reason, failure.reason)
++
++
+ 
+ if __name__ == "__main__":
+     unittest.main()
+diff --git a/tests/test_lpserve_state_mapping.py b/tests/test_lpserve_state_mapping.py
+index 14b546f..f319b3e 100644
+--- a/tests/test_lpserve_state_mapping.py
++++ b/tests/test_lpserve_state_mapping.py
+@@ -27,8 +27,6 @@ SNAPSHOT_TIME = 100.0
+ B_MAX = 8
+ C_MAX = 4
+ S_MAX = 3
+-MEMORY_RESERVE = 1
+-DECODE_POLICY_ID = "conservative_one_block_v1"
+ 
+ NUMERICAL_POLICY = lrs.NumericalPolicy(
+     policy_id="lp_relaxation_mvp_v1",
+@@ -40,11 +38,13 @@ NUMERICAL_POLICY = lrs.NumericalPolicy(
+ 
+ 
+ class _ConfigHolder:
+-    """A tiny faithful stand-in for the two scheduler_config fields read."""
++    """A tiny faithful stand-in for the scheduler_config fields read."""
+ 
+-    def __init__(self, num_pipeline_stages, max_num_seqs):
++    def __init__(self, num_pipeline_stages, max_num_seqs,
++                 max_model_len=MAX_MODEL_LEN):
+         self.num_pipeline_stages = num_pipeline_stages
+         self.max_num_seqs = max_num_seqs
++        self.max_model_len = max_model_len
+ 
+ 
+ class _SchedulerHolder:
+@@ -185,18 +185,18 @@ def _build_three_request_holder():
+     return holder
+ 
+ 
+-def _map(holder, utilities):
+-    return lsm.map_scheduler_state(
+-        holder,
++def _map(holder, utilities, **overrides):
++    kwargs = dict(
+         snapshot_time=SNAPSHOT_TIME,
+         b_max=B_MAX,
+         c_max=C_MAX,
+         s_max=S_MAX,
+-        memory_reserve=MEMORY_RESERVE,
+-        decode_memory_policy_id=DECODE_POLICY_ID,
+-        utilities=utilities,
++        coefficient_policy=utilities,
++        rank_profile=lsm.vllm_oriented_ranks,
+         numerical_policy=NUMERICAL_POLICY,
+     )
++    kwargs.update(overrides)
++    return lsm.map_scheduler_state(holder, **kwargs)
+ 
+ 
+ class LPServeStateMappingTest(unittest.TestCase):
+@@ -230,17 +230,7 @@ class LPServeStateMappingTest(unittest.TestCase):
+ 
+         before = _fingerprint(holder)
+ 
+-        result = lsm.map_scheduler_state(
+-            holder,
+-            snapshot_time=SNAPSHOT_TIME,
+-            b_max=B_MAX,
+-            c_max=C_MAX,
+-            s_max=S_MAX,
+-            memory_reserve=MEMORY_RESERVE,
+-            decode_memory_policy_id=DECODE_POLICY_ID,
+-            utilities=utilities,
+-            numerical_policy=NUMERICAL_POLICY,
+-        )
++        result = _map(holder, utilities)
+ 
+         # Proof of non-mutation: nothing observable about the scheduler
+         # holder, its sequences, or the block manager changed.
+@@ -290,8 +280,20 @@ class LPServeStateMappingTest(unittest.TestCase):
+         self.assertEqual(
+             tuple(r.prefill_fixed_charge for r in problem_requests), (2, 0, 0),
+         )
++        # The decode resident's four prompt tokens fill one logical and one
++        # physical block and no output token has been appended yet: exact
++        # decode demand 0. The partial prefill allocates nothing.
++        self.assertEqual(
++            tuple(r.decode_demand for r in problem_requests), (0, 0, 0),
++        )
++        self.assertEqual(
++            tuple(r.resident for r in problem_requests), (False, True, True),
++        )
++        # vLLM-oriented ranks: running order (1, 2) then waiting (0);
++        # victims in reverse running order.
+         self.assertEqual(
+-            tuple(r.decode_charge for r in problem_requests), (0, 0, 1),
++            tuple((r.service_rank, r.victim_rank) for r in problem_requests),
++            ((2, None), (0, 1), (1, 0)),
+         )
+         self.assertEqual(
+             tuple(r.preemption_recovery for r in problem_requests), (0, 2, 1),
+@@ -303,7 +305,15 @@ class LPServeStateMappingTest(unittest.TestCase):
+         self.assertEqual(problem.c_max, 4)
+         self.assertEqual(problem.s_max, 3)
+         self.assertEqual(problem.m_free, 7)
+-        self.assertEqual(problem.w, 1)
++        self.assertEqual(problem.admission_watermark, 0)  # int(0.01 * 10)
++        self.assertEqual(problem.resident_count, 2)
++        self.assertEqual(problem.resident_limit, RESIDENT_LIMIT)
++        self.assertEqual(
++            (result.total_blocks, result.watermark_blocks, result.max_model_len),
++            (NUM_GPU_BLOCKS, 0, MAX_MODEL_LEN),
++        )
++        self.assertEqual(result.running_order, (1, 2))
++        self.assertEqual(result.arrived_waiting_order, (0,))
+         self.assertEqual(result.snapshot_id, str(ITERATION_ID))
+         self.assertEqual(problem.problem_id, result.snapshot_id)
+ 
+@@ -345,17 +355,7 @@ class LPServeStateMappingTest(unittest.TestCase):
+         }
+ 
+         before = _fingerprint(holder)
+-        result = lsm.map_scheduler_state(
+-            holder,
+-            snapshot_time=SNAPSHOT_TIME,
+-            b_max=B_MAX,
+-            c_max=C_MAX,
+-            s_max=S_MAX,
+-            memory_reserve=MEMORY_RESERVE,
+-            decode_memory_policy_id=DECODE_POLICY_ID,
+-            utilities=utilities,
+-            numerical_policy=NUMERICAL_POLICY,
+-        )
++        result = _map(holder, utilities)
+ 
+         self.assertEqual(_fingerprint(holder), before)
+         self.assertIsInstance(result, lsm.MappingFailure)
+@@ -382,17 +382,7 @@ class LPServeStateMappingTest(unittest.TestCase):
+         }
+ 
+         before = _fingerprint(holder)
+-        result = lsm.map_scheduler_state(
+-            holder,
+-            snapshot_time=SNAPSHOT_TIME,
+-            b_max=B_MAX,
+-            c_max=C_MAX,
+-            s_max=S_MAX,
+-            memory_reserve=MEMORY_RESERVE,
+-            decode_memory_policy_id=DECODE_POLICY_ID,
+-            utilities=utilities,
+-            numerical_policy=NUMERICAL_POLICY,
+-        )
++        result = _map(holder, utilities)
+ 
+         self.assertEqual(_fingerprint(holder), before)
+         self.assertIsInstance(result, lsm.MappingFailure)
+@@ -427,23 +417,32 @@ class LPServeStateMappingTest(unittest.TestCase):
+             ),
+             "missing_key": (
+                 {k: v for k, v in _three_request_utilities().items() if k != 1},
+-                "missing utilities for raw_seq_id(s) [1]",
++                "missing coefficients for raw_seq_id(s) [1]",
+             ),
+             "extra_key": (
+                 {**_three_request_utilities(), 5: good},
+-                "extra utilities for raw_seq_id(s) [5]",
++                "extra coefficients for raw_seq_id(s) [5]",
++            ),
++            "uniform_negative": (
++                dataclasses.replace(good, preemption_penalty=-1.0),
++                "preemption_penalty for raw_seq_id 0",
++            ),
++            "callable_wrong_type": (
++                lambda captured, request: (1.0, 1.0, 1.0),
++                "must be a RequestUtility",
+             ),
+         }
+         for field in (
+             "decode_utility", "prefill_token_utility", "preemption_penalty",
+         ):
+-            for bad in (float("nan"), float("inf"), True, "1.0"):
++            for bad in (float("nan"), float("inf"), True, "1.0", -0.5,
++                        10 ** 400):
+                 cases[f"{field}={bad!r}"] = (
+                     {
+                         **_three_request_utilities(),
+                         0: dataclasses.replace(good, **{field: bad}),
+                     },
+-                    f"utility {field} for raw_seq_id 0",
++                    f"coefficient {field} for raw_seq_id 0",
+                 )
+ 
+         for name, (utilities, reason) in cases.items():
+@@ -506,24 +505,15 @@ class LPServeStateMappingTest(unittest.TestCase):
+         ) as lp_problem_spy, mock.patch.object(
+             lsm.lrs, "validate_problem", wraps=lsm.lrs.validate_problem,
+         ) as validate_problem_spy:
+-            result = lsm.map_scheduler_state(
+-                holder,
+-                snapshot_time=SNAPSHOT_TIME,
+-                b_max=B_MAX,
+-                c_max=C_MAX,
+-                s_max=S_MAX,
+-                memory_reserve=MEMORY_RESERVE,
+-                decode_memory_policy_id=DECODE_POLICY_ID,
+-                utilities={},
+-                numerical_policy=NUMERICAL_POLICY,
+-            )
++            result = _map(holder, {})
+ 
+         self.assertEqual(_fingerprint(holder), before)
+ 
+         self.assertIsInstance(result, lsm.MappingFailure)
+         self.assertEqual(result.stage, "state_mapping")
+         self.assertEqual(result.category, "mapping_failure")
+-        self.assertIn("arrived, unfinished request universe is empty", result.reason)
++        self.assertIn("arrived, unfinished request universe is empty",
++                      result.reason)
+ 
+         lp_problem_spy.assert_not_called()
+         validate_problem_spy.assert_not_called()
+@@ -541,17 +531,7 @@ class LPServeStateMappingTest(unittest.TestCase):
+                     preemption_penalty=0.0,
+                 ),
+             }
+-            return lsm.map_scheduler_state(
+-                holder,
+-                snapshot_time=SNAPSHOT_TIME,
+-                b_max=B_MAX,
+-                c_max=C_MAX,
+-                s_max=S_MAX,
+-                memory_reserve=MEMORY_RESERVE,
+-                decode_memory_policy_id=DECODE_POLICY_ID,
+-                utilities=utilities,
+-                numerical_policy=NUMERICAL_POLICY,
+-            )
++            return _map(holder, utilities)
+ 
+         first = map_at(7)
+         second = map_at(8)
+@@ -578,6 +558,220 @@ class LPServeStateMappingTest(unittest.TestCase):
+         self.assertEqual(mismatch.category, "snapshot_mismatch")
+         self.assertEqual(mismatch.problem_id, "8")
+ 
++    # -- corrected resource and policy inputs ----------------------------------
++
++    def _resident(self, holder, raw_id, prompt, processed, outputs=0,
++                  arrival=1.0):
++        """Allocate a resident through the real manager and native updates."""
++        seq = _make_sequence(raw_id, prompt, arrival)
++        seq.set_status(SequenceStatus.RUNNING)
++        holder.block_manager.allocate(seq)
++        seq.update_prompt_tokens_processed(processed)
++        for token in range(outputs):
++            seq.append_token_id(1000 + token)
++        seq.set_status(SequenceStatus.PAUSED)
++        holder.running.append(seq)
++        return seq
++
++    def test_full_context_rounding_recovery_and_decode_demand(self):
++        holder, block_manager = _build_holder()
++        for raw_id, tokens in ((0, 4), (1, 5), (2, 8), (3, 9)):
++            holder.waiting.append(_make_sequence(raw_id, tokens, 1.0))
++        # Decode gap 0 (four prompt tokens in one block) and gap 1 (one
++        # sampled output token opened a second logical block).
++        self._resident(holder, 10, 4, 4)
++        self._resident(holder, 11, 4, 4, outputs=1)
++        self._resident(holder, 12, 7, 3)
++        before = _fingerprint(holder)
++        result = _map(holder, lsm.RequestUtility(1.0, 1.0, 1.0))
++        self.assertEqual(_fingerprint(holder), before)
++        self.assertIsInstance(result, lsm.StateSnapshot, result)
++        by_id = {r.raw_seq_id: r for r in result.requests}
++        # Full-context admission charge with native block rounding.
++        self.assertEqual([by_id[i].prefill_fixed_charge for i in range(4)],
++                         [1, 2, 2, 3])
++        self.assertEqual([by_id[i].context_len for i in range(4)],
++                         [4, 5, 8, 9])
++        self.assertEqual(
++            (by_id[10].decode_demand, by_id[10].logical_block_count,
++             by_id[10].physical_block_count, by_id[10].output_len),
++            (0, 1, 1, 0))
++        self.assertEqual(
++            (by_id[11].decode_demand, by_id[11].logical_block_count,
++             by_id[11].physical_block_count, by_id[11].output_len),
++            (1, 2, 1, 1))
++        # Resident partial prefill: zero charge, recovery = its table.
++        self.assertEqual(
++            (by_id[12].prefill_fixed_charge, by_id[12].preemption_recovery,
++             by_id[12].prefill_eligible, by_id[12].decode_eligible),
++            (0, 2, True, False))
++        self.assertEqual(by_id[11].preemption_recovery, 1)
++        self.assertEqual(result.free_physical_blocks, NUM_GPU_BLOCKS - 4)
++        self.assertEqual(result.resident_count, 3)
++
++    def test_unsupported_gap_and_malformed_allocation(self):
++        def holder_with(mutate):
++            holder, block_manager = _build_holder()
++            seq = self._resident(holder, 1, 4, 4)
++            holder.waiting.append(_make_sequence(0, 4, 1.0))
++            mutate(holder, block_manager, seq)
++            return holder
++
++        def gap_two(holder, manager, seq):
++            seq.set_status(SequenceStatus.RUNNING)
++            for token in range(5):  # 9 tokens: three logical, one physical
++                seq.append_token_id(token)
++            seq.set_status(SequenceStatus.PAUSED)
++
++        def repeated_block(holder, manager, seq):
++            table = manager.block_tables[1]
++            table.append(table[0])
++
++        def shared_block(holder, manager, seq):
++            self._resident(holder, 2, 4, 4)
++            manager.block_tables[2][0] = manager.block_tables[1][0]
++
++        def pool_mismatch(holder, manager, seq):
++            manager.gpu_allocator.free_blocks.pop()
++
++        def prefill_gap(holder, manager, seq):
++            self._resident(holder, 3, 8, 2)
++            manager.gpu_allocator.free(manager.block_tables[3].pop())
++
++        cases = [
++            ("decode gap 2", gap_two, "outside {0, 1}"),
++            ("repeated block", repeated_block, "repeats a block"),
++            ("shared block", shared_block, "shared by two resident"),
++            ("pool mismatch", pool_mismatch, "differ from the total pool"),
++            ("partial-prefill gap", prefill_gap, "gap 1 must be 0"),
++        ]
++        for name, mutate, reason in cases:
++            with self.subTest(name):
++                holder = holder_with(mutate)
++                before = _fingerprint(holder)
++                result = _map(holder, lsm.RequestUtility(1.0, 1.0, 1.0))
++                self.assertEqual(_fingerprint(holder), before)
++                self.assertIsInstance(result, lsm.MappingFailure)
++                self.assertIn(reason, result.reason)
++
++    def test_resident_ledger_and_inadmissible_registered_context(self):
++        # A finished request left in running is not a valid resident ledger.
++        holder, _ = _build_holder()
++        seq = self._resident(holder, 1, 4, 4)
++        seq.set_status(SequenceStatus.FINISHED_STOPPED)
++        result = _map(holder, lsm.RequestUtility(1.0, 1.0, 1.0))
++        self.assertIsInstance(result, lsm.MappingFailure)
++        self.assertIn("running holds a finished request", result.reason)
++
++        # A recomputation-expanded waiting context beyond max_model_len.
++        holder, _ = _build_holder()
++        expanded = self._resident(holder, 1, 30, 30, outputs=3)
++        holder.running.remove(expanded)
++        holder.block_manager.free(expanded)
++        expanded.reset_for_recompute()
++        holder.waiting.append(expanded)
++        result = _map(holder, lsm.RequestUtility(1.0, 1.0, 1.0))
++        self.assertIsInstance(result, lsm.MappingFailure)
++        self.assertIn("registered context length 33 exceeds max_model_len 32",
++                      result.reason)
++
++        # Context length 32 == max_model_len and 8 blocks + watermark 2 ==
++        # pool 10 are accepted (equality); watermark 3 is rejected. The
++        # mapped problem carries that watermark.
++        for watermark, ok in ((2, True), (3, False)):
++            holder, manager = _build_holder()
++            manager.watermark_blocks = watermark
++            holder.waiting.append(_make_sequence(0, 32, 1.0))
++            result = _map(holder, lsm.RequestUtility(1.0, 1.0, 1.0))
++            if ok:
++                self.assertIsInstance(result, lsm.StateSnapshot, result)
++                self.assertEqual(result.lp_problem.admission_watermark, 2)
++            else:
++                self.assertIsInstance(result, lsm.MappingFailure)
++                self.assertIn("plus watermark 3 exceeds the total pool of 10",
++                              result.reason)
++
++    def test_future_head_does_not_hide_arrived_work(self):
++        holder, _ = _build_holder()
++        holder.waiting.append(_make_sequence(0, 4, SNAPSHOT_TIME + 1))
++        holder.waiting.append(_make_sequence(1, 4, 1.0))
++        result = _map(holder, lsm.RequestUtility(1.0, 1.0, 1.0))
++        self.assertIsInstance(result, lsm.StateSnapshot, result)
++        self.assertEqual([r.raw_seq_id for r in result.requests], [1])
++        self.assertEqual(result.arrived_waiting_order, (1,))
++        self.assertEqual(result.requests[0].queue_position, 1)
++        self.assertEqual(result.requests[0].service_rank, 0)
++
++    def test_one_capture_and_state_dependent_policy_inputs(self):
++        """A compact state-dependent coefficient fixture (not a production
++        utility policy): decode utility grows with generated output and the
++        penalty with recovered blocks. Ranks and coefficients come from the
++        one capture, are fixed in the snapshot, and change in the next
++        decision after the queues change."""
++        seen = []
++
++        def policy(captured, request):
++            seen.append((type(captured), type(request)))
++            return lsm.RequestUtility(
++                decode_utility=1.0 + request.output_len,
++                prefill_token_utility=0.5,
++                preemption_penalty=float(request.preemption_recovery),
++            )
++
++        holder, block_manager = _build_holder()
++        self._resident(holder, 1, 4, 4)
++        second = self._resident(holder, 2, 4, 4)
++        holder.waiting.append(_make_sequence(0, 4, 1.0))
++        with mock.patch.object(
++            lsm, "_capture", wraps=lsm._capture,
++        ) as capture_spy:
++            snapshot = _map(holder, policy)
++        self.assertEqual(capture_spy.call_count, 1)
++        self.assertIsInstance(snapshot, lsm.StateSnapshot, snapshot)
++        self.assertEqual(set(seen), {(lsm.CapturedState, lsm.CapturedRequest)})
++        coeffs = {r.raw_seq_id: r.utility for r in snapshot.requests}
++        ranks = {r.raw_seq_id: (r.service_rank, r.victim_rank)
++                 for r in snapshot.requests}
++        self.assertEqual(coeffs[1], lsm.RequestUtility(1.0, 0.5, 1.0))
++        self.assertEqual(ranks, {1: (0, 1), 2: (1, 0), 0: (2, None)})
++        frozen = snapshot.lp_problem
++
++        # Next decision: second generated a token and moved to the front.
++        second.set_status(SequenceStatus.RUNNING)
++        block_manager.append_slot(second)
++        second.append_token_id(5)
++        second.set_status(SequenceStatus.PAUSED)
++        holder.running.reverse()
++        holder._iteration_id += 1
++        later = _map(holder, policy)
++        self.assertIsInstance(later, lsm.StateSnapshot, later)
++        later_coeffs = {r.raw_seq_id: r.utility for r in later.requests}
++        later_ranks = {r.raw_seq_id: (r.service_rank, r.victim_rank)
++                       for r in later.requests}
++        self.assertEqual(later_coeffs[2], lsm.RequestUtility(2.0, 0.5, 1.0))
++        self.assertEqual(later_coeffs[1], coeffs[1])
++        self.assertEqual(later_ranks, {2: (0, 1), 1: (1, 0), 0: (2, None)})
++        # The earlier decision's inputs are unchanged.
++        self.assertEqual(snapshot.lp_problem, frozen)
++        self.assertEqual({r.raw_seq_id: r.utility for r in snapshot.requests},
++                         coeffs)
++
++        # Uniform and per-request mappings remain accepted policies.
++        uniform = _map(holder, lsm.RequestUtility(3.0, 2.0, 1.0))
++        self.assertEqual({r.utility for r in uniform.requests},
++                         {lsm.RequestUtility(3.0, 2.0, 1.0)})
++        self.assertEqual(
++            lsm.construct_coefficients(
++                lsm.capture_scheduler_state(holder,
++                                            snapshot_time=SNAPSHOT_TIME),
++                {0: lsm.RequestUtility(0.0, 1.0, 0.0),
++                 1: lsm.RequestUtility(1.0, 0.0, 2.0),
++                 2: lsm.RequestUtility(2.0, 0.0, 3.0)}),
++            (lsm.RequestUtility(0.0, 1.0, 0.0),
++             lsm.RequestUtility(1.0, 0.0, 2.0),
++             lsm.RequestUtility(2.0, 0.0, 3.0)))
++
++
+ 
+ if __name__ == "__main__":
+     unittest.main()

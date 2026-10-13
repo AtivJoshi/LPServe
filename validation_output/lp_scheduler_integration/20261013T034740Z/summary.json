@@ -1,0 +1,119 @@
+{
+  "purpose": "corrected connected CPU framework: planner, mapping, executor, live coordination, admission, configuration",
+  "tested_base_commit": "9a6ca3cf338f4212679eeaaabd0929cce4c0f26a",
+  "branch": "main",
+  "working_tree_diff": "working_tree.diff",
+  "working_tree_diff_sha256": "f5ebf06cfe937e9c218b6d02701216a0361d76fbac83e6e052df671b916a2c85",
+  "changed_file_sha256": {
+    "lp_relaxation_scheduler.py": "0da829064e3eaef71916cc03889e17d03602d6001dddc19ae60b93a87f159ce0",
+    "lpserve_plan_execution.py": "21c20dc1ca28712461393cdf0eb7466566fbb34c76f03d209a38ceee6972fd74",
+    "lpserve_state_mapping.py": "3a61552dea08aea75e15e8c416f24633eb06b032ccaf8e00d209d16c29c00c2a",
+    "sarathi/config.py": "329eaea572ff850cb63754f2e5a2f06c372820a02d630daf2d36dce7fe001e62",
+    "sarathi/core/scheduler/lp_scheduler.py": "98c07ba0eae44b1969bd5fe37919432f070f961bc3875a005c30656b9f129802",
+    "sarathi/engine/arg_utils.py": "44d3353d5fac3d6937098d22d95db9309454b995dfed2d20b4a0cdd07ff6d7bd",
+    "sarathi/engine/base_llm_engine.py": "5f2db9ce5c8ed736ab1a97f66455d6bd19aa519e3bf4ce7d07467242be9c8afd",
+    "scripts/check_lp_scheduler_contention_gpu.py": "4b45aa47a39fd232a41704cba7237c91fa9704f72acb38472b262068b5cbba19",
+    "scripts/check_lp_scheduler_contention_reference_gpu.py": "09c4548461a8e3f22bff65d710e26f130705617cdd73355c459aa17ac92e67ce",
+    "scripts/check_lp_scheduler_decode_preemption_reference_gpu.py": "976aeb69fc18370fa7ad01e32d2494e16edebd76065ca67f50d5b006ae780ed6",
+    "scripts/check_lp_scheduler_gpu.py": "18b145d0689f1beaae933671955251dcae8fd9f3696ff371246a3845d6224dd8",
+    "scripts/check_lp_scheduler_mixed_gpu.py": "3af42fdb14f3c6638da9829f7010b104a6e18eccd6532711840937d6a4ecc946",
+    "scripts/check_lp_scheduler_preemption_gpu.py": "e2808bbb191a28130bba7b89f9d8fe526063b6daea698b32880cb10c40543d17",
+    "scripts/check_lp_scheduler_preemption_reference_gpu.py": "a9244bb888df932b49e1364d352cda16f9118df7b0f464bb2725428e766d455f",
+    "scripts/check_lp_scheduler_reference_gpu.py": "1596f907dd0246ea4c1e2a9e07d7a1c1063cc7a82fd1e8628eba6b246979fcc8",
+    "scripts/run_lp_inference.py": "6ddcbc6245a0715a0e76051b515e711fd7fadc6222b9236c470673301cf0333a",
+    "tests/test_lp_engine_args.py": "de952314af227075946f69401f6b4187f7cd084548aff3184b41fa5d16c767fb",
+    "tests/test_lp_relaxation_scheduler.py": "f4c668c23433f9a6294b467c48ad70689092011299334342e662fa13b62d45bd",
+    "tests/test_lp_scheduler.py": "3c5ff625cbeaf6f5467ec57a34809dc3362236c662cada0994df121497e0b4f2",
+    "tests/test_lpserve_plan_execution.py": "8932eca1605b250b47e48da47891ff77f3cbb654454dcbc111b5bc4ffbd4faaa",
+    "tests/test_lpserve_state_mapping.py": "61a7240bfa06533fb62459de205816a4bd9c86ada9fcb33843f8e6dc869996da"
+  },
+  "host": "gpu048",
+  "slurm_job_id": "65616965",
+  "previous_interrupted_allocation": {
+    "host": "gpu049",
+    "slurm_job_id": "65615469",
+    "note": "development runs there were not retained as evidence; none is reused"
+  },
+  "python": "3.10.8 (/home/atjoshi_umass_edu/LPServe/env)",
+  "numpy": "2.2.6",
+  "scipy": "1.15.3",
+  "gpu_used": false,
+  "checks": {
+    "01_py_compile": {
+      "output": "01_py_compile.txt",
+      "exit_status": 0,
+      "tests_ran": null,
+      "result": null
+    },
+    "02_import": {
+      "output": "02_import.txt",
+      "exit_status": 0,
+      "tests_ran": null,
+      "result": null
+    },
+    "03_smoke": {
+      "output": "03_smoke.txt",
+      "exit_status": 0,
+      "tests_ran": null,
+      "result": null
+    },
+    "04_pure": {
+      "output": "04_pure.txt",
+      "exit_status": 0,
+      "tests_ran": 38,
+      "result": "OK"
+    },
+    "05_mapping": {
+      "output": "05_mapping.txt",
+      "exit_status": 0,
+      "tests_ran": 12,
+      "result": "OK"
+    },
+    "06_executor": {
+      "output": "06_executor.txt",
+      "exit_status": 0,
+      "tests_ran": 16,
+      "result": "OK"
+    },
+    "07_live_scheduler_and_submission": {
+      "output": "07_live_scheduler_and_submission.txt",
+      "exit_status": 0,
+      "tests_ran": 20,
+      "result": "OK"
+    },
+    "08_engine_args": {
+      "output": "08_engine_args.txt",
+      "exit_status": 0,
+      "tests_ran": 10,
+      "result": "OK"
+    },
+    "09_script_cpu_tests": {
+      "output": "09_script_cpu_tests.txt",
+      "exit_status": 0,
+      "tests_ran": 24,
+      "result": "OK"
+    },
+    "10_run_lp_inference_cpu_tests": {
+      "output": "10_run_lp_inference_cpu_tests.txt",
+      "exit_status": 0,
+      "tests_ran": 18,
+      "result": "OK"
+    },
+    "11_git_diff_check": {
+      "output": "11_git_diff_check.txt",
+      "exit_status": 0,
+      "tests_ran": null,
+      "result": null
+    }
+  },
+  "total_tests": 138,
+  "enumeration_counts": {
+    "success": 129,
+    "solver_reported_lp_infeasibility": 20,
+    "no_legal_useful_work": 1,
+    "guided_success": 129,
+    "guided_none": 21,
+    "plans_enumerated": 10348
+  },
+  "script": "run_checks.sh"
+}

@@ -29,8 +29,6 @@ SNAPSHOT_TIME = 100.0
 B_MAX = 8
 C_MAX = 4
 S_MAX = 3
-MEMORY_RESERVE = 1
-DECODE_POLICY_ID = "conservative_one_block_v1"
 # Default native watermark (0.01 of 10 blocks -> 0 blocks). The combined-memory
 # case uses a visibly different 0.2 (2 blocks) to exercise the native gate.
 DEFAULT_WATERMARK = 0.01
@@ -119,9 +117,8 @@ def _map(holder, utilities):
         b_max=B_MAX,
         c_max=C_MAX,
         s_max=S_MAX,
-        memory_reserve=MEMORY_RESERVE,
-        decode_memory_policy_id=DECODE_POLICY_ID,
-        utilities=utilities,
+        coefficient_policy=utilities,
+        rank_profile=lsm.vllm_oriented_ranks,
         numerical_policy=NUMERICAL_POLICY,
     )
     assert isinstance(snapshot, lsm.StateSnapshot), snapshot
@@ -145,39 +142,37 @@ def _actions(plan):
 
 def _with_plan(problem, result, actions):
     """Replace the plan with one built from ``actions`` (request_id ->
-    (prefill_tokens, decode, preempt)); residuals are recomputed."""
+    (prefill_tokens, decode, preempt)). Declared orders, final totals, and
+    the objective are recomputed so only the selected actions differ; the
+    plan is not thereby mathematically valid."""
     decisions = []
-    tokens = width = memory = 0
-    objective = 0.0
+    tokens = width = demand = 0
+    residents, free = problem.resident_count, problem.m_free
+    xs, ys, zs = [], [], []
     for r in problem.requests:
         x, y, z = actions.get(r.request_id, (0, 0, 0))
         ind = 1 if x > 0 else 0
         decisions.append(lrs.IntegerDecision(
             r.request_id, r.order_key, x, y, z, ind,
         ))
+        xs.append(x), ys.append(y), zs.append(z)
         tokens += x + y
         width += ind + y
-        memory += (
-            r.prefill_fixed_charge * ind + r.decode_charge * y
-            - r.preemption_recovery * z
-        )
-        objective += (
-            r.prefill_token_utility * x + r.decode_utility * y
-            - r.preemption_penalty * z
-        )
+        demand += r.decode_demand * y
+        free += r.preemption_recovery * z - r.prefill_fixed_charge * ind
+        residents += (0 if r.resident else ind) - z
+    victim_order, execution_order = lrs._declared_orders(problem, ys, zs, xs)
     plan = dataclasses.replace(
         result.plan,
         decisions=tuple(decisions),
-        residual_token_capacity=problem.b_max - tokens,
-        residual_action_capacity=problem.s_max - width,
-        residual_memory_capacity=problem.m_free - problem.w - memory,
-        fractional_request_count=0,
-        dominant_preemption_ids=tuple(
-            r.request_id for r in problem.requests
-            if actions.get(r.request_id, (0, 0, 0))[2]
-        ),
-        safety_preemption_ids=(),
-        objective=objective,
+        victim_order=victim_order,
+        execution_order=execution_order,
+        token_use=tokens,
+        action_count=width,
+        resident_count_after=residents,
+        free_blocks_before_decodes=free,
+        decode_demand=demand,
+        objective=lrs._objective_max(problem, xs, ys, zs),
     )
     return dataclasses.replace(result, plan=plan)
 
@@ -330,7 +325,8 @@ class PlanExecutionTest(unittest.TestCase):
 
         self.assertIsInstance(outputs, SchedulerOutputs)
         self.assertEqual(outputs.id, ITERATION_ID)
-        self.assertEqual(_emitted(outputs), [(0, 4), (1, 4)])
+        # Service rank: running 1 (rank 0) before waiting 0 (rank 2).
+        self.assertEqual(_emitted(outputs), [(1, 4), (0, 4)])
         self.assertEqual(outputs.ignored_seq_ids, [])
         self.assertEqual(outputs.preempted_seq_ids, [])
         self.assertEqual(outputs.num_batched_prompt_tokens, 8)
@@ -444,7 +440,9 @@ class PlanExecutionTest(unittest.TestCase):
 
         self.assertIsInstance(outputs, SchedulerOutputs)
         emitted = _emitted(outputs)
-        self.assertEqual(emitted, [(1, 4), (2, 3), (0, 0)])
+        # Prefills by service rank (resident 2 rank 1, waiting 1 rank 2),
+        # then the decode.
+        self.assertEqual(emitted, [(2, 3), (1, 4), (0, 0)])
         self.assertNotEqual(
             [seq_id for seq_id, _ in emitted],
             sorted(seq_id for seq_id, _ in emitted),
@@ -464,7 +462,7 @@ class PlanExecutionTest(unittest.TestCase):
         holder = _SchedulerHolder(watermark=TIGHT_WATERMARK)
         self.assertEqual(holder.block_manager.watermark_blocks, 2)
         _add_resident(holder, 2, 12, processed=4)  # 3 blocks, unselected
-        _add_resident(holder, 3, 8, processed=8)  # 2 blocks, unselected
+        _add_resident(holder, 3, 8, processed=8)  # 2 blocks
         first = _add_waiting(holder, 0, 8)  # 2 blocks
         second = _add_waiting(holder, 1, 8)  # 2 blocks
         utilities = _utilities(
@@ -472,16 +470,28 @@ class PlanExecutionTest(unittest.TestCase):
             r2=(0.0, 0.1, 1.0), r3=(0.1, 0.0, 1.0),
         )
         snapshot, result = _map_and_solve(holder, utilities)
-        self.assertEqual(
-            _actions(result.plan), {"0": (4, 0, 0), "1": (4, 0, 0)},
+        # The watermark is now an LP row: both admissions need victim 3
+        # (H = 5 + 2 - 4 = 3 >= 2); without it H = 1 < 2.
+        result = _with_plan(snapshot.lp_problem, result, {
+            "0": (4, 0, 0), "1": (4, 0, 0), "3": (0, 0, 1)})
+        self.assertIs(
+            lrs.validate_integer_plan(snapshot.lp_problem, result.plan),
+            result.plan,
         )
-        # Planning memory with reserve 1 is exactly feasible: 2 + 2 <= 5 - 1.
-        self.assertEqual(snapshot.lp_problem.m_free, 5)
-        self.assertEqual(result.plan.residual_memory_capacity, 0)
-        # Each admission alone passes the native gate against the original
-        # free count, so independent checks would accept the plan.
-        self.assertTrue(holder.block_manager.can_allocate(first))
-        self.assertTrue(holder.block_manager.can_allocate(second))
+        without_victim = _with_plan(snapshot.lp_problem, result, {
+            "0": (4, 0, 0), "1": (4, 0, 0)})
+        self.assertIn("admission_watermark", lrs.validate_integer_plan(
+            snapshot.lp_problem, without_victim.plan).reason)
+        # Current state drifts after planning: two free blocks are held
+        # elsewhere, leaving 3. After victim 3 returns 2 blocks, each
+        # admission alone would pass (5 - 2 >= 2), but the second one in
+        # execution order sees 3 free and 3 - 2 < 2.
+        allocator = holder.block_manager.gpu_allocator
+        held = [allocator.allocate() for _ in range(2)]
+        self.assertEqual(holder.block_manager.get_num_free_gpu_blocks(), 3)
+        for seq in (first, second):
+            self.assertEqual(
+                holder.block_manager.get_num_initial_blocks(seq), 2)
 
         before = _fingerprint(holder)
         failure = lpe.execute_plan(holder, snapshot, result)
@@ -499,7 +509,10 @@ class PlanExecutionTest(unittest.TestCase):
             return r
 
         def upstream_failure(h, s, r):
-            return lrs.Failure(s.snapshot_id, "solver", "infeasible", "fixture")
+            return lrs.Failure(
+                s.snapshot_id, "solver", lrs.OUTCOME_LP_INFEASIBLE,
+                lrs.CATEGORY_LP_INFEASIBLE, "fixture",
+            )
 
         def in_flight(h, s, r):
             h.num_running_batches = 1
@@ -555,7 +568,7 @@ class PlanExecutionTest(unittest.TestCase):
             "resident_capacity": (resident_capacity, "resident_capacity"),
             "overlength_admission": (overlength, "overlength_admission"),
             "plan_chunk_bound": (plan_chunk_bound, "ineligible_action"),
-            "plan_token_limit": (plan_token_limit, "capacity_violation"),
+            "plan_token_limit": (plan_token_limit, "constraint_violation"),
         }
         validator_categories = {"plan_chunk_bound", "plan_token_limit"}
 
@@ -569,6 +582,7 @@ class PlanExecutionTest(unittest.TestCase):
                 self.assertEqual(_fingerprint(holder), before)
                 self.assertIsInstance(failure, lrs.Failure)
                 self.assertEqual(failure.category, category)
+                self.assertEqual(failure.outcome, lrs.OUTCOME_INVALID)
                 self.assertEqual(failure.problem_id, str(ITERATION_ID))
                 self.assertEqual(
                     failure.stage,
@@ -587,11 +601,13 @@ class PlanExecutionTest(unittest.TestCase):
                 holder = _build_case_one()
                 snapshot, result = _map_and_solve(holder, CASE_ONE_UTILITIES)
                 result = _with_plan(snapshot.lp_problem, result, actions)
-                # The constructed plan is mathematically legitimate.
-                self.assertIs(
-                    lrs.validate_integer_plan(snapshot.lp_problem, result.plan),
-                    result.plan,
-                )
+                # The mathematical validator also rejects it (useful
+                # execution); the executor's defensive gate runs first so
+                # the failure is classified as no_progress.
+                rejected = lrs.validate_integer_plan(
+                    snapshot.lp_problem, result.plan)
+                self.assertEqual(rejected.category, "constraint_violation")
+                self.assertIn("useful_execution", rejected.reason)
                 before = _fingerprint(holder)
                 with mock.patch.object(
                     holder, "_preempt", wraps=holder._preempt,
@@ -602,6 +618,7 @@ class PlanExecutionTest(unittest.TestCase):
                 self.assertIsInstance(failure, lrs.Failure)
                 self.assertEqual(failure.stage, "precommit_validation")
                 self.assertEqual(failure.category, "no_progress")
+                self.assertEqual(failure.outcome, lrs.OUTCOME_INVALID)
                 self.assertEqual(failure.problem_id, str(ITERATION_ID))
 
     def test_preemption_recovery_enables_admission(self):
@@ -620,7 +637,7 @@ class PlanExecutionTest(unittest.TestCase):
         result = _with_plan(
             snapshot.lp_problem, result, {"0": (0, 0, 1), "2": (4, 0, 0)},
         )
-        # Planning memory with reserve 1: 4 - 2 <= 3 - 1.
+        # H = 3 + 2 - 4 = 1 >= watermark 0.
         self.assertIs(
             lrs.validate_integer_plan(snapshot.lp_problem, result.plan),
             result.plan,
@@ -665,7 +682,7 @@ class PlanExecutionTest(unittest.TestCase):
         self.assertEqual(victim.get_status(), SequenceStatus.PAUSED)
         self.assertEqual(holder.num_running_batches, 0)
 
-    def test_multiple_victims_use_ascending_native_and_control_order(self):
+    def test_multiple_victims_use_declared_native_and_control_order(self):
         holder, snapshot, result = _victim_case_with_plan()
         seqs = {s.seq_id: s for s in holder.waiting + holder.running}
         before = {k: _seq_fingerprint(s) for k, s in seqs.items()}
@@ -681,15 +698,18 @@ class PlanExecutionTest(unittest.TestCase):
             outputs = lpe.execute_plan(holder, snapshot, result)
 
         self.assertIsInstance(outputs, SchedulerOutputs)
-        # Every selected victim, ascending by order_key, before any action;
-        # no victim cap. Victim 3 has generated tokens.
+        # Every selected victim in declared victim order (reverse running
+        # order: 3 has victim rank 0, 1 has rank 2) before any action; no
+        # victim cap. Victim 3 has generated tokens. Prefills follow service
+        # rank: resident 2 (rank 1), then waiting 0 (rank 3).
+        self.assertEqual(result.plan.victim_order, ("3", "1"))
         self.assertEqual(
-            calls, [("_preempt", 1), ("_preempt", 3), ("_allocate", 0)],
+            calls, [("_preempt", 3), ("_preempt", 1), ("_allocate", 0)],
         )
-        self.assertEqual(outputs.preempted_seq_ids, [1, 3])
-        self.assertEqual(_emitted(outputs), [(0, 4), (2, 4)])
+        self.assertEqual(outputs.preempted_seq_ids, [3, 1])
+        self.assertEqual(_emitted(outputs), [(2, 4), (0, 4)])
         # Native front insertion leaves the victims in reverse call order.
-        self.assertEqual([s.seq_id for s in holder.waiting], [3, 1, 4])
+        self.assertEqual([s.seq_id for s in holder.waiting], [1, 3, 4])
         self.assertEqual([s.seq_id for s in holder.running], [2, 0])
         for seq_id in (1, 3):
             self.assertIs(
@@ -715,7 +735,8 @@ class PlanExecutionTest(unittest.TestCase):
                 allocator.allocate()
 
         def later_victim_finished(h):
-            # Victim 1 is valid; victim 3 is checked after it and fails.
+            # Victim 3 is checked first (declared order) and fails before
+            # any victim is freed.
             [seq] = [s for s in h.running if s.seq_id == 3]
             seq.set_status(SequenceStatus.FINISHED_STOPPED)
 
@@ -829,16 +850,132 @@ class PlanExecutionTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "induced preemption"):
                 lpe.execute_plan(holder, snapshot, result)
 
-        # No later action ran and nothing was restored: victim 1 is freed and
-        # waiting; victim 3 left running but kept its blocks.
-        self.assertEqual(preempted, [1, 3])
+        # No later action ran and nothing was restored: victim 3 is freed and
+        # waiting; victim 1 left running but kept its blocks.
+        self.assertEqual(preempted, [3, 1])
         allocate_spy.assert_not_called()
         append_spy.assert_not_called()
-        self.assertEqual([s.seq_id for s in holder.waiting], [1, 0, 4])
+        self.assertEqual([s.seq_id for s in holder.waiting], [3, 0, 4])
         self.assertEqual([s.seq_id for s in holder.running], [2])
-        self.assertEqual(set(holder.block_manager.block_tables), {2, 3})
+        self.assertEqual(set(holder.block_manager.block_tables), {1, 2})
         # The mutated fixture is discarded, not reused.
         del holder
+
+    def test_prefills_then_zero_then_one_block_decodes(self):
+        # Pool 5: A (seq 0) decode needing one block, B (seq 1) zero-demand
+        # decode, C (seq 2) resident partial prefill, omitted resident D
+        # (seq 3, zero-demand decode with zero utility). One block is free.
+        # Service ranks follow running order A, B, C, D, but execution is
+        # prefills, then zero-demand decodes, then one-block decodes: B
+        # must run before A consumes the only free block.
+        holder = _SchedulerHolder(num_gpu_blocks=6)
+        a = _add_resident(holder, 0, 4, processed=4, num_output_tokens=1)
+        b = _add_resident(holder, 1, 4, processed=4)
+        c = _add_resident(holder, 2, 8, processed=4)
+        d = _add_resident(holder, 3, 4, processed=4)
+        self.assertEqual(holder.block_manager.get_num_free_gpu_blocks(), 1)
+        utilities = _utilities(
+            r0=(1.0, 0.0, 5.0), r1=(1.0, 0.0, 5.0), r2=(0.0, 1.0, 5.0),
+            r3=(0.0, 0.0, 5.0),
+        )
+        snapshot, result = _map_and_solve(holder, utilities)
+        demand = {r.request_id: r.decode_demand
+                  for r in snapshot.lp_problem.requests}
+        self.assertEqual((demand["0"], demand["1"]), (1, 0))
+        self.assertEqual(
+            _actions(result.plan),
+            {"0": (0, 1, 0), "1": (0, 1, 0), "2": (4, 0, 0)},
+        )
+        self.assertEqual(result.plan.execution_order, ("2", "1", "0"))
+
+        calls = []
+        patches = _record_native_calls(holder, calls)
+        with patches[0], patches[1], patches[2]:
+            outputs = lpe.execute_plan(holder, snapshot, result)
+        self.assertIsInstance(outputs, SchedulerOutputs)
+        self.assertEqual(_emitted(outputs), [(2, 4), (1, 0), (0, 0)])
+        self.assertEqual(calls, [("_append_slot", 1), ("_append_slot", 0)])
+        # Central native order equals emitted metadata order.
+        self.assertEqual(
+            [seq_id for _, seq_id in calls],
+            [seq_id for seq_id, chunk in _emitted(outputs) if chunk == 0],
+        )
+        self.assertEqual(holder.block_manager.get_num_free_gpu_blocks(), 0)
+        self.assertEqual(len(_table(holder, 0)), 2)
+        # Retained residents, including omitted D, keep relative order.
+        self.assertEqual([s.seq_id for s in holder.running], [0, 1, 2, 3])
+        self.assertEqual(
+            [id(s) for s in holder.running], [id(a), id(b), id(c), id(d)],
+        )
+
+    def test_readmitted_victim_joins_running_tail(self):
+        # Earlier decision: resident 0 generated two tokens and was
+        # preempted; replay reset it for recomputation (expanded context of
+        # six tokens). It is now at the waiting front, behind no one.
+        holder = _SchedulerHolder()
+        victim = _add_resident(holder, 0, 4, processed=4, num_output_tokens=2)
+        _add_resident(holder, 1, 4, processed=4)
+        _add_resident(holder, 2, 8, processed=4)
+        _add_waiting(holder, 3, 4)
+        holder.running.remove(victim)
+        holder._preempt(victim)
+        victim.reset_for_recompute()
+        self.assertEqual([s.seq_id for s in holder.waiting], [0, 3])
+        self.assertEqual(victim.get_len(), 6)
+        utilities = _utilities(
+            r0=(0.0, 3.0, 1.0), r1=(0.0, 0.0, 9.0), r2=(0.0, 1.0, 9.0),
+            r3=(0.0, 0.5, 1.0),
+        )
+        snapshot, result = _map_and_solve(holder, utilities)
+        by_id = {r.raw_seq_id: r for r in snapshot.requests}
+        self.assertEqual(by_id[0].prefill_fixed_charge, 2)
+        self.assertEqual(by_id[0].service_rank, 2)  # after running 1, 2
+        self.assertEqual(_actions(result.plan)["0"], (4, 0, 0))
+        outputs = lpe.execute_plan(holder, snapshot, result)
+        self.assertIsInstance(outputs, SchedulerOutputs)
+        running = [s.seq_id for s in holder.running]
+        self.assertEqual(running[:2], [1, 2])
+        self.assertEqual(running[2], 0)  # first admission joins the tail
+        self.assertEqual(len(_table(holder, 0)), 2)
+
+    def test_planned_resources_must_match_current_state(self):
+        def decode_gap_grew(h, s, r):
+            [seq] = [q for q in h.running if q.seq_id == 2]
+            seq.set_status(SequenceStatus.RUNNING)
+            seq.append_token_id(7)  # gap 0 -> 1 after planning
+            seq.set_status(SequenceStatus.PAUSED)
+            return _with_plan(s.lp_problem, r, {"2": (0, 1, 0)})
+
+        def watermark_changed(h, s, r):
+            h.block_manager.watermark_blocks = 1
+            return r
+
+        def recovery_changed(h, s, r):
+            table = h.block_manager.block_tables[1]
+            h.block_manager.gpu_allocator.free(table.pop())
+            return _with_plan(
+                s.lp_problem, r, {"1": (0, 0, 1), "0": (4, 0, 0)})
+
+        cases = {
+            "decode_gap": (decode_gap_grew, "planned decode demand 0"),
+            "watermark": (watermark_changed, "planned admission watermark"),
+            "recovery": (recovery_changed, "planned recovery 2"),
+        }
+        for name, (perturb, reason) in cases.items():
+            with self.subTest(name):
+                holder = _build_case_one()
+                snapshot, result = _map_and_solve(holder, CASE_ONE_UTILITIES)
+                result = perturb(holder, snapshot, result)
+                before = _fingerprint(holder)
+                failure = lpe.execute_plan(holder, snapshot, result)
+                self.assertEqual(_fingerprint(holder), before)
+                self.assertIsInstance(failure, lrs.Failure)
+                self.assertEqual(
+                    (failure.stage, failure.category, failure.outcome),
+                    ("precommit_validation", "plan_state_mismatch",
+                     lrs.OUTCOME_INVALID))
+                self.assertIn(reason, failure.reason)
+
 
 
 if __name__ == "__main__":

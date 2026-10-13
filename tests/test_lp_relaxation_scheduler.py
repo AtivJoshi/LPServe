@@ -123,11 +123,15 @@ def problem(specs, b, c, s, n, free, h, pid="test"):
 
 
 def runtime_pool_consistent(prob):
-    """Test-side label check: pool T = free + all resident blocks (every
-    resident preemptible, so its recovery is its block count), default
-    watermark h = floor(0.01 T), and A_i + h <= T for each waiting prefill.
-    This is only the pool/watermark part of initial admission validation."""
-    if any(r.resident and not r.preemption_eligible for r in prob.requests):
+    """Test-side label check: every resident has the live mapper's shape (a
+    preemptible partial prefill or decode), pool T = free + all resident
+    blocks, default watermark h = floor(0.01 T), and A_i + h <= T for each
+    waiting prefill. This is only the resident-shape and pool/watermark part
+    of initial admission validation."""
+    if any(r.resident and not (
+            r.preemption_eligible
+            and (r.prefill_eligible or r.decode_eligible))
+           for r in prob.requests):
         return False
     total = prob.m_free + sum(
         r.preemption_recovery for r in prob.requests if r.resident)
@@ -243,18 +247,44 @@ def oracle_best(prob):
     return best is not None, best
 
 
-def plan_choice(plan):
+def oracle_choice(prob, decisions):
+    """Independently check a returned decision tuple and convert it to an
+    action choice. Raises AssertionError on any violation of request
+    association, integer domains, canonical indicators, action exclusivity,
+    eligibility, or chunk bounds (including the request's own remainder).
+    Resources are checked separately by ``oracle_simulate``."""
+    reqs = prob.requests
+    assert isinstance(decisions, tuple) and len(decisions) == len(reqs), \
+        "one decision per request"
     out = []
-    for d in plan.decisions:
-        if d.prefill_tokens:
-            out.append(("prefill", d.prefill_tokens))
-        elif d.decode:
+    for r, d in zip(reqs, decisions):
+        rid = r.request_id
+        assert (d.request_id, d.order_key) == (rid, r.order_key), \
+            f"{rid}: association"
+        x, y, z, ind = d.prefill_tokens, d.decode, d.preempt, d.prefill_indicator
+        assert all(type(v) is int for v in (x, y, z, ind)), f"{rid}: domain"
+        assert x >= 0 and {y, z, ind} <= {0, 1}, f"{rid}: domain"
+        assert ind == (1 if x > 0 else 0), f"{rid}: canonical indicator"
+        assert ind + y + z <= 1, f"{rid}: conflicting action flags"
+        if x:
+            assert r.prefill_eligible, f"{rid}: prefill not eligible"
+            assert x <= r.prompt_tokens_remaining, f"{rid}: exceeds remainder"
+            assert x <= prob.c_max, f"{rid}: exceeds chunk cap"
+            out.append(("prefill", x))
+        elif y:
+            assert r.decode_eligible, f"{rid}: decode not eligible"
             out.append(("decode",))
-        elif d.preempt:
+        elif z:
+            assert r.preemption_eligible and r.resident \
+                and rid in prob.legal_preemption_ids, f"{rid}: illegal victim"
             out.append(("preempt",))
         else:
             out.append(None)
     return tuple(out)
+
+
+def plan_choice(plan, prob):
+    return oracle_choice(prob, plan.decisions)
 
 
 def choice_vector(prob, choice):
@@ -342,7 +372,8 @@ class LPRelaxationSchedulerTest(unittest.TestCase):
         plan = lrs.extract_integer_plan(canonical, relaxed)
         if isinstance(plan, lrs.IntegerPlan):
             self.assertIs(lrs.validate_integer_plan(canonical, plan), plan)
-            legal, useful, util = oracle_simulate(canonical, plan_choice(plan))
+            legal, useful, util = oracle_simulate(
+                canonical, plan_choice(plan, canonical))
             self.assertTrue(legal and useful)
             self.assertAlmostEqual(util, plan.objective, places=9)
         return canonical, relaxed, plan
@@ -686,7 +717,7 @@ class LPRelaxationSchedulerTest(unittest.TestCase):
         # RUNTIME (pool 4, h = 0): another resident can be preempted.
         prob = problem(
             [decoder("d", 1, 0, 3, alpha=5.0, gamma=1.0),
-             idle("v", 2, 1, gamma=1.0)],
+             decoder("v", 2, 0, 1, alpha=0.0, gamma=1.0)],
             b=1, c=1, s=1, n=2, free=0, h=0)
         self.assertTrue(runtime_pool_consistent(prob))
         result = lrs.solve_and_extract(prob)
@@ -769,12 +800,14 @@ class LPRelaxationSchedulerTest(unittest.TestCase):
                 self.assertEqual(list(acts.values()), ["prefill:1"])
 
     def test_integral_idle_victim_and_zero_support_candidate(self):
-        # RUNTIME: pool 200, h = 2; the background resident is integral idle.
+        # ABSTRACT: pool 200 and h = 2 are consistent, but the background
+        # resident is preemptible with no eligible execution action, a shape
+        # the live mapper never produces. It is integral idle in the LP.
         prob = problem(
             [waiting("w1", 1, 1, 2, beta=1.0), waiting("w2", 2, 1, 2, beta=1.0),
              idle("bg", 3, 197, gamma=1000.0)],
             b=2, c=1, s=2, n=3, free=3, h=2)
-        self.assertTrue(runtime_pool_consistent(prob))
+        self.assertFalse(runtime_pool_consistent(prob), ABSTRACT)
         canonical, relaxed, plan = self.extract(prob, {
             "w1": {"x": 0.5, "I": 0.5}, "w2": {"x": 0.5, "I": 0.5}})
         solved = lrs.solve_relaxation(canonical)
@@ -1238,6 +1271,45 @@ class LPRelaxationSchedulerTest(unittest.TestCase):
                          (lrs.STAGE_PLAN, lrs.OUTCOME_INVALID))
         self.assertEqual(result.solver.diagnostics.raw_status, 0)
 
+    def test_oversized_vector_entry_is_structured_failure(self):
+        prob = canon(self, self.row_fixture())
+        raw = list(vector(prob, {"d1": {"y": 1.0}}))
+        raw[0] = 10 ** 400
+        result = lrs.validate_relaxed_solution(prob, raw)
+        self.assertIsInstance(result, lrs.Failure)
+        self.assertEqual((result.category, result.outcome),
+                         ("malformed_vector", lrs.OUTCOME_NUMERICAL))
+
+    def test_independent_oracle_rejects_malformed_decisions(self):
+        prob = mass_preemption(positive=True)
+        canonical, _, plan = self.extract(prob, MASS_POINT)
+        self.assertEqual(len(oracle_choice(canonical, plan.decisions)),
+                         len(canonical.requests))
+
+        def tampered(rid, **kw):
+            return tuple(dataclasses.replace(d, **kw) if d.request_id == rid
+                         else d for d in plan.decisions)
+
+        cases = {
+            "conflicting decode and preempt": tampered("B", preempt=1),
+            "conflicting prefill and decode": tampered("W", decode=1),
+            "prefill beyond remainder": tampered("W", prefill_tokens=2),
+            "noncanonical indicator": tampered("R000", prefill_indicator=1),
+            "bool flag": tampered("B", decode=True),
+            "decode not eligible": tampered("W", prefill_tokens=0,
+                                            prefill_indicator=0, decode=1),
+            "association": tuple(reversed(plan.decisions)),
+            "missing decision": plan.decisions[:-1],
+        }
+        for name, decisions in cases.items():
+            with self.subTest(name):
+                with self.assertRaises(AssertionError):
+                    oracle_choice(canonical, decisions)
+                bad = lrs.validate_integer_plan(canonical, dataclasses.replace(
+                    plan, decisions=decisions))
+                self.assertIsInstance(bad, lrs.Failure)
+                self.assertEqual(bad.outcome, lrs.OUTCOME_INVALID)
+
     # -- independent bounded enumeration ----------------------------------------
 
     def random_state(self, rng, index):
@@ -1309,7 +1381,7 @@ class LPRelaxationSchedulerTest(unittest.TestCase):
                 counts["success"] += 1
                 self.assertTrue(exists, index)
                 legal, useful, util = oracle_simulate(
-                    prob, plan_choice(result.plan))
+                    prob, plan_choice(result.plan, prob))
                 self.assertTrue(legal and useful, index)
                 self.assertLessEqual(util, best + 1e-9)
                 self.assertGreaterEqual(
@@ -1336,7 +1408,8 @@ class LPRelaxationSchedulerTest(unittest.TestCase):
                 counts["guided_success"] += 1
                 self.assertTrue(exists, index)
                 self.assertIs(lrs.validate_integer_plan(prob, plan), plan)
-                legal, useful, _ = oracle_simulate(prob, plan_choice(plan))
+                legal, useful, _ = oracle_simulate(
+                    prob, plan_choice(plan, prob))
                 self.assertTrue(legal and useful, index)
             else:
                 counts["guided_none"] += 1

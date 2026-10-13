@@ -427,6 +427,16 @@ class SLAISchedulerConfig(BaseSchedulerConfig):
         return SchedulerType.SLAI_SCHEDULER
 
 
+LP_OBSOLETE_ARGUMENT_MIGRATION = (
+    "the LP planning reserve and decode-charge policy were removed: decode "
+    "demand is the exact logical/physical block gap, and the admission "
+    "watermark is read from the shared block manager. Remove "
+    "memory_reserve/decode_memory_policy_id (EngineArgs: lp_memory_reserve/"
+    "lp_decode_memory_policy_id); no value, including 0, is accepted or "
+    "translated"
+)
+
+
 class LPSchedulerConfig(BaseSchedulerConfig):
     """LP-relaxation scheduler configuration.
 
@@ -439,14 +449,15 @@ class LPSchedulerConfig(BaseSchedulerConfig):
         c_max: Per-request prefill chunk limit.
         s_max: Scheduled execution-action limit for one forward pass. It is
             separate from the resident limit ``max_num_seqs``.
-        memory_reserve: Planning-memory reserve in KV-cache blocks. It is not
-            the block manager watermark.
-        decode_memory_policy_id: Decode planning-charge policy identifier.
         decode_utility: Uniform utility of one decode action.
         prefill_token_utility: Uniform utility per prefill token.
         preemption_penalty: Uniform preemption penalty.
         numerical_policy: ``lp_relaxation_scheduler.NumericalPolicy`` passed
             unchanged to the LP layer.
+
+    The removed ``memory_reserve`` and ``decode_memory_policy_id`` arguments
+    are rejected with a migration error, whether passed by keyword or as
+    extra positional arguments.
     """
 
     def __init__(
@@ -457,13 +468,24 @@ class LPSchedulerConfig(BaseSchedulerConfig):
         b_max: int,
         c_max: int,
         s_max: int,
-        memory_reserve: int,
-        decode_memory_policy_id: str,
         decode_utility: float,
         prefill_token_utility: float,
         preemption_penalty: float,
         numerical_policy,
+        *obsolete_args,
+        **obsolete_kwargs,
     ) -> None:
+        obsolete = {"memory_reserve", "decode_memory_policy_id"}
+        unknown = set(obsolete_kwargs) - obsolete
+        if unknown:
+            raise TypeError(
+                "LPSchedulerConfig got unexpected keyword argument(s) "
+                f"{sorted(unknown)}"
+            )
+        if obsolete_args or obsolete_kwargs:
+            raise ValueError(
+                "LPSchedulerConfig: " + LP_OBSOLETE_ARGUMENT_MIGRATION
+            )
         if num_pipeline_stages != 1:
             raise ValueError(
                 f"LP scheduler supports exactly one pipeline stage, got "
@@ -473,8 +495,6 @@ class LPSchedulerConfig(BaseSchedulerConfig):
         self.b_max = b_max
         self.c_max = c_max
         self.s_max = s_max
-        self.memory_reserve = memory_reserve
-        self.decode_memory_policy_id = decode_memory_policy_id
         self.decode_utility = decode_utility
         self.prefill_token_utility = prefill_token_utility
         self.preemption_penalty = preemption_penalty

@@ -27,8 +27,6 @@ SNAPSHOT_TIME = 100.0
 B_MAX = 8
 C_MAX = 4
 S_MAX = 3
-MEMORY_RESERVE = 1
-DECODE_POLICY_ID = "conservative_one_block_v1"
 
 NUMERICAL_POLICY = lrs.NumericalPolicy(
     policy_id="lp_relaxation_mvp_v1",
@@ -40,11 +38,13 @@ NUMERICAL_POLICY = lrs.NumericalPolicy(
 
 
 class _ConfigHolder:
-    """A tiny faithful stand-in for the two scheduler_config fields read."""
+    """A tiny faithful stand-in for the scheduler_config fields read."""
 
-    def __init__(self, num_pipeline_stages, max_num_seqs):
+    def __init__(self, num_pipeline_stages, max_num_seqs,
+                 max_model_len=MAX_MODEL_LEN):
         self.num_pipeline_stages = num_pipeline_stages
         self.max_num_seqs = max_num_seqs
+        self.max_model_len = max_model_len
 
 
 class _SchedulerHolder:
@@ -185,18 +185,18 @@ def _build_three_request_holder():
     return holder
 
 
-def _map(holder, utilities):
-    return lsm.map_scheduler_state(
-        holder,
+def _map(holder, utilities, **overrides):
+    kwargs = dict(
         snapshot_time=SNAPSHOT_TIME,
         b_max=B_MAX,
         c_max=C_MAX,
         s_max=S_MAX,
-        memory_reserve=MEMORY_RESERVE,
-        decode_memory_policy_id=DECODE_POLICY_ID,
-        utilities=utilities,
+        coefficient_policy=utilities,
+        rank_profile=lsm.vllm_oriented_ranks,
         numerical_policy=NUMERICAL_POLICY,
     )
+    kwargs.update(overrides)
+    return lsm.map_scheduler_state(holder, **kwargs)
 
 
 class LPServeStateMappingTest(unittest.TestCase):
@@ -230,17 +230,7 @@ class LPServeStateMappingTest(unittest.TestCase):
 
         before = _fingerprint(holder)
 
-        result = lsm.map_scheduler_state(
-            holder,
-            snapshot_time=SNAPSHOT_TIME,
-            b_max=B_MAX,
-            c_max=C_MAX,
-            s_max=S_MAX,
-            memory_reserve=MEMORY_RESERVE,
-            decode_memory_policy_id=DECODE_POLICY_ID,
-            utilities=utilities,
-            numerical_policy=NUMERICAL_POLICY,
-        )
+        result = _map(holder, utilities)
 
         # Proof of non-mutation: nothing observable about the scheduler
         # holder, its sequences, or the block manager changed.
@@ -290,8 +280,20 @@ class LPServeStateMappingTest(unittest.TestCase):
         self.assertEqual(
             tuple(r.prefill_fixed_charge for r in problem_requests), (2, 0, 0),
         )
+        # The decode resident's four prompt tokens fill one logical and one
+        # physical block and no output token has been appended yet: exact
+        # decode demand 0. The partial prefill allocates nothing.
         self.assertEqual(
-            tuple(r.decode_charge for r in problem_requests), (0, 0, 1),
+            tuple(r.decode_demand for r in problem_requests), (0, 0, 0),
+        )
+        self.assertEqual(
+            tuple(r.resident for r in problem_requests), (False, True, True),
+        )
+        # vLLM-oriented ranks: running order (1, 2) then waiting (0);
+        # victims in reverse running order.
+        self.assertEqual(
+            tuple((r.service_rank, r.victim_rank) for r in problem_requests),
+            ((2, None), (0, 1), (1, 0)),
         )
         self.assertEqual(
             tuple(r.preemption_recovery for r in problem_requests), (0, 2, 1),
@@ -303,7 +305,15 @@ class LPServeStateMappingTest(unittest.TestCase):
         self.assertEqual(problem.c_max, 4)
         self.assertEqual(problem.s_max, 3)
         self.assertEqual(problem.m_free, 7)
-        self.assertEqual(problem.w, 1)
+        self.assertEqual(problem.admission_watermark, 0)  # int(0.01 * 10)
+        self.assertEqual(problem.resident_count, 2)
+        self.assertEqual(problem.resident_limit, RESIDENT_LIMIT)
+        self.assertEqual(
+            (result.total_blocks, result.watermark_blocks, result.max_model_len),
+            (NUM_GPU_BLOCKS, 0, MAX_MODEL_LEN),
+        )
+        self.assertEqual(result.running_order, (1, 2))
+        self.assertEqual(result.arrived_waiting_order, (0,))
         self.assertEqual(result.snapshot_id, str(ITERATION_ID))
         self.assertEqual(problem.problem_id, result.snapshot_id)
 
@@ -345,17 +355,7 @@ class LPServeStateMappingTest(unittest.TestCase):
         }
 
         before = _fingerprint(holder)
-        result = lsm.map_scheduler_state(
-            holder,
-            snapshot_time=SNAPSHOT_TIME,
-            b_max=B_MAX,
-            c_max=C_MAX,
-            s_max=S_MAX,
-            memory_reserve=MEMORY_RESERVE,
-            decode_memory_policy_id=DECODE_POLICY_ID,
-            utilities=utilities,
-            numerical_policy=NUMERICAL_POLICY,
-        )
+        result = _map(holder, utilities)
 
         self.assertEqual(_fingerprint(holder), before)
         self.assertIsInstance(result, lsm.MappingFailure)
@@ -382,17 +382,7 @@ class LPServeStateMappingTest(unittest.TestCase):
         }
 
         before = _fingerprint(holder)
-        result = lsm.map_scheduler_state(
-            holder,
-            snapshot_time=SNAPSHOT_TIME,
-            b_max=B_MAX,
-            c_max=C_MAX,
-            s_max=S_MAX,
-            memory_reserve=MEMORY_RESERVE,
-            decode_memory_policy_id=DECODE_POLICY_ID,
-            utilities=utilities,
-            numerical_policy=NUMERICAL_POLICY,
-        )
+        result = _map(holder, utilities)
 
         self.assertEqual(_fingerprint(holder), before)
         self.assertIsInstance(result, lsm.MappingFailure)
@@ -427,23 +417,32 @@ class LPServeStateMappingTest(unittest.TestCase):
             ),
             "missing_key": (
                 {k: v for k, v in _three_request_utilities().items() if k != 1},
-                "missing utilities for raw_seq_id(s) [1]",
+                "missing coefficients for raw_seq_id(s) [1]",
             ),
             "extra_key": (
                 {**_three_request_utilities(), 5: good},
-                "extra utilities for raw_seq_id(s) [5]",
+                "extra coefficients for raw_seq_id(s) [5]",
+            ),
+            "uniform_negative": (
+                dataclasses.replace(good, preemption_penalty=-1.0),
+                "preemption_penalty for raw_seq_id 0",
+            ),
+            "callable_wrong_type": (
+                lambda captured, request: (1.0, 1.0, 1.0),
+                "must be a RequestUtility",
             ),
         }
         for field in (
             "decode_utility", "prefill_token_utility", "preemption_penalty",
         ):
-            for bad in (float("nan"), float("inf"), True, "1.0"):
+            for bad in (float("nan"), float("inf"), True, "1.0", -0.5,
+                        10 ** 400):
                 cases[f"{field}={bad!r}"] = (
                     {
                         **_three_request_utilities(),
                         0: dataclasses.replace(good, **{field: bad}),
                     },
-                    f"utility {field} for raw_seq_id 0",
+                    f"coefficient {field} for raw_seq_id 0",
                 )
 
         for name, (utilities, reason) in cases.items():
@@ -506,24 +505,15 @@ class LPServeStateMappingTest(unittest.TestCase):
         ) as lp_problem_spy, mock.patch.object(
             lsm.lrs, "validate_problem", wraps=lsm.lrs.validate_problem,
         ) as validate_problem_spy:
-            result = lsm.map_scheduler_state(
-                holder,
-                snapshot_time=SNAPSHOT_TIME,
-                b_max=B_MAX,
-                c_max=C_MAX,
-                s_max=S_MAX,
-                memory_reserve=MEMORY_RESERVE,
-                decode_memory_policy_id=DECODE_POLICY_ID,
-                utilities={},
-                numerical_policy=NUMERICAL_POLICY,
-            )
+            result = _map(holder, {})
 
         self.assertEqual(_fingerprint(holder), before)
 
         self.assertIsInstance(result, lsm.MappingFailure)
         self.assertEqual(result.stage, "state_mapping")
         self.assertEqual(result.category, "mapping_failure")
-        self.assertIn("arrived, unfinished request universe is empty", result.reason)
+        self.assertIn("arrived, unfinished request universe is empty",
+                      result.reason)
 
         lp_problem_spy.assert_not_called()
         validate_problem_spy.assert_not_called()
@@ -541,17 +531,7 @@ class LPServeStateMappingTest(unittest.TestCase):
                     preemption_penalty=0.0,
                 ),
             }
-            return lsm.map_scheduler_state(
-                holder,
-                snapshot_time=SNAPSHOT_TIME,
-                b_max=B_MAX,
-                c_max=C_MAX,
-                s_max=S_MAX,
-                memory_reserve=MEMORY_RESERVE,
-                decode_memory_policy_id=DECODE_POLICY_ID,
-                utilities=utilities,
-                numerical_policy=NUMERICAL_POLICY,
-            )
+            return _map(holder, utilities)
 
         first = map_at(7)
         second = map_at(8)
@@ -577,6 +557,220 @@ class LPServeStateMappingTest(unittest.TestCase):
         self.assertIsInstance(mismatch, lrs.Failure)
         self.assertEqual(mismatch.category, "snapshot_mismatch")
         self.assertEqual(mismatch.problem_id, "8")
+
+    # -- corrected resource and policy inputs ----------------------------------
+
+    def _resident(self, holder, raw_id, prompt, processed, outputs=0,
+                  arrival=1.0):
+        """Allocate a resident through the real manager and native updates."""
+        seq = _make_sequence(raw_id, prompt, arrival)
+        seq.set_status(SequenceStatus.RUNNING)
+        holder.block_manager.allocate(seq)
+        seq.update_prompt_tokens_processed(processed)
+        for token in range(outputs):
+            seq.append_token_id(1000 + token)
+        seq.set_status(SequenceStatus.PAUSED)
+        holder.running.append(seq)
+        return seq
+
+    def test_full_context_rounding_recovery_and_decode_demand(self):
+        holder, block_manager = _build_holder()
+        for raw_id, tokens in ((0, 4), (1, 5), (2, 8), (3, 9)):
+            holder.waiting.append(_make_sequence(raw_id, tokens, 1.0))
+        # Decode gap 0 (four prompt tokens in one block) and gap 1 (one
+        # sampled output token opened a second logical block).
+        self._resident(holder, 10, 4, 4)
+        self._resident(holder, 11, 4, 4, outputs=1)
+        self._resident(holder, 12, 7, 3)
+        before = _fingerprint(holder)
+        result = _map(holder, lsm.RequestUtility(1.0, 1.0, 1.0))
+        self.assertEqual(_fingerprint(holder), before)
+        self.assertIsInstance(result, lsm.StateSnapshot, result)
+        by_id = {r.raw_seq_id: r for r in result.requests}
+        # Full-context admission charge with native block rounding.
+        self.assertEqual([by_id[i].prefill_fixed_charge for i in range(4)],
+                         [1, 2, 2, 3])
+        self.assertEqual([by_id[i].context_len for i in range(4)],
+                         [4, 5, 8, 9])
+        self.assertEqual(
+            (by_id[10].decode_demand, by_id[10].logical_block_count,
+             by_id[10].physical_block_count, by_id[10].output_len),
+            (0, 1, 1, 0))
+        self.assertEqual(
+            (by_id[11].decode_demand, by_id[11].logical_block_count,
+             by_id[11].physical_block_count, by_id[11].output_len),
+            (1, 2, 1, 1))
+        # Resident partial prefill: zero charge, recovery = its table.
+        self.assertEqual(
+            (by_id[12].prefill_fixed_charge, by_id[12].preemption_recovery,
+             by_id[12].prefill_eligible, by_id[12].decode_eligible),
+            (0, 2, True, False))
+        self.assertEqual(by_id[11].preemption_recovery, 1)
+        self.assertEqual(result.free_physical_blocks, NUM_GPU_BLOCKS - 4)
+        self.assertEqual(result.resident_count, 3)
+
+    def test_unsupported_gap_and_malformed_allocation(self):
+        def holder_with(mutate):
+            holder, block_manager = _build_holder()
+            seq = self._resident(holder, 1, 4, 4)
+            holder.waiting.append(_make_sequence(0, 4, 1.0))
+            mutate(holder, block_manager, seq)
+            return holder
+
+        def gap_two(holder, manager, seq):
+            seq.set_status(SequenceStatus.RUNNING)
+            for token in range(5):  # 9 tokens: three logical, one physical
+                seq.append_token_id(token)
+            seq.set_status(SequenceStatus.PAUSED)
+
+        def repeated_block(holder, manager, seq):
+            table = manager.block_tables[1]
+            table.append(table[0])
+
+        def shared_block(holder, manager, seq):
+            self._resident(holder, 2, 4, 4)
+            manager.block_tables[2][0] = manager.block_tables[1][0]
+
+        def pool_mismatch(holder, manager, seq):
+            manager.gpu_allocator.free_blocks.pop()
+
+        def prefill_gap(holder, manager, seq):
+            self._resident(holder, 3, 8, 2)
+            manager.gpu_allocator.free(manager.block_tables[3].pop())
+
+        cases = [
+            ("decode gap 2", gap_two, "outside {0, 1}"),
+            ("repeated block", repeated_block, "repeats a block"),
+            ("shared block", shared_block, "shared by two resident"),
+            ("pool mismatch", pool_mismatch, "differ from the total pool"),
+            ("partial-prefill gap", prefill_gap, "gap 1 must be 0"),
+        ]
+        for name, mutate, reason in cases:
+            with self.subTest(name):
+                holder = holder_with(mutate)
+                before = _fingerprint(holder)
+                result = _map(holder, lsm.RequestUtility(1.0, 1.0, 1.0))
+                self.assertEqual(_fingerprint(holder), before)
+                self.assertIsInstance(result, lsm.MappingFailure)
+                self.assertIn(reason, result.reason)
+
+    def test_resident_ledger_and_inadmissible_registered_context(self):
+        # A finished request left in running is not a valid resident ledger.
+        holder, _ = _build_holder()
+        seq = self._resident(holder, 1, 4, 4)
+        seq.set_status(SequenceStatus.FINISHED_STOPPED)
+        result = _map(holder, lsm.RequestUtility(1.0, 1.0, 1.0))
+        self.assertIsInstance(result, lsm.MappingFailure)
+        self.assertIn("running holds a finished request", result.reason)
+
+        # A recomputation-expanded waiting context beyond max_model_len.
+        holder, _ = _build_holder()
+        expanded = self._resident(holder, 1, 30, 30, outputs=3)
+        holder.running.remove(expanded)
+        holder.block_manager.free(expanded)
+        expanded.reset_for_recompute()
+        holder.waiting.append(expanded)
+        result = _map(holder, lsm.RequestUtility(1.0, 1.0, 1.0))
+        self.assertIsInstance(result, lsm.MappingFailure)
+        self.assertIn("registered context length 33 exceeds max_model_len 32",
+                      result.reason)
+
+        # Context length 32 == max_model_len and 8 blocks + watermark 2 ==
+        # pool 10 are accepted (equality); watermark 3 is rejected. The
+        # mapped problem carries that watermark.
+        for watermark, ok in ((2, True), (3, False)):
+            holder, manager = _build_holder()
+            manager.watermark_blocks = watermark
+            holder.waiting.append(_make_sequence(0, 32, 1.0))
+            result = _map(holder, lsm.RequestUtility(1.0, 1.0, 1.0))
+            if ok:
+                self.assertIsInstance(result, lsm.StateSnapshot, result)
+                self.assertEqual(result.lp_problem.admission_watermark, 2)
+            else:
+                self.assertIsInstance(result, lsm.MappingFailure)
+                self.assertIn("plus watermark 3 exceeds the total pool of 10",
+                              result.reason)
+
+    def test_future_head_does_not_hide_arrived_work(self):
+        holder, _ = _build_holder()
+        holder.waiting.append(_make_sequence(0, 4, SNAPSHOT_TIME + 1))
+        holder.waiting.append(_make_sequence(1, 4, 1.0))
+        result = _map(holder, lsm.RequestUtility(1.0, 1.0, 1.0))
+        self.assertIsInstance(result, lsm.StateSnapshot, result)
+        self.assertEqual([r.raw_seq_id for r in result.requests], [1])
+        self.assertEqual(result.arrived_waiting_order, (1,))
+        self.assertEqual(result.requests[0].queue_position, 1)
+        self.assertEqual(result.requests[0].service_rank, 0)
+
+    def test_one_capture_and_state_dependent_policy_inputs(self):
+        """A compact state-dependent coefficient fixture (not a production
+        utility policy): decode utility grows with generated output and the
+        penalty with recovered blocks. Ranks and coefficients come from the
+        one capture, are fixed in the snapshot, and change in the next
+        decision after the queues change."""
+        seen = []
+
+        def policy(captured, request):
+            seen.append((type(captured), type(request)))
+            return lsm.RequestUtility(
+                decode_utility=1.0 + request.output_len,
+                prefill_token_utility=0.5,
+                preemption_penalty=float(request.preemption_recovery),
+            )
+
+        holder, block_manager = _build_holder()
+        self._resident(holder, 1, 4, 4)
+        second = self._resident(holder, 2, 4, 4)
+        holder.waiting.append(_make_sequence(0, 4, 1.0))
+        with mock.patch.object(
+            lsm, "_capture", wraps=lsm._capture,
+        ) as capture_spy:
+            snapshot = _map(holder, policy)
+        self.assertEqual(capture_spy.call_count, 1)
+        self.assertIsInstance(snapshot, lsm.StateSnapshot, snapshot)
+        self.assertEqual(set(seen), {(lsm.CapturedState, lsm.CapturedRequest)})
+        coeffs = {r.raw_seq_id: r.utility for r in snapshot.requests}
+        ranks = {r.raw_seq_id: (r.service_rank, r.victim_rank)
+                 for r in snapshot.requests}
+        self.assertEqual(coeffs[1], lsm.RequestUtility(1.0, 0.5, 1.0))
+        self.assertEqual(ranks, {1: (0, 1), 2: (1, 0), 0: (2, None)})
+        frozen = snapshot.lp_problem
+
+        # Next decision: second generated a token and moved to the front.
+        second.set_status(SequenceStatus.RUNNING)
+        block_manager.append_slot(second)
+        second.append_token_id(5)
+        second.set_status(SequenceStatus.PAUSED)
+        holder.running.reverse()
+        holder._iteration_id += 1
+        later = _map(holder, policy)
+        self.assertIsInstance(later, lsm.StateSnapshot, later)
+        later_coeffs = {r.raw_seq_id: r.utility for r in later.requests}
+        later_ranks = {r.raw_seq_id: (r.service_rank, r.victim_rank)
+                       for r in later.requests}
+        self.assertEqual(later_coeffs[2], lsm.RequestUtility(2.0, 0.5, 1.0))
+        self.assertEqual(later_coeffs[1], coeffs[1])
+        self.assertEqual(later_ranks, {2: (0, 1), 1: (1, 0), 0: (2, None)})
+        # The earlier decision's inputs are unchanged.
+        self.assertEqual(snapshot.lp_problem, frozen)
+        self.assertEqual({r.raw_seq_id: r.utility for r in snapshot.requests},
+                         coeffs)
+
+        # Uniform and per-request mappings remain accepted policies.
+        uniform = _map(holder, lsm.RequestUtility(3.0, 2.0, 1.0))
+        self.assertEqual({r.utility for r in uniform.requests},
+                         {lsm.RequestUtility(3.0, 2.0, 1.0)})
+        self.assertEqual(
+            lsm.construct_coefficients(
+                lsm.capture_scheduler_state(holder,
+                                            snapshot_time=SNAPSHOT_TIME),
+                {0: lsm.RequestUtility(0.0, 1.0, 0.0),
+                 1: lsm.RequestUtility(1.0, 0.0, 2.0),
+                 2: lsm.RequestUtility(2.0, 0.0, 3.0)}),
+            (lsm.RequestUtility(0.0, 1.0, 0.0),
+             lsm.RequestUtility(1.0, 0.0, 2.0),
+             lsm.RequestUtility(2.0, 0.0, 3.0)))
+
 
 
 if __name__ == "__main__":

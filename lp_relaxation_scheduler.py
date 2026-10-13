@@ -873,8 +873,11 @@ def validate_relaxed_solution(problem, raw_vector):
 
     try:
         raw = tuple(float(v) for v in raw_vector)
-    except (TypeError, ValueError):
-        return bad("malformed_vector", "raw vector is not a sequence of numbers")
+    except (TypeError, ValueError, OverflowError):
+        return bad(
+            "malformed_vector",
+            "raw vector is not a sequence of numbers representable as floats",
+        )
     if len(raw) != 4 * n or not all(math.isfinite(v) for v in raw):
         return bad(
             "malformed_vector",

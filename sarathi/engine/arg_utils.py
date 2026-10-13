@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, List, Optional, Tuple
 import yaml
 
 from sarathi.config import (
+    LP_OBSOLETE_ARGUMENT_MIGRATION,
     BaseSchedulerConfig,
     CacheConfig,
     FasterTransformerSchedulerConfig,
@@ -30,13 +31,14 @@ _LP_REQUIRED_FIELDS = (
     "lp_b_max",
     "lp_c_max",
     "lp_s_max",
-    "lp_memory_reserve",
-    "lp_decode_memory_policy_id",
     "lp_decode_utility",
     "lp_prefill_token_utility",
     "lp_preemption_penalty",
     "lp_numerical_policy",
 )
+# Removed LP fields, kept only to reject supplied values with migration
+# guidance and to preserve the positions of later fields.
+_LP_OBSOLETE_FIELDS = ("lp_memory_reserve", "lp_decode_memory_policy_id")
 
 @dataclass
 class EngineArgs:
@@ -107,8 +109,8 @@ class EngineArgs:
     lp_b_max: Optional[int] = None  # combined prefill/decode token budget
     lp_c_max: Optional[int] = None  # per-request prefill chunk cap
     lp_s_max: Optional[int] = None  # execution-action limit
-    lp_memory_reserve: Optional[int] = None  # planning reserve in blocks
-    lp_decode_memory_policy_id: Optional[str] = None
+    lp_memory_reserve: Optional[int] = None  # removed; any value is rejected
+    lp_decode_memory_policy_id: Optional[str] = None  # removed; rejected
     lp_decode_utility: Optional[float] = None
     lp_prefill_token_utility: Optional[float] = None
     lp_preemption_penalty: Optional[float] = None
@@ -117,12 +119,22 @@ class EngineArgs:
     def __post_init__(self):
         if self.tokenizer is None:
             self.tokenizer = self.model
+        supplied = [n for n in _LP_OBSOLETE_FIELDS if getattr(self, n) is not None]
+        if supplied:
+            raise ValueError(
+                f"EngineArgs {', '.join(supplied)}: "
+                + LP_OBSOLETE_ARGUMENT_MIGRATION
+            )
         if self.scheduler_type == SchedulerType.LP.name.lower():
             self._verify_lp_args()
         if self.write_metrics:
             os.makedirs(self.output_dir, exist_ok=True)
+            recorded = {
+                k: v for k, v in asdict(self).items()
+                if k not in _LP_OBSOLETE_FIELDS
+            }
             with open(f"{self.output_dir}/config.yml", "w") as f:
-                yaml.dump(asdict(self), f, default_flow_style=False, sort_keys=False)
+                yaml.dump(recorded, f, default_flow_style=False, sort_keys=False)
 
     def _verify_lp_args(self) -> None:
         missing = [name for name in _LP_REQUIRED_FIELDS if getattr(self, name) is None]
@@ -236,8 +248,6 @@ class EngineArgs:
                 b_max=self.lp_b_max,
                 c_max=self.lp_c_max,
                 s_max=self.lp_s_max,
-                memory_reserve=self.lp_memory_reserve,
-                decode_memory_policy_id=self.lp_decode_memory_policy_id,
                 decode_utility=self.lp_decode_utility,
                 prefill_token_utility=self.lp_prefill_token_utility,
                 preemption_penalty=self.lp_preemption_penalty,

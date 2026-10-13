@@ -10,6 +10,7 @@ from sarathi.config import (
     MetricsConfig,
     ModelConfig,
     ParallelConfig,
+    SchedulerType,
 )
 from sarathi.core.datatypes.request_output import RequestOutput
 from sarathi.core.datatypes.sampling_params import SamplingParams
@@ -388,6 +389,10 @@ class BaseLLMEngine:
             is_strict_prefill_e2e_time=is_strict_prefill_e2e_time, 
             oracle_decode_tokens = num_decode_tokens, 
         )
+        # The LP scheduler rejects a request it can never admit before any
+        # registration; other schedulers keep their submission behavior.
+        if self.scheduler_config.type == SchedulerType.LP:
+            self.scheduler.check_new_request(seq)
         # Add the sequence to the scheduler.
         self.seq_manager.add_seq(seq)
         self._run_workers(

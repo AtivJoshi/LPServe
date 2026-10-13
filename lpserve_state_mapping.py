@@ -1,44 +1,50 @@
 """Read-only LPServe state mapper for the LP-relaxation scheduling layer.
 
-Observes a scheduler holder's inherited ``waiting``/``running`` collections
-and its block manager, and returns a frozen, framework-independent snapshot
-suitable for ``lp_relaxation_scheduler.LPProblem`` construction (see
-docs/lp_scheduler_design.md, especially sections 4, 9, and 12). It performs
-no LPServe mutation: it calls only read-only scheduler, sequence, and block
+One scheduling decision maps live state in four steps
+(docs/lp_scheduler_design.md section 12.3):
+
+1. ``capture_scheduler_state`` reads the scheduler holder's inherited
+   ``waiting``/``running`` collections, its configuration, and its block
+   manager exactly once and copies every needed fact into an immutable
+   ``CapturedState``;
+2. a rank profile (``vllm_oriented_ranks``) builds service and victim ranks
+   from the captured queue positions;
+3. ``construct_coefficients`` builds one utility triple per request from the
+   captured data and an explicit coefficient policy;
+4. ``build_state_snapshot`` builds the immutable ``LPProblem``.
+
+``map_scheduler_state`` runs these steps in order. Only the capture reads
+live state, and it calls only read-only scheduler, sequence, and block
 manager accessors, never allocation, append, free, preemption, status
 transition, or queue-mutation methods.
 
-Supported state shape (docs/lp_scheduler_design.md section 12.4 and this
-module's handoff record):
+Supported state shape (docs/lp_scheduler_design.md sections 12.4 and 13):
 
 - exactly one pipeline stage and zero running batches (a quiescent,
   pre-mutation boundary with no batch in flight);
 - ``waiting`` exclusively owns unallocated unfinished requests, and
   ``running`` exclusively owns allocated unfinished (resident) requests;
+  every ``running`` entry has arrived and is unfinished, so ``len(running)``
+  is the authoritative resident count;
 - every raw ``Sequence.seq_id`` is an exact non-negative, non-boolean
-  integer, unique across both collections, and every scheduler-owned request
-  has a finite real ``arrival_time`` (a malformed, missing, ``NaN``, or
-  infinite arrival time is a mapping failure regardless of status);
+  integer, unique across both collections, and every owned request has a
+  finite real ``arrival_time``;
 - the central block manager's ``block_tables`` key set exactly equals the
-  raw IDs owned by ``running``: a missing resident table, a table owned by a
-  waiting request, an orphan table, or a malformed table key is a mapping
-  failure, checked before future/finished filtering;
-- an included waiting request has status ``WAITING``, is unallocated, and
-  has positive, incomplete prompt remainder;
-- an included resident request has status ``PAUSED`` and is allocated; a
-  resident with a positive prompt remainder must have its full logical
-  context already allocated (a zero logical/physical block gap), and a
-  resident with zero remainder (decode) may have a logical/physical block
-  gap of zero or one.
+  raw IDs owned by ``running``; tables hold distinct blocks, no block is
+  shared, and free plus allocated blocks equal the total pool;
+- an included waiting request has status ``WAITING``, is unallocated, has
+  positive prompt remainder, and is admissible: context length at most
+  ``max_model_len`` and full initial allocation plus the shared watermark
+  at most the total pool;
+- an included resident has status ``PAUSED`` and is allocated; a partial
+  prefill has a zero logical/physical block gap and allocates nothing, and a
+  decode has an exact gap (decode demand) of zero or one.
 
-Every unresolved policy value (capacities, memory reserve, the decode-memory
-charge policy identifier, per-request utilities, and the numerical policy)
-is a required explicit argument. Unsupported, contradictory, malformed, or
-incoherent state -- including malformed input that would otherwise raise an
-ordinary ``AttributeError``/``TypeError``/``ValueError``/``KeyError``/
-``AssertionError`` -- is returned as a ``MappingFailure`` at the public
-boundary; this module never fabricates, repairs, or silently narrows LP
-input.
+Unsupported, contradictory, malformed, or incoherent state -- including
+malformed input that would otherwise raise an ordinary
+``AttributeError``/``TypeError``/``ValueError``/``KeyError``/
+``AssertionError``/``OverflowError`` -- is returned as a ``MappingFailure``;
+this module never fabricates, repairs, or silently narrows LP input.
 """
 
 from __future__ import annotations
@@ -57,11 +63,6 @@ CATEGORY_MAPPING_FAILURE = "mapping_failure"
 OWNERSHIP_WAITING = "waiting"
 OWNERSHIP_RUNNING = "running"
 
-# The only decode-memory charge policy identifier this module accepts. It is
-# a scoped fixture/mapper input, not a permanent resolution of the decode
-# planning-charge OPEN decision.
-DECODE_MEMORY_POLICY_CONSERVATIVE_ONE_BLOCK = "conservative_one_block_v1"
-
 
 # ---------------------------------------------------------------------------
 # Immutable records
@@ -78,33 +79,46 @@ class RequestUtility:
 
 
 @dataclass(frozen=True)
-class RequestStateSnapshot:
-    """Frozen, primitive-only observation of one included request."""
+class CapturedRequest:
+    """Frozen, primitive-only facts about one included request.
+
+    ``queue_position`` is the index in the owning collection. For a waiting
+    request, ``prefill_fixed_charge`` is the native full initial allocation;
+    ``decode_demand`` is the exact logical/physical block gap of a decode;
+    ``preemption_recovery`` is the current physical block-table length.
+    """
 
     raw_seq_id: int
     request_id: str
     order_key: tuple
     ownership: str
+    queue_position: int
     status: str
     arrival_time: float
     prompt_len: int
     prompt_tokens_processed: int
     prompt_tokens_remaining: int
     prompt_processing_finished: bool
+    output_len: int
+    context_len: int
     logical_block_count: int
     physical_block_count: int
     prefill_eligible: bool
     decode_eligible: bool
     preemption_eligible: bool
     prefill_fixed_charge: int
-    decode_charge: int
+    decode_demand: int
     preemption_recovery: int
-    utility: RequestUtility
 
 
 @dataclass(frozen=True)
-class StateSnapshot:
-    """One coherent, immutable observation ready for the mathematical layer."""
+class CapturedState:
+    """The one immutable capture of a scheduling decision.
+
+    ``requests`` is ascending by raw ID. ``running_order`` lists every
+    resident in current ``running`` order; ``arrived_waiting_order`` lists
+    the included waiting requests in current ``waiting`` order.
+    """
 
     snapshot_id: str
     snapshot_time: float
@@ -113,11 +127,33 @@ class StateSnapshot:
     num_running_batches: int
     resident_count: int
     resident_limit: int
+    max_model_len: int
+    block_size: int
+    total_blocks: int
     free_physical_blocks: int
-    memory_reserve: int
-    decode_memory_policy_id: str
-    numerical_policy: lrs.NumericalPolicy
+    watermark_blocks: int
     requests: tuple
+    running_order: tuple
+    arrived_waiting_order: tuple
+
+
+@dataclass(frozen=True)
+class RequestStateSnapshot(CapturedRequest):
+    """Captured facts plus the ranks and utility fixed for this decision."""
+
+    service_rank: Optional[int]
+    victim_rank: Optional[int]
+    utility: RequestUtility
+
+
+@dataclass(frozen=True)
+class StateSnapshot(CapturedState):
+    """One coherent, immutable observation ready for the mathematical layer.
+
+    ``requests`` holds ``RequestStateSnapshot`` records.
+    """
+
+    numerical_policy: lrs.NumericalPolicy
     lp_problem: lrs.LPProblem
 
 
@@ -147,15 +183,42 @@ def _is_int(value) -> bool:
 
 
 def _is_real(value) -> bool:
-    return (
-        isinstance(value, (int, float))
-        and not isinstance(value, bool)
-        and math.isfinite(value)
-    )
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        return math.isfinite(float(value))
+    except OverflowError:
+        return False
+
+
+_ORDINARY_ERRORS = (
+    AttributeError, TypeError, ValueError, KeyError, AssertionError,
+    OverflowError,
+)
+
+
+def _guard(snapshot_id, fn, *args):
+    """Run one mapping step, converting rejections into ``MappingFailure``."""
+    try:
+        return fn(*args)
+    except _MappingError as err:
+        return MappingFailure(
+            snapshot_id, STAGE_STATE_MAPPING, CATEGORY_MAPPING_FAILURE,
+            err.reason,
+        )
+    except _ORDINARY_ERRORS as err:
+        # A malformed scheduler field, collection shape, policy input, or
+        # read-only state access raised an ordinary data/access error rather
+        # than an explicit _require check.
+        return MappingFailure(
+            snapshot_id, STAGE_STATE_MAPPING, CATEGORY_MAPPING_FAILURE,
+            f"malformed input or scheduler state raised "
+            f"{type(err).__name__}: {err}",
+        )
 
 
 # ---------------------------------------------------------------------------
-# Mapping
+# Public entry points
 # ---------------------------------------------------------------------------
 
 
@@ -166,47 +229,97 @@ def map_scheduler_state(
     b_max: int,
     c_max: int,
     s_max: int,
-    memory_reserve: int,
-    decode_memory_policy_id: str,
-    utilities: Mapping[int, RequestUtility],
+    coefficient_policy,
+    rank_profile,
     numerical_policy: lrs.NumericalPolicy,
 ) -> "StateSnapshot | MappingFailure":
-    """Read ``scheduler`` state and return a ``StateSnapshot`` or ``MappingFailure``.
+    """Capture ``scheduler`` once and return a ``StateSnapshot`` or
+    ``MappingFailure``.
 
-    ``scheduler`` is read through ``waiting``, ``running``, ``_iteration_id``,
-    ``num_running_batches``, ``scheduler_config.num_pipeline_stages``,
-    ``scheduler_config.max_num_seqs``, and ``block_manager``; only read-only
-    block-manager accessors (``block_size``, ``is_allocated``,
-    ``get_block_table``, ``get_num_free_gpu_blocks``) are called. No
-    mutating method is called and no LPServe object is retained in the
-    result.
-
-    ``utilities`` maps each raw integer ``seq_id`` to its ``RequestUtility``;
-    its key set must exactly equal the requests included after
-    arrival/completion filtering, so a missing or extra key is a mapping
-    failure. Validated values are copied into new immutable records; the
-    caller's mapping is neither mutated nor retained.
+    ``coefficient_policy`` and ``rank_profile`` are explicit policy inputs;
+    see ``construct_coefficients`` and ``vllm_oriented_ranks``. Neither
+    receives a live object.
     """
-    try:
-        return _map_scheduler_state(
-            scheduler, snapshot_time, b_max, c_max, s_max, memory_reserve,
-            decode_memory_policy_id, utilities, numerical_policy,
-        )
-    except _MappingError as err:
-        return MappingFailure(
-            None, STAGE_STATE_MAPPING, CATEGORY_MAPPING_FAILURE, err.reason,
-        )
-    except (AttributeError, TypeError, ValueError, KeyError,
-            AssertionError) as err:
-        # A malformed scheduler field, collection shape, utility input, or
-        # read-only state access raised an ordinary data/access error rather
-        # than an explicit _require check; translate it into the same
-        # structured, immutable failure instead of letting it propagate.
-        return MappingFailure(
-            None, STAGE_STATE_MAPPING, CATEGORY_MAPPING_FAILURE,
-            f"malformed input or scheduler state raised "
-            f"{type(err).__name__}: {err}",
-        )
+    captured = capture_scheduler_state(scheduler, snapshot_time=snapshot_time)
+    if isinstance(captured, MappingFailure):
+        return captured
+    ranks = _guard(captured.snapshot_id, _ranks, captured, rank_profile)
+    if isinstance(ranks, MappingFailure):
+        return ranks
+    coefficients = construct_coefficients(captured, coefficient_policy)
+    if isinstance(coefficients, MappingFailure):
+        return coefficients
+    return build_state_snapshot(
+        captured, ranks=ranks, coefficients=coefficients, b_max=b_max,
+        c_max=c_max, s_max=s_max, numerical_policy=numerical_policy,
+    )
+
+
+def capture_scheduler_state(scheduler, *, snapshot_time):
+    """The single live read of one decision: ``CapturedState`` or
+    ``MappingFailure``. ``scheduler`` is read through ``waiting``,
+    ``running``, ``_iteration_id``, ``num_running_batches``,
+    ``scheduler_config`` (``num_pipeline_stages``, ``max_num_seqs``,
+    ``max_model_len``), and read-only ``block_manager`` accessors."""
+    return _guard(None, _capture, scheduler, snapshot_time)
+
+
+def vllm_oriented_ranks(captured):
+    """Initial vLLM-oriented rank profile.
+
+    Service rank: current ``running`` position (including partial
+    prefills), then arrived ``waiting`` position. Victim rank: reverse
+    ``running`` position; waiting requests have none. Returns one
+    ``(service_rank, victim_rank)`` pair per request of
+    ``captured.requests``. This profile is not imposed on other policies.
+    """
+    service, victim = {}, {}
+    residents = len(captured.running_order)
+    for position, raw_id in enumerate(captured.running_order):
+        service[raw_id] = position
+        victim[raw_id] = residents - 1 - position
+    for position, raw_id in enumerate(captured.arrived_waiting_order):
+        service[raw_id] = residents + position
+    return tuple(
+        (service[r.raw_seq_id], victim.get(r.raw_seq_id))
+        for r in captured.requests
+    )
+
+
+def construct_coefficients(captured, policy):
+    """Pure coefficient construction for one decision.
+
+    ``policy`` is one of:
+
+    - a ``RequestUtility``: the explicit uniform triple for every request;
+    - a ``Mapping[int, RequestUtility]`` keyed by raw ``seq_id`` whose key
+      set equals the captured request set exactly;
+    - a callable ``policy(captured, request) -> RequestUtility`` evaluated on
+      immutable captured data only (a state-dependent policy).
+
+    Returns a tuple of validated ``RequestUtility`` copies aligned with
+    ``captured.requests``, or ``MappingFailure``. Every value must be finite
+    and non-negative. No live object is passed and no solve is performed.
+    """
+    return _guard(
+        getattr(captured, "snapshot_id", None), _coefficients, captured, policy,
+    )
+
+
+def build_state_snapshot(
+    captured, *, ranks, coefficients, b_max, c_max, s_max, numerical_policy,
+):
+    """Build the immutable ``StateSnapshot`` and canonical ``LPProblem`` from
+    captured data, ranks, and validated coefficients."""
+    return _guard(
+        captured.snapshot_id, _build, captured, ranks, coefficients, b_max,
+        c_max, s_max, numerical_policy,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Capture
+# ---------------------------------------------------------------------------
 
 
 _MISSING = object()
@@ -218,50 +331,22 @@ def _read(obj, name):
     return value
 
 
-def _map_scheduler_state(
-    scheduler, snapshot_time, b_max, c_max, s_max, memory_reserve,
-    decode_memory_policy_id, utilities, numerical_policy,
-):
+def _capture(scheduler, snapshot_time):
     _require(
         _is_real(snapshot_time), "snapshot_time must be a finite real number",
     )
-    for name, value in (
-        ("b_max", b_max), ("s_max", s_max), ("memory_reserve", memory_reserve),
-    ):
-        _require(
-            _is_int(value) and value >= 0,
-            f"{name} must be a non-negative integer",
-        )
-    _require(_is_int(c_max) and c_max > 0, "c_max must be a positive integer")
-    _require(
-        isinstance(decode_memory_policy_id, str) and decode_memory_policy_id,
-        "decode_memory_policy_id must be a non-empty string",
-    )
-    _require(
-        decode_memory_policy_id == DECODE_MEMORY_POLICY_CONSERVATIVE_ONE_BLOCK,
-        "unsupported decode_memory_policy_id "
-        f"{decode_memory_policy_id!r}; only "
-        f"{DECODE_MEMORY_POLICY_CONSERVATIVE_ONE_BLOCK!r} is accepted",
-    )
-    _require(
-        isinstance(numerical_policy, lrs.NumericalPolicy),
-        "numerical_policy must be a NumericalPolicy",
-    )
-    _require(
-        isinstance(utilities, Mapping),
-        "utilities must be a mapping from raw_seq_id to RequestUtility, got "
-        f"{type(utilities).__name__}",
-    )
-
     scheduler_config = _read(scheduler, "scheduler_config")
     num_pipeline_stages = _read(scheduler_config, "num_pipeline_stages")
     max_num_seqs = _read(scheduler_config, "max_num_seqs")
+    max_model_len = _read(scheduler_config, "max_model_len")
     num_running_batches = _read(scheduler, "num_running_batches")
     iteration_id = _read(scheduler, "_iteration_id")
     waiting = _read(scheduler, "waiting")
     running = _read(scheduler, "running")
     block_manager = _read(scheduler, "block_manager")
-    block_manager_block_size = _read(block_manager, "block_size")
+    block_size = _read(block_manager, "block_size")
+    total_blocks = _read(block_manager, "num_total_gpu_blocks")
+    watermark_blocks = _read(block_manager, "watermark_blocks")
 
     _require(
         num_pipeline_stages == 1,
@@ -273,10 +358,17 @@ def _map_scheduler_state(
         f"unsupported in-flight state: num_running_batches="
         f"{num_running_batches!r}; only 0 is supported",
     )
-    _require(
-        _is_int(max_num_seqs) and max_num_seqs > 0,
-        "scheduler_config.max_num_seqs must be a positive integer",
-    )
+    for name, value, minimum in (
+        ("scheduler_config.max_num_seqs", max_num_seqs, 1),
+        ("scheduler_config.max_model_len", max_model_len, 1),
+        ("block_manager.block_size", block_size, 1),
+        ("block_manager.num_total_gpu_blocks", total_blocks, 1),
+        ("block_manager.watermark_blocks", watermark_blocks, 0),
+    ):
+        _require(
+            _is_int(value) and value >= minimum,
+            f"{name} must be an integer of at least {minimum}, got {value!r}",
+        )
     _require(_is_int(iteration_id), "scheduler _iteration_id must be an integer")
 
     resident_count = len(running)
@@ -286,13 +378,12 @@ def _map_scheduler_state(
     )
 
     # Ownership: unique raw_seq_id across the complete waiting/running
-    # universe, checked before any arrival/completion filtering so a
-    # duplicate is caught even if one copy would otherwise be excluded.
+    # universe, checked before any arrival/completion filtering.
     owners = {}
     for label, collection in (
         (OWNERSHIP_WAITING, waiting), (OWNERSHIP_RUNNING, running),
     ):
-        for seq in collection:
+        for position, seq in enumerate(collection):
             raw_id = getattr(seq, "seq_id", None)
             _require(
                 _is_int(raw_id) and raw_id >= 0,
@@ -304,20 +395,13 @@ def _map_scheduler_state(
                     f"(already seen owned by {owners[raw_id][0]!r}, again "
                     f"in {label!r})"
                 )
-            owners[raw_id] = (label, seq)
+            owners[raw_id] = (label, seq, position)
 
-    # Allocation ownership must agree in both directions before any
-    # future/finished filtering: every running-owned raw_seq_id must have a
-    # central block table, and no central block table may belong to a
-    # waiting-owned or otherwise unowned (orphan) raw_seq_id.
-    running_ids = {
-        raw_id for raw_id, (label, _) in owners.items()
-        if label == OWNERSHIP_RUNNING
-    }
-    waiting_ids = {
-        raw_id for raw_id, (label, _) in owners.items()
-        if label == OWNERSHIP_WAITING
-    }
+    # Allocation ownership must agree in both directions: every
+    # running-owned raw_seq_id has a central block table, and no table
+    # belongs to a waiting-owned or unowned (orphan) raw_seq_id.
+    running_ids = {r for r, (lb, _, _) in owners.items() if lb == OWNERSHIP_RUNNING}
+    waiting_ids = {r for r, (lb, _, _) in owners.items() if lb == OWNERSHIP_WAITING}
     block_tables = _read(block_manager, "block_tables")
     block_table_keys = set(block_tables.keys())
     for key in block_table_keys:
@@ -338,33 +422,282 @@ def _map_scheduler_state(
             f"raw_seq_id(s) {sorted(orphan_tables)}"
         )
 
-    included = []
+    # Non-sharing pool accounting: distinct blocks per table, no block in
+    # two tables, and free + allocated == total.
+    free_blocks = block_manager.get_num_free_gpu_blocks()
+    _require(
+        _is_int(free_blocks) and free_blocks >= 0,
+        f"block manager reported a malformed free-block count {free_blocks!r}",
+    )
+    allocated = []
+    for raw_id in sorted(running_ids):
+        table = block_manager.get_block_table(owners[raw_id][1])
+        _require(
+            len(set(table)) == len(table),
+            f"raw_seq_id {raw_id}: physical block table {table} repeats a "
+            "block",
+        )
+        allocated.extend(table)
+    _require(
+        len(set(allocated)) == len(allocated),
+        "a physical block is shared by two resident block tables; shared "
+        "blocks are unsupported",
+    )
+    _require(
+        free_blocks + len(allocated) == total_blocks,
+        f"free blocks {free_blocks} plus allocated blocks {len(allocated)} "
+        f"differ from the total pool {total_blocks}",
+    )
+
+    captured, running_order, waiting_order = [], [], []
     for raw_id in sorted(owners):
-        label, seq = owners[raw_id]
+        label, seq, position = owners[raw_id]
         arrival_time = getattr(seq, "arrival_time", None)
         _require(
             _is_real(arrival_time),
             f"raw_seq_id {raw_id}: malformed arrival_time {arrival_time!r}; "
             "must be a finite real number",
         )
-        if arrival_time > snapshot_time:
+        arrived = arrival_time <= snapshot_time
+        finished = seq.is_finished()
+        if label == OWNERSHIP_RUNNING:
+            _require(
+                arrived and not finished,
+                f"raw_seq_id {raw_id}: running holds a "
+                f"{'finished' if finished else 'future'} request; every "
+                "resident must be arrived and unfinished",
+            )
+        elif not arrived or finished:
             continue
-        if seq.is_finished():
-            continue
-        included.append((raw_id, label, seq))
+        captured.append(_capture_request(
+            raw_id, label, position, seq, block_manager, block_size,
+            max_model_len, total_blocks, watermark_blocks,
+        ))
 
-    # Copy each validated value into a fresh frozen record so the result
-    # never shares state with the caller's mapping.
-    util_map = {}
-    for raw_id, utility in utilities.items():
+    for seq in running:
+        running_order.append(seq.seq_id)
+    included_waiting = {r.raw_seq_id for r in captured
+                        if r.ownership == OWNERSHIP_WAITING}
+    for seq in waiting:
+        if seq.seq_id in included_waiting:
+            waiting_order.append(seq.seq_id)
+
+    snapshot_id = str(iteration_id)
+    _require(
+        captured,
+        "the arrived, unfinished request universe is empty; the "
+        "accepted LPProblem type cannot represent an empty request set",
+    )
+    return CapturedState(
+        snapshot_id=snapshot_id,
+        snapshot_time=float(snapshot_time),
+        scheduler_iteration_id=iteration_id,
+        num_pipeline_stages=num_pipeline_stages,
+        num_running_batches=num_running_batches,
+        resident_count=resident_count,
+        resident_limit=max_num_seqs,
+        max_model_len=max_model_len,
+        block_size=block_size,
+        total_blocks=total_blocks,
+        free_physical_blocks=free_blocks,
+        watermark_blocks=watermark_blocks,
+        requests=tuple(captured),
+        running_order=tuple(running_order),
+        arrived_waiting_order=tuple(waiting_order),
+    )
+
+
+def _capture_request(raw_id, label, position, seq, block_manager, block_size,
+                     max_model_len, total_blocks, watermark_blocks):
+    status = seq.get_status()
+    prompt_len = seq.get_prompt_len()
+    processed = seq.get_num_prompt_tokens_processed()
+    output_len = seq.get_output_len()
+    context_len = seq.get_len()
+    for name, value in (
+        ("prompt length", prompt_len), ("processed-prompt count", processed),
+        ("output length", output_len), ("context length", context_len),
+    ):
         _require(
-            _is_int(raw_id),
-            f"utilities key must be an integer raw_seq_id, got {raw_id!r}",
+            _is_int(value) and value >= 0,
+            f"raw_seq_id {raw_id}: malformed {name} {value!r}",
+        )
+    remainder = prompt_len - processed
+    _require(
+        0 <= remainder <= prompt_len,
+        f"raw_seq_id {raw_id}: negative or excessive prompt progress "
+        f"yields remainder {remainder} (prompt_len={prompt_len}, "
+        f"processed={processed})",
+    )
+    finished_flag = seq.prompt_processing_finished
+    _require(
+        finished_flag == (remainder == 0),
+        f"raw_seq_id {raw_id}: prompt_processing_finished="
+        f"{finished_flag!r} disagrees with prompt remainder {remainder}",
+    )
+    _require(
+        seq.block_size == block_size,
+        f"raw_seq_id {raw_id}: sequence block_size {seq.block_size!r} "
+        f"disagrees with block-manager block_size {block_size!r}",
+    )
+    logical_block_count = len(seq.logical_token_blocks)
+    is_allocated = block_manager.is_allocated(seq)
+    decode_demand = 0
+    preemption_recovery = 0
+    prefill_fixed_charge = 0
+
+    if label == OWNERSHIP_WAITING:
+        _require(
+            status == SequenceStatus.WAITING,
+            f"raw_seq_id {raw_id}: waiting-owned request has status "
+            f"{status!r}, expected WAITING",
         )
         _require(
+            not is_allocated,
+            f"raw_seq_id {raw_id}: waiting-owned request is allocated",
+        )
+        _require(
+            remainder > 0,
+            f"raw_seq_id {raw_id}: waiting-owned request has "
+            f"non-positive prompt remainder {remainder}",
+        )
+        physical_block_count = 0
+        prefill_fixed_charge = block_manager.get_num_initial_blocks(seq)
+        _require(
+            _is_int(prefill_fixed_charge) and prefill_fixed_charge >= 0,
+            f"raw_seq_id {raw_id}: malformed initial allocation "
+            f"{prefill_fixed_charge!r}",
+        )
+        # A registered or recomputation-expanded context that can never be
+        # admitted is a pre-mutation failure, not a schedulable request.
+        _require(
+            context_len <= max_model_len,
+            f"raw_seq_id {raw_id}: registered context length {context_len} "
+            f"exceeds max_model_len {max_model_len}",
+        )
+        _require(
+            prefill_fixed_charge + watermark_blocks <= total_blocks,
+            f"raw_seq_id {raw_id}: full initial allocation "
+            f"{prefill_fixed_charge} blocks plus watermark {watermark_blocks} "
+            f"exceeds the total pool of {total_blocks} blocks",
+        )
+        prefill_eligible, decode_eligible, preemption_eligible = (
+            True, False, False,
+        )
+    else:
+        _require(
+            status == SequenceStatus.PAUSED,
+            f"raw_seq_id {raw_id}: resident request has unsupported "
+            f"status {status!r}, expected PAUSED",
+        )
+        _require(
+            is_allocated,
+            f"raw_seq_id {raw_id}: resident request is not allocated",
+        )
+        physical_block_count = len(block_manager.get_block_table(seq))
+        preemption_recovery = physical_block_count
+        gap = logical_block_count - physical_block_count
+        if remainder > 0:
+            _require(
+                gap == 0,
+                f"raw_seq_id {raw_id}: resident partial-prefill "
+                f"logical/physical block gap {gap} must be 0",
+            )
+            prefill_eligible, decode_eligible, preemption_eligible = (
+                True, False, True,
+            )
+        else:
+            _require(
+                gap in (0, 1),
+                f"raw_seq_id {raw_id}: resident decode logical/physical "
+                f"block gap {gap} is outside {{0, 1}}",
+            )
+            decode_demand = gap
+            prefill_eligible, decode_eligible, preemption_eligible = (
+                False, True, True,
+            )
+
+    return CapturedRequest(
+        raw_seq_id=raw_id,
+        request_id=str(raw_id),
+        order_key=(raw_id,),
+        ownership=label,
+        queue_position=position,
+        status=status.name,
+        arrival_time=float(seq.arrival_time),
+        prompt_len=prompt_len,
+        prompt_tokens_processed=processed,
+        prompt_tokens_remaining=remainder,
+        prompt_processing_finished=finished_flag,
+        output_len=output_len,
+        context_len=context_len,
+        logical_block_count=logical_block_count,
+        physical_block_count=physical_block_count,
+        prefill_eligible=prefill_eligible,
+        decode_eligible=decode_eligible,
+        preemption_eligible=preemption_eligible,
+        prefill_fixed_charge=prefill_fixed_charge,
+        decode_demand=decode_demand,
+        preemption_recovery=preemption_recovery,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Ranks, coefficients, and problem construction
+# ---------------------------------------------------------------------------
+
+
+def _ranks(captured, rank_profile):
+    _require(callable(rank_profile), "rank_profile must be callable")
+    ranks = rank_profile(captured)
+    _require(
+        isinstance(ranks, tuple) and len(ranks) == len(captured.requests),
+        "rank_profile must return one (service_rank, victim_rank) pair per "
+        "captured request",
+    )
+    return ranks
+
+
+def _coefficients(captured, policy):
+    _require(
+        isinstance(captured, CapturedState),
+        "coefficients require a CapturedState",
+    )
+    requests = captured.requests
+    if isinstance(policy, RequestUtility):
+        triples = [policy] * len(requests)
+    elif isinstance(policy, Mapping):
+        for raw_id in policy:
+            _require(
+                _is_int(raw_id),
+                f"coefficient key must be an integer raw_seq_id, got "
+                f"{raw_id!r}",
+            )
+        included = {r.raw_seq_id for r in requests}
+        missing = included - policy.keys()
+        extra = policy.keys() - included
+        _require(
+            not missing,
+            f"missing coefficients for raw_seq_id(s) {sorted(missing)}",
+        )
+        _require(
+            not extra, f"extra coefficients for raw_seq_id(s) {sorted(extra)}",
+        )
+        triples = [policy[r.raw_seq_id] for r in requests]
+    elif callable(policy):
+        triples = [policy(captured, r) for r in requests]
+    else:
+        raise _MappingError(
+            "coefficient_policy must be a RequestUtility, a mapping from "
+            "raw_seq_id to RequestUtility, or a callable of captured data, "
+            f"got {type(policy).__name__}"
+        )
+    copies = []
+    for request, utility in zip(requests, triples):
+        raw_id = request.raw_seq_id
+        _require(
             isinstance(utility, RequestUtility),
-            f"utilities value for raw_seq_id {raw_id} must be a "
-            "RequestUtility",
+            f"coefficient for raw_seq_id {raw_id} must be a RequestUtility",
         )
         values = (
             utility.decode_utility, utility.prefill_token_utility,
@@ -375,218 +708,87 @@ def _map_scheduler_state(
             values,
         ):
             _require(
-                _is_real(value),
-                f"utility {name} for raw_seq_id {raw_id} must be a finite "
-                f"number, got {value!r}",
+                _is_real(value) and value >= 0,
+                f"coefficient {name} for raw_seq_id {raw_id} must be a "
+                f"finite non-negative number, got {value!r}",
             )
-        util_map[raw_id] = RequestUtility(*values)
+        copies.append(RequestUtility(*values))
+    return tuple(copies)
 
-    included_ids = {raw_id for raw_id, _, _ in included}
-    missing = included_ids - util_map.keys()
-    extra = util_map.keys() - included_ids
+
+def _build(captured, ranks, coefficients, b_max, c_max, s_max,
+           numerical_policy):
+    for name, value in (("b_max", b_max), ("c_max", c_max), ("s_max", s_max)):
+        _require(
+            _is_int(value) and value > 0, f"{name} must be a positive integer",
+        )
     _require(
-        not missing,
-        f"missing utilities for raw_seq_id(s) {sorted(missing)}",
+        isinstance(numerical_policy, lrs.NumericalPolicy),
+        "numerical_policy must be a NumericalPolicy",
     )
+    requests = captured.requests
     _require(
-        not extra, f"extra utilities for raw_seq_id(s) {sorted(extra)}",
+        isinstance(ranks, tuple) and len(ranks) == len(requests)
+        and isinstance(coefficients, tuple)
+        and len(coefficients) == len(requests),
+        "ranks and coefficients must align with the captured requests",
     )
-
-    request_states = []
-    request_inputs = []
-    legal_ids = set()
-    for raw_id, label, seq in included:
-        request_id = str(raw_id)
-        order_key = (raw_id,)
-        status = seq.get_status()
-        prompt_len = seq.get_prompt_len()
-        processed = seq.get_num_prompt_tokens_processed()
-        _require(
-            _is_int(prompt_len) and prompt_len >= 0,
-            f"raw_seq_id {raw_id}: malformed prompt length {prompt_len!r}",
+    states, inputs = [], []
+    for captured_request, (service, victim), utility in zip(
+        requests, ranks, coefficients,
+    ):
+        state = RequestStateSnapshot(
+            **{name: getattr(captured_request, name)
+               for name in CapturedRequest.__dataclass_fields__},
+            service_rank=service, victim_rank=victim, utility=utility,
         )
-        _require(
-            _is_int(processed) and processed >= 0,
-            f"raw_seq_id {raw_id}: malformed processed-prompt count "
-            f"{processed!r}",
-        )
-        remainder = prompt_len - processed
-        _require(
-            0 <= remainder <= prompt_len,
-            f"raw_seq_id {raw_id}: negative or excessive prompt progress "
-            f"yields remainder {remainder} (prompt_len={prompt_len}, "
-            f"processed={processed})",
-        )
-        finished_flag = seq.prompt_processing_finished
-        _require(
-            finished_flag == (remainder == 0),
-            f"raw_seq_id {raw_id}: prompt_processing_finished="
-            f"{finished_flag!r} disagrees with prompt remainder {remainder}",
-        )
-        seq_block_size = seq.block_size
-        _require(
-            seq_block_size == block_manager_block_size,
-            f"raw_seq_id {raw_id}: sequence block_size {seq_block_size!r} "
-            f"disagrees with block-manager block_size "
-            f"{block_manager_block_size!r}",
-        )
-        logical_block_count = len(seq.logical_token_blocks)
-        is_allocated = block_manager.is_allocated(seq)
-
-        if label == OWNERSHIP_WAITING:
-            _require(
-                status == SequenceStatus.WAITING,
-                f"raw_seq_id {raw_id}: waiting-owned request has status "
-                f"{status!r}, expected WAITING",
-            )
-            _require(
-                not is_allocated,
-                f"raw_seq_id {raw_id}: waiting-owned request is allocated",
-            )
-            _require(
-                remainder > 0,
-                f"raw_seq_id {raw_id}: waiting-owned request has "
-                f"non-positive prompt remainder {remainder}",
-            )
-            _require(
-                not finished_flag,
-                f"raw_seq_id {raw_id}: waiting-owned request has "
-                "prompt_processing_finished True",
-            )
-            physical_block_count = 0
-            prefill_eligible, decode_eligible, preemption_eligible = (
-                True, False, False,
-            )
-            prefill_fixed_charge = logical_block_count
-            decode_charge = 0
-            preemption_recovery = 0
-        else:
-            _require(
-                status == SequenceStatus.PAUSED,
-                f"raw_seq_id {raw_id}: resident request has unsupported "
-                f"status {status!r}, expected PAUSED",
-            )
-            _require(
-                is_allocated,
-                f"raw_seq_id {raw_id}: resident request is not allocated",
-            )
-            physical_block_count = len(block_manager.get_block_table(seq))
-            gap = logical_block_count - physical_block_count
-            if remainder > 0:
-                _require(
-                    gap == 0,
-                    f"raw_seq_id {raw_id}: resident partial-prefill "
-                    f"logical/physical block gap {gap} must be 0",
-                )
-                prefill_eligible, decode_eligible, preemption_eligible = (
-                    True, False, True,
-                )
-                prefill_fixed_charge = 0
-                decode_charge = 0
-                preemption_recovery = physical_block_count
-            else:
-                _require(
-                    gap in (0, 1),
-                    f"raw_seq_id {raw_id}: resident decode logical/physical "
-                    f"block gap {gap} is outside {{0, 1}}",
-                )
-                prefill_eligible, decode_eligible, preemption_eligible = (
-                    False, True, True,
-                )
-                prefill_fixed_charge = 0
-                decode_charge = 1
-                preemption_recovery = physical_block_count
-
-        if preemption_eligible:
-            legal_ids.add(request_id)
-
-        prefill_upper_bound = min(remainder, c_max) if prefill_eligible else 0
-        utility = util_map[raw_id]
-
-        request_states.append(RequestStateSnapshot(
-            raw_seq_id=raw_id,
-            request_id=request_id,
-            order_key=order_key,
-            ownership=label,
-            status=status.name,
-            arrival_time=float(seq.arrival_time),
-            prompt_len=prompt_len,
-            prompt_tokens_processed=processed,
-            prompt_tokens_remaining=remainder,
-            prompt_processing_finished=finished_flag,
-            logical_block_count=logical_block_count,
-            physical_block_count=physical_block_count,
-            prefill_eligible=prefill_eligible,
-            decode_eligible=decode_eligible,
-            preemption_eligible=preemption_eligible,
-            prefill_fixed_charge=prefill_fixed_charge,
-            decode_charge=decode_charge,
-            preemption_recovery=preemption_recovery,
-            utility=utility,
-        ))
-        request_inputs.append(lrs.RequestInput(
-            request_id=request_id,
-            order_key=order_key,
-            prompt_tokens_remaining=remainder,
-            prefill_upper_bound=prefill_upper_bound,
-            prefill_eligible=prefill_eligible,
-            decode_eligible=decode_eligible,
-            preemption_eligible=preemption_eligible,
-            prefill_fixed_charge=prefill_fixed_charge,
-            decode_charge=decode_charge,
-            preemption_recovery=preemption_recovery,
+        states.append(state)
+        inputs.append(lrs.RequestInput(
+            request_id=state.request_id,
+            order_key=state.order_key,
+            resident=state.ownership == OWNERSHIP_RUNNING,
+            prompt_tokens_remaining=state.prompt_tokens_remaining,
+            prefill_upper_bound=(
+                min(state.prompt_tokens_remaining, c_max)
+                if state.prefill_eligible else 0
+            ),
+            prefill_eligible=state.prefill_eligible,
+            decode_eligible=state.decode_eligible,
+            preemption_eligible=state.preemption_eligible,
+            prefill_fixed_charge=state.prefill_fixed_charge,
+            decode_demand=state.decode_demand,
+            preemption_recovery=state.preemption_recovery,
             decode_utility=utility.decode_utility,
             prefill_token_utility=utility.prefill_token_utility,
             preemption_penalty=utility.preemption_penalty,
+            service_rank=service,
+            victim_rank=victim,
         ))
 
-    m_free = block_manager.get_num_free_gpu_blocks()
-    _require(
-        _is_int(m_free) and m_free >= 0,
-        f"block manager reported a malformed free-block count {m_free!r}",
-    )
-
-    # The scheduler iteration number identifies one scheduling decision within
-    # one scheduler instance. It is not a content fingerprint, proof of
-    # unchanged state, or globally unique identifier.
-    snapshot_id = str(iteration_id)
-
-    if not request_inputs:
-        return MappingFailure(
-            snapshot_id, STAGE_STATE_MAPPING, CATEGORY_MAPPING_FAILURE,
-            "the arrived, unfinished request universe is empty; the "
-            "accepted LPProblem type cannot represent an empty request set",
-        )
-
     problem = lrs.LPProblem(
-        requests=tuple(request_inputs),
-        legal_preemption_ids=frozenset(legal_ids),
-        b_max=b_max, c_max=c_max, s_max=s_max, m_free=m_free,
-        w=memory_reserve,
-        problem_id=snapshot_id,
-        decode_memory_policy_id=decode_memory_policy_id,
+        requests=tuple(inputs),
+        legal_preemption_ids=frozenset(
+            s.request_id for s in states if s.preemption_eligible),
+        b_max=b_max, c_max=c_max, s_max=s_max,
+        resident_limit=captured.resident_limit,
+        resident_count=captured.resident_count,
+        m_free=captured.free_physical_blocks,
+        admission_watermark=captured.watermark_blocks,
+        problem_id=captured.snapshot_id,
         numerical_policy=numerical_policy,
     )
     canonical = lrs.validate_problem(problem)
-    if isinstance(canonical, lrs.Failure):
-        return MappingFailure(
-            snapshot_id, STAGE_STATE_MAPPING, CATEGORY_MAPPING_FAILURE,
-            "the mapped problem was rejected by validate_problem: "
-            f"{canonical.category}: {canonical.reason}",
-        )
-
+    _require(
+        not isinstance(canonical, lrs.Failure),
+        "the mapped problem was rejected by validate_problem: "
+        f"{getattr(canonical, 'category', '')}: "
+        f"{getattr(canonical, 'reason', '')}",
+    )
     return StateSnapshot(
-        snapshot_id=snapshot_id,
-        snapshot_time=float(snapshot_time),
-        scheduler_iteration_id=iteration_id,
-        num_pipeline_stages=num_pipeline_stages,
-        num_running_batches=num_running_batches,
-        resident_count=resident_count,
-        resident_limit=max_num_seqs,
-        free_physical_blocks=m_free,
-        memory_reserve=memory_reserve,
-        decode_memory_policy_id=decode_memory_policy_id,
+        **{name: getattr(captured, name)
+           for name in CapturedState.__dataclass_fields__
+           if name != "requests"},
+        requests=tuple(states),
         numerical_policy=numerical_policy,
-        requests=tuple(request_states),
         lp_problem=canonical,
     )
