@@ -1,0 +1,10 @@
+# Observed at 13c2df4 before any edit for findings 2 and 3 (repro_findings.py).
+# Finding 1 lines: repro_finding1.py against HEAD copies of the preemption helper.
+# The single 'File ...repro_finding1.py' line is from an aborted first attempt
+# (an import-path error in the repro script itself), not a result.
+finding2: explicit lp_memory_reserve=None ACCEPTED (silently treated as omission)
+finding2: explicit lp_decode_memory_policy_id=None ACCEPTED (silently treated as omission)
+finding3: schedule raised OverflowError: int too large to convert to float
+  File "/tmp/claude-5072/-home-atjoshi-umass-edu-LPServe/1e7f29ce-438d-4a05-bc33-2181241534c8/scratchpad/repro/repro_finding1.py", line 9, in <module>
+finding1: emitted (correct corrected order): [[1, 0], [0, 0]]
+finding1: HEAD helper REJECTED correct records: CheckFailure: old: emitted {'id': 7, 'scheduled': [[1, 0], [0, 0]], 'ignored_seq_ids': [], 'preempted_seq_ids': []} differs from plan [{'request_id': '0', 'order_key': [0], 'prefill_tokens': 0, 'decode': 1, 'preempt': 0, 'prefill_indicator': 0}, {'request_id': '1', 'order_key': [1], 'prefill_tokens': 0, 'decode': 1, 'preempt': 0, 'prefill_indicator': 0}]

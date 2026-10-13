@@ -273,6 +273,9 @@ not executed.
 | Defensive `no_progress`; zero mutation on rejection; post-mutation termination | executor gate before mathematical validation | executor control-only and precommit tests; live `test_no_progress_plan_is_not_ordinary_idle` (induced empty plan), post-mutation tests | pass | live no_progress requires an induced plan |
 | Existing admission, partial prefill, decode, mixed, contention, preemption/recompute, `EngineArgs` paths | all layers | `LivePipelineTest`, `LivePreemptionTest`, `LiveDecodePreemptionTest`, `EngineArgs` tests | pass | relaxed values changed (below); inherited §16 limits |
 | Active scripts migrated | config/record fields, reserve preconditions, utility hook | compile; script CPU tests | pass | GPU workloads unexecuted; two scripts' relaxed expectations re-derived analytically only |
+| GPU-helper order checks derive the approved order (added 2026-10-13, evidence `20261013T041256Z`) | `check_declared_order` in `scripts/check_lp_scheduler_preemption_gpu.py`, used by the contention and decode-preemption helpers | `tests/test_check_lp_scheduler_ordering.py` (real CPU pipeline records: B before A with one free block, prefills by service rank, victims by victim rank; obsolete order fails) | pass | helpers' GPU runs not executed |
+| Explicit obsolete `None` and positional supply rejected (added 2026-10-13) | `arg_utils` private omission sentinel | `test_obsolete_arguments_fail_with_migration_guidance`, `test_obsolete_arguments_omitted_or_positional` | pass | — |
+| Oversized arrival reaches the mapper's structured rejection, not idle (added 2026-10-13) | `LPScheduler._is_idle` guarded conversion | `test_oversized_arrival_is_mapping_failure_not_idle` | pass | capture-stage failures carry no snapshot ID |
 
 ### F01–F04 dispositions
 
@@ -320,3 +323,52 @@ Not established: real engine initialization, GPU behavior, sampler/output
 semantics beyond §16, physical block-ID equality, policy recovery, fairness,
 restart freedom, completion, or performance. Coefficient formulas and scales,
 optional κ, and Q11 remain OPEN.
+
+
+## Review-finding fixes (2026-10-13; awaiting review)
+
+**Provenance.** Tested base `13c2df4cca7df38f06d24460b48d142aba6f1136` plus
+the uncommitted changes in `working_tree.diff` (seven modified files and the
+new `tests/test_check_lp_scheduler_ordering.py`, which the repository's
+`test*` ignore rule hides from `git status`; SHA-256 per file in
+`sha256sums.txt`). Evidence:
+`validation_output/lp_scheduler_integration/20261013T041256Z/`. Host
+`gpu048`, allocation `65616965`, CPU only; Python 3.10.8 (`env`), NumPy
+2.2.6, SciPy 1.15.3. This section and the table rows above marked 2026-10-13
+were written after the run and are not tested code.
+
+**Findings, reproduced on the starting code** (`repro/starting_code_observed.txt`):
+
+1. *Obsolete helper order.* The contention, preemption, and decode-preemption
+   GPU helpers rebuilt execution order as prefill/decode then identity, and
+   victims by identity. Executed: the starting preemption helper's
+   `check_decision` rejected a correct corrected-order record (one free
+   block; zero-demand B emitted before one-block A). Fixed: one
+   `check_declared_order` derives victims by victim rank, then identity, and
+   execution as prefills, zero-demand decodes, then one-block decodes, each by
+   service rank, then identity, from the mapped request facts, and requires
+   the plan's declared lists and the emitted controls and metadata to equal
+   it. Action, chunk, operation, replay, and state checks are unchanged.
+2. *Explicit obsolete `None` accepted.* `EngineArgs(lp_memory_reserve=None)`
+   and `lp_decode_memory_policy_id=None` were treated as omission. Fixed with
+   a private, copy-stable omission default: any supplied value, including
+   `None`, zero, or the old policy string, by keyword or position, fails with
+   migration guidance before model construction or `config.yml`. Omission
+   succeeds; the default is not serialized; field positions are unchanged.
+3. *Oversized arrival.* `arrival_time=10**400` made the idle check raise
+   `OverflowError`. Fixed by guarding that conversion: malformed arrival is
+   not idle, and the mapper returns its structured failure (stage
+   `state_mapping`, no solve or execution, no execution mutation; the
+   inherited iteration counter advances).
+
+**Observed after the fixes.** Ordering helpers 5, `EngineArgs` 11, live
+scheduler and submission 21, existing script CPU tests 24: all pass (61).
+Compile, warnings-as-errors import, and whitespace checks pass (the new file
+checked separately: 0 problems). The pure, mapping, executor, and
+`run_lp_inference` suites were not rerun: no changed file is imported by
+them. No GPU, model, policy, or performance run.
+
+**Remaining limitations.** The migrated helpers' GPU runs are unexecuted.
+A mapping failure raised during capture carries no snapshot ID (existing
+mapper behavior, unchanged). Admission equality, OPEN coefficient decisions,
+and Q11 are unchanged.

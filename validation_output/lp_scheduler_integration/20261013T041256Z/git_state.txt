@@ -1,0 +1,12 @@
+branch=main
+head=13c2df4cca7df38f06d24460b48d142aba6f1136
+--- git status --short (tests/ matches the repo's test* ignore rule, so the new test file is not listed)
+ M sarathi/core/scheduler/lp_scheduler.py
+ M sarathi/engine/arg_utils.py
+ M scripts/check_lp_scheduler_contention_gpu.py
+ M scripts/check_lp_scheduler_decode_preemption_reference_gpu.py
+ M scripts/check_lp_scheduler_preemption_gpu.py
+ M tests/test_lp_engine_args.py
+ M tests/test_lp_scheduler.py
+?? validation_output/lp_scheduler_integration/20261013T041256Z/
+untracked ignored new file: tests/test_check_lp_scheduler_ordering.py

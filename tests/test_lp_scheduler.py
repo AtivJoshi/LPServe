@@ -347,6 +347,26 @@ class OrdinaryIdleTest(unittest.TestCase):
         self.assertEqual(_emitted(outputs), [(1, 4)])
         self.assertEqual([s.seq_id for s in harness.scheduler.waiting], [0])
 
+    def test_oversized_arrival_is_mapping_failure_not_idle(self):
+        # An integer too large for a float must not take the idle shortcut
+        # or raise OverflowError; the mapper returns its structured failure.
+        harness = _Harness()
+        harness.add(0, 4, arrival_time=10 ** 400, max_tokens=2)
+        scheduler = harness.scheduler
+        before = _fingerprint(scheduler)
+        iteration = scheduler._iteration_id
+        with _Spies() as spies:
+            with self.assertRaises(LPSchedulingError) as caught:
+                harness.schedule(5.0)
+        self.assertEqual(spies.names(), ["capture", "map"])
+        error = caught.exception
+        self.assertIsInstance(error.failure, lsm.MappingFailure)
+        self.assertEqual(error.stage, lsm.STAGE_STATE_MAPPING)
+        self.assertIn("malformed arrival_time", error.reason)
+        self.assertIsNone(error.solver_diagnostics)
+        self.assertEqual(scheduler._iteration_id, iteration + 1)
+        self.assertEqual(_fingerprint(scheduler), before)
+
 
 class LivePipelineTest(unittest.TestCase):
     def _assert_synchronous_pipeline(self, harness, spies, now, outputs):

@@ -370,6 +370,47 @@ def check_quiescent(tag, central, worker):
                   f"{mirror[field]}")
 
 
+def check_declared_order(tag, snap, plan, emitted):
+    """Independently derive the approved order from the mapped request facts
+    (not from the plan's declared lists) and require the plan's declared
+    orders and the emitted controls and metadata to equal it.
+
+    Victims: victim rank, then identity. Execution: prefills, zero-demand
+    decodes, then one-block-demand decodes; each by service rank, then
+    identity. Returns the derived victim request IDs and action decisions."""
+    facts = {r["request_id"]: r for r in snap["requests"]}
+
+    def identity(rid):
+        return tuple(facts[rid]["order_key"])
+
+    def group(d):
+        if d["prefill_tokens"] > 0:
+            return 0
+        return 1 + facts[d["request_id"]]["decode_demand"]
+
+    decisions = plan["decisions"]
+    victims = sorted(
+        (d["request_id"] for d in decisions if d["preempt"]),
+        key=lambda rid: (facts[rid]["victim_rank"], identity(rid)))
+    actions = sorted(
+        (d for d in decisions if d["prefill_tokens"] > 0 or d["decode"]),
+        key=lambda d: (group(d), facts[d["request_id"]]["service_rank"],
+                       identity(d["request_id"])))
+    check(list(plan["victim_order"]) == victims
+          and list(plan["execution_order"])
+          == [d["request_id"] for d in actions],
+          f"{tag}: declared victim/execution order {plan['victim_order']} "
+          f"{plan['execution_order']} differs from derived {victims} "
+          f"{[d['request_id'] for d in actions]}")
+    raw = {rid: r["raw_seq_id"] for rid, r in facts.items()}
+    check(list(emitted["preempted_seq_ids"]) == [raw[rid] for rid in victims]
+          and [list(e) for e in emitted["scheduled"]]
+          == [[raw[d["request_id"]], d["prefill_tokens"]] for d in actions],
+          f"{tag}: emitted preempted {emitted['preempted_seq_ids']} scheduled "
+          f"{emitted['scheduled']} differ from the derived order")
+    return victims, actions
+
+
 def check_decision(tag, expected, before, events, policy_json):
     """Pipeline sequence, mapped inputs, plan/output agreement, and limits."""
     check([e["call"] for e in events] == PIPELINE_CALLS,
@@ -406,14 +447,6 @@ def check_decision(tag, expected, before, events, policy_json):
     check(solved["result_type"] == "SchedulingSuccess",
           f"{tag}: solve returned {solved['result_type']}: {solved['result']}")
     plan = solved["result"]["plan"]
-    raw = {r["request_id"]: r["raw_seq_id"] for r in snap["requests"]}
-    order = {r["request_id"]: r["order_key"] for r in snap["requests"]}
-    decisions = plan["decisions"]
-    victims = sorted((d for d in decisions if d["preempt"]),
-                     key=lambda d: order[d["request_id"]])
-    actions = sorted((d for d in decisions if d["prefill_tokens"] or d["decode"]),
-                     key=lambda d: (0 if d["prefill_tokens"] else 1,
-                                    order[d["request_id"]]))
     check(executed["result_type"] == "SchedulerOutputs",
           f"{tag}: executor returned {executed['result_type']}: "
           f"{executed['result']}")
@@ -421,11 +454,9 @@ def check_decision(tag, expected, before, events, policy_json):
     check(executed["result"] == emitted,
           f"{tag}: scheduler output differs from executor output")
     check(emitted["id"] == snap["scheduler_iteration_id"], f"{tag}: output id")
-    check(emitted["preempted_seq_ids"] == [raw[d["request_id"]] for d in victims]
-          and emitted["scheduled"] == [[raw[d["request_id"]], d["prefill_tokens"]]
-                                       for d in actions]
-          and emitted["ignored_seq_ids"] == [],
-          f"{tag}: emitted {emitted} differs from plan {decisions}")
+    check_declared_order(tag, snap, plan, emitted)
+    check(emitted["ignored_seq_ids"] == [],
+          f"{tag}: ignored ids emitted {emitted['ignored_seq_ids']}")
     check(emitted["preempted_seq_ids"] == expected["preempted"]
           and emitted["scheduled"] == expected["scheduled"],
           f"{tag}: emitted preempted {emitted['preempted_seq_ids']} scheduled "

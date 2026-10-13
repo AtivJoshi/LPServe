@@ -619,14 +619,6 @@ def check_decision(tag, expected, before, events, policy_json):
     check(solved["result_type"] == "SchedulingSuccess",
           f"{tag}: solve returned {solved['result_type']}: {solved['result']}")
     plan = solved["result"]["plan"]
-    raw = {r["request_id"]: r["raw_seq_id"] for r in snap["requests"]}
-    order = {r["request_id"]: r["order_key"] for r in snap["requests"]}
-    decisions = plan["decisions"]
-    victims = sorted((d for d in decisions if d["preempt"]),
-                     key=lambda d: order[d["request_id"]])
-    actions = sorted((d for d in decisions if d["prefill_tokens"] or d["decode"]),
-                     key=lambda d: (0 if d["prefill_tokens"] else 1,
-                                    order[d["request_id"]]))
     check(executed["result_type"] == "SchedulerOutputs",
           f"{tag}: executor returned {executed['result_type']}: "
           f"{executed['result']}")
@@ -634,11 +626,9 @@ def check_decision(tag, expected, before, events, policy_json):
     check(executed["result"] == emitted,
           f"{tag}: scheduler output differs from executor output")
     check(emitted["id"] == snap["scheduler_iteration_id"], f"{tag}: output id")
-    check(emitted["preempted_seq_ids"] == [raw[d["request_id"]] for d in victims]
-          and emitted["scheduled"] == [[raw[d["request_id"]], d["prefill_tokens"]]
-                                       for d in actions]
-          and emitted["ignored_seq_ids"] == [],
-          f"{tag}: emitted {emitted} differs from plan {decisions}")
+    preemption.check_declared_order(tag, snap, plan, emitted)
+    check(emitted["ignored_seq_ids"] == [],
+          f"{tag}: ignored ids emitted {emitted['ignored_seq_ids']}")
     check(emitted["preempted_seq_ids"] == expected["preempted"]
           and emitted["scheduled"] == expected["scheduled"],
           f"{tag}: emitted preempted {emitted['preempted_seq_ids']} scheduled "

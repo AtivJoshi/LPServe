@@ -1,0 +1,515 @@
+diff --git a/sarathi/core/scheduler/lp_scheduler.py b/sarathi/core/scheduler/lp_scheduler.py
+index a12e6f3..cdd4daa 100644
+--- a/sarathi/core/scheduler/lp_scheduler.py
++++ b/sarathi/core/scheduler/lp_scheduler.py
+@@ -211,11 +211,15 @@ class LPScheduler(BaseScheduler):
+             if seq.is_finished():
+                 continue
+             arrival = seq.arrival_time
+-            if not (
+-                isinstance(arrival, (int, float))
+-                and not isinstance(arrival, bool)
+-                and math.isfinite(arrival) and arrival > now
+-            ):
++            try:
++                future = (
++                    isinstance(arrival, (int, float))
++                    and not isinstance(arrival, bool)
++                    and math.isfinite(arrival) and arrival > now
++                )
++            except OverflowError:  # an int too large for a float
++                future = False
++            if not future:
+                 return False
+         return True
+ 
+diff --git a/sarathi/engine/arg_utils.py b/sarathi/engine/arg_utils.py
+index e196b48..faf2df2 100644
+--- a/sarathi/engine/arg_utils.py
++++ b/sarathi/engine/arg_utils.py
+@@ -1,7 +1,7 @@
+ import dataclasses
+ import os
+ from dataclasses import asdict, dataclass
+-from typing import TYPE_CHECKING, List, Optional, Tuple
++from typing import TYPE_CHECKING, Any, List, Optional, Tuple
+ 
+ import yaml
+ 
+@@ -40,6 +40,26 @@ _LP_REQUIRED_FIELDS = (
+ # guidance and to preserve the positions of later fields.
+ _LP_OBSOLETE_FIELDS = ("lp_memory_reserve", "lp_decode_memory_policy_id")
+ 
++
++class _Omitted:
++    """Private default of a removed field, distinguishing omission from any
++    explicitly supplied value, including ``None``. Copies keep its identity."""
++
++    def __repr__(self):
++        return "<omitted>"
++
++    def __copy__(self):
++        return self
++
++    def __deepcopy__(self, memo):
++        return self
++
++    def __reduce__(self):
++        return "_OMITTED"
++
++
++_OMITTED = _Omitted()
++
+ @dataclass
+ class EngineArgs:
+     """Arguments for Sarathi engine."""
+@@ -109,8 +129,8 @@ class EngineArgs:
+     lp_b_max: Optional[int] = None  # combined prefill/decode token budget
+     lp_c_max: Optional[int] = None  # per-request prefill chunk cap
+     lp_s_max: Optional[int] = None  # execution-action limit
+-    lp_memory_reserve: Optional[int] = None  # removed; any value is rejected
+-    lp_decode_memory_policy_id: Optional[str] = None  # removed; rejected
++    lp_memory_reserve: Any = _OMITTED  # removed; any supplied value is rejected
++    lp_decode_memory_policy_id: Any = _OMITTED  # removed; rejected
+     lp_decode_utility: Optional[float] = None
+     lp_prefill_token_utility: Optional[float] = None
+     lp_preemption_penalty: Optional[float] = None
+@@ -119,7 +139,9 @@ class EngineArgs:
+     def __post_init__(self):
+         if self.tokenizer is None:
+             self.tokenizer = self.model
+-        supplied = [n for n in _LP_OBSOLETE_FIELDS if getattr(self, n) is not None]
++        supplied = [
++            n for n in _LP_OBSOLETE_FIELDS if getattr(self, n) is not _OMITTED
++        ]
+         if supplied:
+             raise ValueError(
+                 f"EngineArgs {', '.join(supplied)}: "
+diff --git a/scripts/check_lp_scheduler_contention_gpu.py b/scripts/check_lp_scheduler_contention_gpu.py
+index d00ac94..9acf667 100644
+--- a/scripts/check_lp_scheduler_contention_gpu.py
++++ b/scripts/check_lp_scheduler_contention_gpu.py
+@@ -47,6 +47,8 @@ import check_lp_scheduler_gpu as single
+ from check_lp_scheduler_gpu import (Observer, check, environment_record,
+                                     outputs_record, request_output_record,
+                                     to_jsonable)
++# Read-only derived-order check shared with the preemption helper.
++from check_lp_scheduler_preemption_gpu import check_declared_order
+ 
+ REPO_ROOT = Path(__file__).resolve().parents[1]
+ 
+@@ -288,17 +290,10 @@ def check_step(tag, ids, before, events, after, step_outputs, policy_json):
+           f"{tag}: problem/plan/snapshot identities differ")
+     check(not plan["victim_order"],
+           f"{tag}: plan preemption ids")
+-    selected = []
+     for d in plan["decisions"]:
+         check(d["preempt"] == 0 and not (d["prefill_tokens"] > 0
+                                          and d["decode"]),
+               f"{tag}: plan decision {d}")
+-        if d["prefill_tokens"] > 0 or d["decode"]:
+-            selected.append(d)
+-    selected.sort(key=lambda d: (0 if d["prefill_tokens"] > 0 else 1,
+-                                 tuple(d["order_key"])))
+-    want_emitted = [[raw[d["request_id"]], d["prefill_tokens"]]
+-                    for d in selected]
+ 
+     # Emitted outputs.
+     check(executed["result_type"] == "SchedulerOutputs",
+@@ -309,8 +304,9 @@ def check_step(tag, ids, before, events, after, step_outputs, policy_json):
+     check(emitted["id"] == before["iteration_id"] + 1
+           and emitted["id"] == snap["scheduler_iteration_id"],
+           f"{tag}: decision id {emitted['id']}")
+-    check(emitted["scheduled"] == want_emitted,
+-          f"{tag}: emitted {emitted['scheduled']}, plan gives {want_emitted}")
++    # Prefills, zero-demand decodes, then one-block decodes, each by
++    # service rank, then identity, derived from the mapped request facts.
++    check_declared_order(tag, snap, plan, emitted)
+     check(not emitted["ignored_seq_ids"]
+           and not emitted["preempted_seq_ids"],
+           f"{tag}: ignored/preempted ids emitted")
+diff --git a/scripts/check_lp_scheduler_decode_preemption_reference_gpu.py b/scripts/check_lp_scheduler_decode_preemption_reference_gpu.py
+index b81cfc1..8b6aed2 100644
+--- a/scripts/check_lp_scheduler_decode_preemption_reference_gpu.py
++++ b/scripts/check_lp_scheduler_decode_preemption_reference_gpu.py
+@@ -619,14 +619,6 @@ def check_decision(tag, expected, before, events, policy_json):
+     check(solved["result_type"] == "SchedulingSuccess",
+           f"{tag}: solve returned {solved['result_type']}: {solved['result']}")
+     plan = solved["result"]["plan"]
+-    raw = {r["request_id"]: r["raw_seq_id"] for r in snap["requests"]}
+-    order = {r["request_id"]: r["order_key"] for r in snap["requests"]}
+-    decisions = plan["decisions"]
+-    victims = sorted((d for d in decisions if d["preempt"]),
+-                     key=lambda d: order[d["request_id"]])
+-    actions = sorted((d for d in decisions if d["prefill_tokens"] or d["decode"]),
+-                     key=lambda d: (0 if d["prefill_tokens"] else 1,
+-                                    order[d["request_id"]]))
+     check(executed["result_type"] == "SchedulerOutputs",
+           f"{tag}: executor returned {executed['result_type']}: "
+           f"{executed['result']}")
+@@ -634,11 +626,9 @@ def check_decision(tag, expected, before, events, policy_json):
+     check(executed["result"] == emitted,
+           f"{tag}: scheduler output differs from executor output")
+     check(emitted["id"] == snap["scheduler_iteration_id"], f"{tag}: output id")
+-    check(emitted["preempted_seq_ids"] == [raw[d["request_id"]] for d in victims]
+-          and emitted["scheduled"] == [[raw[d["request_id"]], d["prefill_tokens"]]
+-                                       for d in actions]
+-          and emitted["ignored_seq_ids"] == [],
+-          f"{tag}: emitted {emitted} differs from plan {decisions}")
++    preemption.check_declared_order(tag, snap, plan, emitted)
++    check(emitted["ignored_seq_ids"] == [],
++          f"{tag}: ignored ids emitted {emitted['ignored_seq_ids']}")
+     check(emitted["preempted_seq_ids"] == expected["preempted"]
+           and emitted["scheduled"] == expected["scheduled"],
+           f"{tag}: emitted preempted {emitted['preempted_seq_ids']} scheduled "
+diff --git a/scripts/check_lp_scheduler_preemption_gpu.py b/scripts/check_lp_scheduler_preemption_gpu.py
+index 45409ca..4954412 100644
+--- a/scripts/check_lp_scheduler_preemption_gpu.py
++++ b/scripts/check_lp_scheduler_preemption_gpu.py
+@@ -370,6 +370,47 @@ def check_quiescent(tag, central, worker):
+                   f"{mirror[field]}")
+ 
+ 
++def check_declared_order(tag, snap, plan, emitted):
++    """Independently derive the approved order from the mapped request facts
++    (not from the plan's declared lists) and require the plan's declared
++    orders and the emitted controls and metadata to equal it.
++
++    Victims: victim rank, then identity. Execution: prefills, zero-demand
++    decodes, then one-block-demand decodes; each by service rank, then
++    identity. Returns the derived victim request IDs and action decisions."""
++    facts = {r["request_id"]: r for r in snap["requests"]}
++
++    def identity(rid):
++        return tuple(facts[rid]["order_key"])
++
++    def group(d):
++        if d["prefill_tokens"] > 0:
++            return 0
++        return 1 + facts[d["request_id"]]["decode_demand"]
++
++    decisions = plan["decisions"]
++    victims = sorted(
++        (d["request_id"] for d in decisions if d["preempt"]),
++        key=lambda rid: (facts[rid]["victim_rank"], identity(rid)))
++    actions = sorted(
++        (d for d in decisions if d["prefill_tokens"] > 0 or d["decode"]),
++        key=lambda d: (group(d), facts[d["request_id"]]["service_rank"],
++                       identity(d["request_id"])))
++    check(list(plan["victim_order"]) == victims
++          and list(plan["execution_order"])
++          == [d["request_id"] for d in actions],
++          f"{tag}: declared victim/execution order {plan['victim_order']} "
++          f"{plan['execution_order']} differs from derived {victims} "
++          f"{[d['request_id'] for d in actions]}")
++    raw = {rid: r["raw_seq_id"] for rid, r in facts.items()}
++    check(list(emitted["preempted_seq_ids"]) == [raw[rid] for rid in victims]
++          and [list(e) for e in emitted["scheduled"]]
++          == [[raw[d["request_id"]], d["prefill_tokens"]] for d in actions],
++          f"{tag}: emitted preempted {emitted['preempted_seq_ids']} scheduled "
++          f"{emitted['scheduled']} differ from the derived order")
++    return victims, actions
++
++
+ def check_decision(tag, expected, before, events, policy_json):
+     """Pipeline sequence, mapped inputs, plan/output agreement, and limits."""
+     check([e["call"] for e in events] == PIPELINE_CALLS,
+@@ -406,14 +447,6 @@ def check_decision(tag, expected, before, events, policy_json):
+     check(solved["result_type"] == "SchedulingSuccess",
+           f"{tag}: solve returned {solved['result_type']}: {solved['result']}")
+     plan = solved["result"]["plan"]
+-    raw = {r["request_id"]: r["raw_seq_id"] for r in snap["requests"]}
+-    order = {r["request_id"]: r["order_key"] for r in snap["requests"]}
+-    decisions = plan["decisions"]
+-    victims = sorted((d for d in decisions if d["preempt"]),
+-                     key=lambda d: order[d["request_id"]])
+-    actions = sorted((d for d in decisions if d["prefill_tokens"] or d["decode"]),
+-                     key=lambda d: (0 if d["prefill_tokens"] else 1,
+-                                    order[d["request_id"]]))
+     check(executed["result_type"] == "SchedulerOutputs",
+           f"{tag}: executor returned {executed['result_type']}: "
+           f"{executed['result']}")
+@@ -421,11 +454,9 @@ def check_decision(tag, expected, before, events, policy_json):
+     check(executed["result"] == emitted,
+           f"{tag}: scheduler output differs from executor output")
+     check(emitted["id"] == snap["scheduler_iteration_id"], f"{tag}: output id")
+-    check(emitted["preempted_seq_ids"] == [raw[d["request_id"]] for d in victims]
+-          and emitted["scheduled"] == [[raw[d["request_id"]], d["prefill_tokens"]]
+-                                       for d in actions]
+-          and emitted["ignored_seq_ids"] == [],
+-          f"{tag}: emitted {emitted} differs from plan {decisions}")
++    check_declared_order(tag, snap, plan, emitted)
++    check(emitted["ignored_seq_ids"] == [],
++          f"{tag}: ignored ids emitted {emitted['ignored_seq_ids']}")
+     check(emitted["preempted_seq_ids"] == expected["preempted"]
+           and emitted["scheduled"] == expected["scheduled"],
+           f"{tag}: emitted preempted {emitted['preempted_seq_ids']} scheduled "
+diff --git a/tests/test_lp_engine_args.py b/tests/test_lp_engine_args.py
+index c2d1724..dce769e 100644
+--- a/tests/test_lp_engine_args.py
++++ b/tests/test_lp_engine_args.py
+@@ -1,8 +1,10 @@
++import copy
+ import os
++import pickle
+ import sys
+ import tempfile
+ import unittest
+-from dataclasses import fields
++from dataclasses import MISSING, fields
+ from pathlib import Path
+ from unittest import mock
+ 
+@@ -146,8 +148,11 @@ class LPEngineArgsTest(unittest.TestCase):
+         cases = [
+             dict(lp_memory_reserve=0),
+             dict(lp_memory_reserve=1),
++            dict(lp_memory_reserve=None),
+             dict(lp_decode_memory_policy_id="conservative_one_block_v1"),
++            dict(lp_decode_memory_policy_id=None),
+             dict(lp_memory_reserve=0, lp_decode_memory_policy_id="x"),
++            dict(lp_memory_reserve=None, lp_decode_memory_policy_id=None),
+         ]
+         with mock.patch.object(llm_engine, "BaseLLMEngine") as base_engine:
+             for overrides in cases:
+@@ -185,6 +190,42 @@ class LPEngineArgsTest(unittest.TestCase):
+         with self.assertRaises(TypeError):
+             LPSchedulerConfig(**base, unknown_argument=1)
+ 
++    def test_obsolete_arguments_omitted_or_positional(self):
++        # Omission succeeds and leaves the private default, which is not
++        # written to config.yml.
++        args = EngineArgs(**self.lp_kwargs())
++        self.assertIs(args.lp_memory_reserve, arg_utils._OMITTED)
++        self.assertIs(args.lp_decode_memory_policy_id, arg_utils._OMITTED)
++        with open(self.config_path()) as f:
++            text = f.read()
++        self.assertNotIn("omitted", text)
++        self.assertNotIn("lp_memory_reserve", yaml.safe_load(text))
++        self.assertIs(copy.deepcopy(args.lp_memory_reserve), arg_utils._OMITTED)
++        self.assertIs(pickle.loads(pickle.dumps(arg_utils._OMITTED)),
++                      arg_utils._OMITTED)
++
++        # Positional supply through the obsolete positions, including None,
++        # is rejected before any configuration file is written.
++        names = [f.name for f in fields(EngineArgs)]
++        kwargs = self.lp_kwargs(output_dir=os.path.join(self.tmp.name, "pos"))
++        defaults = {
++            f.name: f.default if f.default_factory is MISSING
++            else f.default_factory() for f in fields(EngineArgs)
++        }
++        for obsolete in ("lp_memory_reserve", "lp_decode_memory_policy_id"):
++            for value in (None, 0):
++                with self.subTest(field=obsolete, value=value):
++                    upto = names[:names.index(obsolete) + 1]
++                    positional = [
++                        value if n == obsolete
++                        else kwargs.get(n, defaults[n]) for n in upto
++                    ]
++                    rest = {k: v for k, v in kwargs.items() if k not in upto}
++                    with self.assertRaisesRegex(ValueError, "were removed"):
++                        EngineArgs(*positional, **rest)
++                    self.assertFalse(os.path.exists(
++                        os.path.join(self.tmp.name, "pos", "config.yml")))
++
+     def test_configuration_errors_fail_before_model_engine_and_config_write(self):
+         cases = [
+             (
+diff --git a/tests/test_lp_scheduler.py b/tests/test_lp_scheduler.py
+index 5c5dad0..082165d 100644
+--- a/tests/test_lp_scheduler.py
++++ b/tests/test_lp_scheduler.py
+@@ -347,6 +347,26 @@ class OrdinaryIdleTest(unittest.TestCase):
+         self.assertEqual(_emitted(outputs), [(1, 4)])
+         self.assertEqual([s.seq_id for s in harness.scheduler.waiting], [0])
+ 
++    def test_oversized_arrival_is_mapping_failure_not_idle(self):
++        # An integer too large for a float must not take the idle shortcut
++        # or raise OverflowError; the mapper returns its structured failure.
++        harness = _Harness()
++        harness.add(0, 4, arrival_time=10 ** 400, max_tokens=2)
++        scheduler = harness.scheduler
++        before = _fingerprint(scheduler)
++        iteration = scheduler._iteration_id
++        with _Spies() as spies:
++            with self.assertRaises(LPSchedulingError) as caught:
++                harness.schedule(5.0)
++        self.assertEqual(spies.names(), ["capture", "map"])
++        error = caught.exception
++        self.assertIsInstance(error.failure, lsm.MappingFailure)
++        self.assertEqual(error.stage, lsm.STAGE_STATE_MAPPING)
++        self.assertIn("malformed arrival_time", error.reason)
++        self.assertIsNone(error.solver_diagnostics)
++        self.assertEqual(scheduler._iteration_id, iteration + 1)
++        self.assertEqual(_fingerprint(scheduler), before)
++
+ 
+ class LivePipelineTest(unittest.TestCase):
+     def _assert_synchronous_pipeline(self, harness, spies, now, outputs):
+diff --git a/tests/test_check_lp_scheduler_ordering.py b/tests/test_check_lp_scheduler_ordering.py
+new file mode 100644
+index 0000000..9b695e5
+--- /dev/null
++++ b/tests/test_check_lp_scheduler_ordering.py
+@@ -0,0 +1,161 @@
++"""CPU checks of the GPU helpers' independently derived execution order.
++
++Records come from the real mapper, solver, and executor on CPU (no engine,
++model, or GPU) and are serialized with the helpers' own ``to_jsonable`` and
++``outputs_record``. The derived order must be victims by victim rank, then
++identity; then prefills, zero-demand decodes, and one-block-demand decodes,
++each by service rank, then identity. Records in the superseded
++identity-only order must fail.
++"""
++
++import copy
++import sys
++import unittest
++from pathlib import Path
++from unittest import mock
++
++REPO_ROOT = Path(__file__).resolve().parents[1]
++sys.path.insert(0, str(REPO_ROOT))
++sys.path.insert(0, str(REPO_ROOT / "scripts"))
++sys.path.insert(0, str(REPO_ROOT / "tests"))
++
++import check_lp_scheduler_contention_gpu as contention  # noqa: E402
++import check_lp_scheduler_decode_preemption_reference_gpu as decode_ref  # noqa: E402
++import check_lp_scheduler_preemption_gpu as preemption  # noqa: E402
++from check_lp_scheduler_gpu import (  # noqa: E402
++    CheckFailure, outputs_record, to_jsonable,
++)
++
++import lp_relaxation_scheduler as lrs  # noqa: E402
++import lpserve_plan_execution as lpe  # noqa: E402
++import test_lpserve_plan_execution as fx  # noqa: E402
++
++
++def _records(holder, snapshot, result):
++    """Execute and serialize as the helpers do."""
++    outputs = lpe.execute_plan(holder, snapshot, result)
++    assert not isinstance(outputs, lrs.Failure), outputs
++    return (to_jsonable(snapshot), to_jsonable(result.plan),
++            outputs_record(outputs))
++
++
++def _one_free_block_case():
++    """A (seq 0) needs one block, B (seq 1) needs none; one block is free.
++    A has the smaller identity and the smaller service rank."""
++    holder = fx._SchedulerHolder(num_gpu_blocks=3)
++    fx._add_resident(holder, 0, 4, processed=4, num_output_tokens=1)  # gap 1
++    fx._add_resident(holder, 1, 4, processed=4)  # gap 0
++    utilities = fx._utilities(r0=(1.0, 0.0, 1.0), r1=(1.0, 0.0, 1.0))
++    snapshot, result = fx._map_and_solve(holder, utilities)
++    return holder, snapshot, result
++
++
++def _service_rank_case():
++    """Prefills whose service ranks (running 5, running 1, waiting 0)
++    disagree with identity order (0, 1, 5)."""
++    holder = fx._SchedulerHolder()
++    fx._add_resident(holder, 5, 6, processed=4)
++    fx._add_resident(holder, 1, 6, processed=4)
++    fx._add_waiting(holder, 0, 2)
++    utilities = fx._utilities(
++        r0=(0.0, 1.0, 1.0), r1=(0.0, 1.0, 1.0), r5=(0.0, 1.0, 1.0))
++    snapshot, result = fx._map_and_solve(holder, utilities)
++    return holder, snapshot, result
++
++
++class DerivedOrderTest(unittest.TestCase):
++    def test_helpers_share_the_derived_order_check(self):
++        self.assertIs(contention.check_declared_order,
++                      preemption.check_declared_order)
++        self.assertIs(decode_ref.preemption.check_declared_order,
++                      preemption.check_declared_order)
++
++    def test_zero_demand_decode_runs_before_one_block_decode(self):
++        holder, snapshot, result = _one_free_block_case()
++        snap, plan, emitted = _records(holder, snapshot, result)
++        self.assertEqual(emitted["scheduled"], [[1, 0], [0, 0]])
++        victims, actions = preemption.check_declared_order(
++            "one-free-block", snap, plan, emitted)
++        self.assertEqual(([d["request_id"] for d in actions], victims),
++                         (["1", "0"], []))
++        obsolete = dict(emitted, scheduled=[[0, 0], [1, 0]])
++        with self.assertRaisesRegex(CheckFailure, "emitted"):
++            preemption.check_declared_order("obsolete", snap, plan, obsolete)
++        bad_plan = dict(plan, execution_order=["0", "1"])
++        with self.assertRaisesRegex(CheckFailure, "declared"):
++            preemption.check_declared_order("obsolete", snap, bad_plan, emitted)
++
++    def test_prefills_follow_service_rank_not_identity(self):
++        holder, snapshot, result = _service_rank_case()
++        snap, plan, emitted = _records(holder, snapshot, result)
++        ranks = {r["raw_seq_id"]: r["service_rank"] for r in snap["requests"]}
++        self.assertEqual(ranks, {5: 0, 1: 1, 0: 2})
++        self.assertEqual(emitted["scheduled"], [[5, 2], [1, 2], [0, 2]])
++        preemption.check_declared_order("service-rank", snap, plan, emitted)
++        obsolete = dict(emitted, scheduled=[[0, 2], [1, 2], [5, 2]])
++        with self.assertRaises(CheckFailure):
++            preemption.check_declared_order("obsolete", snap, plan, obsolete)
++
++    def test_multiple_victims_follow_victim_rank_not_identity(self):
++        holder, snapshot, result = fx._victim_case_with_plan()
++        snap, plan, emitted = _records(holder, snapshot, result)
++        victim_ranks = {r["raw_seq_id"]: r["victim_rank"]
++                        for r in snap["requests"] if r["preemption_eligible"]}
++        self.assertEqual(victim_ranks, {1: 2, 2: 1, 3: 0})
++        self.assertEqual(emitted["preempted_seq_ids"], [3, 1])
++        victims, _ = preemption.check_declared_order(
++            "victims", snap, plan, emitted)
++        self.assertEqual(victims, ["3", "1"])
++        obsolete = dict(emitted, preempted_seq_ids=[1, 3])
++        with self.assertRaises(CheckFailure):
++            preemption.check_declared_order("obsolete", snap, plan, obsolete)
++        bad_plan = dict(plan, victim_order=["1", "3"])
++        with self.assertRaises(CheckFailure):
++            preemption.check_declared_order("obsolete", snap, bad_plan, emitted)
++
++    def test_full_decision_check_uses_derived_order(self):
++        """``check_decision`` of the preemption helper on complete serialized
++        events. Its fixed case constants are patched only to this fixture."""
++        holder, snapshot, result = _one_free_block_case()
++        iteration = holder._iteration_id
++        free_before = holder.block_manager.get_num_free_gpu_blocks()
++        snap, plan, emitted = _records(holder, snapshot, result)
++        events = [
++            dict(call="map_scheduler_state", result_type="StateSnapshot",
++                 result=snap, num_running_batches=0, iteration_id=iteration),
++            dict(call="solve_and_extract", result_type="SchedulingSuccess",
++                 result=to_jsonable(result)),
++            dict(call="execute_plan", result_type="SchedulerOutputs",
++                 result=emitted),
++            dict(call="schedule", outputs=emitted),
++            dict(call="_run_workers", method="execute_model",
++                 sampler_outputs=[[s, 7] for s, _ in emitted["scheduled"]]),
++        ]
++        before = dict(iteration_id=iteration - 1, free_blocks=free_before,
++                      waiting=[], running=[0, 1])
++        expected = dict(preempted=[], scheduled=[[1, 0], [0, 0]])
++        constants = dict(MAX_NUM_SEQS=fx.RESIDENT_LIMIT, B_MAX=fx.B_MAX,
++                         C_MAX=fx.C_MAX, S_MAX=fx.S_MAX, DECODE_UTILITY=1.0,
++                         PREFILL_TOKEN_UTILITY=0.0, PREEMPTION_PENALTY=1.0)
++        patches = [mock.patch.object(preemption, k, v)
++                   for k, v in constants.items()]
++        policy_json = to_jsonable(fx.NUMERICAL_POLICY)
++        for p in patches:
++            p.start()
++        try:
++            preemption.check_decision("full", expected, before, events,
++                                      policy_json)
++            stale = copy.deepcopy(events)
++            for e in (stale[2]["result"], stale[3]["outputs"]):
++                e["scheduled"] = [[0, 0], [1, 0]]
++            stale_expected = dict(expected, scheduled=[[0, 0], [1, 0]])
++            with self.assertRaises(CheckFailure):
++                preemption.check_decision("obsolete", stale_expected, before,
++                                          stale, policy_json)
++        finally:
++            for p in patches:
++                p.stop()
++
++
++if __name__ == "__main__":
++    unittest.main()

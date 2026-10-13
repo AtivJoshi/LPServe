@@ -1,8 +1,10 @@
+import copy
 import os
+import pickle
 import sys
 import tempfile
 import unittest
-from dataclasses import fields
+from dataclasses import MISSING, fields
 from pathlib import Path
 from unittest import mock
 
@@ -146,8 +148,11 @@ class LPEngineArgsTest(unittest.TestCase):
         cases = [
             dict(lp_memory_reserve=0),
             dict(lp_memory_reserve=1),
+            dict(lp_memory_reserve=None),
             dict(lp_decode_memory_policy_id="conservative_one_block_v1"),
+            dict(lp_decode_memory_policy_id=None),
             dict(lp_memory_reserve=0, lp_decode_memory_policy_id="x"),
+            dict(lp_memory_reserve=None, lp_decode_memory_policy_id=None),
         ]
         with mock.patch.object(llm_engine, "BaseLLMEngine") as base_engine:
             for overrides in cases:
@@ -184,6 +189,42 @@ class LPEngineArgsTest(unittest.TestCase):
                 0, "conservative_one_block_v1", 1, 1, 1, numerical_policy())
         with self.assertRaises(TypeError):
             LPSchedulerConfig(**base, unknown_argument=1)
+
+    def test_obsolete_arguments_omitted_or_positional(self):
+        # Omission succeeds and leaves the private default, which is not
+        # written to config.yml.
+        args = EngineArgs(**self.lp_kwargs())
+        self.assertIs(args.lp_memory_reserve, arg_utils._OMITTED)
+        self.assertIs(args.lp_decode_memory_policy_id, arg_utils._OMITTED)
+        with open(self.config_path()) as f:
+            text = f.read()
+        self.assertNotIn("omitted", text)
+        self.assertNotIn("lp_memory_reserve", yaml.safe_load(text))
+        self.assertIs(copy.deepcopy(args.lp_memory_reserve), arg_utils._OMITTED)
+        self.assertIs(pickle.loads(pickle.dumps(arg_utils._OMITTED)),
+                      arg_utils._OMITTED)
+
+        # Positional supply through the obsolete positions, including None,
+        # is rejected before any configuration file is written.
+        names = [f.name for f in fields(EngineArgs)]
+        kwargs = self.lp_kwargs(output_dir=os.path.join(self.tmp.name, "pos"))
+        defaults = {
+            f.name: f.default if f.default_factory is MISSING
+            else f.default_factory() for f in fields(EngineArgs)
+        }
+        for obsolete in ("lp_memory_reserve", "lp_decode_memory_policy_id"):
+            for value in (None, 0):
+                with self.subTest(field=obsolete, value=value):
+                    upto = names[:names.index(obsolete) + 1]
+                    positional = [
+                        value if n == obsolete
+                        else kwargs.get(n, defaults[n]) for n in upto
+                    ]
+                    rest = {k: v for k, v in kwargs.items() if k not in upto}
+                    with self.assertRaisesRegex(ValueError, "were removed"):
+                        EngineArgs(*positional, **rest)
+                    self.assertFalse(os.path.exists(
+                        os.path.join(self.tmp.name, "pos", "config.yml")))
 
     def test_configuration_errors_fail_before_model_engine_and_config_write(self):
         cases = [

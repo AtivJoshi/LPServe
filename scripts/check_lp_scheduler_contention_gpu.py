@@ -47,6 +47,8 @@ import check_lp_scheduler_gpu as single
 from check_lp_scheduler_gpu import (Observer, check, environment_record,
                                     outputs_record, request_output_record,
                                     to_jsonable)
+# Read-only derived-order check shared with the preemption helper.
+from check_lp_scheduler_preemption_gpu import check_declared_order
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -288,17 +290,10 @@ def check_step(tag, ids, before, events, after, step_outputs, policy_json):
           f"{tag}: problem/plan/snapshot identities differ")
     check(not plan["victim_order"],
           f"{tag}: plan preemption ids")
-    selected = []
     for d in plan["decisions"]:
         check(d["preempt"] == 0 and not (d["prefill_tokens"] > 0
                                          and d["decode"]),
               f"{tag}: plan decision {d}")
-        if d["prefill_tokens"] > 0 or d["decode"]:
-            selected.append(d)
-    selected.sort(key=lambda d: (0 if d["prefill_tokens"] > 0 else 1,
-                                 tuple(d["order_key"])))
-    want_emitted = [[raw[d["request_id"]], d["prefill_tokens"]]
-                    for d in selected]
 
     # Emitted outputs.
     check(executed["result_type"] == "SchedulerOutputs",
@@ -309,8 +304,9 @@ def check_step(tag, ids, before, events, after, step_outputs, policy_json):
     check(emitted["id"] == before["iteration_id"] + 1
           and emitted["id"] == snap["scheduler_iteration_id"],
           f"{tag}: decision id {emitted['id']}")
-    check(emitted["scheduled"] == want_emitted,
-          f"{tag}: emitted {emitted['scheduled']}, plan gives {want_emitted}")
+    # Prefills, zero-demand decodes, then one-block decodes, each by
+    # service rank, then identity, derived from the mapped request facts.
+    check_declared_order(tag, snap, plan, emitted)
     check(not emitted["ignored_seq_ids"]
           and not emitted["preempted_seq_ids"],
           f"{tag}: ignored/preempted ids emitted")

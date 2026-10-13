@@ -211,11 +211,15 @@ class LPScheduler(BaseScheduler):
             if seq.is_finished():
                 continue
             arrival = seq.arrival_time
-            if not (
-                isinstance(arrival, (int, float))
-                and not isinstance(arrival, bool)
-                and math.isfinite(arrival) and arrival > now
-            ):
+            try:
+                future = (
+                    isinstance(arrival, (int, float))
+                    and not isinstance(arrival, bool)
+                    and math.isfinite(arrival) and arrival > now
+                )
+            except OverflowError:  # an int too large for a float
+                future = False
+            if not future:
                 return False
         return True
 

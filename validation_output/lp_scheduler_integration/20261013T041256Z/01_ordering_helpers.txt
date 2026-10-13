@@ -1,0 +1,13 @@
+$ python -B -m unittest discover -s tests -p test_check_lp_scheduler_ordering.py -v
+test_full_decision_check_uses_derived_order (test_check_lp_scheduler_ordering.DerivedOrderTest)
+``check_decision`` of the preemption helper on complete serialized ... ok
+test_helpers_share_the_derived_order_check (test_check_lp_scheduler_ordering.DerivedOrderTest) ... ok
+test_multiple_victims_follow_victim_rank_not_identity (test_check_lp_scheduler_ordering.DerivedOrderTest) ... ok
+test_prefills_follow_service_rank_not_identity (test_check_lp_scheduler_ordering.DerivedOrderTest) ... ok
+test_zero_demand_decode_runs_before_one_block_decode (test_check_lp_scheduler_ordering.DerivedOrderTest) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.011s
+
+OK
+exit_status=0

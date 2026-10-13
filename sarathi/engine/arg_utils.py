@@ -1,7 +1,7 @@
 import dataclasses
 import os
 from dataclasses import asdict, dataclass
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple
 
 import yaml
 
@@ -39,6 +39,26 @@ _LP_REQUIRED_FIELDS = (
 # Removed LP fields, kept only to reject supplied values with migration
 # guidance and to preserve the positions of later fields.
 _LP_OBSOLETE_FIELDS = ("lp_memory_reserve", "lp_decode_memory_policy_id")
+
+
+class _Omitted:
+    """Private default of a removed field, distinguishing omission from any
+    explicitly supplied value, including ``None``. Copies keep its identity."""
+
+    def __repr__(self):
+        return "<omitted>"
+
+    def __copy__(self):
+        return self
+
+    def __deepcopy__(self, memo):
+        return self
+
+    def __reduce__(self):
+        return "_OMITTED"
+
+
+_OMITTED = _Omitted()
 
 @dataclass
 class EngineArgs:
@@ -109,8 +129,8 @@ class EngineArgs:
     lp_b_max: Optional[int] = None  # combined prefill/decode token budget
     lp_c_max: Optional[int] = None  # per-request prefill chunk cap
     lp_s_max: Optional[int] = None  # execution-action limit
-    lp_memory_reserve: Optional[int] = None  # removed; any value is rejected
-    lp_decode_memory_policy_id: Optional[str] = None  # removed; rejected
+    lp_memory_reserve: Any = _OMITTED  # removed; any supplied value is rejected
+    lp_decode_memory_policy_id: Any = _OMITTED  # removed; rejected
     lp_decode_utility: Optional[float] = None
     lp_prefill_token_utility: Optional[float] = None
     lp_preemption_penalty: Optional[float] = None
@@ -119,7 +139,9 @@ class EngineArgs:
     def __post_init__(self):
         if self.tokenizer is None:
             self.tokenizer = self.model
-        supplied = [n for n in _LP_OBSOLETE_FIELDS if getattr(self, n) is not None]
+        supplied = [
+            n for n in _LP_OBSOLETE_FIELDS if getattr(self, n) is not _OMITTED
+        ]
         if supplied:
             raise ValueError(
                 f"EngineArgs {', '.join(supplied)}: "
