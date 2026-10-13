@@ -314,8 +314,11 @@ timeout 300s python -B scripts/check_lp_scheduler_preemption_gpu.py \
   > "$LP_PREEMPTION_OUT/console.log" 2>&1
 ```
 
-The run exited with status `0` and printed `RESULT: PASS`. The only warning
-was `Casting torch.bfloat16 to torch.float16`. Inputs are unchanged from the
+The run exited with status `0` and printed `RESULT: PASS`. The log contains
+the warning `Casting torch.bfloat16 to torch.float16` and the transformers
+notice `` `torch_dtype` is deprecated! Use `dtype` instead! `` (`console.log`
+line 1; corrected 2026-10-13, earlier text said the cast warning was the only
+one). Inputs are unchanged from the
 configuration above, except that reserve and decode-policy configuration no
 longer exist.
 
@@ -341,6 +344,14 @@ longer exist.
 | 6 | `[]`; `(0,1)` | 2 / 2 | 1 |
 | 7 | `[]`; `(0,0)` | 4 / 4 | 40 (A finishes) |
 | idle | none | 4 / 4 | iteration 7 → 8; only `schedule` called |
+
+*Idle `block_ops` (clarified 2026-10-13).* The idle `schedule` event's
+`block_ops` buffer in `decision_trace.json` holds `["free", 0, [3, 1]]`. This
+is A's completion free from step 7, which also appears in step 7's
+`central_block_ops`, because the driver does not clear its central
+operation buffer before the idle call. Idle performed no free: its before
+and after physical state are identical (no tables, free IDs
+`[0, 2, 1, 3]`), so the entry is retained observation data.
 
 **Preemption boundary (step 1).**
 

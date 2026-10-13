@@ -286,6 +286,49 @@ def vllm_oriented_ranks(captured):
     )
 
 
+def rank_based_utility(captured, request, *, decode_scale, prefill_scale,
+                       penalty_scale):
+    """Rank-based coefficient policy for ``construct_coefficients``.
+
+    Bind the three scales (for example with ``functools.partial``) to obtain
+    a ``policy(captured, request)``. With ``r`` the zero-based position of
+    ``request`` in ``running_order`` followed by ``arrived_waiting_order``
+    and ``s`` its zero-based ``running_order`` position::
+
+        decode_utility        = decode_scale / (1 + r)
+        prefill_token_utility = prefill_scale / (1 + r)
+        preemption_penalty    = penalty_scale / (1 + s) for an eligible
+                                resident victim, otherwise 0
+
+    The prefill utility stays per token. Each scale must be a finite,
+    strictly positive, non-boolean real; anything else is a mapping failure.
+    Reads only the immutable captured data. This is one candidate family
+    (docs/lp_scheduler_design.md D-01 to D-04 remain OPEN), not a selected
+    policy.
+    """
+    for name, value in (
+        ("decode_scale", decode_scale), ("prefill_scale", prefill_scale),
+        ("penalty_scale", penalty_scale),
+    ):
+        _require(
+            _is_real(value) and value > 0,
+            f"rank-based utility {name} must be a finite positive real "
+            f"number, got {value!r}",
+        )
+    raw_id = request.raw_seq_id
+    service_position = (
+        captured.running_order + captured.arrived_waiting_order
+    ).index(raw_id)
+    penalty = 0.0
+    if request.preemption_eligible:
+        penalty = penalty_scale / (1 + captured.running_order.index(raw_id))
+    return RequestUtility(
+        decode_utility=decode_scale / (1 + service_position),
+        prefill_token_utility=prefill_scale / (1 + service_position),
+        preemption_penalty=penalty,
+    )
+
+
 def construct_coefficients(captured, policy):
     """Pure coefficient construction for one decision.
 
@@ -295,7 +338,8 @@ def construct_coefficients(captured, policy):
     - a ``Mapping[int, RequestUtility]`` keyed by raw ``seq_id`` whose key
       set equals the captured request set exactly;
     - a callable ``policy(captured, request) -> RequestUtility`` evaluated on
-      immutable captured data only (a state-dependent policy).
+      immutable captured data only (a state-dependent policy), such as
+      ``rank_based_utility`` with its scales bound.
 
     Returns a tuple of validated ``RequestUtility`` copies aligned with
     ``captured.requests``, or ``MappingFailure``. Every value must be finite

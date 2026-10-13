@@ -1,0 +1,11 @@
+$ python -B -m unittest tests.test_lp_scheduler.LiveRankBasedUtilityTest -v
+INFO 10-13 07:29:32 metrics_store.py:72] MetricsStore disabled
+test_invalid_scale_is_mapping_failure_before_solve (tests.test_lp_scheduler.LiveRankBasedUtilityTest) ... ok
+test_reversed_ids_keep_first_choice (tests.test_lp_scheduler.LiveRankBasedUtilityTest) ... ok
+test_uniform_and_rank_based_first_choice_and_completion (tests.test_lp_scheduler.LiveRankBasedUtilityTest) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.041s
+
+OK
+exit_status=0

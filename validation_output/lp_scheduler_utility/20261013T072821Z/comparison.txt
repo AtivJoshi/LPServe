@@ -1,0 +1,37 @@
+Compact comparison (scheduling steps are decision indices, not wall-clock latency)
+
+run                        steps   first prefill    first decode      completion   pre unfinished errors
+uniform_ids_A0_B1              6           A1 B0           A4 B2           A5 B3     0          0      0
+rank_based_ids_A0_B1           6           A0 B1           A2 B4           A3 B5     0          0      0
+uniform_ids_A1_B0              6           A1 B0           A2 B4           A3 B5     0          0      0
+rank_based_ids_A1_B0           6           A0 B1           A2 B4           A3 B5     0          0      0
+
+Per-decision choices (running|waiting before -> emitted; alpha/beta/gamma; relaxed objective):
+[uniform_ids_A0_B1] watermark_blocks=0
+  step 0: -|A,B -> B:8  A=(1,1,1) B=(1,1,1)  relaxed=8 frac=0 free c/w=6/6
+  step 1: B|A -> A:5  A=(1,1,1) B=(1,1,1)  relaxed=5 frac=0 free c/w=4/4
+  step 2: B,A|- -> B:0  A=(1,1,1) B=(1,1,1)  relaxed=1 frac=0 free c/w=4/4
+  step 3: B,A|- -> B:0  A=(1,1,1) B=(1,1,1)  relaxed=1 frac=0 free c/w=6/6 finished=['B']
+  step 4: A|- -> A:0  A=(1,1,1)  relaxed=1 frac=0 free c/w=6/6
+  step 5: A|- -> A:0  A=(1,1,1)  relaxed=1 frac=0 free c/w=8/8 finished=['A']
+[rank_based_ids_A0_B1] watermark_blocks=0
+  step 0: -|A,B -> A:5  A=(1,1,0) B=(0.5,0.5,0)  relaxed=5 frac=0 free c/w=6/6
+  step 1: A|B -> B:8  A=(1,1,1) B=(0.5,0.5,0)  relaxed=4 frac=0 free c/w=4/4
+  step 2: A,B|- -> A:0  A=(1,1,1) B=(0.5,0.5,0.5)  relaxed=1 frac=0 free c/w=4/4
+  step 3: A,B|- -> A:0  A=(1,1,1) B=(0.5,0.5,0.5)  relaxed=1 frac=0 free c/w=6/6 finished=['A']
+  step 4: B|- -> B:0  B=(1,1,1)  relaxed=1 frac=0 free c/w=6/6
+  step 5: B|- -> B:0  B=(1,1,1)  relaxed=1 frac=0 free c/w=8/8 finished=['B']
+[uniform_ids_A1_B0] watermark_blocks=0
+  step 0: -|A,B -> B:8  A=(1,1,1) B=(1,1,1)  relaxed=8 frac=0 free c/w=6/6
+  step 1: B|A -> A:5  A=(1,1,1) B=(1,1,1)  relaxed=5 frac=0 free c/w=4/4
+  step 2: B,A|- -> A:0  A=(1,1,1) B=(1,1,1)  relaxed=1 frac=0 free c/w=4/4
+  step 3: B,A|- -> A:0  A=(1,1,1) B=(1,1,1)  relaxed=1 frac=0 free c/w=6/6 finished=['A']
+  step 4: B|- -> B:0  B=(1,1,1)  relaxed=1 frac=0 free c/w=6/6
+  step 5: B|- -> B:0  B=(1,1,1)  relaxed=1 frac=0 free c/w=8/8 finished=['B']
+[rank_based_ids_A1_B0] watermark_blocks=0
+  step 0: -|A,B -> A:5  A=(1,1,0) B=(0.5,0.5,0)  relaxed=5 frac=0 free c/w=6/6
+  step 1: A|B -> B:8  A=(1,1,1) B=(0.5,0.5,0)  relaxed=4 frac=0 free c/w=4/4
+  step 2: A,B|- -> A:0  A=(1,1,1) B=(0.5,0.5,0.5)  relaxed=1 frac=0 free c/w=4/4
+  step 3: A,B|- -> A:0  A=(1,1,1) B=(0.5,0.5,0.5)  relaxed=1 frac=0 free c/w=6/6 finished=['A']
+  step 4: B|- -> B:0  B=(1,1,1)  relaxed=1 frac=0 free c/w=6/6
+  step 5: B|- -> B:0  B=(1,1,1)  relaxed=1 frac=0 free c/w=8/8 finished=['B']

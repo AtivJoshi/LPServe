@@ -1,0 +1,603 @@
+diff --git a/lpserve_state_mapping.py b/lpserve_state_mapping.py
+index cdb4201..1cc69f2 100644
+--- a/lpserve_state_mapping.py
++++ b/lpserve_state_mapping.py
+@@ -286,6 +286,49 @@ def vllm_oriented_ranks(captured):
+     )
+ 
+ 
++def rank_based_utility(captured, request, *, decode_scale, prefill_scale,
++                       penalty_scale):
++    """Rank-based coefficient policy for ``construct_coefficients``.
++
++    Bind the three scales (for example with ``functools.partial``) to obtain
++    a ``policy(captured, request)``. With ``r`` the zero-based position of
++    ``request`` in ``running_order`` followed by ``arrived_waiting_order``
++    and ``s`` its zero-based ``running_order`` position::
++
++        decode_utility        = decode_scale / (1 + r)
++        prefill_token_utility = prefill_scale / (1 + r)
++        preemption_penalty    = penalty_scale / (1 + s) for an eligible
++                                resident victim, otherwise 0
++
++    The prefill utility stays per token. Each scale must be a finite,
++    strictly positive, non-boolean real; anything else is a mapping failure.
++    Reads only the immutable captured data. This is one candidate family
++    (docs/lp_scheduler_design.md D-01 to D-04 remain OPEN), not a selected
++    policy.
++    """
++    for name, value in (
++        ("decode_scale", decode_scale), ("prefill_scale", prefill_scale),
++        ("penalty_scale", penalty_scale),
++    ):
++        _require(
++            _is_real(value) and value > 0,
++            f"rank-based utility {name} must be a finite positive real "
++            f"number, got {value!r}",
++        )
++    raw_id = request.raw_seq_id
++    service_position = (
++        captured.running_order + captured.arrived_waiting_order
++    ).index(raw_id)
++    penalty = 0.0
++    if request.preemption_eligible:
++        penalty = penalty_scale / (1 + captured.running_order.index(raw_id))
++    return RequestUtility(
++        decode_utility=decode_scale / (1 + service_position),
++        prefill_token_utility=prefill_scale / (1 + service_position),
++        preemption_penalty=penalty,
++    )
++
++
+ def construct_coefficients(captured, policy):
+     """Pure coefficient construction for one decision.
+ 
+@@ -295,7 +338,8 @@ def construct_coefficients(captured, policy):
+     - a ``Mapping[int, RequestUtility]`` keyed by raw ``seq_id`` whose key
+       set equals the captured request set exactly;
+     - a callable ``policy(captured, request) -> RequestUtility`` evaluated on
+-      immutable captured data only (a state-dependent policy).
++      immutable captured data only (a state-dependent policy), such as
++      ``rank_based_utility`` with its scales bound.
+ 
+     Returns a tuple of validated ``RequestUtility`` copies aligned with
+     ``captured.requests``, or ``MappingFailure``. Every value must be finite
+diff --git a/tests/test_lp_scheduler.py b/tests/test_lp_scheduler.py
+index 082165d..f9d1df1 100644
+--- a/tests/test_lp_scheduler.py
++++ b/tests/test_lp_scheduler.py
+@@ -1,5 +1,6 @@
+ import copy
+ import dataclasses
++import functools
+ import sys
+ import unittest
+ from pathlib import Path
+@@ -1504,6 +1505,346 @@ class PreMutationFailureTest(unittest.TestCase):
+         self.assertEqual(error.snapshot_id, "0")
+ 
+ 
++class LiveRankBasedUtilityTest(unittest.TestCase):
++    # Case-specific provisional inputs: an 8-block pool in both managers,
++    # max_model_len 16, resident limit 2, B_max = C_max = 8, S_max = 1, the
++    # native watermark (read, not configured), and two output tokens per
++    # request. The uniform run uses the configured triple 1/1/1. The
++    # rank-based run selects rank_based_utility with D = P = G = 1 through
++    # the live _coefficient_policy hook. D-01 to D-04 remain OPEN.
++    POOL = 8
++    CONFIG = dict(max_num_seqs=2, max_model_len=16, b_max=8, c_max=8, s_max=1)
++    PROMPTS = {"A": 5, "B": 8}
++    MAX_TOKENS = 2
++    SCALES = dict(decode_scale=1.0, prefill_scale=1.0, penalty_scale=1.0)
++    # Every executed step completes at least one prompt or output token.
++    STEP_LIMIT = sum(PROMPTS.values()) + 2 * MAX_TOKENS
++    # Analytically unique per-step choices of the rank-based run (each
++    # relaxed optimum is unique and integral), as (request, chunk).
++    RANK_BASED_EXPECTED = [("A", 5), ("B", 8), ("A", 0), ("A", 0), ("B", 0),
++                           ("B", 0)]
++
++    _assert_synchronous_pipeline = LivePipelineTest._assert_synchronous_pipeline
++    _assert_failure = PreMutationFailureTest._assert_failure
++
++    def _harness(self, rank_based, ids, scales=None):
++        harness = _Harness(num_gpu_blocks=self.POOL, **self.CONFIG)
++        if rank_based:
++            policy = functools.partial(
++                lsm.rank_based_utility, **(scales or self.SCALES))
++            # Instance override of the live hook for this harness only.
++            harness.scheduler._coefficient_policy = lambda: policy
++        seqs = {}
++        for name, seq_id, arrival in (("A", ids[0], 1.0), ("B", ids[1], 2.0)):
++            seqs[name] = harness.add(
++                seq_id, self.PROMPTS[name], arrival, self.MAX_TOKENS)
++        return harness, seqs
++
++    def _assert_pools(self, harness):
++        central = harness.central_tables()
++        worker = harness.worker_tables()
++        self.assertEqual({k: len(v) for k, v in central.items()},
++                         {k: len(v) for k, v in worker.items()})
++        for manager in (harness.scheduler.block_manager,
++                        harness.worker_seqs.block_manager):
++            allocated = [b.block_number for t in manager.block_tables.values()
++                         for b in t]
++            free = [b.block_number for b in manager.gpu_allocator.free_blocks]
++            self.assertEqual(sorted(allocated + free), list(range(self.POOL)))
++            self.assertEqual(manager.get_num_free_gpu_blocks(),
++                             self.POOL - len(allocated))
++
++    def _run_case(self, rank_based, ids=(0, 1)):
++        """Replay the two-request workload to completion and return a
++        primitive per-decision trace and summary."""
++        harness, seqs = self._harness(rank_based, ids)
++        scheduler = harness.scheduler
++        manager = scheduler.block_manager
++        name_of = {seq.seq_id: name for name, seq in seqs.items()}
++        uniform = lsm.RequestUtility(1.0, 1.0, 1.0)
++        trace = dict(
++            policy="rank_based" if rank_based else "uniform",
++            scales=dict(self.SCALES) if rank_based else None,
++            ids={name: seq.seq_id for name, seq in seqs.items()},
++            watermark_blocks=manager.watermark_blocks, steps=[],
++        )
++        self.assertEqual(manager.watermark_blocks, 0)  # int(0.01 * 8)
++
++        def remaining():
++            return sum(s.get_prompt_len() - s.get_num_prompt_tokens_processed()
++                       + self.MAX_TOKENS - s.get_output_len()
++                       for s in seqs.values())
++
++        step = 0
++        while scheduler.has_unfinished_seqs():
++            self.assertLess(step, self.STEP_LIMIT, "step bound reached")
++            now = 10.0 + step
++            running = [s.seq_id for s in scheduler.running]
++            waiting = [s.seq_id for s in scheduler.waiting]
++            unfinished = {s.seq_id: s for s in seqs.values()
++                          if not s.is_finished()}
++            before = {k: _seq_fingerprint(s) for k, s in unfinished.items()}
++            tables_before = harness.central_tables()
++            free_before = manager.get_num_free_gpu_blocks()
++            work_before = remaining()
++
++            validations = []
++            real_validate = lrs.validate_integer_plan
++
++            def validate(problem, plan):
++                validated = real_validate(problem, plan)
++                validations.append((spies.names()[-1], problem, plan, validated))
++                return validated
++
++            harness.clock.reset_mock()
++            with _Spies() as spies, \
++                    mock.patch.object(lrs, "validate_integer_plan", validate):
++                outputs = harness.schedule(now)
++            self._assert_synchronous_pipeline(harness, spies, now, outputs)
++            snapshot, result = spies.calls[1][4], spies.calls[2][2]
++            problem, plan = snapshot.lp_problem, result.plan
++
++            # Complete plan validation: once inside solve_and_extract and
++            # once by executor prevalidation on the same snapshot problem.
++            self.assertEqual([v[0] for v in validations], ["map", "execute"])
++            _, checked_problem, checked_plan, validated = validations[1]
++            self.assertIs(checked_problem, problem)
++            self.assertIs(checked_plan, plan)
++            self.assertIs(validated, plan)
++
++            # Coefficients and ranks from this decision's captured queues:
++            # r is the running-then-waiting position, s the running position.
++            order = running + waiting
++            self.assertEqual(snapshot.running_order, tuple(running))
++            self.assertEqual(snapshot.arrived_waiting_order, tuple(waiting))
++            records = {r.raw_seq_id: r for r in snapshot.requests}
++            self.assertEqual(sorted(records), sorted(unfinished))
++            for raw_id, r in records.items():
++                position = order.index(raw_id)
++                self.assertEqual(r.service_rank, position)
++                if raw_id in running:
++                    self.assertEqual(r.victim_rank,
++                                     len(running) - 1 - running.index(raw_id))
++                if rank_based:
++                    gamma = (1.0 / (1 + running.index(raw_id))
++                             if raw_id in running else 0.0)
++                    expected = lsm.RequestUtility(
++                        1.0 / (1 + position), 1.0 / (1 + position), gamma)
++                else:
++                    expected = uniform
++                self.assertEqual(r.utility, expected)
++            by_request = {d.request_id: d for d in problem.requests}
++            for raw_id, r in records.items():
++                d = by_request[str(raw_id)]
++                self.assertEqual(
++                    (d.decode_utility, d.prefill_token_utility,
++                     d.preemption_penalty),
++                    (r.utility.decode_utility, r.utility.prefill_token_utility,
++                     r.utility.preemption_penalty))
++
++            # One useful action, no victims, emitted as planned.
++            selected = [d for d in plan.decisions
++                        if d.prefill_tokens > 0 or d.decode]
++            self.assertEqual(len(selected), 1)
++            (chosen,) = selected
++            raw = int(chosen.request_id)
++            self.assertEqual(plan.victim_order, ())
++            self.assertTrue(all(d.preempt == 0 for d in plan.decisions))
++            self.assertEqual(plan.execution_order, (chosen.request_id,))
++            self.assertEqual(_emitted(outputs), [(raw, chosen.prefill_tokens)])
++            self.assertEqual(
++                (outputs.preempted_seq_ids, outputs.ignored_seq_ids), ([], []))
++            chunk = chosen.prefill_tokens
++            remainder = len(before[raw][2]) - before[raw][4]
++            if chunk > 0:
++                self.assertLessEqual(chunk, min(remainder, self.CONFIG["c_max"]))
++            else:
++                self.assertEqual((remainder, raw in running), (0, True))
++
++            # Queue transitions: retained residents keep their order and an
++            # admission joins the running tail.
++            admitted = [raw] if raw in waiting else []
++            self.assertEqual([s.seq_id for s in scheduler.running],
++                             running + admitted)
++            self.assertEqual([s.seq_id for s in scheduler.waiting],
++                             [k for k in waiting if k not in admitted])
++
++            # Allocation: full-context admission, decode gap 0 or 1 with the
++            # existing table as prefix; other tables unchanged.
++            tables = harness.central_tables()
++            seq = unfinished[raw]
++            expected_free = free_before
++            if admitted:
++                self.assertEqual(len(tables[raw]), len(seq.logical_token_blocks))
++                expected_free -= len(tables[raw])
++            elif chunk == 0:
++                gap = before[raw][6] - len(tables_before[raw])
++                self.assertIn(gap, (0, 1))
++                self.assertEqual(tables[raw][:len(tables_before[raw])],
++                                 tables_before[raw])
++                self.assertEqual(len(tables[raw]),
++                                 len(tables_before[raw]) + gap)
++                expected_free -= gap
++            else:
++                self.assertEqual(tables[raw], tables_before[raw])
++            for other in unfinished:
++                if other != raw:
++                    self.assertEqual(tables.get(other), tables_before.get(other))
++            self.assertEqual(manager.get_num_free_gpu_blocks(), expected_free)
++
++            harness.replay(outputs)
++
++            # Central and worker progress after native completion.
++            self.assertEqual(scheduler.num_running_batches, 0)
++            self._assert_pools(harness)
++            for seq_id, s in unfinished.items():
++                worker_seq = harness.worker_seqs.get_seq(seq_id)
++                if s.is_finished():
++                    self.assertEqual(s.get_status(),
++                                     SequenceStatus.FINISHED_LENGTH_CAPPED)
++                    self.assertIsNone(worker_seq)
++                    self.assertIsNone(harness.engine_seqs.get_seq(seq_id))
++                    self.assertNotIn(seq_id, harness.central_tables())
++                    self.assertNotIn(s, scheduler.waiting + scheduler.running)
++                else:
++                    self.assertEqual(_seq_fingerprint(worker_seq),
++                                     _seq_fingerprint(s))
++                if seq_id != raw:
++                    self.assertEqual(_seq_fingerprint(s), before[seq_id])
++            if chunk > 0:
++                self.assertEqual(seq.get_num_prompt_tokens_processed(),
++                                 before[raw][4] + chunk)
++            else:
++                self.assertEqual(seq.get_output_len(), len(before[raw][3]) + 1)
++            self.assertEqual(work_before - remaining(), max(chunk, 1))
++
++            relaxed = {d.request_id: d for d in result.relaxed.decisions}
++            trace["steps"].append(dict(
++                step=step, output_id=outputs.id,
++                running_before=[name_of[k] for k in running],
++                waiting_before=[name_of[k] for k in waiting],
++                requests={name_of[k]: dict(
++                    raw_seq_id=k, service_rank=r.service_rank,
++                    victim_rank=r.victim_rank,
++                    alpha=r.utility.decode_utility,
++                    beta=r.utility.prefill_token_utility,
++                    gamma=r.utility.preemption_penalty,
++                    relaxed=dict(x=relaxed[str(k)].x, y=relaxed[str(k)].y,
++                                 prefill_indicator=relaxed[str(k)].prefill_indicator,
++                                 z=relaxed[str(k)].z),
++                ) for k, r in records.items()},
++                relaxed_objective=result.relaxed.normalized_objective,
++                fractional_request_count=(
++                    plan.extraction.fractional_request_count),
++                plan_objective=plan.objective,
++                emitted=[(name_of[raw], chunk)],
++                preempted=list(outputs.preempted_seq_ids),
++                central_free_after=manager.get_num_free_gpu_blocks(),
++                worker_free_after=(
++                    harness.worker_seqs.block_manager.get_num_free_gpu_blocks()),
++                finished=[name_of[k] for k, s in unfinished.items()
++                          if s.is_finished()],
++            ))
++            step += 1
++
++        # Both requests finished; pools and queues drained.
++        for s in seqs.values():
++            self.assertEqual(s.get_status(), SequenceStatus.FINISHED_LENGTH_CAPPED)
++            self.assertEqual(s.get_output_token_ids(),
++                             [SAMPLED_TOKEN] * self.MAX_TOKENS)
++        self.assertEqual((scheduler.waiting, scheduler.running), ([], []))
++        self.assertEqual(
++            (harness.engine_seqs.seq_map, harness.worker_seqs.seq_map), ({}, {}))
++        self.assertEqual((harness.central_tables(), harness.worker_tables()),
++                         ({}, {}))
++        self._assert_pools(harness)
++        self.assertEqual(manager.get_num_free_gpu_blocks(), self.POOL)
++
++        # One ordinary idle call.
++        idle_before = _fingerprint(scheduler)
++        with _Spies() as spies:
++            outputs = harness.schedule(100.0)
++        self.assertTrue(outputs.has_no_output())
++        self.assertEqual(spies.calls, [])
++        self.assertEqual(_fingerprint(scheduler), idle_before)
++
++        def first(predicate):
++            return {name: next((s["step"] for s in trace["steps"]
++                                if predicate(s, name)), None)
++                    for name in seqs}
++
++        trace["summary"] = dict(
++            steps=len(trace["steps"]),
++            first_prefill=first(lambda s, n: s["emitted"][0][0] == n
++                                and s["emitted"][0][1] > 0),
++            first_decode=first(lambda s, n: s["emitted"][0][0] == n
++                               and s["emitted"][0][1] == 0),
++            completion=first(lambda s, n: n in s["finished"]),
++            preemptions=sum(len(s["preempted"]) for s in trace["steps"]),
++            unfinished=sum(not s.is_finished() for s in seqs.values()),
++            errors=0,
++            idle_output_id=outputs.id,
++        )
++        return trace
++
++    def _assert_first_choice(self, trace, rank_based):
++        first = trace["steps"][0]
++        self.assertEqual((first["running_before"], first["waiting_before"]),
++                         ([], ["A", "B"]))
++        # Analytically unique relaxed optimum (also integral): uniform B
++        # with 8 tokens (8 versus A's 5); rank-based A with 5 tokens (5
++        # versus B's 0.5 * 8 = 4).
++        winner, chunk, objective = ("A", 5, 5.0) if rank_based else ("B", 8, 8.0)
++        loser = "B" if winner == "A" else "A"
++        self.assertEqual(first["emitted"], [(winner, chunk)])
++        tol = NUMERICAL_POLICY.feasibility_tol
++        for name, values in ((winner, (chunk, 0, 1, 0)), (loser, (0, 0, 0, 0))):
++            relaxed = first["requests"][name]["relaxed"]
++            for key, want in zip(("x", "y", "prefill_indicator", "z"), values):
++                self.assertAlmostEqual(relaxed[key], want, delta=tol)
++        self.assertAlmostEqual(first["relaxed_objective"], objective, delta=tol)
++        self.assertAlmostEqual(first["plan_objective"], objective, delta=tol)
++        if rank_based:
++            self.assertEqual(
++                {n: (r["alpha"], r["beta"], r["gamma"])
++                 for n, r in first["requests"].items()},
++                {"A": (1.0, 1.0, 0.0), "B": (0.5, 0.5, 0.0)})
++
++    def test_uniform_and_rank_based_first_choice_and_completion(self):
++        self.traces = {}
++        for rank_based in (False, True):
++            with self.subTest(rank_based=rank_based):
++                trace = self._run_case(rank_based)
++                self.traces[trace["policy"]] = trace
++                self._assert_first_choice(trace, rank_based)
++                summary = trace["summary"]
++                self.assertEqual(
++                    (summary["preemptions"], summary["unfinished"]), (0, 0))
++        # Uniform: A's 5-token admission beats B's decode (5 versus 1) at
++        # the second decision; later decode ties are not asserted.
++        self.assertEqual(self.traces["uniform"]["steps"][1]["emitted"],
++                         [("A", 5)])
++        self.assertEqual(
++            [tuple(s["emitted"][0]) for s in self.traces["rank_based"]["steps"]],
++            self.RANK_BASED_EXPECTED)
++
++    def test_reversed_ids_keep_first_choice(self):
++        # A keeps submission and arrival order but gets the larger raw ID.
++        for rank_based in (False, True):
++            with self.subTest(rank_based=rank_based):
++                trace = self._run_case(rank_based, ids=(1, 0))
++                self.assertEqual(trace["ids"], {"A": 1, "B": 0})
++                self._assert_first_choice(trace, rank_based)
++
++    def test_invalid_scale_is_mapping_failure_before_solve(self):
++        harness, _ = self._harness(
++            True, (0, 1), scales=dict(self.SCALES, penalty_scale=0.0))
++        error, _ = self._assert_failure(harness, 10.0, ["capture", "map"])
++        self.assertIsInstance(error.failure, lsm.MappingFailure)
++        self.assertEqual(error.stage, lsm.STAGE_STATE_MAPPING)
++        self.assertIn("rank-based utility penalty_scale", error.reason)
++
++
+ class UnsupportedEntryAndDestructiveFailureTest(unittest.TestCase):
+     def test_changed_stage_count_fails_before_base_scheduling(self):
+         harness = _Harness()
+diff --git a/tests/test_lpserve_state_mapping.py b/tests/test_lpserve_state_mapping.py
+index f319b3e..810c7e8 100644
+--- a/tests/test_lpserve_state_mapping.py
++++ b/tests/test_lpserve_state_mapping.py
+@@ -1,4 +1,5 @@
+ import dataclasses
++import functools
+ import sys
+ import unittest
+ from pathlib import Path
+@@ -771,6 +772,170 @@ class LPServeStateMappingTest(unittest.TestCase):
+              lsm.RequestUtility(1.0, 0.0, 2.0),
+              lsm.RequestUtility(2.0, 0.0, 3.0)))
+ 
++    # -- rank-based utility policy ------------------------------------------------
++
++    @staticmethod
++    def _rank_policy(decode_scale, prefill_scale, penalty_scale):
++        return functools.partial(
++            lsm.rank_based_utility, decode_scale=decode_scale,
++            prefill_scale=prefill_scale, penalty_scale=penalty_scale,
++        )
++
++    @staticmethod
++    def _triples(snapshot):
++        return {r.raw_seq_id: (r.utility.decode_utility,
++                               r.utility.prefill_token_utility,
++                               r.utility.preemption_penalty)
++                for r in snapshot.requests}
++
++    def test_rank_based_utility_values_and_compact_positions(self):
++        # Raw IDs deliberately disagree with queue positions. Running: 5
++        # (partial prefill), 3 (decode). Waiting: future head 0, then 9 and
++        # 2. Distinct scales D=2, P=3, G=5 expose any mix-up.
++        holder, _ = _build_holder()
++        self._resident(holder, 5, 6, 2)
++        self._resident(holder, 3, 4, 4)
++        holder.waiting.append(_make_sequence(0, 4, SNAPSHOT_TIME + 1))
++        holder.waiting.append(_make_sequence(9, 4, 1.0))
++        holder.waiting.append(_make_sequence(2, 4, 1.0))
++        bound = self._rank_policy(2.0, 3.0, 5.0)
++        seen = []
++
++        def policy(captured, request):
++            seen.append((type(captured), type(request)))
++            return bound(captured, request)
++
++        before = _fingerprint(holder)
++        with mock.patch.object(lsm, "_capture", wraps=lsm._capture) as spy:
++            snapshot = _map(holder, policy)
++        self.assertEqual(spy.call_count, 1)
++        self.assertEqual(_fingerprint(holder), before)
++        self.assertIsInstance(snapshot, lsm.StateSnapshot, snapshot)
++        self.assertEqual(set(seen), {(lsm.CapturedState, lsm.CapturedRequest)})
++
++        # Compact service positions r: 5->0, 3->1, 9->2, 2->3 (the future
++        # head is excluded); running positions s: 5->0, 3->1. Waiting
++        # requests have no victim penalty.
++        triples = self._triples(snapshot)
++        self.assertEqual(triples, {
++            5: (2.0, 3.0, 5.0),
++            3: (1.0, 1.5, 2.5),
++            9: (2.0 / 3, 1.0, 0.0),
++            2: (0.5, 0.75, 0.0),
++        })
++        by_id = {r.raw_seq_id: r for r in snapshot.requests}
++        # Raw waiting indices include the future head; policy positions do not.
++        self.assertEqual((by_id[9].queue_position, by_id[2].queue_position), (1, 2))
++        for r in snapshot.requests:
++            self.assertEqual(r.utility.decode_utility, 2.0 / (1 + r.service_rank))
++            self.assertEqual(r.utility.prefill_token_utility,
++                             3.0 / (1 + r.service_rank))
++        # Gamma decreases toward the running tail and uses the forward
++        # running position, not the reverse victim rank.
++        self.assertEqual((by_id[5].victim_rank, by_id[3].victim_rank), (1, 0))
++        self.assertGreater(triples[5][2], triples[3][2])
++        self.assertEqual(
++            {r.request_id: (r.decode_utility, r.prefill_token_utility,
++                            r.preemption_penalty)
++             for r in snapshot.lp_problem.requests},
++            {str(k): v for k, v in triples.items()},
++        )
++
++        # Construction reads only the capture: with the live holder emptied
++        # and its block manager removed, the same capture yields the same
++        # coefficients.
++        captured = lsm.capture_scheduler_state(holder, snapshot_time=SNAPSHOT_TIME)
++        holder.waiting.clear()
++        holder.running.clear()
++        holder.block_manager = None
++        coefficients = lsm.construct_coefficients(captured, bound)
++        self.assertEqual(
++            {r.raw_seq_id: c for r, c in zip(captured.requests, coefficients)},
++            {r.raw_seq_id: r.utility for r in snapshot.requests},
++        )
++
++    def test_rank_based_utility_follows_state_between_decisions(self):
++        holder, block_manager = _build_holder()
++        resident = self._resident(holder, 1, 4, 4)
++        waiting = {k: _make_sequence(k, 4, 1.0) for k in (0, 2)}
++        holder.waiting.extend([waiting[0], waiting[2]])
++        policy = self._rank_policy(1.0, 1.0, 1.0)
++
++        def decide():
++            holder._iteration_id += 1
++            snapshot = _map(holder, policy)
++            self.assertIsInstance(snapshot, lsm.StateSnapshot, snapshot)
++            return snapshot
++
++        first = decide()
++        self.assertEqual(self._triples(first), {
++            1: (1.0, 1.0, 1.0), 0: (0.5, 0.5, 0.0), 2: (1 / 3, 1 / 3, 0.0)})
++        recorded = [(first, self._triples(first), first.lp_problem.requests)]
++
++        # Admission: 0 joins the running tail (native allocation and status
++        # transitions) and gains a penalty; 2's position is unchanged.
++        seq = waiting[0]
++        holder.waiting.remove(seq)
++        seq.set_status(SequenceStatus.RUNNING)
++        block_manager.allocate(seq)
++        seq.update_prompt_tokens_processed(4)
++        seq.set_status(SequenceStatus.PAUSED)
++        holder.running.append(seq)
++        second = decide()
++        self.assertEqual(self._triples(second), {
++            1: (1.0, 1.0, 1.0), 0: (0.5, 0.5, 0.5), 2: (1 / 3, 1 / 3, 0.0)})
++        recorded.append((second, self._triples(second), second.lp_problem.requests))
++
++        # Resident removal: 1 leaves; 0 moves to the head, 2 moves up.
++        holder.running.remove(resident)
++        block_manager.free(resident)
++        resident.set_status(SequenceStatus.FINISHED_STOPPED)
++        third = decide()
++        self.assertEqual(self._triples(third), {
++            0: (1.0, 1.0, 1.0), 2: (0.5, 0.5, 0.0)})
++        recorded.append((third, self._triples(third), third.lp_problem.requests))
++
++        # Queue-position change by victim reinsertion at the waiting front:
++        # 0 keeps service position 0 but, now waiting, has no penalty.
++        holder.running.remove(seq)
++        block_manager.free(seq)
++        seq.reset_for_recompute()
++        holder.waiting.insert(0, seq)
++        fourth = decide()
++        self.assertEqual(self._triples(fourth), {
++            0: (1.0, 1.0, 0.0), 2: (0.5, 0.5, 0.0)})
++
++        # Earlier decisions keep their own coefficients and problems.
++        for snapshot, triples, problem_requests in recorded:
++            self.assertEqual(self._triples(snapshot), triples)
++            self.assertEqual(snapshot.lp_problem.requests, problem_requests)
++        self.assertEqual(
++            [s.snapshot_id for s, _, _ in recorded] + [fourth.snapshot_id],
++            [str(ITERATION_ID + k) for k in (1, 2, 3, 4)],
++        )
++
++    def test_rank_based_utility_rejects_invalid_scales(self):
++        for field in ("decode_scale", "prefill_scale", "penalty_scale"):
++            for bad in (0, 0.0, -1.0, float("nan"), float("inf"),
++                        float("-inf"), True, False, "1.0", None, 10 ** 400):
++                with self.subTest(field=field, bad=bad):
++                    scales = dict(decode_scale=1.0, prefill_scale=1.0,
++                                  penalty_scale=1.0)
++                    scales[field] = bad
++                    holder = _build_three_request_holder()
++                    before = _fingerprint(holder)
++                    with mock.patch.object(
++                        lsm.lrs, "LPProblem", wraps=lsm.lrs.LPProblem,
++                    ) as problem_spy:
++                        result = _map(holder, functools.partial(
++                            lsm.rank_based_utility, **scales))
++                    self.assertEqual(_fingerprint(holder), before)
++                    self.assertIsInstance(result, lsm.MappingFailure)
++                    self.assertEqual(result.stage, "state_mapping")
++                    self.assertEqual(result.category, "mapping_failure")
++                    self.assertIn(f"rank-based utility {field}", result.reason)
++                    problem_spy.assert_not_called()
++
+ 
+ 
+ if __name__ == "__main__":

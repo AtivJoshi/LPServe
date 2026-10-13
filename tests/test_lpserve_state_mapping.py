@@ -1,4 +1,5 @@
 import dataclasses
+import functools
 import sys
 import unittest
 from pathlib import Path
@@ -770,6 +771,170 @@ class LPServeStateMappingTest(unittest.TestCase):
             (lsm.RequestUtility(0.0, 1.0, 0.0),
              lsm.RequestUtility(1.0, 0.0, 2.0),
              lsm.RequestUtility(2.0, 0.0, 3.0)))
+
+    # -- rank-based utility policy ------------------------------------------------
+
+    @staticmethod
+    def _rank_policy(decode_scale, prefill_scale, penalty_scale):
+        return functools.partial(
+            lsm.rank_based_utility, decode_scale=decode_scale,
+            prefill_scale=prefill_scale, penalty_scale=penalty_scale,
+        )
+
+    @staticmethod
+    def _triples(snapshot):
+        return {r.raw_seq_id: (r.utility.decode_utility,
+                               r.utility.prefill_token_utility,
+                               r.utility.preemption_penalty)
+                for r in snapshot.requests}
+
+    def test_rank_based_utility_values_and_compact_positions(self):
+        # Raw IDs deliberately disagree with queue positions. Running: 5
+        # (partial prefill), 3 (decode). Waiting: future head 0, then 9 and
+        # 2. Distinct scales D=2, P=3, G=5 expose any mix-up.
+        holder, _ = _build_holder()
+        self._resident(holder, 5, 6, 2)
+        self._resident(holder, 3, 4, 4)
+        holder.waiting.append(_make_sequence(0, 4, SNAPSHOT_TIME + 1))
+        holder.waiting.append(_make_sequence(9, 4, 1.0))
+        holder.waiting.append(_make_sequence(2, 4, 1.0))
+        bound = self._rank_policy(2.0, 3.0, 5.0)
+        seen = []
+
+        def policy(captured, request):
+            seen.append((type(captured), type(request)))
+            return bound(captured, request)
+
+        before = _fingerprint(holder)
+        with mock.patch.object(lsm, "_capture", wraps=lsm._capture) as spy:
+            snapshot = _map(holder, policy)
+        self.assertEqual(spy.call_count, 1)
+        self.assertEqual(_fingerprint(holder), before)
+        self.assertIsInstance(snapshot, lsm.StateSnapshot, snapshot)
+        self.assertEqual(set(seen), {(lsm.CapturedState, lsm.CapturedRequest)})
+
+        # Compact service positions r: 5->0, 3->1, 9->2, 2->3 (the future
+        # head is excluded); running positions s: 5->0, 3->1. Waiting
+        # requests have no victim penalty.
+        triples = self._triples(snapshot)
+        self.assertEqual(triples, {
+            5: (2.0, 3.0, 5.0),
+            3: (1.0, 1.5, 2.5),
+            9: (2.0 / 3, 1.0, 0.0),
+            2: (0.5, 0.75, 0.0),
+        })
+        by_id = {r.raw_seq_id: r for r in snapshot.requests}
+        # Raw waiting indices include the future head; policy positions do not.
+        self.assertEqual((by_id[9].queue_position, by_id[2].queue_position), (1, 2))
+        for r in snapshot.requests:
+            self.assertEqual(r.utility.decode_utility, 2.0 / (1 + r.service_rank))
+            self.assertEqual(r.utility.prefill_token_utility,
+                             3.0 / (1 + r.service_rank))
+        # Gamma decreases toward the running tail and uses the forward
+        # running position, not the reverse victim rank.
+        self.assertEqual((by_id[5].victim_rank, by_id[3].victim_rank), (1, 0))
+        self.assertGreater(triples[5][2], triples[3][2])
+        self.assertEqual(
+            {r.request_id: (r.decode_utility, r.prefill_token_utility,
+                            r.preemption_penalty)
+             for r in snapshot.lp_problem.requests},
+            {str(k): v for k, v in triples.items()},
+        )
+
+        # Construction reads only the capture: with the live holder emptied
+        # and its block manager removed, the same capture yields the same
+        # coefficients.
+        captured = lsm.capture_scheduler_state(holder, snapshot_time=SNAPSHOT_TIME)
+        holder.waiting.clear()
+        holder.running.clear()
+        holder.block_manager = None
+        coefficients = lsm.construct_coefficients(captured, bound)
+        self.assertEqual(
+            {r.raw_seq_id: c for r, c in zip(captured.requests, coefficients)},
+            {r.raw_seq_id: r.utility for r in snapshot.requests},
+        )
+
+    def test_rank_based_utility_follows_state_between_decisions(self):
+        holder, block_manager = _build_holder()
+        resident = self._resident(holder, 1, 4, 4)
+        waiting = {k: _make_sequence(k, 4, 1.0) for k in (0, 2)}
+        holder.waiting.extend([waiting[0], waiting[2]])
+        policy = self._rank_policy(1.0, 1.0, 1.0)
+
+        def decide():
+            holder._iteration_id += 1
+            snapshot = _map(holder, policy)
+            self.assertIsInstance(snapshot, lsm.StateSnapshot, snapshot)
+            return snapshot
+
+        first = decide()
+        self.assertEqual(self._triples(first), {
+            1: (1.0, 1.0, 1.0), 0: (0.5, 0.5, 0.0), 2: (1 / 3, 1 / 3, 0.0)})
+        recorded = [(first, self._triples(first), first.lp_problem.requests)]
+
+        # Admission: 0 joins the running tail (native allocation and status
+        # transitions) and gains a penalty; 2's position is unchanged.
+        seq = waiting[0]
+        holder.waiting.remove(seq)
+        seq.set_status(SequenceStatus.RUNNING)
+        block_manager.allocate(seq)
+        seq.update_prompt_tokens_processed(4)
+        seq.set_status(SequenceStatus.PAUSED)
+        holder.running.append(seq)
+        second = decide()
+        self.assertEqual(self._triples(second), {
+            1: (1.0, 1.0, 1.0), 0: (0.5, 0.5, 0.5), 2: (1 / 3, 1 / 3, 0.0)})
+        recorded.append((second, self._triples(second), second.lp_problem.requests))
+
+        # Resident removal: 1 leaves; 0 moves to the head, 2 moves up.
+        holder.running.remove(resident)
+        block_manager.free(resident)
+        resident.set_status(SequenceStatus.FINISHED_STOPPED)
+        third = decide()
+        self.assertEqual(self._triples(third), {
+            0: (1.0, 1.0, 1.0), 2: (0.5, 0.5, 0.0)})
+        recorded.append((third, self._triples(third), third.lp_problem.requests))
+
+        # Queue-position change by victim reinsertion at the waiting front:
+        # 0 keeps service position 0 but, now waiting, has no penalty.
+        holder.running.remove(seq)
+        block_manager.free(seq)
+        seq.reset_for_recompute()
+        holder.waiting.insert(0, seq)
+        fourth = decide()
+        self.assertEqual(self._triples(fourth), {
+            0: (1.0, 1.0, 0.0), 2: (0.5, 0.5, 0.0)})
+
+        # Earlier decisions keep their own coefficients and problems.
+        for snapshot, triples, problem_requests in recorded:
+            self.assertEqual(self._triples(snapshot), triples)
+            self.assertEqual(snapshot.lp_problem.requests, problem_requests)
+        self.assertEqual(
+            [s.snapshot_id for s, _, _ in recorded] + [fourth.snapshot_id],
+            [str(ITERATION_ID + k) for k in (1, 2, 3, 4)],
+        )
+
+    def test_rank_based_utility_rejects_invalid_scales(self):
+        for field in ("decode_scale", "prefill_scale", "penalty_scale"):
+            for bad in (0, 0.0, -1.0, float("nan"), float("inf"),
+                        float("-inf"), True, False, "1.0", None, 10 ** 400):
+                with self.subTest(field=field, bad=bad):
+                    scales = dict(decode_scale=1.0, prefill_scale=1.0,
+                                  penalty_scale=1.0)
+                    scales[field] = bad
+                    holder = _build_three_request_holder()
+                    before = _fingerprint(holder)
+                    with mock.patch.object(
+                        lsm.lrs, "LPProblem", wraps=lsm.lrs.LPProblem,
+                    ) as problem_spy:
+                        result = _map(holder, functools.partial(
+                            lsm.rank_based_utility, **scales))
+                    self.assertEqual(_fingerprint(holder), before)
+                    self.assertIsInstance(result, lsm.MappingFailure)
+                    self.assertEqual(result.stage, "state_mapping")
+                    self.assertEqual(result.category, "mapping_failure")
+                    self.assertIn(f"rank-based utility {field}", result.reason)
+                    problem_spy.assert_not_called()
 
 
 

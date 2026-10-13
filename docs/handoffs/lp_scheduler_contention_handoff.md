@@ -279,8 +279,11 @@ timeout 300s python -B scripts/check_lp_scheduler_contention_gpu.py \
   --output-dir "$LP_CONTENTION_OUT" > "$LP_CONTENTION_OUT/console.log" 2>&1
 ```
 
-Exit status `0`, `RESULT: PASS`. The only warning was
-`Casting torch.bfloat16 to torch.float16`. The post-hoc trace analysis
+Exit status `0`, `RESULT: PASS`. The log contains the warning
+`Casting torch.bfloat16 to torch.float16` and the transformers notice
+`` `torch_dtype` is deprecated! Use `dtype` instead! `` (`console.log` line 1;
+corrected 2026-10-13, earlier text said the cast warning was the only one).
+The post-hoc trace analysis
 (`python3 -I trace_analysis.py <dir>`, which reads JSON only) exited 0 with
 no failures.
 
@@ -358,8 +361,11 @@ prefill, D0, D1.
 - Prefill with decode in one batch (steps 3, 4).
 - Completion and freeing (steps 6, 8, 10), final drain, and idle.
 
-**Not exercised.** Preemption and victims (none were legal or useful here).
-A binding watermark (h = 156 but H − h ≥ 15442 at every admission). A
+**Not exercised.** Preemption: every resident was an eligible victim (legal
+preemption IDs at steps 2–10 were the current residents in
+`decision_trace.json`), but no victim was selected (empty victim order and
+`preempt = 0` at every step). Corrected 2026-10-13; earlier text said none
+were legal. A binding watermark (h = 156 but H − h ≥ 15442 at every admission). A
 fractional relaxation.
 
 **Limitations.**

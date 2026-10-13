@@ -1,0 +1,183 @@
+{
+ "purpose": "rank-based utility callable (alpha=D/(1+r), beta=P/(1+r), gamma=G/(1+s)); focused CPU checks and uniform vs rank-based CPU replay",
+ "tested_base_commit": "e25ec6c4e48b011e2f2cf97ae4caaf3e2930945b",
+ "branch": "main",
+ "working_tree_diff": "working_tree.diff (three modified tracked files; no untracked source files)",
+ "working_tree_diff_sha256": "1fdc8dbfe5ddcc23907c6e44ab2dc9fcb3e9e4e4fd83f151ae61c3d710ca3b9a",
+ "changed_file_sha256": {
+  "lpserve_state_mapping.py": "0c0232e75720c9e8ec9bbef5deeb78559d372d8076f1bb00dbe5656ae4d57d4f",
+  "tests/test_lpserve_state_mapping.py": "19f7289532a76d27e10469cd383d19f7169ac6a0f1a18965012c775c1573db40",
+  "tests/test_lp_scheduler.py": "d0c1d9490d8032869de63a0205d35ab02f168560ed3ae91dd9654981acc59eb7"
+ },
+ "host": "gpu051",
+ "slurm_job_id": "65622528",
+ "python": "3.10.8 (/home/atjoshi_umass_edu/LPServe/env)",
+ "numpy": "2.2.6",
+ "scipy": "1.15.3",
+ "gpu_used": false,
+ "provisional_inputs": {
+  "scales": {
+   "D": 1.0,
+   "P": 1.0,
+   "G": 1.0
+  },
+  "pool_blocks": 8,
+  "block_size": 4,
+  "max_model_len": 16,
+  "resident_limit": 2,
+  "b_max": 8,
+  "c_max": 8,
+  "s_max": 1,
+  "native_watermark_blocks": 0,
+  "numerical_policy": "lp_relaxation_mvp_v1",
+  "max_tokens": 2,
+  "prompts": {
+   "A": 5,
+   "B": 8
+  }
+ },
+ "replay_summaries": {
+  "uniform_ids_A0_B1": {
+   "steps": 6,
+   "first_prefill": {
+    "A": 1,
+    "B": 0
+   },
+   "first_decode": {
+    "A": 4,
+    "B": 2
+   },
+   "completion": {
+    "A": 5,
+    "B": 3
+   },
+   "preemptions": 0,
+   "unfinished": 0,
+   "errors": 0,
+   "idle_output_id": 6
+  },
+  "rank_based_ids_A0_B1": {
+   "steps": 6,
+   "first_prefill": {
+    "A": 0,
+    "B": 1
+   },
+   "first_decode": {
+    "A": 2,
+    "B": 4
+   },
+   "completion": {
+    "A": 3,
+    "B": 5
+   },
+   "preemptions": 0,
+   "unfinished": 0,
+   "errors": 0,
+   "idle_output_id": 6
+  },
+  "uniform_ids_A1_B0": {
+   "steps": 6,
+   "first_prefill": {
+    "A": 1,
+    "B": 0
+   },
+   "first_decode": {
+    "A": 2,
+    "B": 4
+   },
+   "completion": {
+    "A": 3,
+    "B": 5
+   },
+   "preemptions": 0,
+   "unfinished": 0,
+   "errors": 0,
+   "idle_output_id": 6
+  },
+  "rank_based_ids_A1_B0": {
+   "steps": 6,
+   "first_prefill": {
+    "A": 0,
+    "B": 1
+   },
+   "first_decode": {
+    "A": 2,
+    "B": 4
+   },
+   "completion": {
+    "A": 3,
+    "B": 5
+   },
+   "preemptions": 0,
+   "unfinished": 0,
+   "errors": 0,
+   "idle_output_id": 6
+  }
+ },
+ "controls": {
+  "raw_id_control": "09_raw_id_control.txt",
+  "resident_limit_one_repro": "10_repro_resident_limit_one.txt"
+ },
+ "checks": {
+  "01_py_compile": {
+   "output": "01_py_compile.txt",
+   "exit_status": 0,
+   "tests_ran": null,
+   "result": null
+  },
+  "02_import": {
+   "output": "02_import.txt",
+   "exit_status": 0,
+   "tests_ran": null,
+   "result": null
+  },
+  "03_focused_mapper": {
+   "output": "03_focused_mapper.txt",
+   "exit_status": 0,
+   "tests_ran": 3,
+   "result": "OK"
+  },
+  "04_focused_live": {
+   "output": "04_focused_live.txt",
+   "exit_status": 0,
+   "tests_ran": 3,
+   "result": "OK"
+  },
+  "05_full_mapper": {
+   "output": "05_full_mapper.txt",
+   "exit_status": 0,
+   "tests_ran": 15,
+   "result": "OK"
+  },
+  "06_full_live_scheduler": {
+   "output": "06_full_live_scheduler.txt",
+   "exit_status": 0,
+   "tests_ran": 24,
+   "result": "OK"
+  },
+  "07_git_diff_check": {
+   "output": "07_git_diff_check.txt",
+   "exit_status": 0,
+   "tests_ran": null,
+   "result": null
+  },
+  "08_trace_dump": {
+   "output": "08_trace_dump.txt",
+   "exit_status": 0,
+   "tests_ran": null,
+   "result": null
+  },
+  "09_raw_id_control": {
+   "output": "09_raw_id_control.txt",
+   "exit_status": 0,
+   "tests_ran": null,
+   "result": null
+  },
+  "10_repro_resident_limit_one": {
+   "output": "10_repro_resident_limit_one.txt",
+   "exit_status": 0,
+   "tests_ran": null,
+   "result": null
+  }
+ }
+}

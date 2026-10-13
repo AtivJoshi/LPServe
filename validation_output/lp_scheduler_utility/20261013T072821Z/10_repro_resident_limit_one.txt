@@ -1,0 +1,23 @@
+$ python -B validation_output/lp_scheduler_utility/20261013T072821Z/scripts/repro_resident_limit_one.py
+INFO 10-13 07:30:25 metrics_store.py:72] MetricsStore disabled
+== uniform 1/1/1, resident limit 1
+  step 0: running=[] waiting=['A', 'B'] preempted=[] scheduled=[('B', 8)] outputs A=0 B=0
+  step 1: running=['B'] waiting=['A'] preempted=['B'] scheduled=[('A', 5)] outputs A=0 B=0
+  step 2: running=['A'] waiting=['B'] preempted=['A'] scheduled=[('B', 8)] outputs A=0 B=0
+  step 3: running=['B'] waiting=['A'] preempted=['B'] scheduled=[('A', 5)] outputs A=0 B=0
+  step 4: running=['A'] waiting=['B'] preempted=['A'] scheduled=[('B', 8)] outputs A=0 B=0
+  step 5: running=['B'] waiting=['A'] preempted=['B'] scheduled=[('A', 5)] outputs A=0 B=0
+  step 6: running=['A'] waiting=['B'] preempted=['A'] scheduled=[('B', 8)] outputs A=0 B=0
+  step 7: running=['B'] waiting=['A'] preempted=['B'] scheduled=[('A', 5)] outputs A=0 B=0
+  after 8 decisions: total output tokens = 0
+== rank-based D=P=G=1, resident limit 1
+  step 0: running=[] waiting=['A', 'B'] preempted=[] scheduled=[('A', 5)] outputs A=0 B=0
+  step 1: running=['A'] waiting=['B'] preempted=['A'] scheduled=[('B', 8)] outputs A=0 B=0
+  step 2: running=['B'] waiting=['A'] preempted=['B'] scheduled=[('A', 5)] outputs A=0 B=0
+  step 3: running=['A'] waiting=['B'] preempted=['A'] scheduled=[('B', 8)] outputs A=0 B=0
+  step 4: running=['B'] waiting=['A'] preempted=['B'] scheduled=[('A', 5)] outputs A=0 B=0
+  step 5: running=['A'] waiting=['B'] preempted=['A'] scheduled=[('B', 8)] outputs A=0 B=0
+  step 6: running=['B'] waiting=['A'] preempted=['B'] scheduled=[('A', 5)] outputs A=0 B=0
+  step 7: running=['A'] waiting=['B'] preempted=['A'] scheduled=[('B', 8)] outputs A=0 B=0
+  after 8 decisions: total output tokens = 0
+exit_status=0

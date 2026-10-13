@@ -264,7 +264,7 @@ not executed.
 | Necessary and avoidable negative first work; strict improvement on both sides of τ; zero/positive mass preemption | constructor (one pass, no two-pass policy) | named tests; avoidable case −3 vs integer optimum 0; positive case 101 victims, 99.5 | pass (accepted limitations reproduced) | utility quality, victim count, ties |
 | No useful plan; abstract F=3,h=2; independent enumeration and returned-plan validation | constructor; test-only oracle (`oracle_choice` + native-order simulation) | `test_lp_feasible_integer_infeasible_abstract_fixture`, `test_bounded_enumeration_against_constructor`, `test_enumeration_on_named_fixtures`, `test_independent_oracle_rejects_malformed_decisions` | pass | bounded abstract states; F=3,h=2 has no validated-runtime counterpart |
 | Outcomes, diagnostics, nonfinite and oversized numbers | `Failure.outcome`; checked arithmetic | solver-outcome, nonfinite, oversized-vector tests | pass | status 2 is a solver report, not a certificate |
-| One capture; ranks; changing/fixed coefficients; uniform/per-request policies; invalid coefficients; no mutation | `capture_scheduler_state`, `vllm_oriented_ranks`, `construct_coefficients`; `LPScheduler._coefficient_policy` | `test_one_capture_and_state_dependent_policy_inputs`, `test_malformed_utilities_return_mapping_failure`, mapper fingerprints; live spies require exactly capture→map→solve→execute | pass | state-dependent fixture is not a production utility policy |
+| One capture; ranks; changing/fixed coefficients; uniform/per-request policies; invalid coefficients; no mutation | `capture_scheduler_state`, `vllm_oriented_ranks`, `construct_coefficients`; `LPScheduler._coefficient_policy`; rank-based callable `rank_based_utility` (added 2026-10-13) | `test_one_capture_and_state_dependent_policy_inputs`, `test_malformed_utilities_return_mapping_failure`, mapper fingerprints; live spies require exactly capture→map→solve→execute. 2026-10-13: `test_rank_based_utility_values_and_compact_positions`, `_follows_state_between_decisions`, `_rejects_invalid_scales`; live `LiveRankBasedUtilityTest` (uniform vs rank-based replay to completion, reversed IDs, invalid scale) | pass (rank-based: evidence `lp_scheduler_utility/20261013T072821Z`) | the earlier state-dependent fixture is not a production policy; the rank-based D = P = G = 1 member is a provisional demonstration input, not a selected D-01–D-04 policy, and livelocks with resident limit 1 (section below) |
 | Declared order; identical central/metadata order; multiple-victim reinsertion; running-tail readmission; arrived work behind a future head | executor declared orders; `LPScheduler._is_idle` | executor order, victim, and readmission tests; live and mapping future-head tests | pass | — |
 | Planned charge/demand/recovery/watermark equal current state | executor `plan_state_mismatch` | `test_planned_resources_must_match_current_state` | pass | — |
 | Admission: equality boundaries, total pool despite contention, no registration, other schedulers | `LPScheduler.check_new_request`; `BaseLLMEngine.add_request` | `SubmissionBoundaryTest` (real `add_request`, doubles for sequence manager, workers, metrics) | pass | real engine initialization not run |
@@ -372,3 +372,89 @@ them. No GPU, model, policy, or performance run.
 A mapping failure raised during capture carries no snapshot ID (existing
 mapper behavior, unchanged). Admission equality, OPEN coefficient decisions,
 and Q11 are unchanged.
+
+## Rank-based utility demonstration (2026-10-13; awaiting review)
+
+**Provenance.** Tested base `e25ec6c4e48b011e2f2cf97ae4caaf3e2930945b` plus
+the uncommitted changes in `working_tree.diff` (three modified tracked files;
+SHA-256 per file in `sha256sums.txt` and `summary.json`). Evidence:
+`validation_output/lp_scheduler_utility/20261013T072821Z/` (`run_checks.sh`,
+per-check outputs with exit statuses, `trace.json`, `comparison.txt`, and
+evidence-only scripts under `scripts/`). Host `gpu051`, allocation
+`65622528`, CPU only; Python 3.10.8 (`env`), NumPy 2.2.6, SciPy 1.15.3. This
+section was written after the run and is not tested code.
+
+**Provisional formula (candidate R17 family; D-01–D-04 remain OPEN).**
+`lpserve_state_mapping.rank_based_utility(captured, request, *,
+decode_scale, prefill_scale, penalty_scale)`, with the scales bound by
+`functools.partial`, is a `construct_coefficients` callable. With r the
+zero-based position in captured `running_order` followed by
+`arrived_waiting_order`, and s the zero-based `running_order` position:
+α = D/(1+r), β = P/(1+r) per prefill token, and γ = G/(1+s) for an eligible
+resident victim, otherwise 0. Scales must be finite, strictly positive,
+non-boolean reals; otherwise a `MappingFailure` (stage `state_mapping`) is
+returned before solving. The demonstration selects D = P = G = 1 through the
+live `_coefficient_policy` hook (instance override). The configured uniform
+triple, the default hook, and per-request mappings are unchanged. Neither κ
+nor a discarded-work term is instantiated.
+
+**Workload.** A (5 prompt tokens, submitted first) and B (8), both arrived
+before the first decision; two greedy output tokens each; block size 4,
+8-block pool, `max_model_len` 16, resident limit 2, B_max = C_max = 8,
+S_max = 1, `lp_relaxation_mvp_v1`; native watermark read as 0
+(`int(0.01 * 8)`), no reserve.
+
+**Analytical expectation (reasoning, not evidence).** At the first decision
+both requests wait. With S_max = 1, action width and useful execution force
+I_A + I_B = 1. Memory, resident, and token rows do not bind. Prefill linkage
+bounds the objective by 5I_A + 8(1−I_A) under uniform utilities (unique
+optimum: B, 8 tokens) and by 5I_A + 4(1−I_A) under rank-based ones
+(unique optimum: A, 5 tokens). Both unique relaxed optima are integral, so
+extraction keeps that action.
+
+**Observed.** The first decisions matched: uniform relaxed x_B = 8, I_B = 1,
+objective 8; rank-based x_A = 5, I_A = 1, objective 5. The plans and emitted
+metadata were `[(B, 8)]` and `[(A, 5)]`. Every decision passed one
+capture → map → solve → execute, plan validation inside the solve and again
+in executor prevalidation, and declared order. Retained residents kept their
+order and admissions joined the tail. Allocation was full-context, and decode
+gaps were 0 or 1. Central and worker sequence state, allocation counts, and
+per-pool integrity agreed. Both runs finished in 6 decisions, with zero
+preemptions, drained pools and queues, and ordinary idle. Every relaxed
+solution was integral.
+
+| Run | First prefill | First decode | Completion | Preemptions | Unfinished / errors |
+|---|---|---|---|---|---|
+| Uniform | B 0, A 1 | B 2, A 4 | B 3, A 5 | 0 | 0 / 0 |
+| Rank-based | A 0, B 1 | A 2, B 4 | A 3, B 5 | 0 | 0 / 0 |
+
+Values are decision indices, not wall-clock latency. With reversed raw IDs
+(A = 1, B = 0, same submission order), the first choices were unchanged. An
+evidence-only control that uses raw-ID positions instead selects B first,
+so the check distinguishes captured queue state from raw IDs.
+
+**Findings for review.**
+
+- *D = P is not phase-neutral.* Per-token β makes an x-token chunk worth
+  P·x/(1+r), against D/(1+r) for one decode. At rank-based decision 1, B's
+  admission (0.5 × 8 = 4) displaced head resident A's decode (1). The
+  discussion record's P06 phrase that D = P "adds no extra phase preference"
+  holds only for coefficient magnitudes, not whole actions. Uniform 1/1/1
+  likewise admitted A before any decode.
+- *Livelock with resident limit 1 (executed reproduction).* The same workload
+  with `max_num_seqs=1` produced zero output tokens in 8 decisions under both
+  uniform 1/1/1 and rank-based D = P = G = 1. Each decision preempted the ready
+  resident (γ ≤ 1) to admit the waiting request (≥ 2.5): for example,
+  4 − 1 = 3 > 1. Evidence: `10_repro_resident_limit_one.txt`. This bears on
+  F02 and D-03; no code or policy was changed.
+- *Uniform ties follow the LP vertex, not service rank.* The uniform decode
+  ties at decisions 2–3 selected raw ID 1 under both ID assignments, although
+  B was at the running head both times; the tied solution was integral. This
+  is consistent with R16's stated limits.
+
+**Not established:** a selected utility policy, fairness, restart freedom,
+general completion, vLLM equivalence, output correctness, or performance.
+No planner, executor, scheduler, engine, or configuration code changed; the
+live tests exercise the real planner and executor, but their own unchanged
+suites, `EngineArgs`, script CPU tests, and all GPU checks were not rerun.
+D-01–D-04, κ, Q11, and F02 remain OPEN.

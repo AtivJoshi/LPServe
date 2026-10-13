@@ -1,5 +1,6 @@
 import copy
 import dataclasses
+import functools
 import sys
 import unittest
 from pathlib import Path
@@ -1502,6 +1503,346 @@ class PreMutationFailureTest(unittest.TestCase):
         self.assertEqual(error.category, lpe.CATEGORY_NO_PROGRESS)
         self.assertEqual(error.failure.outcome, lrs.OUTCOME_INVALID)
         self.assertEqual(error.snapshot_id, "0")
+
+
+class LiveRankBasedUtilityTest(unittest.TestCase):
+    # Case-specific provisional inputs: an 8-block pool in both managers,
+    # max_model_len 16, resident limit 2, B_max = C_max = 8, S_max = 1, the
+    # native watermark (read, not configured), and two output tokens per
+    # request. The uniform run uses the configured triple 1/1/1. The
+    # rank-based run selects rank_based_utility with D = P = G = 1 through
+    # the live _coefficient_policy hook. D-01 to D-04 remain OPEN.
+    POOL = 8
+    CONFIG = dict(max_num_seqs=2, max_model_len=16, b_max=8, c_max=8, s_max=1)
+    PROMPTS = {"A": 5, "B": 8}
+    MAX_TOKENS = 2
+    SCALES = dict(decode_scale=1.0, prefill_scale=1.0, penalty_scale=1.0)
+    # Every executed step completes at least one prompt or output token.
+    STEP_LIMIT = sum(PROMPTS.values()) + 2 * MAX_TOKENS
+    # Analytically unique per-step choices of the rank-based run (each
+    # relaxed optimum is unique and integral), as (request, chunk).
+    RANK_BASED_EXPECTED = [("A", 5), ("B", 8), ("A", 0), ("A", 0), ("B", 0),
+                           ("B", 0)]
+
+    _assert_synchronous_pipeline = LivePipelineTest._assert_synchronous_pipeline
+    _assert_failure = PreMutationFailureTest._assert_failure
+
+    def _harness(self, rank_based, ids, scales=None):
+        harness = _Harness(num_gpu_blocks=self.POOL, **self.CONFIG)
+        if rank_based:
+            policy = functools.partial(
+                lsm.rank_based_utility, **(scales or self.SCALES))
+            # Instance override of the live hook for this harness only.
+            harness.scheduler._coefficient_policy = lambda: policy
+        seqs = {}
+        for name, seq_id, arrival in (("A", ids[0], 1.0), ("B", ids[1], 2.0)):
+            seqs[name] = harness.add(
+                seq_id, self.PROMPTS[name], arrival, self.MAX_TOKENS)
+        return harness, seqs
+
+    def _assert_pools(self, harness):
+        central = harness.central_tables()
+        worker = harness.worker_tables()
+        self.assertEqual({k: len(v) for k, v in central.items()},
+                         {k: len(v) for k, v in worker.items()})
+        for manager in (harness.scheduler.block_manager,
+                        harness.worker_seqs.block_manager):
+            allocated = [b.block_number for t in manager.block_tables.values()
+                         for b in t]
+            free = [b.block_number for b in manager.gpu_allocator.free_blocks]
+            self.assertEqual(sorted(allocated + free), list(range(self.POOL)))
+            self.assertEqual(manager.get_num_free_gpu_blocks(),
+                             self.POOL - len(allocated))
+
+    def _run_case(self, rank_based, ids=(0, 1)):
+        """Replay the two-request workload to completion and return a
+        primitive per-decision trace and summary."""
+        harness, seqs = self._harness(rank_based, ids)
+        scheduler = harness.scheduler
+        manager = scheduler.block_manager
+        name_of = {seq.seq_id: name for name, seq in seqs.items()}
+        uniform = lsm.RequestUtility(1.0, 1.0, 1.0)
+        trace = dict(
+            policy="rank_based" if rank_based else "uniform",
+            scales=dict(self.SCALES) if rank_based else None,
+            ids={name: seq.seq_id for name, seq in seqs.items()},
+            watermark_blocks=manager.watermark_blocks, steps=[],
+        )
+        self.assertEqual(manager.watermark_blocks, 0)  # int(0.01 * 8)
+
+        def remaining():
+            return sum(s.get_prompt_len() - s.get_num_prompt_tokens_processed()
+                       + self.MAX_TOKENS - s.get_output_len()
+                       for s in seqs.values())
+
+        step = 0
+        while scheduler.has_unfinished_seqs():
+            self.assertLess(step, self.STEP_LIMIT, "step bound reached")
+            now = 10.0 + step
+            running = [s.seq_id for s in scheduler.running]
+            waiting = [s.seq_id for s in scheduler.waiting]
+            unfinished = {s.seq_id: s for s in seqs.values()
+                          if not s.is_finished()}
+            before = {k: _seq_fingerprint(s) for k, s in unfinished.items()}
+            tables_before = harness.central_tables()
+            free_before = manager.get_num_free_gpu_blocks()
+            work_before = remaining()
+
+            validations = []
+            real_validate = lrs.validate_integer_plan
+
+            def validate(problem, plan):
+                validated = real_validate(problem, plan)
+                validations.append((spies.names()[-1], problem, plan, validated))
+                return validated
+
+            harness.clock.reset_mock()
+            with _Spies() as spies, \
+                    mock.patch.object(lrs, "validate_integer_plan", validate):
+                outputs = harness.schedule(now)
+            self._assert_synchronous_pipeline(harness, spies, now, outputs)
+            snapshot, result = spies.calls[1][4], spies.calls[2][2]
+            problem, plan = snapshot.lp_problem, result.plan
+
+            # Complete plan validation: once inside solve_and_extract and
+            # once by executor prevalidation on the same snapshot problem.
+            self.assertEqual([v[0] for v in validations], ["map", "execute"])
+            _, checked_problem, checked_plan, validated = validations[1]
+            self.assertIs(checked_problem, problem)
+            self.assertIs(checked_plan, plan)
+            self.assertIs(validated, plan)
+
+            # Coefficients and ranks from this decision's captured queues:
+            # r is the running-then-waiting position, s the running position.
+            order = running + waiting
+            self.assertEqual(snapshot.running_order, tuple(running))
+            self.assertEqual(snapshot.arrived_waiting_order, tuple(waiting))
+            records = {r.raw_seq_id: r for r in snapshot.requests}
+            self.assertEqual(sorted(records), sorted(unfinished))
+            for raw_id, r in records.items():
+                position = order.index(raw_id)
+                self.assertEqual(r.service_rank, position)
+                if raw_id in running:
+                    self.assertEqual(r.victim_rank,
+                                     len(running) - 1 - running.index(raw_id))
+                if rank_based:
+                    gamma = (1.0 / (1 + running.index(raw_id))
+                             if raw_id in running else 0.0)
+                    expected = lsm.RequestUtility(
+                        1.0 / (1 + position), 1.0 / (1 + position), gamma)
+                else:
+                    expected = uniform
+                self.assertEqual(r.utility, expected)
+            by_request = {d.request_id: d for d in problem.requests}
+            for raw_id, r in records.items():
+                d = by_request[str(raw_id)]
+                self.assertEqual(
+                    (d.decode_utility, d.prefill_token_utility,
+                     d.preemption_penalty),
+                    (r.utility.decode_utility, r.utility.prefill_token_utility,
+                     r.utility.preemption_penalty))
+
+            # One useful action, no victims, emitted as planned.
+            selected = [d for d in plan.decisions
+                        if d.prefill_tokens > 0 or d.decode]
+            self.assertEqual(len(selected), 1)
+            (chosen,) = selected
+            raw = int(chosen.request_id)
+            self.assertEqual(plan.victim_order, ())
+            self.assertTrue(all(d.preempt == 0 for d in plan.decisions))
+            self.assertEqual(plan.execution_order, (chosen.request_id,))
+            self.assertEqual(_emitted(outputs), [(raw, chosen.prefill_tokens)])
+            self.assertEqual(
+                (outputs.preempted_seq_ids, outputs.ignored_seq_ids), ([], []))
+            chunk = chosen.prefill_tokens
+            remainder = len(before[raw][2]) - before[raw][4]
+            if chunk > 0:
+                self.assertLessEqual(chunk, min(remainder, self.CONFIG["c_max"]))
+            else:
+                self.assertEqual((remainder, raw in running), (0, True))
+
+            # Queue transitions: retained residents keep their order and an
+            # admission joins the running tail.
+            admitted = [raw] if raw in waiting else []
+            self.assertEqual([s.seq_id for s in scheduler.running],
+                             running + admitted)
+            self.assertEqual([s.seq_id for s in scheduler.waiting],
+                             [k for k in waiting if k not in admitted])
+
+            # Allocation: full-context admission, decode gap 0 or 1 with the
+            # existing table as prefix; other tables unchanged.
+            tables = harness.central_tables()
+            seq = unfinished[raw]
+            expected_free = free_before
+            if admitted:
+                self.assertEqual(len(tables[raw]), len(seq.logical_token_blocks))
+                expected_free -= len(tables[raw])
+            elif chunk == 0:
+                gap = before[raw][6] - len(tables_before[raw])
+                self.assertIn(gap, (0, 1))
+                self.assertEqual(tables[raw][:len(tables_before[raw])],
+                                 tables_before[raw])
+                self.assertEqual(len(tables[raw]),
+                                 len(tables_before[raw]) + gap)
+                expected_free -= gap
+            else:
+                self.assertEqual(tables[raw], tables_before[raw])
+            for other in unfinished:
+                if other != raw:
+                    self.assertEqual(tables.get(other), tables_before.get(other))
+            self.assertEqual(manager.get_num_free_gpu_blocks(), expected_free)
+
+            harness.replay(outputs)
+
+            # Central and worker progress after native completion.
+            self.assertEqual(scheduler.num_running_batches, 0)
+            self._assert_pools(harness)
+            for seq_id, s in unfinished.items():
+                worker_seq = harness.worker_seqs.get_seq(seq_id)
+                if s.is_finished():
+                    self.assertEqual(s.get_status(),
+                                     SequenceStatus.FINISHED_LENGTH_CAPPED)
+                    self.assertIsNone(worker_seq)
+                    self.assertIsNone(harness.engine_seqs.get_seq(seq_id))
+                    self.assertNotIn(seq_id, harness.central_tables())
+                    self.assertNotIn(s, scheduler.waiting + scheduler.running)
+                else:
+                    self.assertEqual(_seq_fingerprint(worker_seq),
+                                     _seq_fingerprint(s))
+                if seq_id != raw:
+                    self.assertEqual(_seq_fingerprint(s), before[seq_id])
+            if chunk > 0:
+                self.assertEqual(seq.get_num_prompt_tokens_processed(),
+                                 before[raw][4] + chunk)
+            else:
+                self.assertEqual(seq.get_output_len(), len(before[raw][3]) + 1)
+            self.assertEqual(work_before - remaining(), max(chunk, 1))
+
+            relaxed = {d.request_id: d for d in result.relaxed.decisions}
+            trace["steps"].append(dict(
+                step=step, output_id=outputs.id,
+                running_before=[name_of[k] for k in running],
+                waiting_before=[name_of[k] for k in waiting],
+                requests={name_of[k]: dict(
+                    raw_seq_id=k, service_rank=r.service_rank,
+                    victim_rank=r.victim_rank,
+                    alpha=r.utility.decode_utility,
+                    beta=r.utility.prefill_token_utility,
+                    gamma=r.utility.preemption_penalty,
+                    relaxed=dict(x=relaxed[str(k)].x, y=relaxed[str(k)].y,
+                                 prefill_indicator=relaxed[str(k)].prefill_indicator,
+                                 z=relaxed[str(k)].z),
+                ) for k, r in records.items()},
+                relaxed_objective=result.relaxed.normalized_objective,
+                fractional_request_count=(
+                    plan.extraction.fractional_request_count),
+                plan_objective=plan.objective,
+                emitted=[(name_of[raw], chunk)],
+                preempted=list(outputs.preempted_seq_ids),
+                central_free_after=manager.get_num_free_gpu_blocks(),
+                worker_free_after=(
+                    harness.worker_seqs.block_manager.get_num_free_gpu_blocks()),
+                finished=[name_of[k] for k, s in unfinished.items()
+                          if s.is_finished()],
+            ))
+            step += 1
+
+        # Both requests finished; pools and queues drained.
+        for s in seqs.values():
+            self.assertEqual(s.get_status(), SequenceStatus.FINISHED_LENGTH_CAPPED)
+            self.assertEqual(s.get_output_token_ids(),
+                             [SAMPLED_TOKEN] * self.MAX_TOKENS)
+        self.assertEqual((scheduler.waiting, scheduler.running), ([], []))
+        self.assertEqual(
+            (harness.engine_seqs.seq_map, harness.worker_seqs.seq_map), ({}, {}))
+        self.assertEqual((harness.central_tables(), harness.worker_tables()),
+                         ({}, {}))
+        self._assert_pools(harness)
+        self.assertEqual(manager.get_num_free_gpu_blocks(), self.POOL)
+
+        # One ordinary idle call.
+        idle_before = _fingerprint(scheduler)
+        with _Spies() as spies:
+            outputs = harness.schedule(100.0)
+        self.assertTrue(outputs.has_no_output())
+        self.assertEqual(spies.calls, [])
+        self.assertEqual(_fingerprint(scheduler), idle_before)
+
+        def first(predicate):
+            return {name: next((s["step"] for s in trace["steps"]
+                                if predicate(s, name)), None)
+                    for name in seqs}
+
+        trace["summary"] = dict(
+            steps=len(trace["steps"]),
+            first_prefill=first(lambda s, n: s["emitted"][0][0] == n
+                                and s["emitted"][0][1] > 0),
+            first_decode=first(lambda s, n: s["emitted"][0][0] == n
+                               and s["emitted"][0][1] == 0),
+            completion=first(lambda s, n: n in s["finished"]),
+            preemptions=sum(len(s["preempted"]) for s in trace["steps"]),
+            unfinished=sum(not s.is_finished() for s in seqs.values()),
+            errors=0,
+            idle_output_id=outputs.id,
+        )
+        return trace
+
+    def _assert_first_choice(self, trace, rank_based):
+        first = trace["steps"][0]
+        self.assertEqual((first["running_before"], first["waiting_before"]),
+                         ([], ["A", "B"]))
+        # Analytically unique relaxed optimum (also integral): uniform B
+        # with 8 tokens (8 versus A's 5); rank-based A with 5 tokens (5
+        # versus B's 0.5 * 8 = 4).
+        winner, chunk, objective = ("A", 5, 5.0) if rank_based else ("B", 8, 8.0)
+        loser = "B" if winner == "A" else "A"
+        self.assertEqual(first["emitted"], [(winner, chunk)])
+        tol = NUMERICAL_POLICY.feasibility_tol
+        for name, values in ((winner, (chunk, 0, 1, 0)), (loser, (0, 0, 0, 0))):
+            relaxed = first["requests"][name]["relaxed"]
+            for key, want in zip(("x", "y", "prefill_indicator", "z"), values):
+                self.assertAlmostEqual(relaxed[key], want, delta=tol)
+        self.assertAlmostEqual(first["relaxed_objective"], objective, delta=tol)
+        self.assertAlmostEqual(first["plan_objective"], objective, delta=tol)
+        if rank_based:
+            self.assertEqual(
+                {n: (r["alpha"], r["beta"], r["gamma"])
+                 for n, r in first["requests"].items()},
+                {"A": (1.0, 1.0, 0.0), "B": (0.5, 0.5, 0.0)})
+
+    def test_uniform_and_rank_based_first_choice_and_completion(self):
+        self.traces = {}
+        for rank_based in (False, True):
+            with self.subTest(rank_based=rank_based):
+                trace = self._run_case(rank_based)
+                self.traces[trace["policy"]] = trace
+                self._assert_first_choice(trace, rank_based)
+                summary = trace["summary"]
+                self.assertEqual(
+                    (summary["preemptions"], summary["unfinished"]), (0, 0))
+        # Uniform: A's 5-token admission beats B's decode (5 versus 1) at
+        # the second decision; later decode ties are not asserted.
+        self.assertEqual(self.traces["uniform"]["steps"][1]["emitted"],
+                         [("A", 5)])
+        self.assertEqual(
+            [tuple(s["emitted"][0]) for s in self.traces["rank_based"]["steps"]],
+            self.RANK_BASED_EXPECTED)
+
+    def test_reversed_ids_keep_first_choice(self):
+        # A keeps submission and arrival order but gets the larger raw ID.
+        for rank_based in (False, True):
+            with self.subTest(rank_based=rank_based):
+                trace = self._run_case(rank_based, ids=(1, 0))
+                self.assertEqual(trace["ids"], {"A": 1, "B": 0})
+                self._assert_first_choice(trace, rank_based)
+
+    def test_invalid_scale_is_mapping_failure_before_solve(self):
+        harness, _ = self._harness(
+            True, (0, 1), scales=dict(self.SCALES, penalty_scale=0.0))
+        error, _ = self._assert_failure(harness, 10.0, ["capture", "map"])
+        self.assertIsInstance(error.failure, lsm.MappingFailure)
+        self.assertEqual(error.stage, lsm.STAGE_STATE_MAPPING)
+        self.assertIn("rank-based utility penalty_scale", error.reason)
 
 
 class UnsupportedEntryAndDestructiveFailureTest(unittest.TestCase):

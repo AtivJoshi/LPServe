@@ -1,0 +1,1278 @@
+{
+ "uniform_ids_A0_B1": {
+  "policy": "uniform",
+  "scales": null,
+  "ids": {
+   "A": 0,
+   "B": 1
+  },
+  "watermark_blocks": 0,
+  "steps": [
+   {
+    "step": 0,
+    "output_id": 0,
+    "running_before": [],
+    "waiting_before": [
+     "A",
+     "B"
+    ],
+    "requests": {
+     "A": {
+      "raw_seq_id": 0,
+      "service_rank": 0,
+      "victim_rank": null,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": 0.0,
+       "prefill_indicator": -0.0,
+       "z": 0.0
+      }
+     },
+     "B": {
+      "raw_seq_id": 1,
+      "service_rank": 1,
+      "victim_rank": null,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": 8.0,
+       "y": 0.0,
+       "prefill_indicator": 1.0,
+       "z": 0.0
+      }
+     }
+    },
+    "relaxed_objective": 8.0,
+    "fractional_request_count": 0,
+    "plan_objective": 8.0,
+    "emitted": [
+     [
+      "B",
+      8
+     ]
+    ],
+    "preempted": [],
+    "central_free_after": 6,
+    "worker_free_after": 6,
+    "finished": []
+   },
+   {
+    "step": 1,
+    "output_id": 1,
+    "running_before": [
+     "B"
+    ],
+    "waiting_before": [
+     "A"
+    ],
+    "requests": {
+     "A": {
+      "raw_seq_id": 0,
+      "service_rank": 1,
+      "victim_rank": null,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": 5.0,
+       "y": 0.0,
+       "prefill_indicator": 1.0,
+       "z": 0.0
+      }
+     },
+     "B": {
+      "raw_seq_id": 1,
+      "service_rank": 0,
+      "victim_rank": 0,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": 0.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     }
+    },
+    "relaxed_objective": 5.0,
+    "fractional_request_count": 0,
+    "plan_objective": 5.0,
+    "emitted": [
+     [
+      "A",
+      5
+     ]
+    ],
+    "preempted": [],
+    "central_free_after": 4,
+    "worker_free_after": 4,
+    "finished": []
+   },
+   {
+    "step": 2,
+    "output_id": 2,
+    "running_before": [
+     "B",
+     "A"
+    ],
+    "waiting_before": [],
+    "requests": {
+     "A": {
+      "raw_seq_id": 0,
+      "service_rank": 1,
+      "victim_rank": 0,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": 0.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     },
+     "B": {
+      "raw_seq_id": 1,
+      "service_rank": 0,
+      "victim_rank": 1,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": 1.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     }
+    },
+    "relaxed_objective": 1.0,
+    "fractional_request_count": 0,
+    "plan_objective": 1.0,
+    "emitted": [
+     [
+      "B",
+      0
+     ]
+    ],
+    "preempted": [],
+    "central_free_after": 4,
+    "worker_free_after": 4,
+    "finished": []
+   },
+   {
+    "step": 3,
+    "output_id": 3,
+    "running_before": [
+     "B",
+     "A"
+    ],
+    "waiting_before": [],
+    "requests": {
+     "A": {
+      "raw_seq_id": 0,
+      "service_rank": 1,
+      "victim_rank": 0,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": 0.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     },
+     "B": {
+      "raw_seq_id": 1,
+      "service_rank": 0,
+      "victim_rank": 1,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": 1.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     }
+    },
+    "relaxed_objective": 1.0,
+    "fractional_request_count": 0,
+    "plan_objective": 1.0,
+    "emitted": [
+     [
+      "B",
+      0
+     ]
+    ],
+    "preempted": [],
+    "central_free_after": 6,
+    "worker_free_after": 6,
+    "finished": [
+     "B"
+    ]
+   },
+   {
+    "step": 4,
+    "output_id": 4,
+    "running_before": [
+     "A"
+    ],
+    "waiting_before": [],
+    "requests": {
+     "A": {
+      "raw_seq_id": 0,
+      "service_rank": 0,
+      "victim_rank": 0,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": 1.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     }
+    },
+    "relaxed_objective": 1.0,
+    "fractional_request_count": 0,
+    "plan_objective": 1.0,
+    "emitted": [
+     [
+      "A",
+      0
+     ]
+    ],
+    "preempted": [],
+    "central_free_after": 6,
+    "worker_free_after": 6,
+    "finished": []
+   },
+   {
+    "step": 5,
+    "output_id": 5,
+    "running_before": [
+     "A"
+    ],
+    "waiting_before": [],
+    "requests": {
+     "A": {
+      "raw_seq_id": 0,
+      "service_rank": 0,
+      "victim_rank": 0,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": 1.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     }
+    },
+    "relaxed_objective": 1.0,
+    "fractional_request_count": 0,
+    "plan_objective": 1.0,
+    "emitted": [
+     [
+      "A",
+      0
+     ]
+    ],
+    "preempted": [],
+    "central_free_after": 8,
+    "worker_free_after": 8,
+    "finished": [
+     "A"
+    ]
+   }
+  ],
+  "summary": {
+   "steps": 6,
+   "first_prefill": {
+    "A": 1,
+    "B": 0
+   },
+   "first_decode": {
+    "A": 4,
+    "B": 2
+   },
+   "completion": {
+    "A": 5,
+    "B": 3
+   },
+   "preemptions": 0,
+   "unfinished": 0,
+   "errors": 0,
+   "idle_output_id": 6
+  }
+ },
+ "rank_based_ids_A0_B1": {
+  "policy": "rank_based",
+  "scales": {
+   "decode_scale": 1.0,
+   "prefill_scale": 1.0,
+   "penalty_scale": 1.0
+  },
+  "ids": {
+   "A": 0,
+   "B": 1
+  },
+  "watermark_blocks": 0,
+  "steps": [
+   {
+    "step": 0,
+    "output_id": 0,
+    "running_before": [],
+    "waiting_before": [
+     "A",
+     "B"
+    ],
+    "requests": {
+     "A": {
+      "raw_seq_id": 0,
+      "service_rank": 0,
+      "victim_rank": null,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 0.0,
+      "relaxed": {
+       "x": 5.0,
+       "y": 0.0,
+       "prefill_indicator": 1.0,
+       "z": 0.0
+      }
+     },
+     "B": {
+      "raw_seq_id": 1,
+      "service_rank": 1,
+      "victim_rank": null,
+      "alpha": 0.5,
+      "beta": 0.5,
+      "gamma": 0.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": 0.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     }
+    },
+    "relaxed_objective": 5.0,
+    "fractional_request_count": 0,
+    "plan_objective": 5.0,
+    "emitted": [
+     [
+      "A",
+      5
+     ]
+    ],
+    "preempted": [],
+    "central_free_after": 6,
+    "worker_free_after": 6,
+    "finished": []
+   },
+   {
+    "step": 1,
+    "output_id": 1,
+    "running_before": [
+     "A"
+    ],
+    "waiting_before": [
+     "B"
+    ],
+    "requests": {
+     "A": {
+      "raw_seq_id": 0,
+      "service_rank": 0,
+      "victim_rank": 0,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": -0.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     },
+     "B": {
+      "raw_seq_id": 1,
+      "service_rank": 1,
+      "victim_rank": null,
+      "alpha": 0.5,
+      "beta": 0.5,
+      "gamma": 0.0,
+      "relaxed": {
+       "x": 8.0,
+       "y": 0.0,
+       "prefill_indicator": 1.0,
+       "z": 0.0
+      }
+     }
+    },
+    "relaxed_objective": 4.0,
+    "fractional_request_count": 0,
+    "plan_objective": 4.0,
+    "emitted": [
+     [
+      "B",
+      8
+     ]
+    ],
+    "preempted": [],
+    "central_free_after": 4,
+    "worker_free_after": 4,
+    "finished": []
+   },
+   {
+    "step": 2,
+    "output_id": 2,
+    "running_before": [
+     "A",
+     "B"
+    ],
+    "waiting_before": [],
+    "requests": {
+     "A": {
+      "raw_seq_id": 0,
+      "service_rank": 0,
+      "victim_rank": 1,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": 1.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     },
+     "B": {
+      "raw_seq_id": 1,
+      "service_rank": 1,
+      "victim_rank": 0,
+      "alpha": 0.5,
+      "beta": 0.5,
+      "gamma": 0.5,
+      "relaxed": {
+       "x": -0.0,
+       "y": 0.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     }
+    },
+    "relaxed_objective": 1.0,
+    "fractional_request_count": 0,
+    "plan_objective": 1.0,
+    "emitted": [
+     [
+      "A",
+      0
+     ]
+    ],
+    "preempted": [],
+    "central_free_after": 4,
+    "worker_free_after": 4,
+    "finished": []
+   },
+   {
+    "step": 3,
+    "output_id": 3,
+    "running_before": [
+     "A",
+     "B"
+    ],
+    "waiting_before": [],
+    "requests": {
+     "A": {
+      "raw_seq_id": 0,
+      "service_rank": 0,
+      "victim_rank": 1,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": 1.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     },
+     "B": {
+      "raw_seq_id": 1,
+      "service_rank": 1,
+      "victim_rank": 0,
+      "alpha": 0.5,
+      "beta": 0.5,
+      "gamma": 0.5,
+      "relaxed": {
+       "x": -0.0,
+       "y": 0.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     }
+    },
+    "relaxed_objective": 1.0,
+    "fractional_request_count": 0,
+    "plan_objective": 1.0,
+    "emitted": [
+     [
+      "A",
+      0
+     ]
+    ],
+    "preempted": [],
+    "central_free_after": 6,
+    "worker_free_after": 6,
+    "finished": [
+     "A"
+    ]
+   },
+   {
+    "step": 4,
+    "output_id": 4,
+    "running_before": [
+     "B"
+    ],
+    "waiting_before": [],
+    "requests": {
+     "B": {
+      "raw_seq_id": 1,
+      "service_rank": 0,
+      "victim_rank": 0,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": 1.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     }
+    },
+    "relaxed_objective": 1.0,
+    "fractional_request_count": 0,
+    "plan_objective": 1.0,
+    "emitted": [
+     [
+      "B",
+      0
+     ]
+    ],
+    "preempted": [],
+    "central_free_after": 6,
+    "worker_free_after": 6,
+    "finished": []
+   },
+   {
+    "step": 5,
+    "output_id": 5,
+    "running_before": [
+     "B"
+    ],
+    "waiting_before": [],
+    "requests": {
+     "B": {
+      "raw_seq_id": 1,
+      "service_rank": 0,
+      "victim_rank": 0,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": 1.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     }
+    },
+    "relaxed_objective": 1.0,
+    "fractional_request_count": 0,
+    "plan_objective": 1.0,
+    "emitted": [
+     [
+      "B",
+      0
+     ]
+    ],
+    "preempted": [],
+    "central_free_after": 8,
+    "worker_free_after": 8,
+    "finished": [
+     "B"
+    ]
+   }
+  ],
+  "summary": {
+   "steps": 6,
+   "first_prefill": {
+    "A": 0,
+    "B": 1
+   },
+   "first_decode": {
+    "A": 2,
+    "B": 4
+   },
+   "completion": {
+    "A": 3,
+    "B": 5
+   },
+   "preemptions": 0,
+   "unfinished": 0,
+   "errors": 0,
+   "idle_output_id": 6
+  }
+ },
+ "uniform_ids_A1_B0": {
+  "policy": "uniform",
+  "scales": null,
+  "ids": {
+   "A": 1,
+   "B": 0
+  },
+  "watermark_blocks": 0,
+  "steps": [
+   {
+    "step": 0,
+    "output_id": 0,
+    "running_before": [],
+    "waiting_before": [
+     "A",
+     "B"
+    ],
+    "requests": {
+     "B": {
+      "raw_seq_id": 0,
+      "service_rank": 1,
+      "victim_rank": null,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": 8.0,
+       "y": 0.0,
+       "prefill_indicator": 1.0,
+       "z": 0.0
+      }
+     },
+     "A": {
+      "raw_seq_id": 1,
+      "service_rank": 0,
+      "victim_rank": null,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": 0.0,
+       "y": 0.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     }
+    },
+    "relaxed_objective": 8.0,
+    "fractional_request_count": 0,
+    "plan_objective": 8.0,
+    "emitted": [
+     [
+      "B",
+      8
+     ]
+    ],
+    "preempted": [],
+    "central_free_after": 6,
+    "worker_free_after": 6,
+    "finished": []
+   },
+   {
+    "step": 1,
+    "output_id": 1,
+    "running_before": [
+     "B"
+    ],
+    "waiting_before": [
+     "A"
+    ],
+    "requests": {
+     "B": {
+      "raw_seq_id": 0,
+      "service_rank": 0,
+      "victim_rank": 0,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": 0.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     },
+     "A": {
+      "raw_seq_id": 1,
+      "service_rank": 1,
+      "victim_rank": null,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": 5.0,
+       "y": 0.0,
+       "prefill_indicator": 1.0,
+       "z": 0.0
+      }
+     }
+    },
+    "relaxed_objective": 5.0,
+    "fractional_request_count": 0,
+    "plan_objective": 5.0,
+    "emitted": [
+     [
+      "A",
+      5
+     ]
+    ],
+    "preempted": [],
+    "central_free_after": 4,
+    "worker_free_after": 4,
+    "finished": []
+   },
+   {
+    "step": 2,
+    "output_id": 2,
+    "running_before": [
+     "B",
+     "A"
+    ],
+    "waiting_before": [],
+    "requests": {
+     "B": {
+      "raw_seq_id": 0,
+      "service_rank": 0,
+      "victim_rank": 1,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": 0.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     },
+     "A": {
+      "raw_seq_id": 1,
+      "service_rank": 1,
+      "victim_rank": 0,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": 1.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     }
+    },
+    "relaxed_objective": 1.0,
+    "fractional_request_count": 0,
+    "plan_objective": 1.0,
+    "emitted": [
+     [
+      "A",
+      0
+     ]
+    ],
+    "preempted": [],
+    "central_free_after": 4,
+    "worker_free_after": 4,
+    "finished": []
+   },
+   {
+    "step": 3,
+    "output_id": 3,
+    "running_before": [
+     "B",
+     "A"
+    ],
+    "waiting_before": [],
+    "requests": {
+     "B": {
+      "raw_seq_id": 0,
+      "service_rank": 0,
+      "victim_rank": 1,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": 0.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     },
+     "A": {
+      "raw_seq_id": 1,
+      "service_rank": 1,
+      "victim_rank": 0,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": 1.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     }
+    },
+    "relaxed_objective": 1.0,
+    "fractional_request_count": 0,
+    "plan_objective": 1.0,
+    "emitted": [
+     [
+      "A",
+      0
+     ]
+    ],
+    "preempted": [],
+    "central_free_after": 6,
+    "worker_free_after": 6,
+    "finished": [
+     "A"
+    ]
+   },
+   {
+    "step": 4,
+    "output_id": 4,
+    "running_before": [
+     "B"
+    ],
+    "waiting_before": [],
+    "requests": {
+     "B": {
+      "raw_seq_id": 0,
+      "service_rank": 0,
+      "victim_rank": 0,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": 1.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     }
+    },
+    "relaxed_objective": 1.0,
+    "fractional_request_count": 0,
+    "plan_objective": 1.0,
+    "emitted": [
+     [
+      "B",
+      0
+     ]
+    ],
+    "preempted": [],
+    "central_free_after": 6,
+    "worker_free_after": 6,
+    "finished": []
+   },
+   {
+    "step": 5,
+    "output_id": 5,
+    "running_before": [
+     "B"
+    ],
+    "waiting_before": [],
+    "requests": {
+     "B": {
+      "raw_seq_id": 0,
+      "service_rank": 0,
+      "victim_rank": 0,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": 1.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     }
+    },
+    "relaxed_objective": 1.0,
+    "fractional_request_count": 0,
+    "plan_objective": 1.0,
+    "emitted": [
+     [
+      "B",
+      0
+     ]
+    ],
+    "preempted": [],
+    "central_free_after": 8,
+    "worker_free_after": 8,
+    "finished": [
+     "B"
+    ]
+   }
+  ],
+  "summary": {
+   "steps": 6,
+   "first_prefill": {
+    "A": 1,
+    "B": 0
+   },
+   "first_decode": {
+    "A": 2,
+    "B": 4
+   },
+   "completion": {
+    "A": 3,
+    "B": 5
+   },
+   "preemptions": 0,
+   "unfinished": 0,
+   "errors": 0,
+   "idle_output_id": 6
+  }
+ },
+ "rank_based_ids_A1_B0": {
+  "policy": "rank_based",
+  "scales": {
+   "decode_scale": 1.0,
+   "prefill_scale": 1.0,
+   "penalty_scale": 1.0
+  },
+  "ids": {
+   "A": 1,
+   "B": 0
+  },
+  "watermark_blocks": 0,
+  "steps": [
+   {
+    "step": 0,
+    "output_id": 0,
+    "running_before": [],
+    "waiting_before": [
+     "A",
+     "B"
+    ],
+    "requests": {
+     "B": {
+      "raw_seq_id": 0,
+      "service_rank": 1,
+      "victim_rank": null,
+      "alpha": 0.5,
+      "beta": 0.5,
+      "gamma": 0.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": 0.0,
+       "prefill_indicator": -0.0,
+       "z": 0.0
+      }
+     },
+     "A": {
+      "raw_seq_id": 1,
+      "service_rank": 0,
+      "victim_rank": null,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 0.0,
+      "relaxed": {
+       "x": 5.0,
+       "y": 0.0,
+       "prefill_indicator": 1.0,
+       "z": 0.0
+      }
+     }
+    },
+    "relaxed_objective": 5.0,
+    "fractional_request_count": 0,
+    "plan_objective": 5.0,
+    "emitted": [
+     [
+      "A",
+      5
+     ]
+    ],
+    "preempted": [],
+    "central_free_after": 6,
+    "worker_free_after": 6,
+    "finished": []
+   },
+   {
+    "step": 1,
+    "output_id": 1,
+    "running_before": [
+     "A"
+    ],
+    "waiting_before": [
+     "B"
+    ],
+    "requests": {
+     "B": {
+      "raw_seq_id": 0,
+      "service_rank": 1,
+      "victim_rank": null,
+      "alpha": 0.5,
+      "beta": 0.5,
+      "gamma": 0.0,
+      "relaxed": {
+       "x": 8.0,
+       "y": 0.0,
+       "prefill_indicator": 1.0,
+       "z": 0.0
+      }
+     },
+     "A": {
+      "raw_seq_id": 1,
+      "service_rank": 0,
+      "victim_rank": 0,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": -0.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     }
+    },
+    "relaxed_objective": 4.0,
+    "fractional_request_count": 0,
+    "plan_objective": 4.0,
+    "emitted": [
+     [
+      "B",
+      8
+     ]
+    ],
+    "preempted": [],
+    "central_free_after": 4,
+    "worker_free_after": 4,
+    "finished": []
+   },
+   {
+    "step": 2,
+    "output_id": 2,
+    "running_before": [
+     "A",
+     "B"
+    ],
+    "waiting_before": [],
+    "requests": {
+     "B": {
+      "raw_seq_id": 0,
+      "service_rank": 1,
+      "victim_rank": 0,
+      "alpha": 0.5,
+      "beta": 0.5,
+      "gamma": 0.5,
+      "relaxed": {
+       "x": -0.0,
+       "y": -0.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     },
+     "A": {
+      "raw_seq_id": 1,
+      "service_rank": 0,
+      "victim_rank": 1,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": 1.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     }
+    },
+    "relaxed_objective": 1.0,
+    "fractional_request_count": 0,
+    "plan_objective": 1.0,
+    "emitted": [
+     [
+      "A",
+      0
+     ]
+    ],
+    "preempted": [],
+    "central_free_after": 4,
+    "worker_free_after": 4,
+    "finished": []
+   },
+   {
+    "step": 3,
+    "output_id": 3,
+    "running_before": [
+     "A",
+     "B"
+    ],
+    "waiting_before": [],
+    "requests": {
+     "B": {
+      "raw_seq_id": 0,
+      "service_rank": 1,
+      "victim_rank": 0,
+      "alpha": 0.5,
+      "beta": 0.5,
+      "gamma": 0.5,
+      "relaxed": {
+       "x": -0.0,
+       "y": -0.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     },
+     "A": {
+      "raw_seq_id": 1,
+      "service_rank": 0,
+      "victim_rank": 1,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": 1.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     }
+    },
+    "relaxed_objective": 1.0,
+    "fractional_request_count": 0,
+    "plan_objective": 1.0,
+    "emitted": [
+     [
+      "A",
+      0
+     ]
+    ],
+    "preempted": [],
+    "central_free_after": 6,
+    "worker_free_after": 6,
+    "finished": [
+     "A"
+    ]
+   },
+   {
+    "step": 4,
+    "output_id": 4,
+    "running_before": [
+     "B"
+    ],
+    "waiting_before": [],
+    "requests": {
+     "B": {
+      "raw_seq_id": 0,
+      "service_rank": 0,
+      "victim_rank": 0,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": 1.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     }
+    },
+    "relaxed_objective": 1.0,
+    "fractional_request_count": 0,
+    "plan_objective": 1.0,
+    "emitted": [
+     [
+      "B",
+      0
+     ]
+    ],
+    "preempted": [],
+    "central_free_after": 6,
+    "worker_free_after": 6,
+    "finished": []
+   },
+   {
+    "step": 5,
+    "output_id": 5,
+    "running_before": [
+     "B"
+    ],
+    "waiting_before": [],
+    "requests": {
+     "B": {
+      "raw_seq_id": 0,
+      "service_rank": 0,
+      "victim_rank": 0,
+      "alpha": 1.0,
+      "beta": 1.0,
+      "gamma": 1.0,
+      "relaxed": {
+       "x": -0.0,
+       "y": 1.0,
+       "prefill_indicator": 0.0,
+       "z": 0.0
+      }
+     }
+    },
+    "relaxed_objective": 1.0,
+    "fractional_request_count": 0,
+    "plan_objective": 1.0,
+    "emitted": [
+     [
+      "B",
+      0
+     ]
+    ],
+    "preempted": [],
+    "central_free_after": 8,
+    "worker_free_after": 8,
+    "finished": [
+     "B"
+    ]
+   }
+  ],
+  "summary": {
+   "steps": 6,
+   "first_prefill": {
+    "A": 0,
+    "B": 1
+   },
+   "first_decode": {
+    "A": 2,
+    "B": 4
+   },
+   "completion": {
+    "A": 3,
+    "B": 5
+   },
+   "preemptions": 0,
+   "unfinished": 0,
+   "errors": 0,
+   "idle_output_id": 6
+  }
+ }
+}
