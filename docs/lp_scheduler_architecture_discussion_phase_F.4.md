@@ -194,6 +194,8 @@ Adopt P04's single LP-guided whole-action constructor and analytical progress ar
 
 Q05's algorithm choice is settled. F01 remains open for mathematical/normative amendments, implementation, and validation under all approved resource constraints, rather than for choosing an extraction algorithm. F02 remains open. Q06 will specify policy ranks and queue evolution without silently replacing the approved LP-first extraction comparators.
 
+Clarification recorded 2026-10-12 (user decision): R15's phrase "when needed for progress" does not restrict P04. The first legal trial in the scan is accepted regardless of utility, even when another legal useful plan has nonnegative utility. Keep this one-pass rule and record the avoidable negative-utility first action as an accepted utility-quality limitation. Do not adopt the proposed two-pass first-acceptance alternative. Legality and useful-progress guarantees are unchanged. The counterexample is recorded in `docs/math/EDITING.md`.
+
 ### R16 — P05 policy ranks and queue evolution approved
 
 Status: explicitly approved by the user on 2026-10-12; not implemented or tested.

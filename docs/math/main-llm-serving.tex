@@ -325,7 +325,7 @@ The ILP maximizes weighted utility for the current step under these assumptions.
 
 Exact integer optimization can be costly in a scheduler loop. The following subsections give two primal heuristics for constructing feasible schedules. All scheduling methods below use the same snapshot, eligibility sets, and request coefficients; inputs omitted from procedure signatures are implicit snapshot data.
 
-\textcolor{red}{Revision note: the following subsections have not yet been revised for this formulation. They do not enforce Constraints~\ref{eq:p_decode_start}--\ref{eq:p_progress}, and some passages still refer to the removed planning reserve. Their feasibility and equivalence claims refer to the earlier formulation until revised.}
+\textcolor{red}{Revision note: Section~\ref{subsec:lp_relaxation} has been revised for this formulation; the subsections after it have not. See the revision boundary at the end of Section~\ref{subsec:lp_relaxation}.}
 
 \paragraph{Incremental Prefill Allocation.}
 For architectures that allocate KV-cache capacity incrementally during prefill, a token-proportional model replaces Constraint~\ref{eq:p_memory} with
@@ -339,7 +339,7 @@ Here \(c_i^P\in\mathbb{R}_{\ge0}\) is the number of blocks charged per prefill t
 \subsection{Primal Heuristic 1: LP Relaxation and Integer Extraction}
 \label{subsec:lp_relaxation}
 
-The linear programming (LP) relaxation of the fixed-charge formulation in Equation~\ref{eq:myopic_ilp} keeps its objective and constraints, but replaces the integer domains with
+The linear programming (LP) relaxation of the fixed-charge formulation in Equation~\ref{eq:myopic_ilp} keeps its objective and every constraint, including the resident, memory, decode-start, watermark, and progress rows, but replaces the integer domains with
 \[
 \begin{aligned}
 &x_i\in\mathbb{R}_{\ge0},\qquad y_i,I_i^P,z_i\in[0,1]
@@ -348,293 +348,159 @@ The linear programming (LP) relaxation of the fixed-charge formulation in Equati
 &&\forall i\in U_t\setminus\mathcal{Z}_t.
 \end{aligned}
 \]
-When the LP is feasible, let \((\tilde{\mathbf{x}},\tilde{\mathbf{y}},\tilde{\mathbf{z}},\tilde{\mathbf{I}}^P)\) denote an optimal solution. The algorithms below extract an integer schedule. The incremental-allocation alternative in Section~\ref{subsec:myopic_ilp} requires a different prefill-memory check.
+When the LP is feasible, let \((\tilde{\mathbf{x}},\tilde{\mathbf{y}},\tilde{\mathbf{z}},\tilde{\mathbf{I}}^P)\) denote an optimal solution. Hats denote the integer schedule. The algorithms below use the LP solution only to order candidates and choose chunk sizes; every whole action is checked against the integer constraints. They do not apply to the incremental-allocation alternative in Section~\ref{subsec:myopic_ilp}.
 
-Proceed only if the solver reports optimality and its usable finite vector passes relaxed-solution validation. Before success, validate the integer plan's domains, eligible actions, mutual exclusion, chunk bounds, and shared budgets. Failure returns no schedule.
+Proceed only if the solver reports optimality and its usable finite vector passes relaxed-solution validation. A progress argument never permits continuing after a solver or numerical failure. Before success, the complete integer plan is validated independently.
 
-Hats denote the integer schedule. Algorithm~\ref{alg:lp_rounding} puts a request in \(U_{\mathrm{int}}\) when all three indicators \(\tilde y_i,\tilde z_i,\tilde I_i^P\) are in \(\{0,1\}\), and in \(U_{\mathrm{frac}}\) otherwise. The token count \(\tilde x_i\) may still be fractional in \(U_{\mathrm{int}}\). For those requests, keep the indicators and set \(\hat x_i=\lfloor\tilde x_i\rfloor\).
+\paragraph{Ranks.}
+Each execution candidate \(i\in\mathcal{P}_t\cup\mathcal{D}_t\) has a service rank \(\pi_i^E\), and each \(i\in\mathcal{Z}_t\) has a victim rank \(\pi_i^Z\). Ranks are immutable inputs for the step; smaller ranks come first, and the request identifier \(i\) breaks remaining ties. They express policy preferences; they are not decision variables or a precomputed schedule. LP values are compared first and ranks only second, so ranks guarantee neither eviction from the tail of the running order nor identical schedules when the LP has several optimal solutions.
 
-This flooring preserves the local chunk constraints. If \(\tilde{I}_i^P=0\), then \(\tilde{x}_i=0\). If \(\tilde{I}_i^P=1\), then \(1\le\tilde{x}_i\le q_i\). Since \(q_i\) is an integer, flooring still gives \(1\le\lfloor\tilde{x}_i\rfloor\le q_i\). Flooring can only reduce token use. The executing-request count and fixed prefill-memory charge are unchanged.
-
-Supply a fixed total order \(\pi_t\) for processing requests and breaking memory-repair ties. An exact preemption tie in the first step leaves the request available for execution; repair may still preempt it. Extraction is deterministic for a given LP solution and order.
+\paragraph{Legal Partial Plans.}
+An integer plan is \emph{legal} if it satisfies every constraint of Equation~\ref{eq:myopic_ilp} except possibly Constraint~\ref{eq:p_progress}. Let \(\hat H=F+\sum_{i\in\mathcal{R}_t}c_i^Z\hat z_i-\sum_{i\in U_t}a_i^P\hat I_i^P\) be \(H\) evaluated at the plan. For integer values, legality is equivalent to the following checks:
+\begin{itemize}
+    \item token use \(\sum_i(\hat x_i+\hat y_i)\le B_{\max}\) and execution count \(\sum_i(\hat I_i^P+\hat y_i)\le S_{\max}\);
+    \item resident count \(|\mathcal{R}_t|-\sum_{i\in\mathcal{R}_t}\hat z_i+\sum_{i\in\mathcal{Q}_t}\hat I_i^P\le N_{\max}\);
+    \item \(\hat H\ge\sum_i c_i^D\hat y_i\); \(\hat H\ge h\) if any admission is selected; \(\hat H\ge1\) if any decode is selected;
+    \item every action is state-eligible, no request both executes and is preempted, and each selected chunk is an integer in \([1,q_i]\), with \(\hat x_i=0\) otherwise.
+\end{itemize}
+The third item restates Constraints~\ref{eq:p_memory}--\ref{eq:p_watermark} using integrality of \(\hat H\) and the execution-count bound. A legal plan with at least one prefill or decode also satisfies Constraint~\ref{eq:p_progress}.
 
 \begin{algorithm}[htbp]
-\caption{LP Relaxation and Variable Partitioning}
+\caption{LP Relaxation and Whole-Action Extraction}
 \label{alg:lp_rounding}
 \begin{algorithmic}[1]
-\Procedure{SolveLPRelaxation}{$U_t,\mathcal{Z}_t,\pi_t,B_{\max},S_{\max},M_{\mathrm{avail}}$}
-    \State \Comment{1. Solve the continuous relaxation of Eq.~\ref{eq:myopic_ilp}}
-    \State $R\gets\text{LPSolver}(U_t,\mathcal Z_t)$
-    \If{$R$ does not report optimality or has no usable finite solution vector}
+\Procedure{SolveLPRelaxation}{$U_t,\boldsymbol{\pi}^E,\boldsymbol{\pi}^Z$}
+    \State \Comment{1. Solve and validate the continuous relaxation of Eq.~\ref{eq:myopic_ilp}}
+    \State $\mathrm{res}\gets\text{LPSolver}(U_t)$
+    \If{$\mathrm{res}$ establishes that the relaxation is infeasible}
+        \State \textbf{return} \textsc{LPInfeasible}
+    \EndIf
+    \If{$\mathrm{res}$ does not report optimality or has no usable finite solution vector}
         \State \textbf{return} \textsc{LPFailure}
     \EndIf
-    \State $\mathrm{solution}\gets$\Call{ValidateRelaxedSolution}{$R.\mathrm{vector}$}
+    \State $\mathrm{solution}\gets$\Call{ValidateRelaxedSolution}{$\mathrm{res}.\mathrm{vector}$}
     \If{validation returned failure}
         \State \textbf{return} \textsc{LPFailure}
     \EndIf
     \State $(\tilde{\mathbf x},\tilde{\mathbf y},\tilde{\mathbf z},\tilde{\mathbf I}^P)\gets\mathrm{solution}$
-    \State
-    \(
-    \hat{\mathbf{x}},
-    \hat{\mathbf{y}},
-    \hat{\mathbf{z}},
-    \hat{\mathbf{I}}^P
-    \gets \mathbf{0}
-    \)
-    \State
-    \(
-    U_{\mathrm{int}}\gets\emptyset,
-    \quad
-    U_{\mathrm{frac}}\gets\emptyset
-    \)
 
-    \State \Comment{2. Partition requests by their relaxed action indicators}
-    \For{\(i\in U_t\)}
-        \If{
-            \(\tilde{y}_i\in\{0,1\}\)
-            \textbf{and}
-            \(\tilde{z}_i\in\{0,1\}\)
-            \textbf{and}
-            \(\tilde{I}_i^P\in\{0,1\}\)
-        }
-            \State
-            \(U_{\mathrm{int}}\gets U_{\mathrm{int}}\cup\{i\}\)
-        \Else
-            \State
-            \(U_{\mathrm{frac}}\gets U_{\mathrm{frac}}\cup\{i\}\)
-        \EndIf
-    \EndFor
-
-    \State \Comment{3. Lock integral action indicators}
-    \For{\(i\in U_{\mathrm{int}}\)}
-        \State
-        \(
-        \hat{y}_i\gets\tilde{y}_i,
-        \quad
-        \hat{z}_i\gets\tilde{z}_i,
-        \quad
-        \hat{I}_i^P\gets\tilde{I}_i^P,
-        \quad
-        \hat{x}_i\gets\lfloor\tilde{x}_i\rfloor
-        \)
-    \EndFor
-
-    \State
-    \(
-    B_{\mathrm{rem}}
-    \gets
-    B_{\max}
-    -
-    \sum_{i\in U_{\mathrm{int}}}
-    \left(
-        \hat{x}_i+\hat{y}_i
-    \right)
-    \)
-
-    \State
-    \(
-    S_{\mathrm{rem}}
-    \gets
-    S_{\max}
-    -
-    \sum_{i\in U_{\mathrm{int}}}
-    \left(
-        \hat{I}_i^P+\hat{y}_i
-    \right)
-    \)
-
-    \State
-    \(
-    M_{\mathrm{rem}}
-    \gets
-    M_{\mathrm{avail}}
-    -
-    \sum_{i\in U_{\mathrm{int}}}
-    \left(
-        a_i^P\hat{I}_i^P
-        +
-        c_i^D\hat{y}_i
-        -
-        c_i^Z\hat{z}_i
-    \right)
-    \)
-
-    \State \Comment{4. Deterministically resolve fractional requests}
-    \State $\mathrm{plan}\gets$
-    \Call{ExtractFractionals}{$
-        U_{\mathrm{frac}},
-        \mathcal{Z}_t,
-        \pi_t,
-        \tilde{\mathbf{y}},
-        \tilde{\mathbf{z}},
-        \tilde{\mathbf{I}}^P,
-        \hat{\mathbf{x}},
-        \hat{\mathbf{y}},
-        \hat{\mathbf{z}},
-        \hat{\mathbf{I}}^P,
-        B_{\mathrm{rem}},
-        S_{\mathrm{rem}},
-        M_{\mathrm{rem}}
-    $}
-    \If{extraction returned failure}
-        \State \textbf{return} $\mathrm{plan}$
+    \State \Comment{2. Construct and validate whole actions}
+    \State $\mathrm{plan}\gets$\Call{ConstructWholeActions}{$\tilde{\mathbf x},\tilde{\mathbf y},\tilde{\mathbf z},\tilde{\mathbf I}^P,\boldsymbol{\pi}^E,\boldsymbol{\pi}^Z$}
+    \If{$\mathrm{plan}=\textsc{NoUsefulWork}$}
+        \State \textbf{return} \textsc{NoUsefulWork}
     \EndIf
-    \If{$\mathrm{plan}$ fails integer-plan validation}
+    \If{$\mathrm{plan}$ fails integer-plan validation, including Constraint~\ref{eq:p_progress}}
         \State \textbf{return} \textsc{PlanFailure}
     \EndIf
+    \State Order selected victims by \((\pi_i^Z,i)\)
+    \State Order selected execution as prefills, decodes with \(c_i^D=0\), then decodes with \(c_i^D=1\), each group by \((\pi_i^E,i)\)
     \State \textbf{return} $\mathrm{plan}$
 \EndProcedure
 \end{algorithmic}
 \end{algorithm}
 
-Subtracting the locked requests' resource use gives the residual budgets \(B_{\mathrm{rem}},S_{\mathrm{rem}},M_{\mathrm{rem}}\). For a feasible LP allocation, the token and request-count residuals are nonnegative. Memory may be negative because fractional preemption credits are excluded. Algorithm~\ref{alg:fractional_packing} repairs this deficit before packing execution actions.
-
 \begin{algorithm}[htbp]
-\caption{Safe Fractional Extraction}
-\label{alg:fractional_packing}
+\caption{LP-Guided Construction of Whole Actions}
+\label{alg:lp_extraction}
 \begin{algorithmic}[1]
-\Procedure{ExtractFractionals}{
-    $
-    U_{\mathrm{frac}},
-    \mathcal{Z}_t,
-    \pi_t,
-    \tilde{\mathbf{y}},
-    \tilde{\mathbf{z}},
-    \tilde{\mathbf{I}}^P,
-    \hat{\mathbf{x}},
-    \hat{\mathbf{y}},
-    \hat{\mathbf{z}},
-    \hat{\mathbf{I}}^P,
-    B_{\mathrm{rem}},
-    S_{\mathrm{rem}},
-    M_{\mathrm{rem}}
-    $
-}
-    \State \Comment{1. Round dominant legal preemptions first}
-    \For{$i\in U_{\mathrm{frac}}\cap\mathcal{Z}_t$ in order $\pi_t$}
-        \If{$c_i^Z>0$ \textbf{and} $\tilde z_i>\max\{\tilde y_i,\tilde I_i^P\}$}
-            \State $\hat z_i\gets1$
-            \State $M_{\mathrm{rem}}\gets M_{\mathrm{rem}}+c_i^Z$
-        \EndIf
-    \EndFor
+\Procedure{ConstructWholeActions}{$\tilde{\mathbf x},\tilde{\mathbf y},\tilde{\mathbf z},\tilde{\mathbf I}^P,\boldsymbol{\pi}^E,\boldsymbol{\pi}^Z$}
+    \State $\hat p=(\hat{\mathbf x},\hat{\mathbf y},\hat{\mathbf z},\hat{\mathbf I}^P)\gets\mathbf 0$;\quad $\mathcal{E}\gets\emptyset$;\quad $\mathcal{V}\gets\emptyset$
+    \State $L_E\gets\mathcal{P}_t\cup\mathcal{D}_t$ sorted by descending $e_i=\tilde I_i^P+\tilde y_i$, then $\pi_i^E$, then $i$
+    \State $L_Z\gets\mathcal{Z}_t$ sorted by descending $\tilde z_i$, then $\pi_i^Z$, then $i$
 
-    \State \Comment{2. Restore planning-memory feasibility}
-    \While{$M_{\mathrm{rem}}<0$}
-        \State $V\gets\{i\in U_{\mathrm{frac}}\cap\mathcal{Z}_t:\hat z_i=0,\ c_i^Z>0\}$
-        \If{$V=\emptyset$}
-            \State \textbf{return} \textsc{ExtractionFailure}
-        \EndIf
-        \State Choose $k\in V$ with largest $\tilde z_k$; choose the earliest in $\pi_t$ on a tie
-        \State $\hat z_k\gets1$
-        \State $M_{\mathrm{rem}}\gets M_{\mathrm{rem}}+c_k^Z$
-    \EndWhile
-
-    \State \Comment{3. Pack the remaining fractional execution actions}
-    \For{$i\in U_{\mathrm{frac}}$ in order $\pi_t$}
-        \If{$\hat z_i=1$ \textbf{or} $B_{\mathrm{rem}}<1$ \textbf{or} $S_{\mathrm{rem}}<1$}
+    \State \Comment{1. Try each candidate once, with any victims it needs}
+    \For{$i\in L_E$ in order}
+        \State $B_{\mathrm{rem}}\gets B_{\max}-\sum_j(\hat x_j+\hat y_j)$;\quad $S_{\mathrm{rem}}\gets S_{\max}-\sum_j(\hat I_j^P+\hat y_j)$
+        \If{$i\in\mathcal{V}$ \textbf{or} $B_{\mathrm{rem}}<1$ \textbf{or} $S_{\mathrm{rem}}<1$}
             \State \textbf{continue}
         \EndIf
-        \If{$\tilde y_i>0$ \textbf{and} $M_{\mathrm{rem}}\ge c_i^D$}
-            \State $\hat y_i\gets1$
-            \State $B_{\mathrm{rem}}\gets B_{\mathrm{rem}}-1$
-            \State $S_{\mathrm{rem}}\gets S_{\mathrm{rem}}-1$
-            \State $M_{\mathrm{rem}}\gets M_{\mathrm{rem}}-c_i^D$
-        \ElsIf{$\tilde I_i^P>0$ \textbf{and} $M_{\mathrm{rem}}\ge a_i^P$}
-            \State $\hat x_i\gets\min(q_i,B_{\mathrm{rem}})$
-            \State $\hat I_i^P\gets1$
-            \State $B_{\mathrm{rem}}\gets B_{\mathrm{rem}}-\hat x_i$
-            \State $S_{\mathrm{rem}}\gets S_{\mathrm{rem}}-1$
-            \State $M_{\mathrm{rem}}\gets M_{\mathrm{rem}}-a_i^P$
+        \State $\bar p\gets\hat p$
+        \If{$i\in\mathcal{D}_t$}
+            \State $\bar y_i\gets1$
+        \Else
+            \State $\bar I_i^P\gets1$;\quad $\bar x_i\gets\min\{q_i,B_{\mathrm{rem}},\max(1,\lfloor\tilde x_i\rfloor)\}$
+        \EndIf
+        \State $\mathcal{W}\gets\emptyset$
+        \For{$k\in L_Z$ in order}
+            \If{$\bar p$ is legal}
+                \State \textbf{break}
+            \EndIf
+            \If{$k\ne i$ \textbf{and} $k\notin\mathcal{E}\cup\mathcal{V}$}
+                \State $\bar z_k\gets1$;\quad $\mathcal{W}\gets\mathcal{W}\cup\{k\}$
+            \EndIf
+        \EndFor
+        \If{$\bar p$ is not legal}
+            \State \textbf{continue} \Comment{discard the trial}
+        \EndIf
+        \State $u^+\gets\alpha_i\bar y_i+\beta_i\bar x_i$;\quad $u^-\gets\sum_{k\in\mathcal{W}}\gamma_k$
+        \If{$\mathcal{E}=\emptyset$ \textbf{or} $u^+-u^->0$ \textbf{or} ($\mathcal{W}=\emptyset$ \textbf{and} $u^+-u^-\ge0$)}
+            \State $\hat p\gets\bar p$;\quad $\mathcal{E}\gets\mathcal{E}\cup\{i\}$;\quad $\mathcal{V}\gets\mathcal{V}\cup\mathcal{W}$
         \EndIf
     \EndFor
-
-    \If{$\hat I_i^P\ne\mathbf1\{\hat x_i>0\}$ for some $i\in U_t$}
-        \State \textbf{return} \textsc{ExtractionFailure}
+    \If{$\mathcal{E}=\emptyset$}
+        \State \textbf{return} \textsc{NoUsefulWork}
     \EndIf
-    \State
-    \textbf{return}
-    $
-    \hat{\mathbf{x}},
-    \hat{\mathbf{y}},
-    \hat{\mathbf{z}},
-    \hat{\mathbf{I}}^P
-    $
+
+    \State \Comment{2. Extend selected prefill chunks with remaining tokens}
+    \For{$i\in\mathcal{E}\cap\mathcal{P}_t$ in order of $(\pi_i^E,i)$}
+        \State $\hat x_i\gets\min\{q_i,\ \hat x_i+B_{\max}-\sum_j(\hat x_j+\hat y_j)\}$
+    \EndFor
+    \State \textbf{return} $\hat p$
 \EndProcedure
 \end{algorithmic}
 \end{algorithm}
 
-\paragraph{Almost-Integral Structure.}
-A vertex, or basic feasible solution, is a feasible point that is not the midpoint of two distinct feasible points. At any vertex of this relaxation, at most three requests have nonintegral variables.
+\paragraph{Whole-Action Construction.}
+Algorithm~\ref{alg:lp_extraction} scans every eligible execution candidate, including those with zero LP support. A trial \(\bar p\) adds one whole decode or one positive prefill chunk to the accepted partial plan. If the trial is not legal, legal victims are added in the order \(L_Z\) until it is legal or the list is exhausted. Victims exclude the candidate, accepted executions, and accepted victims. They include residents with \(\tilde z_k=0\), including those whose LP actions are integral and idle. A victim with \(c_k^Z=0\) can still release a resident place. An unsuccessful trial is discarded, so the accepted plan is unchanged.
 
-\begin{proof}
-First consider one request, keeping its local constraints but ignoring the three shared budgets. The action vectors for \((x_i,y_i,z_i,I_i^P)\) are
+The first legal trial is accepted even if its utility is negative. Constraint~\ref{eq:p_progress} requires some useful execution, but not this particular trial. The constructor can therefore accept negative utility even when another legal useful plan has nonnegative utility. This is an accepted limitation of utility quality; the legality and useful-progress arguments below are unaffected. After that, an addition that introduces new victims is accepted only if its reward \(u^+\) strictly exceeds the new penalties \(u^-\). An addition without new victims is accepted if \(u^+\ge0\), which always holds for nonnegative weights. Other victim subsets are not searched. Accepted execution and victims are never removed. The empty partial plan is not a schedule: if no trial succeeds, the result is \textsc{NoUsefulWork}.
+
+\paragraph{Outcomes.}
+The procedure has four distinct failures; none counts as useful execution or permits partial execution.
+\begin{itemize}
+    \item \textsc{LPInfeasible}: the relaxation is infeasible. The ILP is then infeasible too, because every integer plan is LP-feasible.
+    \item \textsc{LPFailure}: a solver or numerical failure, or a failed relaxed-solution validation. It establishes nothing about the ILP.
+    \item \textsc{NoUsefulWork}: under the assumptions below, no legal useful integer plan exists, although the LP may be feasible.
+    \item \textsc{PlanFailure}: the final integer validation rejects the plan. This indicates an implementation or input error, not impossibility.
+\end{itemize}
+LP feasibility does not imply integer feasibility. As an abstract formulation example, let \(F=3\), \(h=2\), \(B_{\max},S_{\max},N_{\max}\ge1\), no residents, and two waiting requests with \(a_i^P=2\) and \(q_i=1\). The point \(x_i=I_i^P=1/2\) is LP-feasible, with \(H=1\ge hI_i^P\). However, either whole admission leaves one free block, fewer than \(h\). This state lies outside the admission-validated runtime domain: with coherent block accounting its pool has only three blocks, so admission validation already rejects both requests, since \(A_i+h=4>3\). It is not an instance of \textsc{NoUsefulWork} after validation.
+
+\paragraph{Fractional Structure.}
+A vertex, or basic feasible solution, is a feasible point that is not the midpoint of two distinct feasible points. A point that is the unique solution of its tight constraints is a vertex. Unlike the formulation without the watermark rows, an optimal vertex can have arbitrarily many fractional requests.
+
+Take \(F=2\), \(h=1\), \(B_{\max}=S_{\max}=2\), and \(N_{\max}\ge3\). One background resident \(b\) holds \(c_b^Z=98\) blocks; it is decode-eligible with \(c_b^D=0\), \(\alpha_b=0\), and \(\gamma_b\ge98\). There are \(n\ge2\) waiting requests with \(q_i=1\), \(a_i^P=1\), and \(\beta_i=1\); they are eligible only for prefill. Set \(x_i=I_i^P=2/(n+1)\) for each waiting request and every other variable to zero. Then \(H=2-2n/(n+1)=2/(n+1)\), so every watermark row holds with equality.
+
+The point is feasible. Token use, execution count, and progress equal \(2n/(n+1)\in[1,2)\). The resident count is \(1+2n/(n+1)<3\). Memory and decode-start hold because no decode is selected and \(H>0\). It is a vertex. The background variables are at their bounds. For each waiting request, \(q_i=1\) makes both chunk inequalities tight, so \(x_i=I_i^P\), and its watermark row gives \(I_i^P+\sum_jI_j^P=2\). These \(n\) equations have a nonsingular matrix (the identity plus the all-ones matrix), so the tight constraints determine the point uniquely. It is optimal. Since \(x_i\le I_i^P\), the objective is at most \(\sum_iI_i^P-\gamma_bz_b\). Summing the \(n\) watermark rows gives \(\sum_iI_i^P\le n(2+98z_b)/(n+1)\le2n/(n+1)+98z_b\). Hence the objective is at most \(2n/(n+1)+(98-\gamma_b)z_b\le2n/(n+1)\), which the point attains.
+
+Thus all \(n\) waiting requests are fractional at an optimal vertex, although a single whole admission is legal. This is an analytical construction, not observed solver output. Correctness of Algorithm~\ref{alg:lp_extraction} therefore does not depend on the number of fractional requests or on receiving a vertex.
+
+\paragraph{Legality.}
+The arguments below assume exact arithmetic and validated inputs. They also assume fixed additive charges, with full-context admission charges independent of chunk size, and positive \(B_{\max}\), \(S_{\max}\), and \(N_{\max}\). Every subset of \(\mathcal{Z}_t\) must be legally preemptible together. The state must be a coherent synchronous snapshot without shared blocks, and \(c_i^D\in\{0,1\}\). There must be no constraints beyond Equation~\ref{eq:myopic_ilp}, such as joint-action, retention, or victim-count limits.
+
+An accepted trial is legal, and later steps never remove accepted actions or victims. Adding a victim \(k\) that does not execute raises \(\hat H\) by \(c_k^Z\ge0\) and lowers the resident count by one. No other check involves \(\hat z_k\), except mutual exclusion, which still holds. Hence adding victims never makes a legal plan illegal. Chunk extension raises only \(\hat x_i\) of a selected prefill, within \(q_i\) and the token budget; indicators, \(\hat H\), and counts are unchanged. The returned plan is therefore legal, and it contains useful execution because \(\mathcal{E}\ne\emptyset\).
+
+\paragraph{Useful Progress.}
+Suppose a legal integer plan \(p^*\) executes useful work. Keep one of its execution actions \(j\) and all of its victims, and drop its other execution actions. Dropping actions reduces token use, execution count, and decode demand. It removes admissions, which raises \(\hat H\) and lowers the resident count. The conditional checks \(\hat H\ge h\) and \(\hat H\ge1\) remain only for retained admissions or decodes, and \(\hat H\) does not decrease. Hence every legal useful plan contains a legal single-execution subplan.
+
+Before the first acceptance, every trial is discarded, so the partial plan and \(\mathcal{V}\) are empty when \(j\) is reached. Then \(B_{\mathrm{rem}}=B_{\max}\ge1\) and \(S_{\mathrm{rem}}=S_{\max}\ge1\). The trial for \(j\) uses a positive chunk within the token budget, and the chunk size does not change any other check. The victim scan may add all of \(\mathcal{Z}_t\setminus\{j\}\), which contains the victims of \(p^*\) because \(p^*\) does not preempt \(j\). By the monotonicity above, the trial is legal at the latest once the scan is exhausted. Therefore some candidate at or before \(j\) is accepted, and Algorithm~\ref{alg:lp_extraction} returns useful work whenever a legal useful integer plan exists.
+
+Conversely, \textsc{NoUsefulWork} means that every eligible candidate failed with every other legal victim. By the same argument, no legal useful integer plan exists, so the ILP is infeasible. This conclusion holds only under the assumptions above. A failed validation, numerical error, or violated assumption is not such a proof.
+
+\paragraph{Numerical Handling.}
+The arguments above use exact arithmetic. An implementation sorts validated finite LP values numerically, then by rank and identifier, without reclassifying near-integral values. Resource checks use exact integers, and the chunk rule floors the validated \(\tilde x_i\). For an optional addition with new victims, it accepts only if \(u^+-u^->\tau\), where \(\tau=\epsilon_{\mathrm{abs}}+\epsilon_{\mathrm{rel}}\max\{|u^+|,|u^-|\}\) uses the existing absolute and relative objective tolerances. This may decline tiny positive gains. It does not apply to the first useful action or to additions without new victims. Nonfinite sums are numerical failures. The complete integer plan is still validated before success.
+
+\paragraph{Utility Limits.}
+If the LP is solved exactly over this feasible set, its optimal value is an upper bound on the optimal ILP utility, because every integer plan is LP-feasible. A legal extracted schedule need not be close to either value.
+
+For an exact-arithmetic example, take two waiting prefills with \(q_1=q_2=1\), \(B_{\max}=S_{\max}=N_{\max}=2\), no residents, \(h=0\), and \(F=m\) for an integer \(m\ge3\). Set
 \[
-\begin{array}{cl}
-(0,0,0,0) & \text{idle},\\
-(0,1,0,0) & \text{decode},\\
-(0,0,1,0) & \text{preempt},\\
-(1,0,0,1) & \text{prefill one token},\\
-(q_i,0,0,1) & \text{prefill }q_i\text{ tokens}.
-\end{array}
+a_1^P=1,\quad a_2^P=m,\qquad \beta_1=2/m,\quad\beta_2=1.
 \]
-Omit actions that are ineligible for this request. The two prefill vectors use the smallest and largest positive chunks allowed by \(1\le x_i\le q_i\) when \(I_i^P=1\).
+Request 1 has higher utility per block, so the unique LP optimum selects \(x_1=I_1^P=1\) and \(x_2=I_2^P=(m-1)/m\), with value \((m+1)/m\). Algorithm~\ref{alg:lp_extraction} tries request 1 first, since \(e_1>e_2\), and accepts it. Request 2 would then leave \(\hat H=-1\), and there are no victims, so its trial is discarded. The plan earns \(2/m\), while the optimal integer schedule selects request 2 alone and earns \(1\). The ratio tends to zero. Thus extraction cannot guarantee any fixed positive fraction of the optimal integer utility.
 
-Every locally feasible point is a weighted average of these vectors. Assign weights \(y_i\) to decode, \(z_i\) to preemption, and \(1-y_i-z_i-I_i^P\) to idle. The mutual-exclusion constraint makes the idle weight nonnegative. The remaining weight \(I_i^P\) is split between the prefill vectors. When prefill is eligible and \(q_i>1\), use
-\[
-w_{\min}=\frac{q_i I_i^P-x_i}{q_i-1},
-\qquad
-w_{\max}=\frac{x_i-I_i^P}{q_i-1}.
-\]
-The chunk bounds make these weights nonnegative. They sum to \(I_i^P\) and satisfy \(w_{\min}+q_iw_{\max}=x_i\), so the weighted average reproduces all four variables. If \(q_i=1\), the prefill vectors coincide and \(x_i=I_i^P\). Ineligible actions have zero weight; in particular, ineligible prefill has \(x_i=I_i^P=0\). All action weights are nonnegative and sum to one. Conversely, their weighted averages satisfy the local constraints because those constraints are linear. Thus the local feasible region is exactly their convex hull, meaning the set of these weighted averages. Its vertices are integral because \(q_i\) is an integer.
+The construction also gives no bound on the number of victims and no protection against mass preemption. Each addition is judged against the partial plan already built, and victims are added in order until a trial is legal. It does not establish restart freedom, starvation freedom, eventual completion, recovery of any reference scheduling policy, or identical schedules across LP solutions. A straightforward implementation maintains its local totals incrementally: token use, execution count, resident count, \(\hat H\), decode demand, and whether any admission or decode is selected. Each trial check and each tentative victim then takes constant time. The vectors and sums in Algorithm~\ref{alg:lp_extraction} are mathematical notation, not a requirement to copy or rescan all requests. Let \(u=|U_t|\), let \(n\) be the number of execution candidates, and let \(r=|\mathcal{Z}_t|\). Initialization takes \(O(u)\) time and sorting takes \(O(n\log n+r\log r)\). The scan takes \(O(n(r+1))\), because each candidate examines at most \(r\) victims and a discarded trial undoes at most \(r\) of them. Chunk extension, final ordering, and final integer validation take \(O(u+n\log n+r\log r)\) when \(\hat H\) is evaluated once. Excluding the LP solve and relaxed-solution validation, construction and validation therefore take \(O(u+nr+n\log n+r\log r)\) time. No measured speed is claimed.
 
-Now consider a vertex of the full LP. Suppose, for a contradiction, that at least four requests are not at their local vertices. Choose four of them. Each is the midpoint of two distinct locally feasible points. It can therefore move a little in either direction along the line between those points. A movement may change several variables, but only for that request.
-
-For selected request \(j\), let \((b_j,s_j,m_j)\) describe the changes in token use, executing-request count, and memory use per unit movement. To preserve all three shared totals, the movement amounts \(h_1,\ldots,h_4\) must satisfy
-\[
-\sum_{j=1}^{4}h_jb_j=0,
-\qquad
-\sum_{j=1}^{4}h_js_j=0,
-\qquad
-\sum_{j=1}^{4}h_jm_j=0.
-\]
-These are three linear equations with zero right-hand sides and four unknowns. Hence they have a solution with at least one nonzero \(h_j\).
-
-Scale all four amounts down together until the movements are locally feasible in both directions. The shared totals are unchanged, so both resulting LP points are feasible. They are distinct: at least one request's variables change, and movements of other requests cannot undo that change. Reversing all movements places the two points equally far on either side of the original solution. Their midpoint is therefore the original solution, contradicting that it is a vertex. At most three requests can be away from local vertices, and thus at most three can have nonintegral variables.
-\end{proof}
-
-The feasible LP is bounded, so an optimal vertex exists. If the solver returns such a solution, the bound applies to all request variables, including \(x_i\), and therefore implies \(\lvert U_{\mathrm{frac}}\rvert\le3\). An arbitrary optimal solution need not satisfy this bound. Algorithm~\ref{alg:fractional_packing} therefore remains defined for any number of fractional requests.
-
-\paragraph{Deterministic and Safe Fractional Extraction.}
-Algorithm~\ref{alg:fractional_packing} applies dominant preemption, memory repair, and packing in that order. Repair may select a legal positive-credit candidate even when \(\tilde z_i=0\). Execution support means \(\tilde y_i>0\) or \(\tilde I_i^P>0\); at most one can be positive because \(\mathcal P_t\cap\mathcal D_t=\emptyset\). Requests without support remain idle. Supported actions that do not fit are skipped.
-
-For a supported prefill, \(q_i\ge1\) and the token check ensures \(B_{\mathrm{rem}}\ge1\), so the selected chunk is positive. Shortening it does not reduce the fixed memory charge \(a_i^P\). Physical block-manager validation is still required before execution.
-
-\paragraph{Feasibility.}
-Assume exact arithmetic, a feasible relaxed solution, and the fixed additive memory model. Before any fractional preemption is rounded up, LP feasibility gives
-\[
-M_{\mathrm{rem}}
-\ge
-\sum_{i\in U_{\mathrm{frac}}}(a_i^P\tilde I_i^P+c_i^D\tilde y_i)
--\sum_{i\in U_{\mathrm{frac}}\cap\mathcal Z_t}c_i^Z\tilde z_i.
-\]
-The execution charges are nonnegative and \(0\le\tilde z_i\le1\). Hence
-\[
-M_{\mathrm{rem}}+\sum_{i\in U_{\mathrm{frac}}\cap\mathcal Z_t}c_i^Z\ge0.
-\]
-Thus, preempting all legal fractional candidates would cover any memory deficit. Each preemption adds positive credit and selects an unused request, so it cannot run out of candidates while a deficit remains. The failure guard remains for invalid or numerical inputs.
-
-Flooring the locked token counts leaves nonnegative integer token and request-count budgets. Packing subtracts only costs that fit, so all residual budgets remain nonnegative. Selected actions are eligible and mutually exclusive: preempted requests are skipped, and prefill and decode eligibility are disjoint. Each selected prefill chunk is an integer in \([1,q_i]\). Therefore the returned schedule satisfies every constraint of Equation~\ref{eq:myopic_ilp}.
-
-The implementation uses numerical tolerances for relaxed-solution validation and indicator classification. The exact argument above does not cover those changes; the complete integer plan is checked independently before success. An optimal solver status also does not certify that the returned solution is a vertex.
-
-\paragraph{Utility Limit.}
-The optimal LP utility is an upper bound on the optimal ILP utility. A feasible extracted schedule need not be close to either optimum. In particular, the three-request bound limits the number of fractional requests, not the utility lost during extraction.
-
-For an exact-arithmetic example, take two eligible prefills with \(q_1=q_2=1\), \(B_{\max}=S_{\max}=2\), \(M_{\mathrm{avail}}=N\), and no legal preemptions, where \(N\ge3\) is an integer. Set
-\[
-a_1^P=1,\quad a_2^P=N,\qquad \beta_1=2/N,\quad\beta_2=1.
-\]
-Request 1 has higher utility per block, so the LP fills it first. The optimal LP vertex selects \(x_1=I_1^P=1\) and \(x_2=I_2^P=(N-1)/N\). Extraction locks request 1, leaving \(N-1\) blocks, and rejects request 2 because its fixed charge is \(N\). It earns \(2/N\), while the optimal integer schedule selects request 2 alone and earns \(1\). The ratio tends to zero despite having only one fractional request. Thus exact extraction cannot guarantee any fixed positive fraction of the optimal integer utility. Numerical classification may change this example for large \(N\) as the second indicator approaches one.
+\textcolor{red}{Revision boundary. Sections~\ref{subsec:myopic_ilp} and~\ref{subsec:lp_relaxation} were revised together for the corrected formulation. The ILP now requires useful execution in every validated state with arrived unfinished work, and a state without a legal useful plan is reported as infeasible. It counts all retained residents, including residents omitted from execution, against \(N_{\max}\). It charges the actual zero-or-one-block decode demand \(c_i^D\). It removes the independent planning reserve and separately enforces the shared admission watermark \(h\) and the free-block prerequisite for decoding through \(H\). Full-context prefill allocation, finite state-dependent coefficients, and the existing action variables are retained. The LP relaxation keeps all of these constraints. Integer extraction now constructs whole execution actions together with any required legal preemptions, considers zero-support candidates and integral-idle victims, never removes accepted execution, and requires strictly positive utility improvement for optional additions that introduce new victims. Separate service and victim ranks guide its comparisons, and execution proceeds in prefill, zero-demand-decode, then one-block-demand-decode order. The former three-request fractionality bound and the proof based on locking, dominant preemption, and memory repair no longer justify this formulation. They are replaced by the scoped legality and useful-progress arguments above. All subsequent sections remain unrevised and are outdated wherever they depend on the old feasible set, the reserve \(W_t\), the old extraction, or the three-resource decomposition. In particular, the second primal heuristic (Section~\ref{subsec:primal_greedy}), the Lagrangian dual and its slow and fast paths (Sections~\ref{subsec:lagrangian_dual}--\ref{subsec:fast_path}), the reduction to native vLLM (Section~\ref{subsubsec:reduction_to_vllm}), the MPC and hierarchical MPC formulations (Sections~\ref{subsec:mpc_formulation} and~\ref{subsec:hierarchical_mpc}), and later recovery, subsumption, and equivalence claims (Section~\ref{sec:unifying_literature} onward) require consistency review and revision. They must not be read as established algorithms, proofs, or equivalence results for the amended formulation. These mathematical amendments do not establish an implementation of the revised scheduler. Nor do they establish general vLLM recovery, fairness, restart freedom, completion, or performance guarantees.}
 
 
 % \clearpage
