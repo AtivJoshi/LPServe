@@ -1,0 +1,49 @@
+$ python -B -m unittest tests.test_check_adapted_vllm_gpu -v
+INFO 10-18 05:56:47 metrics_store.py:72] MetricsStore disabled
+test_chosen_capacity_reaches_native_initialization (tests.test_check_adapted_vllm_gpu.CacheCapacityTest) ... INFO 10-18 05:56:47 base_llm_engine.py:243] # GPU blocks: 8
+INFO 10-18 05:56:47 base_llm_engine.py:243] # GPU blocks: 4
+ok
+test_insufficient_capacity_fails_before_initialization (tests.test_check_adapted_vllm_gpu.CacheCapacityTest) ... ok
+test_other_worker_operations_delegate_unchanged (tests.test_check_adapted_vllm_gpu.CacheCapacityTest) ... ok
+test_second_profile_fails (tests.test_check_adapted_vllm_gpu.CacheCapacityTest) ... INFO 10-18 05:56:47 base_llm_engine.py:243] # GPU blocks: 4
+ok
+test_import_and_help_load_no_engine_worker_ray_or_torch (tests.test_check_adapted_vllm_gpu.DriverImportAndHelpTest) ... ok
+test_native_configuration_for_each_case (tests.test_check_adapted_vllm_gpu.EngineArgsTest) ... ok
+test_failure_is_recorded_without_a_gpu (tests.test_check_adapted_vllm_gpu.EvidenceTest) ... ok
+test_trace_serialization (tests.test_check_adapted_vllm_gpu.EvidenceTest) ... preemption decision 0: preempted [] scheduled [[0, 16], [1, 16], [2, 16], [3, 16]] free 0
+preemption decision 1: preempted [] scheduled [[0, 0], [1, 0], [2, 0], [3, 0]] free 0
+preemption decision 2: preempted [3, 2] scheduled [[0, 0], [1, 0]] free 0
+preemption decision 3: preempted [] scheduled [[0, 0], [1, 0]] free 4
+preemption decision 4: preempted [] scheduled [[2, 17], [3, 17]] free 0
+preemption decision 5: preempted [] scheduled [[2, 0], [3, 0]] free 0
+preemption decision 6: preempted [] scheduled [[2, 0], [3, 0]] free 0
+preemption decision 7: preempted [] scheduled [[2, 0], [3, 0]] free 4
+ok
+test_case_parameters_match_the_planned_workloads (tests.test_check_adapted_vllm_gpu.PlannedCaseTest) ... ok
+test_checks_reject_a_wrong_expectation (tests.test_check_adapted_vllm_gpu.PlannedCaseTest) ... mixed decision 0: preempted [] scheduled [[0, 5], [1, 3]] free 6
+preemption decision 0: preempted [] scheduled [[0, 16], [1, 16], [2, 16], [3, 16]] free 0
+preemption decision 1: preempted [] scheduled [[0, 0], [1, 0], [2, 0], [3, 0]] free 0
+ok
+test_decision_bound_stops_an_unplanned_run (tests.test_check_adapted_vllm_gpu.PlannedCaseTest) ... mixed decision 0: preempted [] scheduled [[0, 5], [1, 3]] free 6
+mixed decision 1: preempted [] scheduled [[1, 5], [0, 0]] free 6
+ok
+test_mixed_case_through_native_cpu_replay (tests.test_check_adapted_vllm_gpu.PlannedCaseTest) ... mixed decision 0: preempted [] scheduled [[0, 5], [1, 3]] free 6
+mixed decision 1: preempted [] scheduled [[1, 5], [0, 0]] free 6
+mixed decision 2: preempted [] scheduled [[0, 0], [1, 0]] free 7
+mixed decision 3: preempted [] scheduled [[1, 0]] free 8
+ok
+test_preemption_case_through_native_cpu_replay (tests.test_check_adapted_vllm_gpu.PlannedCaseTest) ... preemption decision 0: preempted [] scheduled [[0, 16], [1, 16], [2, 16], [3, 16]] free 0
+preemption decision 1: preempted [] scheduled [[0, 0], [1, 0], [2, 0], [3, 0]] free 0
+preemption decision 2: preempted [3, 2] scheduled [[0, 0], [1, 0]] free 0
+preemption decision 3: preempted [] scheduled [[0, 0], [1, 0]] free 4
+preemption decision 4: preempted [] scheduled [[2, 17], [3, 17]] free 0
+preemption decision 5: preempted [] scheduled [[2, 0], [3, 0]] free 0
+preemption decision 6: preempted [] scheduled [[2, 0], [3, 0]] free 0
+preemption decision 7: preempted [] scheduled [[2, 0], [3, 0]] free 4
+ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 1.035s
+
+OK
+exit_status=0

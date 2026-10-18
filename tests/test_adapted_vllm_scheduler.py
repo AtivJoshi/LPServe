@@ -248,13 +248,34 @@ class EngineArgsTest(unittest.TestCase):
 
     def test_missing_budget_and_multi_stage_fail_before_model(self):
         for override in (dict(max_num_batched_tokens=None),
-                         dict(pipeline_parallel_size=2)):
+                         dict(pipeline_parallel_size=2),
+                         dict(tensor_parallel_size=2)):
             with self.subTest(**override):
                 with self.assertRaises(ValueError):
                     EngineArgs(**self.kwargs(**override))
                 self.model_config_cls.assert_not_called()
                 self.assertFalse(os.path.exists(
                     os.path.join(self.output_dir, "config.yml")))
+
+    def test_tensor_parallel_rejected_before_engine_startup(self):
+        with mock.patch.object(llm_engine, "BaseLLMEngine") as base_engine, \
+                mock.patch.object(llm_engine, "PipelineParallelLLMEngine") as pp:
+            with self.assertRaisesRegex(ValueError, "tensor_parallel_size=2"):
+                llm_engine.LLMEngine.from_engine_args(
+                    **self.kwargs(tensor_parallel_size=2))
+        base_engine.assert_not_called()
+        pp.assert_not_called()
+        self.model_config_cls.assert_not_called()
+        self.assertFalse(os.path.exists(self.output_dir))
+
+    def test_one_tensor_worker_is_accepted(self):
+        configs = EngineArgs(
+            **self.kwargs(tensor_parallel_size=1)).create_engine_configs()
+        parallel, scheduler = configs[2], configs[3]
+        self.assertEqual((parallel.tensor_parallel_size,
+                          parallel.pipeline_parallel_size,
+                          parallel.world_size), (1, 1, 1))
+        self.assertIs(type(scheduler), AdaptedVLLMSchedulerConfig)
 
 
 def lpt_engine_model_config():
@@ -619,6 +640,44 @@ class PreMutationFailureTest(unittest.TestCase):
         h.step(10.0)
         h.step(11.0)
         self._assert_rejected(h, 12.0, avs.CATEGORY_UNSUPPORTED_STATE)
+
+    def test_empty_prompt_rejected_before_native_mutation(self):
+        h = _Harness(num_gpu_blocks=4, max_num_seqs=2, max_num_batched_tokens=8)
+        h.add(0, 0, 50.0, 1)  # empty and not yet arrived: ordinary idle
+        before = lpt._fingerprint(h.scheduler)
+        self.assertTrue(h.schedule(10.0).has_no_output())
+        self.assertEqual(lpt._fingerprint(h.scheduler), before)
+        # Once arrived it is an unsupported state, not idle or an admission.
+        worker_free = h.worker_seqs.block_manager.get_num_free_gpu_blocks()
+        err = self._assert_rejected(h, 60.0, avs.CATEGORY_UNSUPPORTED_STATE)
+        self.assertIn("empty prompt", err.reason)
+        self.assertEqual(h.proposals, [])  # rejected before selection
+        self.assertEqual((h.ids(h.scheduler.waiting), h.scheduler.running,
+                          h.scheduler.block_manager.block_tables,
+                          h.scheduler.num_running_batches), ([0], [], {}, 0))
+        self.assertEqual(h.scheduler.block_manager.get_num_free_gpu_blocks(), 4)
+        seq = h.engine_seqs.get_seq(0)
+        self.assertEqual((seq.get_status(), seq.get_num_prompt_tokens_processed(),
+                          seq.get_output_len()), (SequenceStatus.WAITING, 0, 0))
+        self.assertEqual(h.worker_seqs.block_manager.get_num_free_gpu_blocks(),
+                         worker_free)
+
+    def test_zero_token_prefill_fails_layout_validation(self):
+        h = _Harness(num_gpu_blocks=4, max_num_seqs=2, max_num_batched_tokens=8)
+        h.add(0, 4, 1.0, 1)
+        proposal = avs.ReferenceProposal(
+            decision_time=10.0, running_order=(), arrived_waiting_order=(0,),
+            free_blocks=4, watermark_blocks=0, token_budget=8, victims=(),
+            actions=(avs.ReferenceAction(0, avs.ACTION_ADMISSION, 0, 1),),
+            running_stop_reason=avs.RUNNING_EXHAUSTED,
+            waiting_stop_reason=avs.WAITING_EXHAUSTED)
+        before = lpt._fingerprint(h.scheduler)
+        with mock.patch.object(h.scheduler, "_propose", lambda now: proposal):
+            with self.assertRaises(avs.AdaptedVLLMSchedulingError) as ctx:
+                h.scheduler.schedule()
+        self.assertEqual(ctx.exception.category, avs.CATEGORY_LAYOUT)
+        self.assertEqual(lpt._fingerprint(h.scheduler), before)
+        self.assertEqual(h.calls, [])
 
     def test_inadmissible_head_and_idle(self):
         h = _Harness(num_gpu_blocks=2, max_num_seqs=2, max_num_batched_tokens=16)

@@ -68,13 +68,38 @@ authorized.
    output-counter reset lets a request generate past that sum and can trigger
    this failure. The upstream prefill cap of `max_model_len - computed - 1`
    is not reproduced. No exercised workload reaches it.
-5. **Commit order is safe (analytical, checked at runtime).** Admissions happen
-   only when there are no victims. All frees therefore come before
-   allocations, and every free count in commit order is at least the
-   policy-order value. As a result, no allocation and no worker `can_allocate`
-   assertion can fail because of the reordering. Admissions are still checked
-   in policy order. Layout validation re-simulates commit order before any
-   mutation.
+5. **Commit order is safe (analytical, checked at runtime; reasoning
+   corrected 2026-10-18).** The original text claimed that every free count
+   in commit order is at least the policy-order value. That is false:
+   `test_zero_demand_decode_with_admission_of_last_free_block` checks the
+   zero-demand decode with one block free in policy order, but commit order
+   puts the admission first and leaves zero before the decode. The
+   conclusion still holds, by this bounded argument:
+   - Admissions occur only in decisions without victims. There, policy order
+     is the running pass (decodes and resident prefills), then admissions.
+     Moving admissions ahead of decodes means each admission's gate
+     (`free - charge >= watermark`) sees at least as many free blocks as in
+     policy order, so it still passes.
+   - The total actual consumption (admission charges plus decode gaps) is
+     the same in both orders and fit the free pool in policy order, so after
+     the admissions every decode still finds its demand.
+   - Each decode needs only its actual gap, 0 or 1; a zero-demand decode
+     allocates nothing, even with zero blocks free.
+   - Decisions with victims have no admissions. Commit frees every selected
+     victim first, so each retained decode sees at least the free count it
+     saw in policy order, where some victims were freed only after it.
+   - Resident partial prefills allocate nothing.
+
+   Assumptions: one synchronous step with nothing in flight; the worker
+   manager starts the decision with the same free count, table lengths, and
+   logical blocks as the central one (checked by the replay tests, not
+   proven in general); the worker replays preemptions first, then metadata
+   in emitted order; and its `can_append_slot()` result is not asserted.
+   Layout validation also re-simulates commit order before any mutation, so
+   a violation would fail before mutation rather than corrupt state. This is
+   a correction to reasoning, not a new runtime result; the evidence below
+   is unchanged. Unequal central and worker physical block IDs alone show
+   neither corruption nor correct GPU cache contents.
 
 No issue was found in the remaining approved rules. Review scope: the four
 pinned upstream files, the listed LPServe callers, and the paths exercised
@@ -187,3 +212,117 @@ equivalence or support a performance or fairness conclusion.
 - Q11 remains OPEN. No recovery or overhead criterion was selected. No LP
   mathematics, normative design, or execution contract changed. The
   `max_model_len` failure rule is a provisional choice recorded in §16.1.
+
+## Correction and GPU-driver preparation (2026-10-18)
+
+**Scope.** Two narrow production corrections, the corrected finding 5
+reasoning above, and a prepared but **unexecuted** GPU validation driver.
+Reviewed base `c6c89bc3c4f95114aecfd27bdbbc53e5e3374ec5`; tested as that base
+plus uncommitted changes. No model, CUDA, or GPU path was run.
+
+**Evidence:** [`validation_output/adapted_vllm_reference/20261018T055527Z/`](../../validation_output/adapted_vllm_reference/20261018T055527Z/)
+(`summary.json`, `run_checks.sh`, numbered outputs, `working_tree.diff`,
+`sha256sums.txt`, `scripts/empty_prompt_at_base.py`). Host `gpu049`, Slurm
+job `65821002`, Python 3.10.8 at `/home/atjoshi_umass_edu/LPServe/env`,
+numpy 2.2.6, scipy 1.15.3, torch 2.3.0+cu121 (CPU only). The earlier
+evidence above does not validate these changes.
+
+| File | Change |
+|---|---|
+| `sarathi/core/scheduler/adapted_vllm_scheduler.py` | Arrived empty prompt is `unsupported_state` before selection; layout check requires each prefill to have 1..remaining tokens and each decode 1 |
+| `sarathi/engine/arg_utils.py` | `adapted_vllm` branch rejects `tensor_parallel_size != 1` before model metadata or `config.yml` |
+| `tests/test_adapted_vllm_scheduler.py` | 4 new tests (23 total) |
+| `scripts/check_adapted_vllm_gpu.py` | New two-case driver (`--case mixed|preemption`) |
+| `tests/test_check_adapted_vllm_gpu.py` | New, 13 CPU tests; needs `git add -f` (`.gitignore` `test*`) |
+| `docs/LP Scheduler Research Context.md` | §16.1 input and worker boundaries |
+
+The driver reuses `CacheCapacitySelection`, `check_pool`, `select_prompt_ids`,
+and provenance/serialization helpers from the two LP drivers unchanged. It
+does not reuse their LP ordering checks or voluntary-preemption workload. It
+builds configuration through `EngineArgs(scheduler_type="adapted_vllm")`.
+
+**Defect reproduction (observed).** At the base, an arrived request with
+`prompt_token_ids=[]` became `admission` with 0 tokens; `_allocate` ran, the
+request moved to `running`, the batch count became 1, and the output was
+`(0, 0)`, which downstream code reads as a decode. The new regression fails
+against the base scheduler (step 05) and passes with the correction (step 03).
+
+### Coverage
+
+| Area | Check | Result |
+|---|---|---|
+| **Corrected production behavior** | | |
+| Empty arrived prompt rejected; future empty prompt stays ordinary idle | `test_empty_prompt_rejected_before_native_mutation` | pass: no proposal, native call, queue, status, progress, block, worker, or batch change |
+| Zero-token prefill rejected by layout check | `test_zero_token_prefill_fails_layout_validation` | pass: `layout_validation`, no mutation |
+| TP 2 rejected before model, engine, `config.yml` | `test_missing_budget_and_multi_stage_fail_before_model`, `test_tensor_parallel_rejected_before_engine_startup` | pass |
+| One worker accepted | `test_one_tensor_worker_is_accepted`, existing selection test | pass |
+| Existing last-free-block, zero/mixed demand, ordering, preemption, packing/sampler tests | 19 existing tests | pass, unchanged |
+| **Driver plumbing and planned workloads (CPU)** | | |
+| Import and `--help` load no torch, Ray, engine, worker, or `arg_utils` | `DriverImportAndHelpTest` | pass |
+| Capacity: one profile, chosen pool through native `_init_cache` (max-context check included), shortfall fails before init, second profile fails, other calls delegate | `CacheCapacityTest` | pass for pools 8 and 4 |
+| Native `EngineArgs` configuration per case | `EngineArgsTest` | pass (mocked `ModelConfig`) |
+| Mixed: A:5/B:3, then selection A decode, B:5 emitted `[[1,5],[0,0]]`; completion, release, idle | `test_mixed_case_through_native_cpu_replay` | pass: 4 decisions |
+| Preemption: fill pool, zero-demand decodes, victims 3 then 2, readmission of 17-token contexts, 4 token events vs `max_tokens` 3 for 2 and 3, idle | `test_preemption_case_through_native_cpu_replay` | pass: 8 decisions |
+| Checks discriminate (wrong layout, missing victims, decision bound) | `test_checks_reject_a_wrong_expectation`, `test_decision_bound_stops_an_unplanned_run` | pass |
+| Evidence serialization; failure recorded without GPU; no overwrite | `EvidenceTest` | pass |
+| **Prepared, unexecuted** | | |
+| Real engine/Ray worker construction, profiling, cache initialization, flash-attention kernels, dummy-weight forward and greedy sampling, the worker class's by-value serialization into Ray | driver GPU path | **unexecuted** |
+
+The CPU replay uses the planned block size 16, pools, budgets, model lengths,
+arrivals (`time.perf_counter()`, as `add_request`), and output limits, and the
+real scheduler, central manager, engine sequence manager, and a separate
+worker sequence manager. Sampled tokens are synthetic (constant); no token
+ID is prescribed. Neither planned workload needed a correction.
+
+### Commands and results
+
+`bash validation_output/adapted_vllm_reference/20261018T055527Z/run_checks.sh <dir>`
+on `gpu049` (CPU only):
+
+| Step | Command | Result |
+|---|---|---|
+| 01 | `python -B -m py_compile` on changed/new files | exit 0 |
+| 02 | `python -B -W error -c` driver and registry import | exit 0 |
+| 03 | `python -B -m unittest tests.test_adapted_vllm_scheduler -v` | 23 passed |
+| 04 | `python -B -m unittest tests.test_check_adapted_vllm_gpu -v` | 13 passed |
+| 05 | `empty_prompt_at_base.py c6c89bc` | new regression fails at base, as expected |
+| 06 | `unittest discover -p test_lp_engine_args.py` | 11 passed |
+| 07 | `unittest discover -p test_check_lp_scheduler_preemption_gpu.py` | 7 passed |
+| 08 | `git diff --check` | exit 0 |
+
+No failures or skips. `test_lp_scheduler.py` (fixtures used, file unchanged)
+and the LP mathematical, mapper, and executor suites import no changed LP
+code and were not rerun.
+
+### Future GPU commands (UNEXECUTED)
+
+On an allocated GPU node, after CPU review and separate authorization, one
+case per process:
+
+```bash
+module load uri/main Python/3.10.8-GCCcore-12.2.0 CUDA/12.1.1
+source env/bin/activate
+MODEL_DIR=/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6
+RUN=validation_output/adapted_vllm_gpu/$(date -u +%Y%m%dT%H%M%SZ)
+for CASE in mixed preemption; do
+  mkdir -p "$RUN/$CASE"
+  PYTHONPATH="$PWD" timeout 600s python -B scripts/check_adapted_vllm_gpu.py \
+    --case "$CASE" --model-path "$MODEL_DIR" --output-dir "$RUN/$CASE" \
+    2>&1 | tee "$RUN/$CASE/console.log"
+done
+```
+
+Expected for each case: `RESULT: PASS`; profiled capacity recorded and at
+least the pool (8 or 4); exactly that pool in the central manager and worker
+cache; and every decision matching `CASES[...]["decisions"]`: selection,
+victims, stop reasons, emitted order, central and worker block operations
+(table lengths), and request state. Each decision must also pass
+per-manager conservation, equal central/worker table lengths, free counts,
+and sequence state, and sampler outputs in emitted order. Finished outputs
+must have `max_tokens` tokens and released blocks, followed by one ordinary
+idle call. The planned decision counts are 4 (mixed) and 8 (preemption),
+bound 12. Generated-token events must be `{0: 2, 1: 2}` and
+`{0: 3, 1: 3, 2: 4, 3: 4}`. The second set shows the inherited counter
+reset; it is not cumulative generation. A pass would not establish
+physical-ID equality, cache-content correctness, sampler generality, or
+generation quality.

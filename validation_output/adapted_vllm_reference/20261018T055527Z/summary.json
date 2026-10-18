@@ -1,0 +1,68 @@
+{
+ "purpose": "adapted vLLM reference corrections and GPU-driver preparation; CPU-only checks",
+ "base_revision": "c6c89bc3c4f95114aecfd27bdbbc53e5e3374ec5",
+ "git_head": "c6c89bc3c4f95114aecfd27bdbbc53e5e3374ec5",
+ "working_tree": "uncommitted changes; code diff in working_tree.diff, hashes in sha256sums.txt",
+ "host": "gpu049",
+ "slurm_job_id": "65821002",
+ "python": "/home/atjoshi_umass_edu/LPServe/env/bin/python (3.10.8)",
+ "gpu_used": false,
+ "model_initialized": false,
+ "gpu_driver_gpu_path_executed": false,
+ "steps": {
+  "01_py_compile": {
+   "command": "python -B -m py_compile sarathi/core/scheduler/adapted_vllm_scheduler.py sarathi/engine/arg_utils.py tests/test_adapted_vllm_scheduler.py scripts/check_adapted_vllm_gpu.py tests/test_check_adapted_vllm_gpu.py validation_output/adapted_vllm_reference/20261018T055527Z/scripts/empty_prompt_at_base.py",
+   "exit_status": 0,
+   "tests_run": null
+  },
+  "02_import": {
+   "command": "python -B -W error -c import sys; sys.path.insert(0, \"scripts\"); import check_adapted_vllm_gpu as d; from sarathi.core.scheduler.scheduler_registry import SchedulerRegistry; from sarathi.config import SchedulerType; print(SchedulerRegistry._registry[SchedulerType.ADAPTED_VLLM].__name__, sorted(d.CASES))",
+   "exit_status": 0,
+   "tests_run": null
+  },
+  "03_focused_reference": {
+   "command": "python -B -m unittest tests.test_adapted_vllm_scheduler -v",
+   "exit_status": 0,
+   "tests_run": 23
+  },
+  "04_driver_cpu": {
+   "command": "python -B -m unittest tests.test_check_adapted_vllm_gpu -v",
+   "exit_status": 0,
+   "tests_run": 13
+  },
+  "05_empty_prompt_regression_at_base": {
+   "command": "python -B validation_output/adapted_vllm_reference/20261018T055527Z/scripts/empty_prompt_at_base.py c6c89bc3c4f95114aecfd27bdbbc53e5e3374ec5",
+   "exit_status": 0,
+   "tests_run": null
+  },
+  "06_regression_engine_args": {
+   "command": "python -B -m unittest discover -s tests -p test_lp_engine_args.py -v",
+   "exit_status": 0,
+   "tests_run": 11
+  },
+  "07_regression_preemption_driver_helpers": {
+   "command": "python -B -m unittest discover -s tests -p test_check_lp_scheduler_preemption_gpu.py -v",
+   "exit_status": 0,
+   "tests_run": 7
+  },
+  "08_git_diff_check": {
+   "command": "git diff --check",
+   "exit_status": 0,
+   "tests_run": null
+  }
+ },
+ "file_sha256": {
+  "sarathi/core/scheduler/adapted_vllm_scheduler.py": "41444565d62d54e15e0de90c61fbc4125b4bb45f84a2d439bafd7a2f8c066165",
+  "sarathi/engine/arg_utils.py": "e079e5dbaa01ca472a6bfe08920de6a369e041e4f5b616365157b67b40ecb958",
+  "tests/test_adapted_vllm_scheduler.py": "2ae521e96c935809e79369de5982985c69c388c8fcb2a8bf795df2e66ea1c905",
+  "scripts/check_adapted_vllm_gpu.py": "cdf6b7f4cb302664b775975b78f2bcae155ef37691c8662d63bcb6015797c25b",
+  "tests/test_check_adapted_vllm_gpu.py": "92f984d86a10cfbe0082d998892f14a3380548aaf47d0f1f6a8a80059d36a2b3",
+  "scripts/check_lp_scheduler_gpu.py": "18b145d0689f1beaae933671955251dcae8fd9f3696ff371246a3845d6224dd8",
+  "scripts/check_lp_scheduler_preemption_gpu.py": "517fef8b8bbd035c5b77e11c906585fc8b047b390e798a3d84e581c3beec09e5",
+  "tests/test_lp_scheduler.py": "d0c1d9490d8032869de63a0205d35ab02f168560ed3ae91dd9654981acc59eb7",
+  "validation_output/adapted_vllm_reference/20261018T055527Z/scripts/empty_prompt_at_base.py": "e69599d0a1a2d1d791f394c46381e623b2a1068cf3df6b7071d5f111d68d635c"
+ },
+ "working_tree_diff_sha256": "58036f698dcc0786055b530a09b93212efa00b7a2251574bb3bc2a4adc060767",
+ "all_passed": true,
+ "note": "05 exits 0 when the new empty-prompt regression FAILS against the base-revision scheduler, as expected"
+}

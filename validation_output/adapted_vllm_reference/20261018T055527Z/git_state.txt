@@ -1,0 +1,14 @@
+branch=main
+head=c6c89bc3c4f95114aecfd27bdbbc53e5e3374ec5
+base_reviewed=c6c89bc3c4f95114aecfd27bdbbc53e5e3374ec5
+--- git status --short --untracked-files=all
+ M "docs/LP Scheduler Research Context.md"
+ M docs/handoffs/adapted_vllm_reference_handoff.md
+ M sarathi/core/scheduler/adapted_vllm_scheduler.py
+ M sarathi/engine/arg_utils.py
+ M tests/test_adapted_vllm_scheduler.py
+?? scripts/check_adapted_vllm_gpu.py
+?? validation_output/adapted_vllm_reference/20261018T055527Z/environment.txt
+?? validation_output/adapted_vllm_reference/20261018T055527Z/git_state.txt
+?? validation_output/adapted_vllm_reference/20261018T055527Z/run_checks.sh
+?? validation_output/adapted_vllm_reference/20261018T055527Z/scripts/empty_prompt_at_base.py

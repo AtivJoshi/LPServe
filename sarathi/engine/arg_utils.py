@@ -164,6 +164,12 @@ class EngineArgs:
                     f"stage, got pipeline_parallel_size="
                     f"{self.pipeline_parallel_size!r}"
                 )
+            if self.tensor_parallel_size != 1:
+                raise ValueError(
+                    "adapted vLLM reference supports exactly one tensor-"
+                    "parallel worker, got tensor_parallel_size="
+                    f"{self.tensor_parallel_size!r}"
+                )
         if self.write_metrics:
             os.makedirs(self.output_dir, exist_ok=True)
             recorded = {

@@ -371,6 +371,12 @@ class AdaptedVLLMScheduler(BaseScheduler):
             )
             if arrival > now:
                 continue
+            # An empty prompt would become a zero-token admission, which the
+            # metadata encodes as a decode; no empty-prompt policy exists.
+            _require(
+                seq.get_prompt_len() > 0, CATEGORY_UNSUPPORTED_STATE,
+                f"arrived waiting {sid} has an empty prompt",
+            )
             _require(
                 seq.get_len() <= max_model_len, CATEGORY_UNSUPPORTED_STATE,
                 f"arrived waiting {sid} has context {seq.get_len()} above "
@@ -426,6 +432,20 @@ class AdaptedVLLMScheduler(BaseScheduler):
             f"victims {list(proposal.victims)} and actions {selected} are not "
             "disjoint residents and unique actions",
         )
+        for action in proposal.actions:
+            # Prefill metadata must be positive (zero encodes a decode) and
+            # within the current remaining prompt.
+            if action.is_prefill:
+                remaining = self._remaining_prompt(by_id[action.seq_id])
+                valid = 0 < action.num_tokens <= remaining
+            else:
+                valid = action.num_tokens == 1
+            _require(
+                valid, CATEGORY_LAYOUT,
+                f"{action.kind} {action.seq_id} has {action.num_tokens} "
+                "tokens; a prefill needs 1 to its remaining prompt and a "
+                "decode exactly 1",
+            )
         tokens = sum(a.num_tokens for a in proposal.actions)
         _require(
             tokens <= proposal.token_budget, CATEGORY_LAYOUT,

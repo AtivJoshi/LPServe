@@ -1,0 +1,1443 @@
+diff --git a/sarathi/core/scheduler/adapted_vllm_scheduler.py b/sarathi/core/scheduler/adapted_vllm_scheduler.py
+index 5735dd9..f434144 100644
+--- a/sarathi/core/scheduler/adapted_vllm_scheduler.py
++++ b/sarathi/core/scheduler/adapted_vllm_scheduler.py
+@@ -371,6 +371,12 @@ class AdaptedVLLMScheduler(BaseScheduler):
+             )
+             if arrival > now:
+                 continue
++            # An empty prompt would become a zero-token admission, which the
++            # metadata encodes as a decode; no empty-prompt policy exists.
++            _require(
++                seq.get_prompt_len() > 0, CATEGORY_UNSUPPORTED_STATE,
++                f"arrived waiting {sid} has an empty prompt",
++            )
+             _require(
+                 seq.get_len() <= max_model_len, CATEGORY_UNSUPPORTED_STATE,
+                 f"arrived waiting {sid} has context {seq.get_len()} above "
+@@ -426,6 +432,20 @@ class AdaptedVLLMScheduler(BaseScheduler):
+             f"victims {list(proposal.victims)} and actions {selected} are not "
+             "disjoint residents and unique actions",
+         )
++        for action in proposal.actions:
++            # Prefill metadata must be positive (zero encodes a decode) and
++            # within the current remaining prompt.
++            if action.is_prefill:
++                remaining = self._remaining_prompt(by_id[action.seq_id])
++                valid = 0 < action.num_tokens <= remaining
++            else:
++                valid = action.num_tokens == 1
++            _require(
++                valid, CATEGORY_LAYOUT,
++                f"{action.kind} {action.seq_id} has {action.num_tokens} "
++                "tokens; a prefill needs 1 to its remaining prompt and a "
++                "decode exactly 1",
++            )
+         tokens = sum(a.num_tokens for a in proposal.actions)
+         _require(
+             tokens <= proposal.token_budget, CATEGORY_LAYOUT,
+diff --git a/sarathi/engine/arg_utils.py b/sarathi/engine/arg_utils.py
+index 2685584..9b1dd27 100644
+--- a/sarathi/engine/arg_utils.py
++++ b/sarathi/engine/arg_utils.py
+@@ -164,6 +164,12 @@ class EngineArgs:
+                     f"stage, got pipeline_parallel_size="
+                     f"{self.pipeline_parallel_size!r}"
+                 )
++            if self.tensor_parallel_size != 1:
++                raise ValueError(
++                    "adapted vLLM reference supports exactly one tensor-"
++                    "parallel worker, got tensor_parallel_size="
++                    f"{self.tensor_parallel_size!r}"
++                )
+         if self.write_metrics:
+             os.makedirs(self.output_dir, exist_ok=True)
+             recorded = {
+diff --git a/tests/test_adapted_vllm_scheduler.py b/tests/test_adapted_vllm_scheduler.py
+index 9700e38..b5443a9 100644
+--- a/tests/test_adapted_vllm_scheduler.py
++++ b/tests/test_adapted_vllm_scheduler.py
+@@ -248,7 +248,8 @@ class EngineArgsTest(unittest.TestCase):
+ 
+     def test_missing_budget_and_multi_stage_fail_before_model(self):
+         for override in (dict(max_num_batched_tokens=None),
+-                         dict(pipeline_parallel_size=2)):
++                         dict(pipeline_parallel_size=2),
++                         dict(tensor_parallel_size=2)):
+             with self.subTest(**override):
+                 with self.assertRaises(ValueError):
+                     EngineArgs(**self.kwargs(**override))
+@@ -256,6 +257,26 @@ class EngineArgsTest(unittest.TestCase):
+                 self.assertFalse(os.path.exists(
+                     os.path.join(self.output_dir, "config.yml")))
+ 
++    def test_tensor_parallel_rejected_before_engine_startup(self):
++        with mock.patch.object(llm_engine, "BaseLLMEngine") as base_engine, \
++                mock.patch.object(llm_engine, "PipelineParallelLLMEngine") as pp:
++            with self.assertRaisesRegex(ValueError, "tensor_parallel_size=2"):
++                llm_engine.LLMEngine.from_engine_args(
++                    **self.kwargs(tensor_parallel_size=2))
++        base_engine.assert_not_called()
++        pp.assert_not_called()
++        self.model_config_cls.assert_not_called()
++        self.assertFalse(os.path.exists(self.output_dir))
++
++    def test_one_tensor_worker_is_accepted(self):
++        configs = EngineArgs(
++            **self.kwargs(tensor_parallel_size=1)).create_engine_configs()
++        parallel, scheduler = configs[2], configs[3]
++        self.assertEqual((parallel.tensor_parallel_size,
++                          parallel.pipeline_parallel_size,
++                          parallel.world_size), (1, 1, 1))
++        self.assertIs(type(scheduler), AdaptedVLLMSchedulerConfig)
++
+ 
+ def lpt_engine_model_config():
+     model_config = mock.Mock()
+@@ -620,6 +641,44 @@ class PreMutationFailureTest(unittest.TestCase):
+         h.step(11.0)
+         self._assert_rejected(h, 12.0, avs.CATEGORY_UNSUPPORTED_STATE)
+ 
++    def test_empty_prompt_rejected_before_native_mutation(self):
++        h = _Harness(num_gpu_blocks=4, max_num_seqs=2, max_num_batched_tokens=8)
++        h.add(0, 0, 50.0, 1)  # empty and not yet arrived: ordinary idle
++        before = lpt._fingerprint(h.scheduler)
++        self.assertTrue(h.schedule(10.0).has_no_output())
++        self.assertEqual(lpt._fingerprint(h.scheduler), before)
++        # Once arrived it is an unsupported state, not idle or an admission.
++        worker_free = h.worker_seqs.block_manager.get_num_free_gpu_blocks()
++        err = self._assert_rejected(h, 60.0, avs.CATEGORY_UNSUPPORTED_STATE)
++        self.assertIn("empty prompt", err.reason)
++        self.assertEqual(h.proposals, [])  # rejected before selection
++        self.assertEqual((h.ids(h.scheduler.waiting), h.scheduler.running,
++                          h.scheduler.block_manager.block_tables,
++                          h.scheduler.num_running_batches), ([0], [], {}, 0))
++        self.assertEqual(h.scheduler.block_manager.get_num_free_gpu_blocks(), 4)
++        seq = h.engine_seqs.get_seq(0)
++        self.assertEqual((seq.get_status(), seq.get_num_prompt_tokens_processed(),
++                          seq.get_output_len()), (SequenceStatus.WAITING, 0, 0))
++        self.assertEqual(h.worker_seqs.block_manager.get_num_free_gpu_blocks(),
++                         worker_free)
++
++    def test_zero_token_prefill_fails_layout_validation(self):
++        h = _Harness(num_gpu_blocks=4, max_num_seqs=2, max_num_batched_tokens=8)
++        h.add(0, 4, 1.0, 1)
++        proposal = avs.ReferenceProposal(
++            decision_time=10.0, running_order=(), arrived_waiting_order=(0,),
++            free_blocks=4, watermark_blocks=0, token_budget=8, victims=(),
++            actions=(avs.ReferenceAction(0, avs.ACTION_ADMISSION, 0, 1),),
++            running_stop_reason=avs.RUNNING_EXHAUSTED,
++            waiting_stop_reason=avs.WAITING_EXHAUSTED)
++        before = lpt._fingerprint(h.scheduler)
++        with mock.patch.object(h.scheduler, "_propose", lambda now: proposal):
++            with self.assertRaises(avs.AdaptedVLLMSchedulingError) as ctx:
++                h.scheduler.schedule()
++        self.assertEqual(ctx.exception.category, avs.CATEGORY_LAYOUT)
++        self.assertEqual(lpt._fingerprint(h.scheduler), before)
++        self.assertEqual(h.calls, [])
++
+     def test_inadmissible_head_and_idle(self):
+         h = _Harness(num_gpu_blocks=2, max_num_seqs=2, max_num_batched_tokens=16)
+         h.add(0, 12, 1.0, 1)  # 3 blocks in a 2-block pool
+--- /dev/null	2026-10-11 03:15:20.894209986 +0000
++++ scripts/check_adapted_vllm_gpu.py	2026-10-18 05:53:09.890838811 +0000
+@@ -0,0 +1,913 @@
++"""Bounded dummy-weight GPU validation of the adapted vLLM reference scheduler.
++
++Runs one planned case through a real ``BaseLLMEngine`` built from
++``EngineArgs(scheduler_type="adapted_vllm")`` with the registered
++``AdaptedVLLMScheduler``, one GPU worker (tensor parallel 1, one pipeline
++stage), dummy TinyLlama weights, greedy sampling with EOS ignored, and native
++replay and completion. Every nonempty decision is checked against the exact
++expected proposal, emitted output, native block operations, and state.
++
++Cases (one per process):
++
++- ``mixed``: A (5 prompt tokens) and B (8), two output tokens each, budget 8,
++  resident limit 2, 8 blocks of 16, ``max_model_len`` 32. Selection A:5/B:3,
++  then A's decode and B's remaining 5-token prefill emitted prompt-first.
++- ``preemption``: four 16-token requests, three output tokens each, budget
++  64, resident limit 4, 4 blocks of 16, ``max_model_len`` 64. The prefills
++  fill the pool, the zero-demand decodes create the next block demand, the
++  third decision evicts tail requests 3 then 2, and both are readmitted with
++  their 17-token expanded contexts after 0 and 1 finish.
++
++Cache sizing: worker profiling runs once, unchanged; its result is recorded
++and must be at least the case pool, which is then supplied to native cache
++initialization (worker cache and block manager; the central scheduler uses
++the same cache configuration). A validation worker subclass records its own
++block-manager allocate/free/append calls (zero-demand appends included) and
++exposes primitive state; validation wrappers on the central scheduler and
++block manager record the proposal and native calls. All of them delegate
++unchanged.
++
++Not established: physical-ID equality between managers, cache-content or
++attention correctness, sampler generality, generation quality, arbitrary
++workload completion, or performance. The decision bound
++(``MAX_NONEMPTY_DECISIONS``) and the process timeout are validation guards,
++not scheduler restart caps or completion guarantees. Restarted requests can
++produce more generated-token events than ``max_tokens`` (inherited output
++counter reset); the counter is not cumulative generation.
++
++Run from the repository root with the root on PYTHONPATH, one case per
++process, on an allocated GPU node:
++
++    PYTHONPATH="$PWD" timeout 600s python -B scripts/check_adapted_vllm_gpu.py \\
++        --case mixed --model-path <local TinyLlama snapshot directory> \\
++        --output-dir validation_output/adapted_vllm_gpu/<UTC timestamp>/mixed
++
++Exit status is zero only if every check passes.
++"""
++
++import argparse
++import hashlib
++import json
++import math
++import os
++import sys
++import time
++import traceback
++from pathlib import Path
++
++# Read-only helpers from the earlier bounded checks; their main() is unused.
++import check_lp_scheduler_gpu as single
++import check_lp_scheduler_preemption_gpu as preemption
++from check_lp_scheduler_gpu import (CheckFailure, check, environment_record,
++                                    outputs_record, request_output_record,
++                                    to_jsonable)
++from check_lp_scheduler_preemption_gpu import (CacheCapacitySelection,
++                                               check_pool, git,
++                                               select_prompt_ids, sha256)
++
++REPO_ROOT = Path(__file__).resolve().parents[1]
++
++# Approved scoped test inputs (provisional, not project-wide policy).
++MODEL_NAME = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
++LOAD_FORMAT = "dummy"
++DTYPE = "float16"
++ATTENTION_BACKEND = "flash_attention"
++TENSOR_PARALLEL_SIZE = 1
++PIPELINE_PARALLEL_SIZE = 1
++BLOCK_SIZE = 16
++GPU_MEMORY_UTILIZATION = 0.5
++SEED = 42
++TRUST_REMOTE_CODE = True
++TOKENIZER_MODE = "auto"
++TEMPERATURE = 0.0
++IGNORE_EOS = True
++SCHEDULER_TYPE = "adapted_vllm"
++MAX_NONEMPTY_DECISIONS = 12  # validation guard per case
++PROCESS_TIMEOUT_SECONDS = 600  # documented `timeout` for one case process
++PROMPT_ID_SEARCH_STARTS = (1000, 2000, 3000, 4000)
++PROFILE_METHOD = preemption.PROFILE_METHOD
++INIT_CACHE_METHOD = preemption.INIT_CACHE_METHOD
++WORKER_STATE_METHOD = "validation_state"
++
++ADMISSION, PREFILL, DECODE = "admission", "resident_prefill", "decode"
++
++
++def _decision(selected, scheduled, central, worker, after, finished=(),
++              victims=(), stops=("running_exhausted",
++                                 "arrived_waiting_exhausted"),
++              completion=()):
++    """One expected nonempty decision.
++
++    ``selected``: (seq_id, kind, tokens, block_demand) in selection order.
++    ``scheduled``: emitted [seq_id, prompt_chunk_len]. Block operations are
++    (op, seq_id, table length before, after): ``central`` during scheduling,
++    ``completion`` central frees at completion, ``worker`` the whole step.
++    ``after``: (waiting, running, free blocks, {seq_id: (prompt_len,
++    processed, prompt_done, outputs, logical_blocks, physical_blocks)}) for
++    unfinished requests at the completed step boundary."""
++    waiting, running, free, seqs = after
++    return dict(
++        selected=[list(s) for s in selected], victims=list(victims),
++        stops=list(stops), preempted=list(victims),
++        scheduled=[list(s) for s in scheduled],
++        central=[list(o) for o in central],
++        completion=[list(o) for o in completion],
++        worker=[list(o) for o in worker],
++        after=dict(waiting=list(waiting), running=list(running), free=free,
++                   seqs={str(k): list(v) for k, v in seqs.items()}),
++        finished=list(finished),
++    )
++
++
++def _al(sid, after):
++    return ("allocate", sid, 0, after)
++
++
++def _ap(sid, before, after=None):
++    return ("append", sid, before, before if after is None else after)
++
++
++def _fr(sid, before):
++    return ("free", sid, before, 0)
++
++
++CASES = dict(
++    mixed=dict(
++        prompt_lens=[5, 8], max_tokens=2, max_num_batched_tokens=8,
++        max_num_seqs=2, max_model_len=32, num_gpu_blocks=8,
++        token_events={0: 2, 1: 2},
++        decisions=[
++            _decision([(0, ADMISSION, 5, 1), (1, ADMISSION, 3, 1)],
++                      [(0, 5), (1, 3)], [_al(0, 1), _al(1, 1)],
++                      [_al(0, 1), _al(1, 1)],
++                      ([], [0, 1], 6, {0: (5, 5, True, 0, 1, 1),
++                                       1: (8, 3, False, 0, 1, 1)})),
++            # Selection A decode, B prefill; emitted prompt-first.
++            _decision([(0, DECODE, 1, 0), (1, PREFILL, 5, 0)],
++                      [(1, 5), (0, 0)], [_ap(0, 1)],
++                      [_ap(1, 1), _ap(0, 1)],
++                      ([], [0, 1], 6, {0: (5, 5, True, 1, 1, 1),
++                                       1: (8, 8, True, 0, 1, 1)})),
++            _decision([(0, DECODE, 1, 0), (1, DECODE, 1, 0)],
++                      [(0, 0), (1, 0)], [_ap(0, 1), _ap(1, 1)],
++                      [_ap(0, 1), _ap(1, 1), _fr(0, 1)],
++                      ([], [1], 7, {1: (8, 8, True, 1, 1, 1)}),
++                      finished=[0], completion=[_fr(0, 1)]),
++            _decision([(1, DECODE, 1, 0)], [(1, 0)], [_ap(1, 1)],
++                      [_ap(1, 1), _fr(1, 1)], ([], [], 8, {}),
++                      finished=[1], completion=[_fr(1, 1)]),
++        ],
++    ),
++    preemption=dict(
++        prompt_lens=[16, 16, 16, 16], max_tokens=3, max_num_batched_tokens=64,
++        max_num_seqs=4, max_model_len=64, num_gpu_blocks=4,
++        # Restarted 2 and 3: one event before preemption plus three after,
++        # against max_tokens 3 (inherited counter reset, not repaired).
++        token_events={0: 3, 1: 3, 2: 4, 3: 4},
++        decisions=[
++            _decision([(i, ADMISSION, 16, 1) for i in range(4)],
++                      [(i, 16) for i in range(4)],
++                      [_al(i, 1) for i in range(4)],
++                      [_al(i, 1) for i in range(4)],
++                      ([], [0, 1, 2, 3], 0,
++                       {i: (16, 16, True, 0, 1, 1) for i in range(4)})),
++            # Zero-demand decodes with no free block; each gap becomes 1.
++            _decision([(i, DECODE, 1, 0) for i in range(4)],
++                      [(i, 0) for i in range(4)],
++                      [_ap(i, 1) for i in range(4)],
++                      [_ap(i, 1) for i in range(4)],
++                      ([], [0, 1, 2, 3], 0,
++                       {i: (16, 16, True, 1, 2, 1) for i in range(4)})),
++            # 0 needs a block: evict tail 3; 1 needs one: evict tail 2.
++            _decision([(0, DECODE, 1, 1), (1, DECODE, 1, 1)],
++                      [(0, 0), (1, 0)],
++                      [_fr(3, 1), _fr(2, 1), _ap(0, 1, 2), _ap(1, 1, 2)],
++                      [_fr(3, 1), _fr(2, 1), _ap(0, 1, 2), _ap(1, 1, 2)],
++                      ([2, 3], [0, 1], 0,
++                       {0: (16, 16, True, 2, 2, 2), 1: (16, 16, True, 2, 2, 2),
++                        2: (17, 0, False, 0, 2, 0), 3: (17, 0, False, 0, 2, 0)}),
++                      victims=[3, 2],
++                      stops=("running_exhausted", "skipped_after_preemption")),
++            # The 2-block head does not fit 0 free blocks; 0 and 1 finish.
++            _decision([(0, DECODE, 1, 0), (1, DECODE, 1, 0)],
++                      [(0, 0), (1, 0)], [_ap(0, 2), _ap(1, 2)],
++                      [_ap(0, 2), _ap(1, 2), _fr(0, 2), _fr(1, 2)],
++                      ([2, 3], [], 4, {2: (17, 0, False, 0, 2, 0),
++                                       3: (17, 0, False, 0, 2, 0)}),
++                      finished=[0, 1], completion=[_fr(0, 2), _fr(1, 2)],
++                      stops=("running_exhausted", "admission_memory")),
++            # Readmission of the expanded contexts, recomputed from token 0.
++            _decision([(2, ADMISSION, 17, 2), (3, ADMISSION, 17, 2)],
++                      [(2, 17), (3, 17)], [_al(2, 2), _al(3, 2)],
++                      [_al(2, 2), _al(3, 2)],
++                      ([], [2, 3], 0, {2: (17, 17, True, 0, 2, 2),
++                                       3: (17, 17, True, 0, 2, 2)})),
++            _decision([(2, DECODE, 1, 0), (3, DECODE, 1, 0)],
++                      [(2, 0), (3, 0)], [_ap(2, 2), _ap(3, 2)],
++                      [_ap(2, 2), _ap(3, 2)],
++                      ([], [2, 3], 0, {2: (17, 17, True, 1, 2, 2),
++                                       3: (17, 17, True, 1, 2, 2)})),
++            _decision([(2, DECODE, 1, 0), (3, DECODE, 1, 0)],
++                      [(2, 0), (3, 0)], [_ap(2, 2), _ap(3, 2)],
++                      [_ap(2, 2), _ap(3, 2)],
++                      ([], [2, 3], 0, {2: (17, 17, True, 2, 2, 2),
++                                       3: (17, 17, True, 2, 2, 2)})),
++            _decision([(2, DECODE, 1, 0), (3, DECODE, 1, 0)],
++                      [(2, 0), (3, 0)], [_ap(2, 2), _ap(3, 2)],
++                      [_ap(2, 2), _ap(3, 2), _fr(2, 2), _fr(3, 2)],
++                      ([], [], 4, {}), finished=[2, 3],
++                      completion=[_fr(2, 2), _fr(3, 2)]),
++        ],
++    ),
++)
++
++
++def validate_case_constants(name):
++    """Static consistency of a case with the engine and policy limits."""
++    case = CASES[name]
++    pool, max_len = case["num_gpu_blocks"], case["max_model_len"]
++    check(math.ceil(max_len / BLOCK_SIZE) <= pool,
++          f"{name}: pool {pool} fails the engine maximum-context check")
++    check(int(0.01 * pool) == 0, f"{name}: expected a zero native watermark")
++    check(case["max_num_batched_tokens"] >= case["max_num_seqs"],
++          f"{name}: budget below resident limit")
++    check(len(case["decisions"]) <= MAX_NONEMPTY_DECISIONS,
++          f"{name}: plan exceeds the decision bound")
++    for n, length in enumerate(case["prompt_lens"]):
++        events = case["token_events"][n]
++        check(0 < length and length + events <= max_len,
++              f"{name}: request {n} context exceeds max_model_len")
++    return case
++
++
++# ---------------------------------------------------------------------------
++# Observation. These functions use only builtins: the worker copies are
++# serialized by value into the Ray worker.
++# ---------------------------------------------------------------------------
++
++
++def instrument_block_manager(manager, ops):
++    """Record allocate/free/append_slot calls as [op, seq_id, table before,
++    table after] (physical block IDs) and delegate once, unchanged."""
++    def table(seq):
++        return [b.block_number for b in manager.block_tables.get(seq.seq_id, [])]
++
++    def wrap(name, label):
++        native = getattr(manager, name)
++
++        def wrapper(seq):
++            before = table(seq)
++            result = native(seq)
++            ops.append([label, seq.seq_id, before, table(seq)])
++            return result
++        setattr(manager, name, wrapper)
++
++    wrap("allocate", "allocate")
++    wrap("free", "free")
++    wrap("append_slot", "append")
++
++
++def seq_state(seq):
++    return dict(
++        status=seq.get_status().name,
++        prompt_len=seq.get_prompt_len(),
++        prompt_token_ids=list(seq.prompt_token_ids),
++        prompt_tokens_processed=seq.get_num_prompt_tokens_processed(),
++        prompt_processing_finished=seq.prompt_processing_finished,
++        output_token_ids=list(seq.output_token_ids),
++        logical_blocks=len(seq.logical_token_blocks),
++    )
++
++
++def manager_state(seq_map, manager):
++    return dict(
++        total_blocks=manager.num_total_gpu_blocks,
++        watermark_blocks=manager.watermark_blocks,
++        free_blocks=manager.get_num_free_gpu_blocks(),
++        free_block_ids=[b.block_number for b in manager.gpu_allocator.free_blocks],
++        block_tables={str(k): [b.block_number for b in v]
++                      for k, v in manager.block_tables.items()},
++        seqs={str(k): seq_state(s) for k, s in seq_map.items()},
++    )
++
++
++def worker_validation_state(seq_manager, ops):
++    """Worker block-manager state and the operations since the last call."""
++    state = manager_state(seq_manager.seq_map, seq_manager.block_manager)
++    state["block_ops"] = list(ops)
++    del ops[:]
++    return state
++
++
++def central_state(scheduler, seq_map):
++    state = manager_state(seq_map, scheduler.block_manager)
++    state.update(iteration_id=scheduler._iteration_id,
++                 num_running_batches=scheduler.num_running_batches,
++                 waiting=[s.seq_id for s in scheduler.waiting],
++                 running=[s.seq_id for s in scheduler.running])
++    return state
++
++
++class CentralObserver:
++    """Validation-only wrappers on the central scheduler instance: the
++    proposal, the native block operations (split at the end of scheduling),
++    and the emitted output with the state at that point."""
++
++    def __init__(self, scheduler, seq_map):
++        self.ops = []
++        self.proposals = []
++        self.schedules = []
++        instrument_block_manager(scheduler.block_manager, self.ops)
++        native_propose, native_schedule = scheduler._propose, scheduler.schedule
++
++        def propose(now):
++            proposal = native_propose(now)
++            self.proposals.append(to_jsonable(proposal))
++            return proposal
++
++        def schedule():
++            outputs = native_schedule()
++            self.schedules.append(dict(
++                outputs=outputs_record(outputs), num_ops=len(self.ops),
++                state=central_state(scheduler, seq_map)))
++            return outputs
++
++        scheduler._propose, scheduler.schedule = propose, schedule
++
++    def clear(self):
++        del self.ops[:], self.proposals[:], self.schedules[:]
++
++
++def _lens(ops):
++    return [[op, sid, len(before), len(after)] for op, sid, before, after in ops]
++
++
++# ---------------------------------------------------------------------------
++# Checks
++# ---------------------------------------------------------------------------
++
++
++def check_quiescent(tag, case, central, worker):
++    """Ownership, per-manager conservation, and central/worker agreement at
++    a completed step boundary. Physical block IDs may differ."""
++    pool = case["num_gpu_blocks"]
++    waiting, running = central["waiting"], central["running"]
++    check(len(set(waiting + running)) == len(waiting) + len(running),
++          f"{tag}: ownership not unique/disjoint: {waiting} {running}")
++    check(len(running) <= case["max_num_seqs"], f"{tag}: residents {running}")
++    check(central["num_running_batches"] == 0, f"{tag}: batches in flight")
++    check(sorted(waiting + running) == sorted(int(k) for k in central["seqs"]),
++          f"{tag}: owned set differs from the central sequence map")
++    check(set(central["seqs"]) == set(worker["seqs"]),
++          f"{tag}: central/worker sequence maps differ")
++    check(set(central["block_tables"]) == {str(k) for k in running},
++          f"{tag}: central tables {central['block_tables']} vs running")
++    check({k: len(v) for k, v in central["block_tables"].items()}
++          == {k: len(v) for k, v in worker["block_tables"].items()},
++          f"{tag}: central/worker allocation counts differ")
++    check(central["free_blocks"] == worker["free_blocks"],
++          f"{tag}: free counts {central['free_blocks']} {worker['free_blocks']}")
++    check_pool(tag, "central", pool, central["block_tables"],
++               central["free_block_ids"])
++    check_pool(tag, "worker", pool, worker["block_tables"],
++               worker["free_block_ids"])
++    for key, seq in central["seqs"].items():
++        check(seq == worker["seqs"][key],
++              f"{tag}: seq {key} central {seq} worker {worker['seqs'][key]}")
++        status = "WAITING" if int(key) in waiting else "PAUSED"
++        check(seq["status"] == status, f"{tag}: seq {key} status {seq}")
++
++
++def check_decision(tag, case, expected, before, worker_before, record):
++    """Exact expected proposal, output, operations, and resulting state."""
++    proposal_list, schedules = record["proposals"], record["schedules"]
++    check(len(proposal_list) == 1 and len(schedules) == 1,
++          f"{tag}: {len(proposal_list)} proposals, {len(schedules)} schedules")
++    proposal, scheduled = proposal_list[0], schedules[0]
++    emitted = scheduled["outputs"]
++
++    # Proposal: observed inputs, selection order, victims, stop reasons.
++    check(proposal["running_order"] == before["running"]
++          and proposal["arrived_waiting_order"] == before["waiting"]
++          and proposal["free_blocks"] == before["free_blocks"]
++          and proposal["watermark_blocks"] == 0
++          and proposal["token_budget"] == case["max_num_batched_tokens"],
++          f"{tag}: proposal inputs {proposal}")
++    selected = [[a["seq_id"], a["kind"], a["num_tokens"], a["block_demand"]]
++                for a in proposal["actions"]]
++    check(selected == expected["selected"],
++          f"{tag}: selected {selected}; expected {expected['selected']}")
++    check(list(proposal["victims"]) == expected["victims"],
++          f"{tag}: victims {proposal['victims']}")
++    stops = [proposal["running_stop_reason"], proposal["waiting_stop_reason"]]
++    check(stops == expected["stops"], f"{tag}: stop reasons {stops}")
++    check(sum(a[2] for a in selected) <= case["max_num_batched_tokens"],
++          f"{tag}: selected tokens exceed the budget")
++
++    # Emitted: victims first, then the stable prompt-first partition of the
++    # selection order; and the exact expectation.
++    layout = ([[a[0], a[2]] for a in selected if a[1] != DECODE]
++              + [[a[0], 0] for a in selected if a[1] == DECODE])
++    check(emitted["preempted_seq_ids"] == list(proposal["victims"])
++          and emitted["scheduled"] == layout and not emitted["ignored_seq_ids"],
++          f"{tag}: emitted {emitted} is not the layout of the proposal")
++    check(emitted["preempted_seq_ids"] == expected["preempted"]
++          and emitted["scheduled"] == expected["scheduled"],
++          f"{tag}: emitted {emitted}; expected {expected['preempted']} "
++          f"{expected['scheduled']}")
++    check(emitted["id"] == before["iteration_id"] + 1, f"{tag}: output id")
++
++    # Central native operations: scheduling, then completion frees.
++    ops = record["central_ops"]
++    sched_ops, completion_ops = ops[:scheduled["num_ops"]], ops[scheduled["num_ops"]:]
++    check(_lens(sched_ops) == expected["central"],
++          f"{tag}: central scheduling ops {_lens(sched_ops)}; expected "
++          f"{expected['central']}")
++    check(_lens(completion_ops) == expected["completion"],
++          f"{tag}: central completion ops {_lens(completion_ops)}")
++    for op, sid, table_before, _ in sched_ops:
++        prior = before["block_tables"].get(str(sid), [])
++        check(table_before == prior,
++              f"{tag}: {op} {sid} saw table {table_before}, expected {prior}")
++    worker_ops = record["worker_after"]["block_ops"]
++    check(_lens(worker_ops) == expected["worker"],
++          f"{tag}: worker ops {_lens(worker_ops)}; expected {expected['worker']}")
++
++    # At the end of scheduling: progress unchanged until completion, the
++    # free count equals the proposal arithmetic, a batch is in flight.
++    sched_state = scheduled["state"]
++    victim_blocks = sum(len(before["block_tables"][str(v)])
++                        for v in proposal["victims"])
++    check(sched_state["free_blocks"] == before["free_blocks"] + victim_blocks
++          - sum(a[3] for a in selected),
++          f"{tag}: free blocks after scheduling {sched_state['free_blocks']}")
++    check(sched_state["seqs"] == before["seqs"],
++          f"{tag}: sequence progress changed before completion")
++    check(sched_state["num_running_batches"] == 1, f"{tag}: batch count")
++
++    # Completed step boundary.
++    after, worker_after = record["after"], record["worker_after"]
++    check(after["iteration_id"] == before["iteration_id"] + 1,
++          f"{tag}: iteration advanced "
++          f"{after['iteration_id'] - before['iteration_id']}")
++    check_quiescent(f"{tag} (after)", case, after, worker_after)
++    want = expected["after"]
++    check(after["waiting"] == want["waiting"] and after["running"] == want["running"]
++          and after["free_blocks"] == want["free"],
++          f"{tag}: queues/free after {after['waiting']} {after['running']} "
++          f"{after['free_blocks']}; expected {want}")
++    got = {k: [s["prompt_len"], s["prompt_tokens_processed"],
++               s["prompt_processing_finished"], len(s["output_token_ids"]),
++               s["logical_blocks"], len(after["block_tables"].get(k, []))]
++           for k, s in after["seqs"].items()}
++    check(got == want["seqs"], f"{tag}: request state {got}; expected "
++          f"{want['seqs']}")
++
++    # Samples are associated with the scheduled entries in order.
++    sampler = record["sampler_outputs"]
++    check(sampler is not None
++          and [s for s, _ in sampler] == [s for s, _ in emitted["scheduled"]],
++          f"{tag}: sampler outputs {sampler} vs scheduled {emitted['scheduled']}")
++    finished = [o["seq_id"] for o in record["request_outputs"] if o["finished"]]
++    check(finished == expected["finished"], f"{tag}: finished {finished}")
++    check(sorted(o["seq_id"] for o in record["request_outputs"])
++          == sorted(s for s, _ in emitted["scheduled"]),
++          f"{tag}: request outputs {record['request_outputs']}")
++    for o in record["request_outputs"]:
++        if o["finished"]:
++            check(o["finish_reason"] == "length"
++                  and len(o["token_ids"]) == case["max_tokens"]
++                  and str(o["seq_id"]) not in after["seqs"]
++                  and str(o["seq_id"]) not in worker_after["seqs"]
++                  and str(o["seq_id"]) not in after["block_tables"]
++                  and str(o["seq_id"]) not in worker_after["block_tables"],
++                  f"{tag}: finished output or release {o}")
++
++
++def run_case(name, runtime, trace):
++    """Submit the case's requests and check every decision and the final
++    idle call, filling ``trace`` as it goes (so a failure keeps the partial
++    record). ``runtime`` provides ``scheduler``, ``seq_map``,
++    ``prompt_ids(lengths)``, ``submit(prompt_ids, sampling_params)``,
++    ``step()`` returning (request outputs, sampler outputs as [seq_id, token]
++    or None), and ``worker_state()``. Raises CheckFailure."""
++    from sarathi.core.datatypes.sampling_params import SamplingParams
++    from sarathi.core.scheduler.adapted_vllm_scheduler import (
++        AdaptedVLLMScheduler)
++
++    case = validate_case_constants(name)
++    scheduler = runtime.scheduler
++    config = scheduler.scheduler_config
++    check(type(scheduler) is AdaptedVLLMScheduler,
++          f"registered scheduler is {type(scheduler).__name__}")
++    check((config.max_num_seqs, config.max_model_len,
++           config.num_pipeline_stages, config.max_num_batched_tokens)
++          == (case["max_num_seqs"], case["max_model_len"], 1,
++              case["max_num_batched_tokens"]),
++          f"scheduler configuration {vars(config)}")
++    manager = scheduler.block_manager
++    check(manager.num_total_gpu_blocks == case["num_gpu_blocks"]
++          and manager.get_num_free_gpu_blocks() == case["num_gpu_blocks"]
++          and manager.watermark_blocks == 0 and not manager.block_tables
++          and manager.block_size == BLOCK_SIZE, "central pool before requests")
++
++    observer = CentralObserver(scheduler, runtime.seq_map)
++    trace.update(case=name, prompts=[], decisions=[], idle=None,
++                 token_events=None)
++    for n, prompt_ids in enumerate(runtime.prompt_ids(case["prompt_lens"])):
++        check(len(prompt_ids) == case["prompt_lens"][n], f"prompt {n} length")
++        runtime.submit(list(prompt_ids), SamplingParams(
++            temperature=TEMPERATURE, max_tokens=case["max_tokens"],
++            ignore_eos=IGNORE_EOS, stop=None))
++        check(sorted(runtime.seq_map) == list(range(n + 1)),
++              f"request {n} must be seq {n}")
++        trace["prompts"].append(list(prompt_ids))
++    arrivals = [s.arrival_time for s in scheduler.waiting]
++    runtime.worker_state()  # drop registration-time worker operations
++
++    events = {n: 0 for n in range(len(case["prompt_lens"]))}
++    expected_steps = case["decisions"]
++    for index in range(MAX_NONEMPTY_DECISIONS):
++        if not scheduler.has_unfinished_seqs():
++            break
++        tag = f"{name} decision {index}"
++        check(index < len(expected_steps),
++              f"{tag}: more nonempty decisions than the {len(expected_steps)} "
++              "planned")
++        before = central_state(scheduler, runtime.seq_map)
++        worker_before = runtime.worker_state()
++        check_quiescent(f"{tag} (before)", case, before, worker_before)
++        check(worker_before["block_ops"] == [],
++              f"{tag}: worker operations outside a step")
++        observer.clear()
++        request_outputs, sampler_outputs = runtime.step()
++        record = dict(
++            index=index, before=before, worker_before=worker_before,
++            proposals=list(observer.proposals),
++            schedules=list(observer.schedules),
++            central_ops=list(observer.ops),
++            after=central_state(scheduler, runtime.seq_map),
++            worker_after=runtime.worker_state(),
++            sampler_outputs=sampler_outputs,
++            request_outputs=[request_output_record(o) for o in request_outputs])
++        trace["decisions"].append(record)
++        if index == 0:
++            check(all(a <= record["proposals"][0]["decision_time"]
++                      for a in arrivals), f"{tag}: requests not yet arrived")
++        check_decision(tag, case, expected_steps[index], before,
++                       worker_before, record)
++        for sid, chunk in record["schedules"][0]["outputs"]["scheduled"]:
++            if chunk == 0:
++                events[sid] += 1
++        print(f"{tag}: preempted "
++              f"{record['schedules'][0]['outputs']['preempted_seq_ids']} "
++              f"scheduled {record['schedules'][0]['outputs']['scheduled']} "
++              f"free {record['after']['free_blocks']}", flush=True)
++    else:
++        check(not scheduler.has_unfinished_seqs(),
++              f"{name}: unfinished after {MAX_NONEMPTY_DECISIONS} decisions")
++    check(len(trace["decisions"]) == len(expected_steps),
++          f"{name}: {len(trace['decisions'])} decisions; planned "
++          f"{len(expected_steps)}")
++    trace["token_events"] = {str(k): v for k, v in events.items()}
++    check(events == case["token_events"],
++          f"{name}: generated-token events {events}; expected "
++          f"{case['token_events']}")
++
++    # Drained, then one ordinary idle call that changes nothing but the id.
++    drained = central_state(scheduler, runtime.seq_map)
++    worker_drained = runtime.worker_state()
++    check(drained["waiting"] == [] and drained["running"] == []
++          and drained["seqs"] == {} and drained["block_tables"] == {}
++          and drained["free_blocks"] == case["num_gpu_blocks"]
++          and worker_drained["seqs"] == {} and worker_drained["block_tables"] == {}
++          and worker_drained["free_blocks"] == case["num_gpu_blocks"],
++          f"{name}: not drained {drained} {worker_drained}")
++    observer.clear()
++    idle_outputs, idle_sampler = runtime.step()
++    after = central_state(scheduler, runtime.seq_map)
++    trace["idle"] = dict(before=drained, after=after,
++                         proposals=list(observer.proposals),
++                         schedules=list(observer.schedules),
++                         central_ops=list(observer.ops),
++                         worker_after=runtime.worker_state())
++    check(list(idle_outputs) == [] and idle_sampler is None,
++          f"{name}: idle step returned outputs")
++    check(len(observer.schedules) == 1
++          and observer.schedules[0]["outputs"]["scheduled"] == []
++          and observer.schedules[0]["outputs"]["preempted_seq_ids"] == []
++          and observer.ops == [] and trace["idle"]["worker_after"]["block_ops"] == []
++          and len(observer.proposals) == 1
++          and observer.proposals[0]["actions"] == []
++          and observer.proposals[0]["victims"] == [],
++          f"{name}: idle step was not an ordinary empty decision")
++    check({**after, "iteration_id": None} == {**drained, "iteration_id": None}
++          and after["iteration_id"] == drained["iteration_id"] + 1,
++          f"{name}: idle step changed state")
++    return trace
++
++
++# ---------------------------------------------------------------------------
++# GPU engine construction (lazy; nothing here runs at import or --help)
++# ---------------------------------------------------------------------------
++
++
++def engine_args(name, model_path, metrics_dir):
++    """Native ``EngineArgs`` for the adapted reference and the case."""
++    from sarathi.engine.arg_utils import EngineArgs
++
++    case = CASES[name]
++    return EngineArgs(
++        model=str(model_path), tokenizer=str(model_path),
++        tokenizer_mode=TOKENIZER_MODE, trust_remote_code=TRUST_REMOTE_CODE,
++        load_format=LOAD_FORMAT, dtype=DTYPE, seed=SEED,
++        pipeline_parallel_size=PIPELINE_PARALLEL_SIZE,
++        tensor_parallel_size=TENSOR_PARALLEL_SIZE, block_size=BLOCK_SIZE,
++        gpu_memory_utilization=GPU_MEMORY_UTILIZATION,
++        scheduler_type=SCHEDULER_TYPE, max_model_len=case["max_model_len"],
++        max_num_seqs=case["max_num_seqs"],
++        max_num_batched_tokens=case["max_num_batched_tokens"],
++        # Enabled metrics with optional outputs off, as in the earlier
++        # bounded checks (the disabled mode lacks attributes the engine
++        # reads each step); nothing is plotted.
++        write_metrics=True, output_dir=str(metrics_dir),
++        enable_op_level_metrics=False, enable_cpu_op_level_metrics=False,
++        enable_chrome_trace=False, enable_request_outputs=False,
++        keep_individual_batch_metrics=True,
++        attention_backend=ATTENTION_BACKEND,
++    )
++
++
++def build_worker_class():
++    """``BaseWorker`` subclass that records its block-manager operations and
++    exposes primitive state; native behavior is unchanged."""
++    from sarathi.worker.base_worker import BaseWorker
++
++    class ValidationWorker(BaseWorker):
++        def init_cache_engine(self, cache_config):
++            super().init_cache_engine(cache_config)
++            self._validation_ops = []
++            instrument_block_manager(self.seq_manager.block_manager,
++                                     self._validation_ops)
++
++        def validation_state(self):
++            caches = [t for layer in self.gpu_cache for t in (
++                layer if isinstance(layer, (tuple, list)) else (layer,))]
++            state = worker_validation_state(self.seq_manager,
++                                            self._validation_ops)
++            state.update(
++                cache_config_num_gpu_blocks=self.cache_config.num_gpu_blocks,
++                cache_engine_num_gpu_blocks=self.cache_engine.num_gpu_blocks,
++                cache_layers=len(self.gpu_cache),
++                cache_tensor_block_dims=sorted({int(t.shape[0]) for t in caches}),
++                cache_tensor_shapes=sorted({tuple(t.shape) for t in caches}),
++                allocator_num_blocks=(
++                    self.seq_manager.block_manager.gpu_allocator.num_blocks),
++            )
++            return state
++
++    return ValidationWorker
++
++
++def build_engine_class(selection):
++    """``BaseLLMEngine`` subclass using the validation worker, passing the
++    chosen capacity to native cache initialization, and recording sampler
++    outputs. Every worker call is delegated unchanged."""
++    from sarathi.engine.base_llm_engine import BaseLLMEngine
++
++    class AdaptedReferenceValidationEngine(BaseLLMEngine):
++        validation_sampler_outputs = None
++
++        def _get_worker_impl(self):
++            return build_worker_class()
++
++        def _run_workers(self, method, *args, **kwargs):
++            result = super()._run_workers(method, *args, **kwargs)
++            if method == PROFILE_METHOD:
++                return selection.select(result)
++            if method == INIT_CACHE_METHOD:
++                selection.record_initialization(
++                    kwargs["cache_config"].num_gpu_blocks, result)
++            if method == "execute_model":
++                self.validation_sampler_outputs = (
++                    None if result is None
++                    else [[o.seq_id, o.output_token] for o in result])
++            return result
++
++    return AdaptedReferenceValidationEngine
++
++
++class EngineRuntime:
++    """``run_case`` runtime over the real engine and its single worker."""
++
++    def __init__(self, engine, tokenizer, vocab_size):
++        self.engine = engine
++        self.scheduler = engine.scheduler
++        self.seq_map = engine.seq_manager.seq_map
++        self.tokenizer, self.vocab_size = tokenizer, vocab_size
++
++    def prompt_ids(self, lengths):
++        prompts = [select_prompt_ids(self.tokenizer, self.vocab_size, start, n)[0]
++                   for start, n in zip(PROMPT_ID_SEARCH_STARTS, lengths)]
++        flat = [t for p in prompts for t in p]
++        check(len(flat) == len(set(flat)), "prompts must be disjoint")
++        return prompts
++
++    def submit(self, prompt_ids, sampling_params):
++        self.engine.add_request(prompt=None, sampling_params=sampling_params,
++                                prompt_token_ids=prompt_ids)
++
++    def step(self):
++        self.engine.validation_sampler_outputs = None
++        outputs = self.engine.step()
++        return outputs, self.engine.validation_sampler_outputs
++
++    def worker_state(self):
++        states = self.engine._run_workers(WORKER_STATE_METHOD,
++                                          get_all_outputs=True)
++        check(len(states) == 1, f"expected one worker, got {len(states)}")
++        return states[0]
++
++
++def check_capacity(case, selection, cache_config, manager, worker):
++    n = case["num_gpu_blocks"]
++    check(selection.profile_calls == 1 and len(selection.initialized) == 1,
++          "profiling/initialization did not each run exactly once")
++    check(cache_config.num_gpu_blocks == n
++          and manager.num_total_gpu_blocks == n
++          and manager.gpu_allocator.num_blocks == n
++          and manager.get_num_free_gpu_blocks() == n
++          and not manager.block_tables and manager.watermark_blocks == 0,
++          "central capacity")
++    check(worker["cache_config_num_gpu_blocks"] == n
++          and worker["cache_engine_num_gpu_blocks"] == n
++          and worker["cache_tensor_block_dims"] == [n]
++          and worker["cache_layers"] > 0
++          and worker["total_blocks"] == n and worker["allocator_num_blocks"] == n
++          and worker["free_blocks"] == n and worker["block_tables"] == {}
++          and worker["block_ops"] == [], f"worker capacity {worker}")
++
++
++PROVENANCE_FILES = [
++    "scripts/check_adapted_vllm_gpu.py", "scripts/check_lp_scheduler_gpu.py",
++    "scripts/check_lp_scheduler_preemption_gpu.py",
++    "tests/test_check_adapted_vllm_gpu.py",
++    "tests/test_adapted_vllm_scheduler.py",
++    "sarathi/core/scheduler/adapted_vllm_scheduler.py",
++    "sarathi/core/scheduler/base_scheduler.py", "sarathi/config.py",
++    "sarathi/engine/arg_utils.py", "sarathi/engine/base_llm_engine.py",
++    "sarathi/core/block_space_manager/base_block_space_manager.py",
++    "sarathi/core/sequence_manager/base_sequence_manager.py",
++    "sarathi/core/sequence_manager/worker_sequence_manager.py",
++    "sarathi/worker/base_worker.py", "sarathi/model_executor/model_runner.py",
++]
++
++
++def provenance_record():
++    return dict(
++        git_head=git("rev-parse", "HEAD").strip(),
++        git_branch=git("rev-parse", "--abbrev-ref", "HEAD").strip(),
++        git_status_short=git("status", "--short", "--untracked-files=all"),
++        git_diff_head_sha256=hashlib.sha256(
++            git("diff", "HEAD").encode()).hexdigest(),
++        file_sha256={f: (sha256(REPO_ROOT / f) if (REPO_ROOT / f).exists()
++                         else None) for f in PROVENANCE_FILES},
++        imported_helper_sha256={single.__name__: sha256(single.__file__),
++                                preemption.__name__: sha256(preemption.__file__)},
++        loaded_modules=os.environ.get("LOADEDMODULES"),
++    )
++
++
++def write_artifacts(out_dir, summary, trace):
++    (out_dir / "decision_trace.json").write_text(
++        json.dumps(to_jsonable(trace), indent=1))
++    (out_dir / "summary.json").write_text(
++        json.dumps(to_jsonable(summary), indent=1))
++
++
++def parse_args(argv=None):
++    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
++    parser.add_argument("--case", required=True, choices=sorted(CASES))
++    parser.add_argument("--model-path", required=True,
++                        help="existing local directory with the TinyLlama "
++                        "config and tokenizer")
++    parser.add_argument("--output-dir", required=True)
++    return parser, parser.parse_args(argv)
++
++
++def main(argv=None):
++    parser, args = parse_args(argv)
++    out_dir = Path(args.output_dir)
++    out_dir.mkdir(parents=True, exist_ok=True)
++    if any((out_dir / f).exists() for f in ("decision_trace.json",
++                                            "summary.json")):
++        parser.error(f"{out_dir} already holds run artifacts")
++    model_path = Path(args.model_path).resolve()
++
++    # Local assets only; never download.
++    os.environ["HF_HUB_OFFLINE"] = "1"
++    os.environ["TRANSFORMERS_OFFLINE"] = "1"
++
++    case = CASES[args.case]
++    trace = dict(case=args.case)
++    summary = dict(passed=False, failure=None, case=args.case,
++                   case_parameters={k: v for k, v in case.items()
++                                    if k != "decisions"},
++                   expected_decisions=case["decisions"],
++                   max_nonempty_decisions=MAX_NONEMPTY_DECISIONS,
++                   process_timeout_seconds=PROCESS_TIMEOUT_SECONDS,
++                   provenance=provenance_record(), argv=sys.argv,
++                   model_path=str(model_path))
++    engine = None
++    try:
++        validate_case_constants(args.case)
++        check((model_path / "config.json").is_file()
++              and (model_path / "tokenizer.json").is_file(),
++              f"model path {model_path} lacks config.json/tokenizer.json")
++        root_on_path = str(REPO_ROOT) in [
++            str(Path(p).resolve()) for p in
++            os.environ.get("PYTHONPATH", "").split(os.pathsep) if p]
++        check(root_on_path, f"repository root {REPO_ROOT} must be on "
++              "PYTHONPATH so the Ray worker can import sarathi")
++
++        args_record = engine_args(args.case, model_path,
++                                  out_dir / "metrics_store_unused")
++        configs = args_record.create_engine_configs()
++        model_config, cache_config, parallel_config, scheduler_config, _ = configs
++        check(type(scheduler_config).__name__ == "AdaptedVLLMSchedulerConfig"
++              and (parallel_config.tensor_parallel_size,
++                   parallel_config.pipeline_parallel_size)
++              == (TENSOR_PARALLEL_SIZE, PIPELINE_PARALLEL_SIZE)
++              and cache_config.block_size == BLOCK_SIZE
++              and model_config.max_model_len == case["max_model_len"],
++              "native configuration differs from the case")
++
++        summary["environment"] = environment_record()
++        print("environment:", json.dumps(summary["environment"], indent=1),
++              flush=True)
++        selection = CacheCapacitySelection(chosen=case["num_gpu_blocks"])
++        t0 = time.monotonic()
++        engine = build_engine_class(selection)(*configs)
++        init_seconds = time.monotonic() - t0
++        runtime = EngineRuntime(engine, engine.tokenizer,
++                                model_config.hf_config.vocab_size)
++        worker_init = runtime.worker_state()
++        summary["cache_capacity"] = dict(
++            **selection.record(),
++            engine_cache_config_num_gpu_blocks=cache_config.num_gpu_blocks,
++            central_manager_total_blocks=(
++                engine.scheduler.block_manager.num_total_gpu_blocks),
++            worker={k: v for k, v in worker_init.items() if k != "seqs"})
++        print("cache capacity:", json.dumps(to_jsonable(
++            summary["cache_capacity"])), flush=True)
++        check_capacity(case, selection, cache_config,
++                       engine.scheduler.block_manager, worker_init)
++        summary["config"] = dict(
++            model=MODEL_NAME, engine_args=to_jsonable(vars(args_record)),
++            resolved_dtype=str(model_config.dtype),
++            hf_config_commit_hash=getattr(model_config.hf_config,
++                                          "_commit_hash", None),
++            scheduler_class=type(engine.scheduler).__name__,
++            scheduler_config=to_jsonable(vars(scheduler_config)),
++            vocab_size=model_config.hf_config.vocab_size,
++            eos_token_id=engine.tokenizer.eos_token_id,
++            engine_init_seconds=round(init_seconds, 3))
++        print("config:", json.dumps(summary["config"]), flush=True)
++
++        run_case(args.case, runtime, trace)
++        summary.update(
++            passed=True,
++            decisions=[dict(preempted=d["schedules"][0]["outputs"][
++                "preempted_seq_ids"],
++                scheduled=d["schedules"][0]["outputs"]["scheduled"],
++                sampler_outputs=d["sampler_outputs"])
++                for d in trace["decisions"]],
++            token_events=trace["token_events"],
++            note=("token_events counts emitted decode entries; restarted "
++                  "requests exceed max_tokens because the inherited output "
++                  "counter resets on recomputation"))
++    except BaseException as err:
++        summary["failure"] = dict(type=type(err).__name__, message=str(err),
++                                  traceback=traceback.format_exc())
++        print("CHECK FAILED:", type(err).__name__, err, file=sys.stderr,
++              flush=True)
++        traceback.print_exc()
++    finally:
++        cleanup = dict(engine_constructed=engine is not None)
++        try:
++            write_artifacts(out_dir, summary, trace)
++        finally:
++            # Stop only the Ray runtime this process started.
++            if "ray" in sys.modules:
++                ray = sys.modules["ray"]
++                cleanup["ray_initialized_before_shutdown"] = ray.is_initialized()
++                ray.shutdown()
++                cleanup["ray_initialized_after_shutdown"] = ray.is_initialized()
++            print("cleanup:", json.dumps(cleanup), flush=True)
++            (out_dir / "cleanup.json").write_text(json.dumps(cleanup, indent=1))
++    print("RESULT:", "PASS" if summary["passed"] else "FAIL", flush=True)
++    return 0 if summary["passed"] else 1
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+--- /dev/null	2026-10-11 03:15:20.894209986 +0000
++++ tests/test_check_adapted_vllm_gpu.py	2026-10-18 05:54:13.740113997 +0000
+@@ -0,0 +1,383 @@
++"""CPU checks for the adapted vLLM reference GPU validation driver.
++
++No engine, Ray worker, model, or GPU is used. The driver's case checks run
++against the registered scheduler, central block manager, engine sequence
++manager, and a worker sequence manager holding separate copies, replayed in
++the engine's single-stage order at the planned block size, pools, budgets,
++model lengths, and output limits. Sampled tokens are synthetic; the checks
++do not prescribe token IDs. Cache sizing is exercised through native
++``_init_cache`` with the worker dispatch replaced by a recording double.
++"""
++
++import copy
++import json
++import os
++import subprocess
++import sys
++import tempfile
++import time
++import unittest
++from pathlib import Path
++from types import SimpleNamespace
++from unittest import mock
++
++REPO_ROOT = Path(__file__).resolve().parents[1]
++sys.path.insert(0, str(REPO_ROOT))
++sys.path.insert(0, str(REPO_ROOT / "tests"))
++sys.path.insert(0, str(REPO_ROOT / "scripts"))
++
++import check_adapted_vllm_gpu as driver  # noqa: E402
++import test_lp_scheduler as lpt  # noqa: E402
++
++from sarathi.config import (  # noqa: E402
++    AdaptedVLLMSchedulerConfig,
++    CacheConfig,
++    SchedulerType,
++)
++from sarathi.core.datatypes.sequence import SamplerOutput, Sequence  # noqa: E402
++from sarathi.core.scheduler.scheduler_registry import SchedulerRegistry  # noqa: E402
++from sarathi.core.sequence_manager.worker_sequence_manager import (  # noqa: E402
++    WorkerSequenceManager,
++)
++from sarathi.engine import arg_utils  # noqa: E402
++
++setUpModule = lpt.setUpModule
++tearDownModule = lpt.tearDownModule
++
++SAMPLED_TOKEN = 7
++
++
++class CpuRuntime:
++    """``run_case`` runtime with native central and worker replay on CPU."""
++
++    def __init__(self, name):
++        case = driver.CASES[name]
++        cache_config = CacheConfig(block_size=driver.BLOCK_SIZE,
++                                   gpu_memory_utilization=0.5)
++        cache_config.num_gpu_blocks = case["num_gpu_blocks"]
++        config = AdaptedVLLMSchedulerConfig(
++            case["max_num_seqs"], case["max_model_len"], 1,
++            case["max_num_batched_tokens"])
++        self.scheduler = SchedulerRegistry.get(
++            SchedulerType.ADAPTED_VLLM, config, cache_config)
++        self.engine_seqs = lpt._EngineSequenceManager()
++        self.seq_map = self.engine_seqs.seq_map
++        self.worker_seqs = WorkerSequenceManager(cache_config, config)
++        self.worker_ops = []
++        driver.instrument_block_manager(self.worker_seqs.block_manager,
++                                        self.worker_ops)
++        self.next_id = 0
++
++    def prompt_ids(self, lengths):
++        return [list(range(1000 * (n + 1), 1000 * (n + 1) + length))
++                for n, length in enumerate(lengths)]
++
++    def submit(self, prompt_ids, sampling_params):
++        # Same construction and arrival clock as BaseLLMEngine.add_request.
++        seq = Sequence(self.next_id, None, prompt_ids, driver.BLOCK_SIZE, 2,
++                       time.perf_counter(), sampling_params)
++        self.next_id += 1
++        self.engine_seqs.add_seq(seq)
++        self.worker_seqs.add_seq(copy.deepcopy(seq))
++        self.scheduler.add_seq(seq)
++
++    def step(self):
++        outputs = self.scheduler.schedule()
++        if outputs.is_empty():
++            return [], None
++        ignored, metadata = self.engine_seqs.on_schedule(outputs)
++        self.worker_seqs.on_schedule(outputs)
++        samples = [SamplerOutput(m.seq_id, SAMPLED_TOKEN)
++                   for m in outputs.scheduled_seq_metadata_list]
++        self.worker_seqs.on_step_completed(outputs, samples)
++        self.engine_seqs.on_step_completed(outputs, samples)
++        self.scheduler.on_step_completed()
++        return (self.engine_seqs.generate_request_outputs(ignored, metadata),
++                [[s.seq_id, s.output_token] for s in samples])
++
++    def worker_state(self):
++        return driver.worker_validation_state(self.worker_seqs, self.worker_ops)
++
++
++def _run(name):
++    runtime, trace = CpuRuntime(name), {}
++    driver.run_case(name, runtime, trace)
++    return runtime, trace
++
++
++class DriverImportAndHelpTest(unittest.TestCase):
++    MODULES = ("torch", "ray", "sarathi.engine.base_llm_engine",
++               "sarathi.worker.base_worker", "sarathi.engine.arg_utils")
++
++    def _python(self, code):
++        env = dict(os.environ, CUDA_VISIBLE_DEVICES="")
++        return subprocess.run([sys.executable, "-B", "-c", code], cwd=REPO_ROOT,
++                              env=env, capture_output=True, text=True)
++
++    def test_import_and_help_load_no_engine_worker_ray_or_torch(self):
++        code = (
++            "import sys; sys.path.insert(0, 'scripts'); "
++            "import check_adapted_vllm_gpu as d\n"
++            "try:\n    d.main(['--help'])\nexcept SystemExit as e:\n"
++            "    code = e.code\n"
++            f"print('RESULT', code, sorted(m for m in {self.MODULES!r} "
++            "if m in sys.modules))"
++        )
++        result = self._python(code)
++        self.assertEqual(result.returncode, 0, result.stderr)
++        self.assertIn("--case {mixed,preemption}", result.stdout)
++        self.assertEqual(result.stdout.strip().splitlines()[-1], "RESULT 0 []")
++
++
++class PlannedCaseTest(unittest.TestCase):
++
++    def test_case_parameters_match_the_planned_workloads(self):
++        mixed, pre = driver.CASES["mixed"], driver.CASES["preemption"]
++        self.assertEqual(
++            (mixed["prompt_lens"], mixed["max_tokens"],
++             mixed["max_num_batched_tokens"], mixed["max_num_seqs"],
++             mixed["max_model_len"], mixed["num_gpu_blocks"]),
++            ([5, 8], 2, 8, 2, 32, 8))
++        self.assertEqual(
++            (pre["prompt_lens"], pre["max_tokens"],
++             pre["max_num_batched_tokens"], pre["max_num_seqs"],
++             pre["max_model_len"], pre["num_gpu_blocks"]),
++            ([16] * 4, 3, 64, 4, 64, 4))
++        self.assertEqual((driver.BLOCK_SIZE, driver.TENSOR_PARALLEL_SIZE,
++                          driver.PIPELINE_PARALLEL_SIZE, driver.LOAD_FORMAT,
++                          driver.TEMPERATURE, driver.IGNORE_EOS),
++                         (16, 1, 1, "dummy", 0.0, True))
++        self.assertEqual(driver.MAX_NONEMPTY_DECISIONS, 12)
++        for name in driver.CASES:
++            driver.validate_case_constants(name)
++
++    def test_mixed_case_through_native_cpu_replay(self):
++        runtime, trace = _run("mixed")
++        decisions = trace["decisions"]
++        self.assertEqual(len(decisions), 4)
++        first = decisions[0]["proposals"][0]
++        self.assertEqual(first["arrived_waiting_order"], [0, 1])
++        self.assertEqual([(a["seq_id"], a["num_tokens"]) for a in first["actions"]],
++                         [(0, 5), (1, 3)])
++        # Selection A decode, B prefill; emitted prompt-first.
++        second = decisions[1]
++        self.assertEqual([a["seq_id"] for a in second["proposals"][0]["actions"]],
++                         [0, 1])
++        self.assertEqual(second["schedules"][0]["outputs"]["scheduled"],
++                         [[1, 5], [0, 0]])
++        self.assertEqual(trace["token_events"], {"0": 2, "1": 2})
++        self.assertEqual(trace["idle"]["after"]["free_blocks"], 8)
++        self.assertFalse(runtime.scheduler.has_unfinished_seqs())
++
++    def test_preemption_case_through_native_cpu_replay(self):
++        runtime, trace = _run("preemption")
++        decisions = trace["decisions"]
++        self.assertEqual(len(decisions), 8)
++        # Prefills fill the pool; zero-demand decodes run with 0 free.
++        self.assertEqual(decisions[0]["after"]["free_blocks"], 0)
++        self.assertEqual(
++            [a["block_demand"] for a in decisions[1]["proposals"][0]["actions"]],
++            [0, 0, 0, 0])
++        # Allocation-driven tail eviction: free 3, free 2, then the appends.
++        boundary = decisions[2]
++        self.assertEqual(boundary["proposals"][0]["victims"], [3, 2])
++        self.assertEqual([op[:2] for op in boundary["central_ops"]],
++                         [["free", 3], ["free", 2], ["append", 0],
++                          ["append", 1]])
++        self.assertEqual(boundary["after"]["waiting"], [2, 3])
++        for sid in ("2", "3"):
++            state = boundary["after"]["seqs"][sid]
++            self.assertEqual((state["status"], state["prompt_len"],
++                              state["prompt_tokens_processed"],
++                              state["output_token_ids"]),
++                             ("WAITING", 17, 0, []))
++        # Readmission of expanded contexts after 0 and 1 finish.
++        self.assertEqual(decisions[3]["proposals"][0]["waiting_stop_reason"],
++                         "admission_memory")
++        self.assertEqual(decisions[4]["schedules"][0]["outputs"]["scheduled"],
++                         [[2, 17], [3, 17]])
++        # Inherited counter reset: 4 generated-token events for max_tokens 3.
++        self.assertEqual(trace["token_events"],
++                         {"0": 3, "1": 3, "2": 4, "3": 4})
++        final = [o for d in decisions for o in d["request_outputs"]
++                 if o["finished"]]
++        self.assertEqual([(o["seq_id"], len(o["token_ids"]),
++                           len(o["prompt_token_ids"])) for o in final],
++                         [(0, 3, 16), (1, 3, 16), (2, 3, 17), (3, 3, 17)])
++        # Physical IDs are recorded for both managers, not required equal.
++        self.assertIn("free_block_ids", boundary["worker_after"])
++        self.assertEqual(trace["idle"]["after"]["free_blocks"], 4)
++
++    def test_checks_reject_a_wrong_expectation(self):
++        # Expecting selection order instead of the prompt-first layout.
++        cases = copy.deepcopy(driver.CASES)
++        cases["mixed"]["decisions"][1]["scheduled"] = [[0, 0], [1, 5]]
++        with mock.patch.object(driver, "CASES", cases):
++            with self.assertRaisesRegex(driver.CheckFailure,
++                                        "mixed decision 1: emitted"):
++                _run("mixed")
++        # Expecting no preemption at the allocation-pressure decision.
++        cases = copy.deepcopy(driver.CASES)
++        cases["preemption"]["decisions"][2]["victims"] = []
++        with mock.patch.object(driver, "CASES", cases):
++            with self.assertRaisesRegex(driver.CheckFailure,
++                                        "preemption decision 2: victims"):
++                _run("preemption")
++
++    def test_decision_bound_stops_an_unplanned_run(self):
++        cases = copy.deepcopy(driver.CASES)
++        cases["mixed"]["decisions"] = cases["mixed"]["decisions"][:2]
++        with mock.patch.object(driver, "CASES", cases):
++            with self.assertRaisesRegex(driver.CheckFailure,
++                                        "more nonempty decisions"):
++                _run("mixed")
++
++
++class CacheCapacityTest(unittest.TestCase):
++    def _engine(self, name, profiled):
++        case = driver.CASES[name]
++        selection = driver.CacheCapacitySelection(chosen=case["num_gpu_blocks"])
++        engine_class = driver.build_engine_class(selection)
++        engine = object.__new__(engine_class)  # attributes _init_cache reads
++        engine.cache_config = CacheConfig(block_size=driver.BLOCK_SIZE,
++                                          gpu_memory_utilization=0.5)
++        engine.model_config = SimpleNamespace(
++            max_model_len=case["max_model_len"])
++        calls = []
++
++        def native_run_workers(self, method, *args, **kwargs):
++            calls.append((method, args, dict(kwargs)))
++            if method == driver.PROFILE_METHOD:
++                return [profiled]
++            if method == driver.INIT_CACHE_METHOD:
++                return [None]
++            if method == "execute_model":
++                return [SamplerOutput(3, 11)]
++            return ("native", method, args, kwargs)
++
++        patch = mock.patch.object(engine_class.__mro__[1], "_run_workers",
++                                  native_run_workers)
++        return engine, selection, calls, patch
++
++    def test_chosen_capacity_reaches_native_initialization(self):
++        for name in driver.CASES:
++            with self.subTest(name):
++                engine, selection, calls, patch = self._engine(name, 900)
++                with patch:
++                    engine._init_cache()  # native, including max-context check
++                chosen = driver.CASES[name]["num_gpu_blocks"]
++                self.assertEqual([c[0] for c in calls],
++                                 [driver.PROFILE_METHOD, driver.INIT_CACHE_METHOD])
++                self.assertIs(calls[1][2]["cache_config"], engine.cache_config)
++                self.assertEqual(engine.cache_config.num_gpu_blocks, chosen)
++                self.assertEqual(selection.record()["profiled_available_blocks"],
++                                 [900])
++                self.assertEqual(selection.profile_calls, 1)
++                self.assertEqual(selection.initialized,
++                                 [dict(num_gpu_blocks=chosen, result=[None])])
++
++    def test_insufficient_capacity_fails_before_initialization(self):
++        engine, selection, calls, patch = self._engine("mixed", 7)
++        with patch:
++            with self.assertRaisesRegex(driver.CheckFailure, "below the chosen 8"):
++                engine._init_cache()
++        self.assertEqual([c[0] for c in calls], [driver.PROFILE_METHOD])
++        self.assertIsNone(engine.cache_config.num_gpu_blocks)
++        self.assertEqual(selection.initialized, [])
++
++    def test_second_profile_fails(self):
++        engine, selection, calls, patch = self._engine("preemption", 900)
++        with patch:
++            engine._init_cache()
++            with self.assertRaisesRegex(driver.CheckFailure, "ran 2 times"):
++                engine._init_cache()
++
++    def test_other_worker_operations_delegate_unchanged(self):
++        engine, selection, calls, patch = self._engine("mixed", 900)
++        with patch:
++            result = engine._run_workers("add_seq", 1, seq="s")
++            samples = engine._run_workers("execute_model", scheduler_outputs="o")
++        self.assertEqual(result, ("native", "add_seq", (1,), dict(seq="s")))
++        self.assertEqual([(s.seq_id, s.output_token) for s in samples], [(3, 11)])
++        self.assertEqual(engine.validation_sampler_outputs, [[3, 11]])
++        self.assertEqual(calls, [("add_seq", (1,), dict(seq="s")),
++                                 ("execute_model", (), dict(scheduler_outputs="o"))])
++        self.assertEqual((selection.profile_calls, selection.initialized), (0, []))
++
++
++class EngineArgsTest(unittest.TestCase):
++    def test_native_configuration_for_each_case(self):
++        for name, case in driver.CASES.items():
++            with self.subTest(name), tempfile.TemporaryDirectory() as tmp:
++                model_config = mock.Mock()
++                model_config.get_max_model_len.return_value = case["max_model_len"]
++                model_config.get_total_num_layers.return_value = 2
++                with mock.patch.object(arg_utils, "ModelConfig",
++                                       return_value=model_config) as cls:
++                    args = driver.engine_args(name, Path(tmp) / "model",
++                                              Path(tmp) / "metrics")
++                    _, cache, parallel, sched, metrics = \
++                        args.create_engine_configs()
++                kwargs = cls.call_args.kwargs
++                self.assertEqual((kwargs["load_format"], kwargs["dtype"],
++                                  kwargs["max_model_len"],
++                                  kwargs["attention_backend"]),
++                                 ("dummy", "float16", case["max_model_len"],
++                                  "flash_attention"))
++                self.assertIs(type(sched), AdaptedVLLMSchedulerConfig)
++                self.assertEqual((sched.max_num_seqs, sched.max_model_len,
++                                  sched.num_pipeline_stages,
++                                  sched.max_num_batched_tokens),
++                                 (case["max_num_seqs"], case["max_model_len"],
++                                  1, case["max_num_batched_tokens"]))
++                self.assertEqual((parallel.tensor_parallel_size,
++                                  parallel.pipeline_parallel_size,
++                                  cache.block_size,
++                                  cache.gpu_memory_utilization),
++                                 (1, 1, 16, 0.5))
++                self.assertTrue((Path(tmp) / "metrics" / "config.yml").is_file())
++
++
++class EvidenceTest(unittest.TestCase):
++    def test_trace_serialization(self):
++        _, trace = _run("preemption")
++        with tempfile.TemporaryDirectory() as tmp:
++            summary = dict(passed=True, case="preemption",
++                           expected_decisions=driver.CASES["preemption"]["decisions"])
++            driver.write_artifacts(Path(tmp), summary, trace)
++            loaded = json.loads((Path(tmp) / "decision_trace.json").read_text())
++            self.assertEqual(len(loaded["decisions"]), 8)
++            self.assertEqual(loaded["decisions"][2]["proposals"][0]["victims"],
++                             [3, 2])
++            self.assertTrue(json.loads(
++                (Path(tmp) / "summary.json").read_text())["passed"])
++
++    def test_failure_is_recorded_without_a_gpu(self):
++        with tempfile.TemporaryDirectory() as tmp:
++            out = Path(tmp) / "out"
++            cmd = [sys.executable, "-B", "scripts/check_adapted_vllm_gpu.py",
++                   "--case", "mixed", "--model-path", str(Path(tmp) / "absent"),
++                   "--output-dir", str(out)]
++            env = dict(os.environ, CUDA_VISIBLE_DEVICES="",
++                       PYTHONPATH=str(REPO_ROOT))
++            result = subprocess.run(cmd, cwd=REPO_ROOT, env=env,
++                                    capture_output=True, text=True)
++            self.assertEqual(result.returncode, 1, result.stderr)
++            self.assertIn("RESULT: FAIL", result.stdout)
++            summary = json.loads((out / "summary.json").read_text())
++            self.assertFalse(summary["passed"])
++            self.assertEqual(summary["failure"]["type"], "CheckFailure")
++            self.assertIn("lacks config.json", summary["failure"]["message"])
++            self.assertEqual(summary["case_parameters"]["num_gpu_blocks"], 8)
++            self.assertIn("git_head", summary["provenance"])
++            self.assertFalse(json.loads(
++                (out / "cleanup.json").read_text())["engine_constructed"])
++            # Earlier artifacts are never overwritten.
++            again = subprocess.run(cmd, cwd=REPO_ROOT, env=env,
++                                   capture_output=True, text=True)
++            self.assertEqual(again.returncode, 2)
++            self.assertIn("already holds run artifacts", again.stderr)
++
++
++if __name__ == "__main__":
++    unittest.main()

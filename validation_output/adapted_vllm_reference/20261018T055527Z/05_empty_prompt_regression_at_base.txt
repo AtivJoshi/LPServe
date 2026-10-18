@@ -1,0 +1,22 @@
+$ python -B validation_output/adapted_vllm_reference/20261018T055527Z/scripts/empty_prompt_at_base.py c6c89bc3c4f95114aecfd27bdbbc53e5e3374ec5
+INFO 10-18 05:56:58 metrics_store.py:72] MetricsStore disabled
+base proposal actions: (ReferenceAction(seq_id=0, kind='admission', num_tokens=0, block_demand=0),)
+base emitted: [(0, 0)] native calls: [('_allocate', 0)] running: [0] num_running_batches: 1
+test_empty_prompt_rejected_before_native_mutation (test_adapted_vllm_scheduler.PreMutationFailureTest) ... FAIL
+
+======================================================================
+FAIL: test_empty_prompt_rejected_before_native_mutation (test_adapted_vllm_scheduler.PreMutationFailureTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/atjoshi_umass_edu/LPServe/tests/test_adapted_vllm_scheduler.py", line 652, in test_empty_prompt_rejected_before_native_mutation
+    err = self._assert_rejected(h, 60.0, avs.CATEGORY_UNSUPPORTED_STATE)
+  File "/home/atjoshi_umass_edu/LPServe/tests/test_adapted_vllm_scheduler.py", line 596, in _assert_rejected
+    with self.assertRaises(error) as ctx:
+AssertionError: AdaptedVLLMSchedulingError not raised
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (failures=1)
+regression failed at base as expected: True
+exit_status=0

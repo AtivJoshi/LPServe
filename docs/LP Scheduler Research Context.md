@@ -1039,7 +1039,13 @@ Adaptations and boundaries:
   ([kv_cache_manager.py L505–513](https://github.com/vllm-project/vllm/blob/db9527a46873454610df6dbedf79a36d6bf1a7f6/vllm/v1/core/kv_cache_manager.py#L505-L513));
   the shared LPServe rule is used deliberately (R05).
 - **Arrival input:** future-dated waiting entries registered by benchmarks are
-  skipped without reordering the arrived ones.
+  skipped without reordering the arrived ones. An arrived request with an
+  empty prompt is a visible pre-mutation unsupported state (no empty-prompt
+  policy is defined); every selected prefill has positive work within its
+  remaining prompt *(corrected 2026-10-18)*.
+- **Workers:** one tensor-parallel worker and one pipeline stage; `EngineArgs`
+  rejects any other `tensor_parallel_size` or `pipeline_parallel_size` before
+  model metadata or configuration writes *(tensor check added 2026-10-18)*.
 - **Context limit:** upstream caps tokens at `max_model_len`
   ([L685–690](https://github.com/vllm-project/vllm/blob/db9527a46873454610df6dbedf79a36d6bf1a7f6/vllm/v1/core/sched/scheduler.py#L685-L690)); LPServe has no
   `max_model_len` stop, so a decode at `max_model_len` or an arrived request

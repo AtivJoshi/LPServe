@@ -1,0 +1,18 @@
+$ python -B -m unittest discover -s tests -p test_lp_engine_args.py -v
+test_config_file_records_lp_settings_as_plain_data (test_lp_engine_args.LPEngineArgsTest) ... ok
+test_configuration_errors_fail_before_model_engine_and_config_write (test_lp_engine_args.LPEngineArgsTest) ... ok
+test_each_missing_lp_field_fails_before_model_and_config_write (test_lp_engine_args.LPEngineArgsTest) ... ok
+test_engine_facade_forwards_lp_configs_to_single_stage_engine (test_lp_engine_args.LPEngineArgsTest) ... ok
+test_existing_schedulers_need_no_lp_inputs (test_lp_engine_args.LPEngineArgsTest) ... ok
+test_legacy_positional_metrics_arguments_keep_their_bindings (test_lp_engine_args.LPEngineArgsTest) ... ok
+test_obsolete_arguments_fail_with_migration_guidance (test_lp_engine_args.LPEngineArgsTest) ... ok
+test_obsolete_arguments_omitted_or_positional (test_lp_engine_args.LPEngineArgsTest) ... ok
+test_registries_resolve_lp_scheduler_and_block_manager (test_lp_engine_args.LPEngineArgsTest) ... ok
+test_valid_lp_args_construct_lp_scheduler_config (test_lp_engine_args.LPEngineArgsTest) ... ok
+test_zero_penalty_is_a_supplied_value (test_lp_engine_args.LPEngineArgsTest) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.034s
+
+OK
+exit_status=0
