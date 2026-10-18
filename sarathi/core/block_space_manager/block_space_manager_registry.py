@@ -35,3 +35,4 @@ BlockSpaceManagerRegistry.register(SchedulerType.SIMPLE_CHUNKING, SimpleChunking
 BlockSpaceManagerRegistry.register(SchedulerType.HOLD_N, VLLMBlockSpaceManager)
 BlockSpaceManagerRegistry.register(SchedulerType.SLAI_SCHEDULER, SLAIBlockSpaceManager)
 BlockSpaceManagerRegistry.register(SchedulerType.LP, VLLMBlockSpaceManager)
+BlockSpaceManagerRegistry.register(SchedulerType.ADAPTED_VLLM, VLLMBlockSpaceManager)

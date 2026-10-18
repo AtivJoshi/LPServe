@@ -1,0 +1,58 @@
+$ python -B validation_output/adapted_vllm_reference/20261018T051258Z/scripts/compare_policies.py validation_output/adapted_vllm_reference/20261018T051258Z
+INFO 10-18 05:17:07 metrics_store.py:72] MetricsStore disabled
+Bounded CPU comparison (decision indices, not wall-clock latency)
+
+run                           dec first prefill  first decode    completion  token events  pre unfinished   stopped
+adapted_vllm_resident2          4         A0 B0         A1 B2         A2 B3         A2 B2    0          -   drained
+lp_uniform_resident2            6         A1 B0         A4 B2         A5 B3         A2 B2    0          -   drained
+lp_rank_based_resident2         6         A0 B1         A2 B4         A3 B5         A2 B2    0          -   drained
+adapted_vllm_resident1          6         A0 B3         A1 B4         A2 B5         A2 B2    0          -   drained
+lp_uniform_resident1            8         A1 B0   ANone BNone   ANone BNone         A0 B0    7        A,B decision_bound
+lp_rank_based_resident1         8         A0 B1   ANone BNone   ANone BNone         A0 B0    7        A,B decision_bound
+
+Per decision: running|waiting before -> preempted / emitted (free central/worker after)
+[adapted_vllm_resident2]
+  0: -|A,B free=8 -> pre=[] emit=[('A', 5), ('B', 3)] (free 4/4) stop=(running_exhausted,arrived_waiting_exhausted)
+  1: A,B|- free=4 -> pre=[] emit=[('B', 5), ('A', 0)] (free 4/4) stop=(running_exhausted,arrived_waiting_exhausted)
+  2: A,B|- free=4 -> pre=[] emit=[('A', 0), ('B', 0)] (free 6/6) stop=(running_exhausted,arrived_waiting_exhausted)
+  3: B|- free=6 -> pre=[] emit=[('B', 0)] (free 8/8) stop=(running_exhausted,arrived_waiting_exhausted)
+[lp_uniform_resident2]
+  0: -|A,B free=8 -> pre=[] emit=[('B', 8)] (free 6/6) coeffs A=(1,1,1) B=(1,1,1); relaxed A:x=-0,y=0,z=0 B:x=8,y=0,z=0 obj=8; frac=0
+  1: B|A free=6 -> pre=[] emit=[('A', 5)] (free 4/4) coeffs A=(1,1,1) B=(1,1,1); relaxed A:x=5,y=0,z=0 B:x=-0,y=0,z=0 obj=5; frac=0
+  2: B,A|- free=4 -> pre=[] emit=[('B', 0)] (free 4/4) coeffs A=(1,1,1) B=(1,1,1); relaxed A:x=-0,y=0,z=0 B:x=-0,y=1,z=0 obj=1; frac=0
+  3: B,A|- free=4 -> pre=[] emit=[('B', 0)] (free 6/6) coeffs A=(1,1,1) B=(1,1,1); relaxed A:x=-0,y=0,z=0 B:x=-0,y=1,z=0 obj=1; frac=0
+  4: A|- free=6 -> pre=[] emit=[('A', 0)] (free 6/6) coeffs A=(1,1,1); relaxed A:x=-0,y=1,z=0 obj=1; frac=0
+  5: A|- free=6 -> pre=[] emit=[('A', 0)] (free 8/8) coeffs A=(1,1,1); relaxed A:x=-0,y=1,z=0 obj=1; frac=0
+[lp_rank_based_resident2]
+  0: -|A,B free=8 -> pre=[] emit=[('A', 5)] (free 6/6) coeffs A=(1,1,0) B=(0.5,0.5,0); relaxed A:x=5,y=0,z=0 B:x=-0,y=0,z=0 obj=5; frac=0
+  1: A|B free=6 -> pre=[] emit=[('B', 8)] (free 4/4) coeffs A=(1,1,1) B=(0.5,0.5,0); relaxed A:x=-0,y=-0,z=0 B:x=8,y=0,z=0 obj=4; frac=0
+  2: A,B|- free=4 -> pre=[] emit=[('A', 0)] (free 4/4) coeffs A=(1,1,1) B=(0.5,0.5,0.5); relaxed A:x=-0,y=1,z=0 B:x=-0,y=0,z=0 obj=1; frac=0
+  3: A,B|- free=4 -> pre=[] emit=[('A', 0)] (free 6/6) coeffs A=(1,1,1) B=(0.5,0.5,0.5); relaxed A:x=-0,y=1,z=0 B:x=-0,y=0,z=0 obj=1; frac=0
+  4: B|- free=6 -> pre=[] emit=[('B', 0)] (free 6/6) coeffs B=(1,1,1); relaxed B:x=-0,y=1,z=0 obj=1; frac=0
+  5: B|- free=6 -> pre=[] emit=[('B', 0)] (free 8/8) coeffs B=(1,1,1); relaxed B:x=-0,y=1,z=0 obj=1; frac=0
+[adapted_vllm_resident1]
+  0: -|A,B free=8 -> pre=[] emit=[('A', 5)] (free 6/6) stop=(running_exhausted,resident_limit)
+  1: A|B free=6 -> pre=[] emit=[('A', 0)] (free 6/6) stop=(running_exhausted,resident_limit)
+  2: A|B free=6 -> pre=[] emit=[('A', 0)] (free 8/8) stop=(running_exhausted,resident_limit)
+  3: -|B free=8 -> pre=[] emit=[('B', 8)] (free 6/6) stop=(running_exhausted,arrived_waiting_exhausted)
+  4: B|- free=6 -> pre=[] emit=[('B', 0)] (free 6/6) stop=(running_exhausted,arrived_waiting_exhausted)
+  5: B|- free=6 -> pre=[] emit=[('B', 0)] (free 8/8) stop=(running_exhausted,arrived_waiting_exhausted)
+[lp_uniform_resident1]
+  0: -|A,B free=8 -> pre=[] emit=[('B', 8)] (free 6/6) coeffs A=(1,1,1) B=(1,1,1); relaxed A:x=-0,y=0,z=0 B:x=8,y=0,z=0 obj=8; frac=0
+  1: B|A free=6 -> pre=['B'] emit=[('A', 5)] (free 6/6) coeffs A=(1,1,1) B=(1,1,1); relaxed A:x=5,y=0,z=0 B:x=-0,y=-0,z=1 obj=4; frac=0
+  2: A|B free=6 -> pre=['A'] emit=[('B', 8)] (free 6/6) coeffs A=(1,1,1) B=(1,1,1); relaxed A:x=-0,y=-0,z=1 B:x=8,y=0,z=0 obj=7; frac=0
+  3: B|A free=6 -> pre=['B'] emit=[('A', 5)] (free 6/6) coeffs A=(1,1,1) B=(1,1,1); relaxed A:x=5,y=0,z=0 B:x=-0,y=-0,z=1 obj=4; frac=0
+  4: A|B free=6 -> pre=['A'] emit=[('B', 8)] (free 6/6) coeffs A=(1,1,1) B=(1,1,1); relaxed A:x=-0,y=-0,z=1 B:x=8,y=0,z=0 obj=7; frac=0
+  5: B|A free=6 -> pre=['B'] emit=[('A', 5)] (free 6/6) coeffs A=(1,1,1) B=(1,1,1); relaxed A:x=5,y=0,z=0 B:x=-0,y=-0,z=1 obj=4; frac=0
+  6: A|B free=6 -> pre=['A'] emit=[('B', 8)] (free 6/6) coeffs A=(1,1,1) B=(1,1,1); relaxed A:x=-0,y=-0,z=1 B:x=8,y=0,z=0 obj=7; frac=0
+  7: B|A free=6 -> pre=['B'] emit=[('A', 5)] (free 6/6) coeffs A=(1,1,1) B=(1,1,1); relaxed A:x=5,y=0,z=0 B:x=-0,y=-0,z=1 obj=4; frac=0
+[lp_rank_based_resident1]
+  0: -|A,B free=8 -> pre=[] emit=[('A', 5)] (free 6/6) coeffs A=(1,1,0) B=(0.5,0.5,0); relaxed A:x=5,y=0,z=0 B:x=-0,y=0,z=0 obj=5; frac=0
+  1: A|B free=6 -> pre=['A'] emit=[('B', 8)] (free 6/6) coeffs A=(1,1,1) B=(0.5,0.5,0); relaxed A:x=-0,y=-0,z=1 B:x=8,y=0,z=0 obj=3; frac=0
+  2: B|A free=6 -> pre=['B'] emit=[('A', 5)] (free 6/6) coeffs A=(0.5,0.5,0) B=(1,1,1); relaxed A:x=5,y=0,z=0 B:x=-0,y=-0,z=1 obj=1.5; frac=0
+  3: A|B free=6 -> pre=['A'] emit=[('B', 8)] (free 6/6) coeffs A=(1,1,1) B=(0.5,0.5,0); relaxed A:x=-0,y=-0,z=1 B:x=8,y=0,z=0 obj=3; frac=0
+  4: B|A free=6 -> pre=['B'] emit=[('A', 5)] (free 6/6) coeffs A=(0.5,0.5,0) B=(1,1,1); relaxed A:x=5,y=0,z=0 B:x=-0,y=-0,z=1 obj=1.5; frac=0
+  5: A|B free=6 -> pre=['A'] emit=[('B', 8)] (free 6/6) coeffs A=(1,1,1) B=(0.5,0.5,0); relaxed A:x=-0,y=-0,z=1 B:x=8,y=0,z=0 obj=3; frac=0
+  6: B|A free=6 -> pre=['B'] emit=[('A', 5)] (free 6/6) coeffs A=(0.5,0.5,0) B=(1,1,1); relaxed A:x=5,y=0,z=0 B:x=-0,y=-0,z=1 obj=1.5; frac=0
+  7: A|B free=6 -> pre=['A'] emit=[('B', 8)] (free 6/6) coeffs A=(1,1,1) B=(0.5,0.5,0); relaxed A:x=-0,y=-0,z=1 B:x=8,y=0,z=0 obj=3; frac=0
+exit_status=0

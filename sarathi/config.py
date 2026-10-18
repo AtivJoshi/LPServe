@@ -20,6 +20,7 @@ class SchedulerType(BaseIntEnum):
     HOLD_N = 6
     SLAI_SCHEDULER = 7
     LP = 8
+    ADAPTED_VLLM = 9
 
 
 class ModelConfig:
@@ -507,6 +508,66 @@ class LPSchedulerConfig(BaseSchedulerConfig):
     @property
     def type(self):
         return SchedulerType.LP
+
+
+class AdaptedVLLMSchedulerConfig(BaseSchedulerConfig):
+    """Adapted upstream vLLM v0.31.0 reference scheduler configuration.
+
+    Every value is required. The supported profile is FCFS, chunked prefill,
+    one pipeline stage, and the long-prefill threshold disabled; it has no
+    chunk, action, or watermark settings (the admission watermark is the
+    shared block manager's).
+
+    Args:
+        max_num_seqs: Resident limit; every running request counts.
+        max_model_len: Maximum context length.
+        num_pipeline_stages: Must be 1.
+        max_num_batched_tokens: Combined prefill and decode token budget B for
+            one forward pass. Chunked prefill is enabled, so B may be smaller
+            than ``max_model_len``.
+
+    Validation follows the applicable pinned upstream checks: both limits are
+    positive and ``max_num_batched_tokens >= max_num_seqs``.
+    """
+
+    def __init__(
+        self,
+        max_num_seqs: int,
+        max_model_len: int,
+        num_pipeline_stages: int,
+        max_num_batched_tokens: int,
+    ) -> None:
+        for name, value in (
+            ("max_num_seqs", max_num_seqs),
+            ("max_model_len", max_model_len),
+            ("max_num_batched_tokens", max_num_batched_tokens),
+        ):
+            if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+                raise ValueError(
+                    f"AdaptedVLLMSchedulerConfig: {name} must be a positive "
+                    f"integer, got {value!r}"
+                )
+        if num_pipeline_stages != 1:
+            raise ValueError(
+                "adapted vLLM reference supports exactly one pipeline stage, "
+                f"got num_pipeline_stages={num_pipeline_stages!r}"
+            )
+        if max_num_batched_tokens < max_num_seqs:
+            raise ValueError(
+                f"AdaptedVLLMSchedulerConfig: max_num_batched_tokens "
+                f"({max_num_batched_tokens}) must be greater than or equal to "
+                f"max_num_seqs ({max_num_seqs})"
+            )
+        super().__init__(max_num_seqs, max_model_len, num_pipeline_stages)
+        self._max_num_batched_tokens = max_num_batched_tokens
+
+    @property
+    def max_num_batched_tokens(self):
+        return self._max_num_batched_tokens
+
+    @property
+    def type(self):
+        return SchedulerType.ADAPTED_VLLM
 
 
 class MetricsConfig:

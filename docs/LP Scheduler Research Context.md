@@ -988,6 +988,82 @@ scheduler's schedule first and encode it into coefficients. Recovering this
 behavior through coefficients is a research question, not a universal default
 policy. How recovery and overhead are measured is OPEN under Q11 (§21).
 
+## 16.1 Adapted vLLM reference specification
+
+*(implemented 2026-10-18 at base `40652511bf4c7687eebaa4276f1751dc13820c6f`;
+user-approved specification)* The adapted reference is
+`AdaptedVLLMScheduler` in
+[`adapted_vllm_scheduler.py`](../sarathi/core/scheduler/adapted_vllm_scheduler.py),
+scheduler type `adapted_vllm`, configured by `AdaptedVLLMSchedulerConfig`
+(`max_num_seqs`, `max_model_len`, one pipeline stage, and
+`max_num_batched_tokens` as the combined budget B; all required). It shares
+`VLLMBlockSpaceManager` and leaves the inherited `VLLMScheduler`, the LP
+contracts, and the allocator unchanged. The LP's `c_max`, `s_max`, post-prefill
+decode prerequisite, demand-group order, and useful-execution constraint are
+not part of this policy.
+
+Policy, from pinned upstream sources:
+
+- Running pass in current running order, partial prefills included, with one
+  budget: decode 1 token, prefill `min(remaining, budget)`
+  ([scheduler.py L628–690](https://github.com/vllm-project/vllm/blob/db9527a46873454610df6dbedf79a36d6bf1a7f6/vllm/v1/core/sched/scheduler.py#L628-L690)).
+- On allocation failure, evict the running tail until the attempted request
+  fits or is itself evicted, then stop the pass (FCFS branch,
+  [L760–816](https://github.com/vllm-project/vllm/blob/db9527a46873454610df6dbedf79a36d6bf1a7f6/vllm/v1/core/sched/scheduler.py#L760-L816)). Earlier accepted
+  requests are never the tail.
+- Skip waiting admission after any preemption
+  ([L872–873](https://github.com/vllm-project/vllm/blob/db9527a46873454610df6dbedf79a36d6bf1a7f6/vllm/v1/core/sched/scheduler.py#L872-L873)); otherwise admit in
+  waiting order, stopping at the budget, resident limit counting every
+  resident ([L885–893](https://github.com/vllm-project/vllm/blob/db9527a46873454610df6dbedf79a36d6bf1a7f6/vllm/v1/core/sched/scheduler.py#L885-L893)), or the
+  head's memory failure ([L1223](https://github.com/vllm-project/vllm/blob/db9527a46873454610df6dbedf79a36d6bf1a7f6/vllm/v1/core/sched/scheduler.py#L1223)).
+  Admissions join the running tail
+  ([L1292](https://github.com/vllm-project/vllm/blob/db9527a46873454610df6dbedf79a36d6bf1a7f6/vllm/v1/core/sched/scheduler.py#L1292)); victims are prepended to
+  waiting ([L1580](https://github.com/vllm-project/vllm/blob/db9527a46873454610df6dbedf79a36d6bf1a7f6/vllm/v1/core/sched/scheduler.py#L1580),
+  [request_queue.py L92–94](https://github.com/vllm-project/vllm/blob/db9527a46873454610df6dbedf79a36d6bf1a7f6/vllm/v1/core/sched/request_queue.py#L92-L94)).
+- The admission gate checks the full current sequence plus watermark
+  (`scheduler_reserve_full_isl=True`,
+  [config/scheduler.py L191](https://github.com/vllm-project/vllm/blob/db9527a46873454610df6dbedf79a36d6bf1a7f6/vllm/config/scheduler.py#L191);
+  [kv_cache_manager.py L505–536](https://github.com/vllm-project/vllm/blob/db9527a46873454610df6dbedf79a36d6bf1a7f6/vllm/v1/core/kv_cache_manager.py#L505-L536)).
+- Retained configuration checks: positive limits and
+  `max_num_batched_tokens >= max_num_seqs`
+  ([config/scheduler.py L329](https://github.com/vllm-project/vllm/blob/db9527a46873454610df6dbedf79a36d6bf1a7f6/vllm/config/scheduler.py#L329)); B may be below
+  `max_model_len` because chunked prefill is enabled
+  ([L315–327](https://github.com/vllm-project/vllm/blob/db9527a46873454610df6dbedf79a36d6bf1a7f6/vllm/config/scheduler.py#L315-L327)).
+
+Adaptations and boundaries:
+
+- **Resources:** LPServe full-context admission charge with its native
+  `int(0.01 * pool)` watermark always applied; resident partial prefill costs
+  0; decode costs its logical/physical gap (0 or 1). Upstream's default
+  watermark is 0.0 and applies only when `running` is non-empty
+  ([kv_cache_manager.py L505–513](https://github.com/vllm-project/vllm/blob/db9527a46873454610df6dbedf79a36d6bf1a7f6/vllm/v1/core/kv_cache_manager.py#L505-L513));
+  the shared LPServe rule is used deliberately (R05).
+- **Arrival input:** future-dated waiting entries registered by benchmarks are
+  skipped without reordering the arrived ones.
+- **Context limit:** upstream caps tokens at `max_model_len`
+  ([L685–690](https://github.com/vllm-project/vllm/blob/db9527a46873454610df6dbedf79a36d6bf1a7f6/vllm/v1/core/sched/scheduler.py#L685-L690)); LPServe has no
+  `max_model_len` stop, so a decode at `max_model_len` or an arrived request
+  above it is a visible pre-mutation failure (provisional choice).
+- **Execution layout:** the complete proposal and layout are validated before
+  mutation; victims are executed first in eviction order; selected work is
+  stably partitioned into prefills then decodes, preserving selection order,
+  for both central calls and metadata. Commit order does not change selection.
+- **Control-only:** a preempt-only proposal is raised as
+  `AdaptedVLLMControlOnlyProposal` with the proposal before mutation, because
+  the engine drops control-only outputs. A permanently inadmissible waiting
+  head with nothing resident is also a visible failure.
+- **Inherited, not repaired:** discarded final-prefill sample, recomputation
+  output-counter reset (overgeneration after restart), stopping semantics,
+  mixed-sampling association (greedy only is in scope), and possibly unequal
+  central/worker physical block IDs.
+
+Analytical consequence (not executed beyond the focused tests): with this
+budget rule and B >= `max_num_seqs`, a reachable state has at most one partial
+prefill, at the running tail, and every resident is served each decision unless
+the pass stops by self-eviction. Order-scan and decodes-first selection
+therefore coincide on reachable states; their difference appears only in
+hand-constructed states.
+
 ---
 
 # 17. SLAI Environment

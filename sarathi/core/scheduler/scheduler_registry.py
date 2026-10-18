@@ -9,6 +9,7 @@ from sarathi.core.scheduler.vllm_scheduler import VLLMScheduler
 from sarathi.core.scheduler.hold_n_scheduler import Hold_NScheduler
 from sarathi.core.scheduler.slai_scheduler import SLAIScheduler
 from sarathi.core.scheduler.lp_scheduler import LPScheduler
+from sarathi.core.scheduler.adapted_vllm_scheduler import AdaptedVLLMScheduler
 from sarathi.utils.base_registry import BaseRegistry
 
 
@@ -27,3 +28,4 @@ SchedulerRegistry.register(SchedulerType.SIMPLE_CHUNKING, SimpleChunkingSchedule
 SchedulerRegistry.register(SchedulerType.HOLD_N, Hold_NScheduler)
 SchedulerRegistry.register(SchedulerType.SLAI_SCHEDULER, SLAIScheduler)
 SchedulerRegistry.register(SchedulerType.LP, LPScheduler)
+SchedulerRegistry.register(SchedulerType.ADAPTED_VLLM, AdaptedVLLMScheduler)

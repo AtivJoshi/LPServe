@@ -1,0 +1,27 @@
+$ python -B -m unittest tests.test_adapted_vllm_scheduler -v
+INFO 10-18 05:16:43 metrics_store.py:72] MetricsStore disabled
+test_direct_configuration_and_registries (tests.test_adapted_vllm_scheduler.ConfigurationTest) ... ok
+test_invalid_values_are_rejected (tests.test_adapted_vllm_scheduler.ConfigurationTest) ... ok
+test_missing_budget_and_multi_stage_fail_before_model (tests.test_adapted_vllm_scheduler.EngineArgsTest) ... ok
+test_selection_through_engine_args_without_model_initialization (tests.test_adapted_vllm_scheduler.EngineArgsTest) ... ok
+test_full_context_charge_resident_prefill_and_positive_watermark (tests.test_adapted_vllm_scheduler.NativeReplayTest) ... ok
+test_mixed_decode_demands_in_service_order (tests.test_adapted_vllm_scheduler.NativeReplayTest) ... ok
+test_preemption_recomputation_and_readmission (tests.test_adapted_vllm_scheduler.NativeReplayTest) ... ok
+test_standalone_zero_demand_decode_then_control_only_report (tests.test_adapted_vllm_scheduler.NativeReplayTest) ... ok
+test_zero_demand_decode_with_admission_of_last_free_block (tests.test_adapted_vllm_scheduler.NativeReplayTest) ... ok
+test_zero_watermark_admission_to_exact_exhaustion (tests.test_adapted_vllm_scheduler.NativeReplayTest) ... ok
+test_mixed_batch_rows_and_samples_follow_requests (tests.test_adapted_vllm_scheduler.PackingAndSamplingTest) ... ok
+test_arrived_work_behind_future_dated_entry (tests.test_adapted_vllm_scheduler.PolicySelectionTest) ... ok
+test_budget_chunking_without_chunk_or_action_cap (tests.test_adapted_vllm_scheduler.PolicySelectionTest) ... ok
+test_resident_limit_retained_order_and_tail_admission (tests.test_adapted_vllm_scheduler.PolicySelectionTest) ... ok
+test_running_order_scan_with_partial_prefill_ahead_of_decode (tests.test_adapted_vllm_scheduler.PolicySelectionTest) ... ok
+test_self_eviction_preserves_accepted_work (tests.test_adapted_vllm_scheduler.PolicySelectionTest) ... ok
+test_tail_eviction_multiple_victims_and_no_admission_after (tests.test_adapted_vllm_scheduler.PolicySelectionTest) ... ok
+test_inadmissible_head_and_idle (tests.test_adapted_vllm_scheduler.PreMutationFailureTest) ... ok
+test_unsupported_and_malformed_state (tests.test_adapted_vllm_scheduler.PreMutationFailureTest) ... ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 0.039s
+
+OK
+exit_status=0

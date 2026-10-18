@@ -7,6 +7,7 @@ import yaml
 
 from sarathi.config import (
     LP_OBSOLETE_ARGUMENT_MIGRATION,
+    AdaptedVLLMSchedulerConfig,
     BaseSchedulerConfig,
     CacheConfig,
     FasterTransformerSchedulerConfig,
@@ -149,6 +150,20 @@ class EngineArgs:
             )
         if self.scheduler_type == SchedulerType.LP.name.lower():
             self._verify_lp_args()
+        if self.scheduler_type == SchedulerType.ADAPTED_VLLM.name.lower():
+            # Checked before any model metadata or config.yml write; the
+            # remaining value checks are in AdaptedVLLMSchedulerConfig.
+            if self.max_num_batched_tokens is None:
+                raise ValueError(
+                    "adapted vLLM reference requires an explicit "
+                    "max_num_batched_tokens (the combined token budget)"
+                )
+            if self.pipeline_parallel_size != 1:
+                raise ValueError(
+                    "adapted vLLM reference supports exactly one pipeline "
+                    f"stage, got pipeline_parallel_size="
+                    f"{self.pipeline_parallel_size!r}"
+                )
         if self.write_metrics:
             os.makedirs(self.output_dir, exist_ok=True)
             recorded = {
@@ -274,6 +289,13 @@ class EngineArgs:
                 prefill_token_utility=self.lp_prefill_token_utility,
                 preemption_penalty=self.lp_preemption_penalty,
                 numerical_policy=self.lp_numerical_policy,
+            )
+        elif self.scheduler_type == SchedulerType.ADAPTED_VLLM.name.lower():
+            scheduler_config = AdaptedVLLMSchedulerConfig(
+                max_num_seqs=self.max_num_seqs,
+                max_model_len=model_config.get_max_model_len(),
+                num_pipeline_stages=num_pipeline_stages,
+                max_num_batched_tokens=self.max_num_batched_tokens,
             )
         else:
             raise ValueError(f"Unsupported scheduler type: {self.scheduler_type}")
