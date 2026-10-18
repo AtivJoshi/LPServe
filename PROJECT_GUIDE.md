@@ -6,7 +6,22 @@
 
 This repository is the working implementation and experiment base for a research prototype of an LP-relaxation scheduler for continuous-batching LLM inference. The scheduler is to be implemented natively in the LPServe/SLAI-derived serving framework and compared with existing policies in that same framework. The first target is **Primal Heuristic 1**: the myopic ILP's continuous relaxation followed by deterministic, feasibility-preserving integer extraction.
 
-The immediate priority is a basic runnable LP scheduler as soon as possible. Proposed mathematics, observed framework behavior, scheduler requirements, implementation, and experimental evidence remain different kinds of claims and must remain visibly separated. The MVP may intentionally inherit existing LPServe/SLAI behavior and known defects; that is not evidence that those behaviors are correct or repaired.
+**Research goals clarified 2026-10-16.** The immediate research priority is a
+runnable framework for observing coefficient update policies and comparing them
+with reference schedulers. Use the canonical [research goals and working
+approach](docs/LP%20Scheduler%20Research%20Context.md#2-primary-research-goal)
+in section 2 of the research context when choosing each task's scope. The goals
+cover policy classification, alternative decision methods, and explicit
+revision of the candidate mathematical formulation; they remain revisable.
+Finding the best coefficient policy is not the current goal.
+
+Proposed mathematics, observed framework behavior, scheduler requirements,
+implementation, and experimental evidence remain different kinds of claims and
+must remain visibly separated. Implement the currently selected formulation
+faithfully; research revisions require explicit changes to the appropriate
+mathematical and implementation contracts. The MVP may intentionally inherit
+existing LPServe/SLAI behavior and known defects; that is not evidence that
+those behaviors are correct or repaired.
 
 ## Repository knowledge map
 

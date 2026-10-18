@@ -6,7 +6,7 @@ This document defines the research context, algorithmic requirements, implementa
 
 The central implementation principle is:
 
-> Preserve the mathematical scheduling formulation while deriving the concrete software design from SLAI itself.
+> Implement the currently selected mathematical formulation faithfully while deriving its software realization from LPServe/SLAI. Research may explicitly revise or replace the formulation; changes to the mathematical and implementation contracts must be recorded in the appropriate sources before implementing the amended contracts.
 
 The document is intended to provide future research and implementation sessions with durable repository-local context for reasoning about the project without requiring knowledge of any other serving-system implementation.
 
@@ -14,7 +14,91 @@ The document is intended to provide future research and implementation sessions 
 
 # 2. Primary Research Goal
 
-The goal is to build a correct research prototype of a new scheduling algorithm for continuous-batching LLM inference and compare it fairly against existing schedulers, especially SLAI and Sarathi.
+**Goals clarified with the user on 2026-10-16.** This section is the canonical
+record of the project's research goals and working approach. Use it when
+choosing implementation and experiment scope. These goals are revisable:
+record the reason for a change and its consequences rather than treating the
+current direction as permanent. This clarification selects no new coefficient
+formula, experiment, or mathematical amendment.
+
+The long-term goal is to develop a mathematical objective, or a family of
+objectives, that explains the scheduling choices made by existing heuristics
+and supports a class of scheduling algorithms. The current myopic ILP is a
+candidate formulation. Its explanatory scope, state representation, objective,
+and constraints can evolve as analytical and experimental evidence develops.
+Distinguish recovering a reference's decisions under stated assumptions,
+obtaining similar observed behavior, and obtaining similar performance.
+
+## 2.1 Immediate goal: observe and compare coefficient policies
+
+Build a correct, runnable framework for observing and monitoring how explicit
+coefficient update policies behave and comparing them with reference
+schedulers. The immediate task is to support that study; finding the best
+coefficient policy is not the current goal. A user selects a policy according
+to the behavior they want. Eventually, classify policy families by their
+behavior and performance across workloads and resource conditions.
+
+Begin with a few simple, interpretable coefficient policies and small states
+where expected decisions can be derived. Include a policy aimed at recovering
+the adapted upstream vLLM v0.31.0 reference defined in section 16, alongside
+simple controls and contrasting preferences. Do not compute the reference's
+answer and encode it in coefficients. Predictability in restricted states is a
+starting point, not a claim of recovery in general mixed or contended states.
+Use both comparisons from corresponding states to explain individual choices
+and runs on the same arrival workload to observe how choices change subsequent
+states. Label the reference version, adaptation, and serving framework.
+
+Observations must separate captured inputs and coefficient rewards, the LP or
+other optimization proposal, integer extraction or repair, and actual
+execution. Behavior is a property of the coefficient policy together with the
+decision method and runtime. Attribute an anomaly to the relevant stage before
+calling it a coefficient-policy effect or an implementation bug.
+
+Observe service, omission, preemption, repeated computation, and output
+progress. Record unfinished runs and execution failures explicitly. Frequent
+restarts can be a valid behavioral finding even when every decision satisfies
+implementation contracts; they should not automatically trigger coefficient
+tuning. Distinguish repeated computation from lasting progress, and bounded
+noncompletion from a proof of infinite starvation. SLO adherence, TTFT, TBT,
+latency, throughput, and further metrics need explicit definitions and
+measurement boundaries as they are selected. Detailed evaluation choices
+remain in section 21, including OPEN Q11.
+
+## 2.2 Evolving the decision method and mathematical model
+
+The initial method solves the LP relaxation at each non-idle scheduling
+decision, including prefill and decode decisions, to solver tolerances and then
+constructs a feasible integer plan. It does not solve the ILP optimally. This
+is an initial research implementation from which to study behavior. Later,
+compare faster or different ILP approximation methods for both behavior and
+end-to-end performance, separating scheduling overhead from model execution.
+Measure the overhead rather than treating its magnitude as established.
+
+Study which constraints restrict decisions, which are costly to enforce, and
+which materially change behavior. These bottlenecks may depend on the
+coefficient policy, workload, and approximation method. A rarely binding
+constraint is not automatically safe to remove: its removal may expose new
+solutions. Keep the current detailed formulation as a reference while
+investigating simpler variants. If a variant moves constraints into heuristic
+plan repair, define that repair as part of the algorithm, observe its changes
+to the proposal, compare its total cost and behavioral effect, and recheck the
+relevant correctness arguments. Complete physical validation before execution
+remains required.
+
+Eventually, let desired SLO behavior guide coefficient construction and study
+how much it can express. Where it is insufficient, investigate additional
+state, objective terms, constraints, or alternative formulations. Prefer
+interpretable explanations that predict behavior beyond the construction
+examples; unrestricted rewards that merely reproduce a reference action do
+not establish a useful unifying objective.
+
+Future manuscript proposals, including nonlinear execution-time models, are
+exploratory ideas requiring separate derivation and validation. A utility-rate
+objective and utility maximization under a time constraint are different
+choices whose equivalence must not be assumed. No downstream manuscript
+proposal is adopted or made an implementation prerequisite by these goals.
+
+## 2.3 Implementation setting and priorities
 
 The primary implementation repository is:
 
@@ -1126,6 +1210,42 @@ full-context framework. The following remain pending; none is selected:
 
 No recovery or performance experiment is authorized by this entry.
 
+## LP feasibility versus native execution (source-review limitation)
+
+**Recorded 2026-10-18 at source revision `6d20d484a01063c0ab910ddb0cdf50ced5620022`.**
+The LP scheduler's allowed plans can be narrower than the underlying framework's
+execution capabilities. The allocator correspondence in section 5 concerns the
+selected LP execution contract; it does not establish that every excluded plan
+is impossible in the shared runtime.
+
+Concrete example: one block is free, the admission watermark is zero, a
+resident decode needs no additional block, and a waiting admission needs one
+block. Assume the token and resident limits permit both actions. The LP's
+post-prefill decode prerequisite rejects the combination because admission
+leaves zero free blocks. Source inspection supports central decode-first
+allocation followed by admission. It also supports prompt-first worker replay:
+worker admission consumes the block, then the resident append allocates nothing;
+the worker calls `can_append_slot()` but does not enforce its return value.
+See the [LP executor](../lpserve_plan_execution.py),
+[shared allocator](../sarathi/core/block_space_manager/base_block_space_manager.py),
+and [worker replay](../sarathi/core/sequence_manager/worker_sequence_manager.py).
+This is source-based reasoning, not an executed end-to-end validation result.
+The example still permits useful individual actions; it does not establish a
+stall, a restart loop, or an extraction bug.
+
+The independently binding per-request chunk cap (`c_max`) and execution-action
+cap (`s_max`) can also exclude work the framework permits. These are explicit
+LP controls, not universal framework limits; see
+[configuration definitions](../sarathi/config.py). Their effect depends on the
+chosen values.
+
+Comparisons must distinguish formulation/executor restrictions from coefficient
+preferences and extraction choices. Do not automatically impose LP-only
+restrictions on the primary adapted reference; label any restricted comparison
+separately. Validate the counterexample with focused replay and end-to-end
+checks before selecting a correction. This note changes no mathematical,
+implementation, or execution contract and authorizes no experiment or repair.
+
 ## Utility design
 
 What should
@@ -1232,6 +1352,10 @@ This should be answered experimentally after the scheduler is working correctly,
 ---
 
 # 22. Current Project Scope and Priorities
+
+Use the research goals and working approach in section 2 when selecting the
+next task. Its 2026-10-16 clarification guides research direction; dated
+milestone records below retain their original evidence boundaries.
 
 ## 22.1 MVP compatibility mode
 
