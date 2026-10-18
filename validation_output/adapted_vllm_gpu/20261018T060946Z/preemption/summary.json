@@ -1,0 +1,1361 @@
+{
+ "passed": true,
+ "failure": null,
+ "case": "preemption",
+ "case_parameters": {
+  "prompt_lens": [
+   16,
+   16,
+   16,
+   16
+  ],
+  "max_tokens": 3,
+  "max_num_batched_tokens": 64,
+  "max_num_seqs": 4,
+  "max_model_len": 64,
+  "num_gpu_blocks": 4,
+  "token_events": {
+   "0": 3,
+   "1": 3,
+   "2": 4,
+   "3": 4
+  }
+ },
+ "expected_decisions": [
+  {
+   "selected": [
+    [
+     0,
+     "admission",
+     16,
+     1
+    ],
+    [
+     1,
+     "admission",
+     16,
+     1
+    ],
+    [
+     2,
+     "admission",
+     16,
+     1
+    ],
+    [
+     3,
+     "admission",
+     16,
+     1
+    ]
+   ],
+   "victims": [],
+   "stops": [
+    "running_exhausted",
+    "arrived_waiting_exhausted"
+   ],
+   "preempted": [],
+   "scheduled": [
+    [
+     0,
+     16
+    ],
+    [
+     1,
+     16
+    ],
+    [
+     2,
+     16
+    ],
+    [
+     3,
+     16
+    ]
+   ],
+   "central": [
+    [
+     "allocate",
+     0,
+     0,
+     1
+    ],
+    [
+     "allocate",
+     1,
+     0,
+     1
+    ],
+    [
+     "allocate",
+     2,
+     0,
+     1
+    ],
+    [
+     "allocate",
+     3,
+     0,
+     1
+    ]
+   ],
+   "completion": [],
+   "worker": [
+    [
+     "allocate",
+     0,
+     0,
+     1
+    ],
+    [
+     "allocate",
+     1,
+     0,
+     1
+    ],
+    [
+     "allocate",
+     2,
+     0,
+     1
+    ],
+    [
+     "allocate",
+     3,
+     0,
+     1
+    ]
+   ],
+   "after": {
+    "waiting": [],
+    "running": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "free": 0,
+    "seqs": {
+     "0": [
+      16,
+      16,
+      true,
+      0,
+      1,
+      1
+     ],
+     "1": [
+      16,
+      16,
+      true,
+      0,
+      1,
+      1
+     ],
+     "2": [
+      16,
+      16,
+      true,
+      0,
+      1,
+      1
+     ],
+     "3": [
+      16,
+      16,
+      true,
+      0,
+      1,
+      1
+     ]
+    }
+   },
+   "finished": []
+  },
+  {
+   "selected": [
+    [
+     0,
+     "decode",
+     1,
+     0
+    ],
+    [
+     1,
+     "decode",
+     1,
+     0
+    ],
+    [
+     2,
+     "decode",
+     1,
+     0
+    ],
+    [
+     3,
+     "decode",
+     1,
+     0
+    ]
+   ],
+   "victims": [],
+   "stops": [
+    "running_exhausted",
+    "arrived_waiting_exhausted"
+   ],
+   "preempted": [],
+   "scheduled": [
+    [
+     0,
+     0
+    ],
+    [
+     1,
+     0
+    ],
+    [
+     2,
+     0
+    ],
+    [
+     3,
+     0
+    ]
+   ],
+   "central": [
+    [
+     "append",
+     0,
+     1,
+     1
+    ],
+    [
+     "append",
+     1,
+     1,
+     1
+    ],
+    [
+     "append",
+     2,
+     1,
+     1
+    ],
+    [
+     "append",
+     3,
+     1,
+     1
+    ]
+   ],
+   "completion": [],
+   "worker": [
+    [
+     "append",
+     0,
+     1,
+     1
+    ],
+    [
+     "append",
+     1,
+     1,
+     1
+    ],
+    [
+     "append",
+     2,
+     1,
+     1
+    ],
+    [
+     "append",
+     3,
+     1,
+     1
+    ]
+   ],
+   "after": {
+    "waiting": [],
+    "running": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "free": 0,
+    "seqs": {
+     "0": [
+      16,
+      16,
+      true,
+      1,
+      2,
+      1
+     ],
+     "1": [
+      16,
+      16,
+      true,
+      1,
+      2,
+      1
+     ],
+     "2": [
+      16,
+      16,
+      true,
+      1,
+      2,
+      1
+     ],
+     "3": [
+      16,
+      16,
+      true,
+      1,
+      2,
+      1
+     ]
+    }
+   },
+   "finished": []
+  },
+  {
+   "selected": [
+    [
+     0,
+     "decode",
+     1,
+     1
+    ],
+    [
+     1,
+     "decode",
+     1,
+     1
+    ]
+   ],
+   "victims": [
+    3,
+    2
+   ],
+   "stops": [
+    "running_exhausted",
+    "skipped_after_preemption"
+   ],
+   "preempted": [
+    3,
+    2
+   ],
+   "scheduled": [
+    [
+     0,
+     0
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "central": [
+    [
+     "free",
+     3,
+     1,
+     0
+    ],
+    [
+     "free",
+     2,
+     1,
+     0
+    ],
+    [
+     "append",
+     0,
+     1,
+     2
+    ],
+    [
+     "append",
+     1,
+     1,
+     2
+    ]
+   ],
+   "completion": [],
+   "worker": [
+    [
+     "free",
+     3,
+     1,
+     0
+    ],
+    [
+     "free",
+     2,
+     1,
+     0
+    ],
+    [
+     "append",
+     0,
+     1,
+     2
+    ],
+    [
+     "append",
+     1,
+     1,
+     2
+    ]
+   ],
+   "after": {
+    "waiting": [
+     2,
+     3
+    ],
+    "running": [
+     0,
+     1
+    ],
+    "free": 0,
+    "seqs": {
+     "0": [
+      16,
+      16,
+      true,
+      2,
+      2,
+      2
+     ],
+     "1": [
+      16,
+      16,
+      true,
+      2,
+      2,
+      2
+     ],
+     "2": [
+      17,
+      0,
+      false,
+      0,
+      2,
+      0
+     ],
+     "3": [
+      17,
+      0,
+      false,
+      0,
+      2,
+      0
+     ]
+    }
+   },
+   "finished": []
+  },
+  {
+   "selected": [
+    [
+     0,
+     "decode",
+     1,
+     0
+    ],
+    [
+     1,
+     "decode",
+     1,
+     0
+    ]
+   ],
+   "victims": [],
+   "stops": [
+    "running_exhausted",
+    "admission_memory"
+   ],
+   "preempted": [],
+   "scheduled": [
+    [
+     0,
+     0
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "central": [
+    [
+     "append",
+     0,
+     2,
+     2
+    ],
+    [
+     "append",
+     1,
+     2,
+     2
+    ]
+   ],
+   "completion": [
+    [
+     "free",
+     0,
+     2,
+     0
+    ],
+    [
+     "free",
+     1,
+     2,
+     0
+    ]
+   ],
+   "worker": [
+    [
+     "append",
+     0,
+     2,
+     2
+    ],
+    [
+     "append",
+     1,
+     2,
+     2
+    ],
+    [
+     "free",
+     0,
+     2,
+     0
+    ],
+    [
+     "free",
+     1,
+     2,
+     0
+    ]
+   ],
+   "after": {
+    "waiting": [
+     2,
+     3
+    ],
+    "running": [],
+    "free": 4,
+    "seqs": {
+     "2": [
+      17,
+      0,
+      false,
+      0,
+      2,
+      0
+     ],
+     "3": [
+      17,
+      0,
+      false,
+      0,
+      2,
+      0
+     ]
+    }
+   },
+   "finished": [
+    0,
+    1
+   ]
+  },
+  {
+   "selected": [
+    [
+     2,
+     "admission",
+     17,
+     2
+    ],
+    [
+     3,
+     "admission",
+     17,
+     2
+    ]
+   ],
+   "victims": [],
+   "stops": [
+    "running_exhausted",
+    "arrived_waiting_exhausted"
+   ],
+   "preempted": [],
+   "scheduled": [
+    [
+     2,
+     17
+    ],
+    [
+     3,
+     17
+    ]
+   ],
+   "central": [
+    [
+     "allocate",
+     2,
+     0,
+     2
+    ],
+    [
+     "allocate",
+     3,
+     0,
+     2
+    ]
+   ],
+   "completion": [],
+   "worker": [
+    [
+     "allocate",
+     2,
+     0,
+     2
+    ],
+    [
+     "allocate",
+     3,
+     0,
+     2
+    ]
+   ],
+   "after": {
+    "waiting": [],
+    "running": [
+     2,
+     3
+    ],
+    "free": 0,
+    "seqs": {
+     "2": [
+      17,
+      17,
+      true,
+      0,
+      2,
+      2
+     ],
+     "3": [
+      17,
+      17,
+      true,
+      0,
+      2,
+      2
+     ]
+    }
+   },
+   "finished": []
+  },
+  {
+   "selected": [
+    [
+     2,
+     "decode",
+     1,
+     0
+    ],
+    [
+     3,
+     "decode",
+     1,
+     0
+    ]
+   ],
+   "victims": [],
+   "stops": [
+    "running_exhausted",
+    "arrived_waiting_exhausted"
+   ],
+   "preempted": [],
+   "scheduled": [
+    [
+     2,
+     0
+    ],
+    [
+     3,
+     0
+    ]
+   ],
+   "central": [
+    [
+     "append",
+     2,
+     2,
+     2
+    ],
+    [
+     "append",
+     3,
+     2,
+     2
+    ]
+   ],
+   "completion": [],
+   "worker": [
+    [
+     "append",
+     2,
+     2,
+     2
+    ],
+    [
+     "append",
+     3,
+     2,
+     2
+    ]
+   ],
+   "after": {
+    "waiting": [],
+    "running": [
+     2,
+     3
+    ],
+    "free": 0,
+    "seqs": {
+     "2": [
+      17,
+      17,
+      true,
+      1,
+      2,
+      2
+     ],
+     "3": [
+      17,
+      17,
+      true,
+      1,
+      2,
+      2
+     ]
+    }
+   },
+   "finished": []
+  },
+  {
+   "selected": [
+    [
+     2,
+     "decode",
+     1,
+     0
+    ],
+    [
+     3,
+     "decode",
+     1,
+     0
+    ]
+   ],
+   "victims": [],
+   "stops": [
+    "running_exhausted",
+    "arrived_waiting_exhausted"
+   ],
+   "preempted": [],
+   "scheduled": [
+    [
+     2,
+     0
+    ],
+    [
+     3,
+     0
+    ]
+   ],
+   "central": [
+    [
+     "append",
+     2,
+     2,
+     2
+    ],
+    [
+     "append",
+     3,
+     2,
+     2
+    ]
+   ],
+   "completion": [],
+   "worker": [
+    [
+     "append",
+     2,
+     2,
+     2
+    ],
+    [
+     "append",
+     3,
+     2,
+     2
+    ]
+   ],
+   "after": {
+    "waiting": [],
+    "running": [
+     2,
+     3
+    ],
+    "free": 0,
+    "seqs": {
+     "2": [
+      17,
+      17,
+      true,
+      2,
+      2,
+      2
+     ],
+     "3": [
+      17,
+      17,
+      true,
+      2,
+      2,
+      2
+     ]
+    }
+   },
+   "finished": []
+  },
+  {
+   "selected": [
+    [
+     2,
+     "decode",
+     1,
+     0
+    ],
+    [
+     3,
+     "decode",
+     1,
+     0
+    ]
+   ],
+   "victims": [],
+   "stops": [
+    "running_exhausted",
+    "arrived_waiting_exhausted"
+   ],
+   "preempted": [],
+   "scheduled": [
+    [
+     2,
+     0
+    ],
+    [
+     3,
+     0
+    ]
+   ],
+   "central": [
+    [
+     "append",
+     2,
+     2,
+     2
+    ],
+    [
+     "append",
+     3,
+     2,
+     2
+    ]
+   ],
+   "completion": [
+    [
+     "free",
+     2,
+     2,
+     0
+    ],
+    [
+     "free",
+     3,
+     2,
+     0
+    ]
+   ],
+   "worker": [
+    [
+     "append",
+     2,
+     2,
+     2
+    ],
+    [
+     "append",
+     3,
+     2,
+     2
+    ],
+    [
+     "free",
+     2,
+     2,
+     0
+    ],
+    [
+     "free",
+     3,
+     2,
+     0
+    ]
+   ],
+   "after": {
+    "waiting": [],
+    "running": [],
+    "free": 4,
+    "seqs": {}
+   },
+   "finished": [
+    2,
+    3
+   ]
+  }
+ ],
+ "max_nonempty_decisions": 12,
+ "process_timeout_seconds": 600,
+ "provenance": {
+  "git_head": "9b9273aba5823b9d0b9192e546fe397a6f61d692",
+  "git_branch": "main",
+  "git_status_short": "?? validation_output/adapted_vllm_gpu/20261018T060946Z/mixed/cleanup.json\n?? validation_output/adapted_vllm_gpu/20261018T060946Z/mixed/command.txt\n?? validation_output/adapted_vllm_gpu/20261018T060946Z/mixed/decision_trace.json\n?? validation_output/adapted_vllm_gpu/20261018T060946Z/mixed/exit_status.txt\n?? validation_output/adapted_vllm_gpu/20261018T060946Z/mixed/metrics_store_unused/config.yml\n?? validation_output/adapted_vllm_gpu/20261018T060946Z/mixed/summary.json\n?? validation_output/adapted_vllm_gpu/20261018T060946Z/preemption/command.txt\n?? validation_output/adapted_vllm_gpu/20261018T060946Z/shell_environment.txt\n",
+  "git_diff_head_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "file_sha256": {
+   "scripts/check_adapted_vllm_gpu.py": "cdf6b7f4cb302664b775975b78f2bcae155ef37691c8662d63bcb6015797c25b",
+   "scripts/check_lp_scheduler_gpu.py": "18b145d0689f1beaae933671955251dcae8fd9f3696ff371246a3845d6224dd8",
+   "scripts/check_lp_scheduler_preemption_gpu.py": "517fef8b8bbd035c5b77e11c906585fc8b047b390e798a3d84e581c3beec09e5",
+   "tests/test_check_adapted_vllm_gpu.py": "92f984d86a10cfbe0082d998892f14a3380548aaf47d0f1f6a8a80059d36a2b3",
+   "tests/test_adapted_vllm_scheduler.py": "2ae521e96c935809e79369de5982985c69c388c8fcb2a8bf795df2e66ea1c905",
+   "sarathi/core/scheduler/adapted_vllm_scheduler.py": "41444565d62d54e15e0de90c61fbc4125b4bb45f84a2d439bafd7a2f8c066165",
+   "sarathi/core/scheduler/base_scheduler.py": "5b4ac0fd3154ae25b580614fb4b3fd773091eb730951f72b3624fd71ecf06cbd",
+   "sarathi/config.py": "718caee0f4c73001e2f42c54303d435fa527441fea8d75f2dcd2ffccc8300a55",
+   "sarathi/engine/arg_utils.py": "e079e5dbaa01ca472a6bfe08920de6a369e041e4f5b616365157b67b40ecb958",
+   "sarathi/engine/base_llm_engine.py": "5f2db9ce5c8ed736ab1a97f66455d6bd19aa519e3bf4ce7d07467242be9c8afd",
+   "sarathi/core/block_space_manager/base_block_space_manager.py": "75b6e133fd5665e38f53a185aaf34db07883b468a557bd19b97c1632b4c91e0c",
+   "sarathi/core/sequence_manager/base_sequence_manager.py": "1705241edd761aabde072332a806772eb90e1f245db608b183e5bcec29a6a103",
+   "sarathi/core/sequence_manager/worker_sequence_manager.py": "0f40e95a484fbf7d8d0f08c36757fd2f0bedb9514fd49b6cfa7a790fbcb0d0ff",
+   "sarathi/worker/base_worker.py": "b6de07bc0e2609b1306c26eebf39839ec4433494ad6cc571ca5577008d8569c2",
+   "sarathi/model_executor/model_runner.py": "259dc36dbd87986847284146003cdb4d4485ac881ef8d18e80198d1cd99179b3"
+  },
+  "imported_helper_sha256": {
+   "check_lp_scheduler_gpu": "18b145d0689f1beaae933671955251dcae8fd9f3696ff371246a3845d6224dd8",
+   "check_lp_scheduler_preemption_gpu": "517fef8b8bbd035c5b77e11c906585fc8b047b390e798a3d84e581c3beec09e5"
+  },
+  "loaded_modules": "uri/main:ICU/75.1-GCCcore-13.3.0:nodejs/20.13.1-GCCcore-13.3.0:GCCcore/12.2.0:zlib/.1.2.12-GCCcore-12.2.0:binutils/.2.39-GCCcore-12.2.0:bzip2/.1.0.8-GCCcore-12.2.0:ncurses/.6.3-GCCcore-12.2.0:libreadline/.8.2-GCCcore-12.2.0:Tcl/.8.6.12-GCCcore-12.2.0:SQLite/.3.39.4-GCCcore-12.2.0:XZ/.5.2.7-GCCcore-12.2.0:GMP/.6.2.1-GCCcore-12.2.0:libffi/3.4.4-GCCcore-12.2.0:OpenSSL/1.1:Python/3.10.8-GCCcore-12.2.0:CUDA/12.1.1"
+ },
+ "argv": [
+  "scripts/check_adapted_vllm_gpu.py",
+  "--case",
+  "preemption",
+  "--model-path",
+  "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+  "--output-dir",
+  "validation_output/adapted_vllm_gpu/20261018T060946Z/preemption"
+ ],
+ "model_path": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+ "environment": {
+  "hostname": "gpu049",
+  "slurm": {
+   "SLURM_JOB_ID": "65821002",
+   "SLURM_JOB_NODELIST": "gpu049",
+   "SLURM_JOB_PARTITION": "gpu-preempt",
+   "SLURM_STEP_ID": "4294967290"
+  },
+  "cuda_visible_devices": "0",
+  "gpu": "0, NVIDIA A16, GPU-550e163c-e6cb-b9a9-8f68-342d097c2226, 595.91.07, 15356 MiB",
+  "torch_cuda": "12.1",
+  "python_executable": "/home/atjoshi_umass_edu/LPServe/env/bin/python",
+  "python_version": "3.10.8",
+  "virtual_env": "/home/atjoshi_umass_edu/LPServe/env",
+  "pythonpath": "/home/atjoshi_umass_edu/LPServe:/modules/uri_apps/software/Python/3.10.8-GCCcore-12.2.0/easybuild/python",
+  "versions": {
+   "torch": "2.3.0+cu121",
+   "transformers": "4.57.6",
+   "ray": "2.58.0",
+   "numpy": "2.2.6",
+   "scipy": "1.15.3",
+   "flashinfer": "0.2.0.post1+cu121torch2.3",
+   "vllm-flash-attn": "2.5.9",
+   "sarathi": "0.1.7",
+   "nvidia-ml-py": "13.595.45",
+   "huggingface-hub": "0.36.2",
+   "tokenizers": "0.22.2"
+  },
+  "git_head": "9b9273aba5823b9d0b9192e546fe397a6f61d692",
+  "git_status_short": "?? validation_output/adapted_vllm_gpu/20261018T060946Z/mixed/cleanup.json\n?? validation_output/adapted_vllm_gpu/20261018T060946Z/mixed/command.txt\n?? validation_output/adapted_vllm_gpu/20261018T060946Z/mixed/decision_trace.json\n?? validation_output/adapted_vllm_gpu/20261018T060946Z/mixed/exit_status.txt\n?? validation_output/adapted_vllm_gpu/20261018T060946Z/mixed/metrics_store_unused/config.yml\n?? validation_output/adapted_vllm_gpu/20261018T060946Z/mixed/summary.json\n?? validation_output/adapted_vllm_gpu/20261018T060946Z/preemption/command.txt\n?? validation_output/adapted_vllm_gpu/20261018T060946Z/preemption/metrics_store_unused/config.yml\n?? validation_output/adapted_vllm_gpu/20261018T060946Z/shell_environment.txt",
+  "cwd": "/home/atjoshi_umass_edu/LPServe"
+ },
+ "cache_capacity": {
+  "profiled_available_blocks": [
+   15606
+  ],
+  "chosen_initialized_blocks": 4,
+  "profile_calls": 1,
+  "initializations": [
+   {
+    "num_gpu_blocks": 4,
+    "result": [
+     null
+    ]
+   }
+  ],
+  "engine_cache_config_num_gpu_blocks": 4,
+  "central_manager_total_blocks": 4,
+  "worker": {
+   "total_blocks": 4,
+   "watermark_blocks": 0,
+   "free_blocks": 4,
+   "free_block_ids": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "block_tables": {},
+   "block_ops": [],
+   "cache_config_num_gpu_blocks": 4,
+   "cache_engine_num_gpu_blocks": 4,
+   "cache_layers": 22,
+   "cache_tensor_block_dims": [
+    4
+   ],
+   "cache_tensor_shapes": [
+    [
+     4,
+     16,
+     4,
+     64
+    ]
+   ],
+   "allocator_num_blocks": 4
+  }
+ },
+ "config": {
+  "model": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+  "engine_args": {
+   "model": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+   "replica_id": 0,
+   "replica_resource_mapping": [],
+   "tokenizer": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+   "tokenizer_mode": "auto",
+   "trust_remote_code": true,
+   "download_dir": null,
+   "load_format": "dummy",
+   "dtype": "float16",
+   "seed": 42,
+   "pipeline_parallel_size": 1,
+   "tensor_parallel_size": 1,
+   "block_size": 16,
+   "gpu_memory_utilization": 0.5,
+   "revision": null,
+   "scheduler_type": "adapted_vllm",
+   "max_model_len": 64,
+   "max_num_seqs": 4,
+   "max_num_batched_tokens": 64,
+   "chunk_size": null,
+   "enable_dynamic_chunking_schedule": false,
+   "low_chunk_size": null,
+   "high_chunk_size": null,
+   "chunk_schedule_max_tokens": null,
+   "chunk_schedule_stages": null,
+   "token_budget": null,
+   "fcfs": null,
+   "fixed_offset": null,
+   "below_memory_limit_offset": null,
+   "above_memory_limit_offset": null,
+   "memory_limit": null,
+   "user_priority": null,
+   "time_between_tokens": null,
+   "process_smallest_prefill": null,
+   "limit_total_decodes": null,
+   "hold_n_scheduler_hold_n": null,
+   "hold_n_scheduler_token_budget": null,
+   "hold_n_scheduler_prefill_factor": null,
+   "write_metrics": true,
+   "output_dir": "validation_output/adapted_vllm_gpu/20261018T060946Z/preemption/metrics_store_unused",
+   "wandb_project": null,
+   "wandb_sweep_id": null,
+   "wandb_run_id": null,
+   "wandb_group": null,
+   "wandb_run_name": null,
+   "enable_op_level_metrics": false,
+   "enable_cpu_op_level_metrics": false,
+   "enable_chrome_trace": false,
+   "enable_request_outputs": false,
+   "keep_individual_batch_metrics": true,
+   "attention_backend": "flash_attention",
+   "lp_b_max": null,
+   "lp_c_max": null,
+   "lp_s_max": null,
+   "lp_memory_reserve": "<omitted>",
+   "lp_decode_memory_policy_id": "<omitted>",
+   "lp_decode_utility": null,
+   "lp_prefill_token_utility": null,
+   "lp_preemption_penalty": null,
+   "lp_numerical_policy": null
+  },
+  "resolved_dtype": "torch.float16",
+  "hf_config_commit_hash": "fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+  "scheduler_class": "AdaptedVLLMScheduler",
+  "scheduler_config": {
+   "max_num_seqs": 4,
+   "max_model_len": 64,
+   "num_pipeline_stages": 1,
+   "_max_num_batched_tokens": 64
+  },
+  "vocab_size": 32000,
+  "eos_token_id": 2,
+  "engine_init_seconds": 26.819
+ },
+ "decisions": [
+  {
+   "preempted": [],
+   "scheduled": [
+    [
+     0,
+     16
+    ],
+    [
+     1,
+     16
+    ],
+    [
+     2,
+     16
+    ],
+    [
+     3,
+     16
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     0,
+     10935
+    ],
+    [
+     1,
+     3591
+    ],
+    [
+     2,
+     10123
+    ],
+    [
+     3,
+     14666
+    ]
+   ]
+  },
+  {
+   "preempted": [],
+   "scheduled": [
+    [
+     0,
+     0
+    ],
+    [
+     1,
+     0
+    ],
+    [
+     2,
+     0
+    ],
+    [
+     3,
+     0
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     0,
+     10935
+    ],
+    [
+     1,
+     3591
+    ],
+    [
+     2,
+     10123
+    ],
+    [
+     3,
+     14666
+    ]
+   ]
+  },
+  {
+   "preempted": [
+    3,
+    2
+   ],
+   "scheduled": [
+    [
+     0,
+     0
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     0,
+     15928
+    ],
+    [
+     1,
+     7027
+    ]
+   ]
+  },
+  {
+   "preempted": [],
+   "scheduled": [
+    [
+     0,
+     0
+    ],
+    [
+     1,
+     0
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     0,
+     554
+    ],
+    [
+     1,
+     30481
+    ]
+   ]
+  },
+  {
+   "preempted": [],
+   "scheduled": [
+    [
+     2,
+     17
+    ],
+    [
+     3,
+     17
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     2,
+     30925
+    ],
+    [
+     3,
+     11030
+    ]
+   ]
+  },
+  {
+   "preempted": [],
+   "scheduled": [
+    [
+     2,
+     0
+    ],
+    [
+     3,
+     0
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     2,
+     30925
+    ],
+    [
+     3,
+     11030
+    ]
+   ]
+  },
+  {
+   "preempted": [],
+   "scheduled": [
+    [
+     2,
+     0
+    ],
+    [
+     3,
+     0
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     2,
+     4974
+    ],
+    [
+     3,
+     30978
+    ]
+   ]
+  },
+  {
+   "preempted": [],
+   "scheduled": [
+    [
+     2,
+     0
+    ],
+    [
+     3,
+     0
+    ]
+   ],
+   "sampler_outputs": [
+    [
+     2,
+     20646
+    ],
+    [
+     3,
+     4792
+    ]
+   ]
+  }
+ ],
+ "token_events": {
+  "0": 3,
+  "1": 3,
+  "2": 4,
+  "3": 4
+ },
+ "note": "token_events counts emitted decode entries; restarted requests exceed max_tokens because the inherited output counter resets on recomputation"
+}

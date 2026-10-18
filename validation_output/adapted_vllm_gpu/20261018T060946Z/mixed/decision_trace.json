@@ -1,0 +1,1856 @@
+{
+ "case": "mixed",
+ "prompts": [
+  [
+   1000,
+   1001,
+   1002,
+   1003,
+   1004
+  ],
+  [
+   2000,
+   2001,
+   2002,
+   2003,
+   2004,
+   2005,
+   2006,
+   2007
+  ]
+ ],
+ "decisions": [
+  {
+   "index": 0,
+   "before": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 8,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7
+    ],
+    "block_tables": {},
+    "seqs": {
+     "0": {
+      "status": "WAITING",
+      "prompt_len": 5,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "WAITING",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "iteration_id": -1,
+    "num_running_batches": 0,
+    "waiting": [
+     0,
+     1
+    ],
+    "running": []
+   },
+   "worker_before": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 8,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7
+    ],
+    "block_tables": {},
+    "seqs": {
+     "0": {
+      "status": "WAITING",
+      "prompt_len": 5,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "WAITING",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "block_ops": [],
+    "cache_config_num_gpu_blocks": 8,
+    "cache_engine_num_gpu_blocks": 8,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     8
+    ],
+    "cache_tensor_shapes": [
+     [
+      8,
+      16,
+      4,
+      64
+     ]
+    ],
+    "allocator_num_blocks": 8
+   },
+   "proposals": [
+    {
+     "decision_time": 615323.595787232,
+     "running_order": [],
+     "arrived_waiting_order": [
+      0,
+      1
+     ],
+     "free_blocks": 8,
+     "watermark_blocks": 0,
+     "token_budget": 8,
+     "victims": [],
+     "actions": [
+      {
+       "seq_id": 0,
+       "kind": "admission",
+       "num_tokens": 5,
+       "block_demand": 1
+      },
+      {
+       "seq_id": 1,
+       "kind": "admission",
+       "num_tokens": 3,
+       "block_demand": 1
+      }
+     ],
+     "running_stop_reason": "running_exhausted",
+     "waiting_stop_reason": "arrived_waiting_exhausted"
+    }
+   ],
+   "schedules": [
+    {
+     "outputs": {
+      "id": 0,
+      "scheduled": [
+       [
+        0,
+        5
+       ],
+       [
+        1,
+        3
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "num_ops": 2,
+     "state": {
+      "total_blocks": 8,
+      "watermark_blocks": 0,
+      "free_blocks": 6,
+      "free_block_ids": [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5
+      ],
+      "block_tables": {
+       "0": [
+        7
+       ],
+       "1": [
+        6
+       ]
+      },
+      "seqs": {
+       "0": {
+        "status": "WAITING",
+        "prompt_len": 5,
+        "prompt_token_ids": [
+         1000,
+         1001,
+         1002,
+         1003,
+         1004
+        ],
+        "prompt_tokens_processed": 0,
+        "prompt_processing_finished": false,
+        "output_token_ids": [],
+        "logical_blocks": 1
+       },
+       "1": {
+        "status": "WAITING",
+        "prompt_len": 8,
+        "prompt_token_ids": [
+         2000,
+         2001,
+         2002,
+         2003,
+         2004,
+         2005,
+         2006,
+         2007
+        ],
+        "prompt_tokens_processed": 0,
+        "prompt_processing_finished": false,
+        "output_token_ids": [],
+        "logical_blocks": 1
+       }
+      },
+      "iteration_id": 0,
+      "num_running_batches": 1,
+      "waiting": [],
+      "running": [
+       0,
+       1
+      ]
+     }
+    }
+   ],
+   "central_ops": [
+    [
+     "allocate",
+     0,
+     [],
+     [
+      7
+     ]
+    ],
+    [
+     "allocate",
+     1,
+     [],
+     [
+      6
+     ]
+    ]
+   ],
+   "after": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 6,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "block_tables": {
+     "0": [
+      7
+     ],
+     "1": [
+      6
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 5,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004
+      ],
+      "prompt_tokens_processed": 5,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 3,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "iteration_id": 0,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [
+     0,
+     1
+    ]
+   },
+   "worker_after": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 6,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "block_tables": {
+     "0": [
+      7
+     ],
+     "1": [
+      6
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 5,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004
+      ],
+      "prompt_tokens_processed": 5,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 3,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "block_ops": [
+     [
+      "allocate",
+      0,
+      [],
+      [
+       7
+      ]
+     ],
+     [
+      "allocate",
+      1,
+      [],
+      [
+       6
+      ]
+     ]
+    ],
+    "cache_config_num_gpu_blocks": 8,
+    "cache_engine_num_gpu_blocks": 8,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     8
+    ],
+    "cache_tensor_shapes": [
+     [
+      8,
+      16,
+      4,
+      64
+     ]
+    ],
+    "allocator_num_blocks": 8
+   },
+   "sampler_outputs": [
+    [
+     0,
+     17573
+    ],
+    [
+     1,
+     12297
+    ]
+   ],
+   "request_outputs": [
+    {
+     "seq_id": 0,
+     "prompt_token_ids": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004
+     ],
+     "token_ids": [],
+     "text": "",
+     "finished": false,
+     "finish_reason": null
+    },
+    {
+     "seq_id": 1,
+     "prompt_token_ids": [
+      2000,
+      2001,
+      2002,
+      2003,
+      2004,
+      2005,
+      2006,
+      2007
+     ],
+     "token_ids": [],
+     "text": "",
+     "finished": false,
+     "finish_reason": null
+    }
+   ]
+  },
+  {
+   "index": 1,
+   "before": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 6,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "block_tables": {
+     "0": [
+      7
+     ],
+     "1": [
+      6
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 5,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004
+      ],
+      "prompt_tokens_processed": 5,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 3,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "iteration_id": 0,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [
+     0,
+     1
+    ]
+   },
+   "worker_before": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 6,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "block_tables": {
+     "0": [
+      7
+     ],
+     "1": [
+      6
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 5,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004
+      ],
+      "prompt_tokens_processed": 5,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 3,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "block_ops": [],
+    "cache_config_num_gpu_blocks": 8,
+    "cache_engine_num_gpu_blocks": 8,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     8
+    ],
+    "cache_tensor_shapes": [
+     [
+      8,
+      16,
+      4,
+      64
+     ]
+    ],
+    "allocator_num_blocks": 8
+   },
+   "proposals": [
+    {
+     "decision_time": 615323.839170869,
+     "running_order": [
+      0,
+      1
+     ],
+     "arrived_waiting_order": [],
+     "free_blocks": 6,
+     "watermark_blocks": 0,
+     "token_budget": 8,
+     "victims": [],
+     "actions": [
+      {
+       "seq_id": 0,
+       "kind": "decode",
+       "num_tokens": 1,
+       "block_demand": 0
+      },
+      {
+       "seq_id": 1,
+       "kind": "resident_prefill",
+       "num_tokens": 5,
+       "block_demand": 0
+      }
+     ],
+     "running_stop_reason": "running_exhausted",
+     "waiting_stop_reason": "arrived_waiting_exhausted"
+    }
+   ],
+   "schedules": [
+    {
+     "outputs": {
+      "id": 1,
+      "scheduled": [
+       [
+        1,
+        5
+       ],
+       [
+        0,
+        0
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "num_ops": 1,
+     "state": {
+      "total_blocks": 8,
+      "watermark_blocks": 0,
+      "free_blocks": 6,
+      "free_block_ids": [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5
+      ],
+      "block_tables": {
+       "0": [
+        7
+       ],
+       "1": [
+        6
+       ]
+      },
+      "seqs": {
+       "0": {
+        "status": "PAUSED",
+        "prompt_len": 5,
+        "prompt_token_ids": [
+         1000,
+         1001,
+         1002,
+         1003,
+         1004
+        ],
+        "prompt_tokens_processed": 5,
+        "prompt_processing_finished": true,
+        "output_token_ids": [],
+        "logical_blocks": 1
+       },
+       "1": {
+        "status": "PAUSED",
+        "prompt_len": 8,
+        "prompt_token_ids": [
+         2000,
+         2001,
+         2002,
+         2003,
+         2004,
+         2005,
+         2006,
+         2007
+        ],
+        "prompt_tokens_processed": 3,
+        "prompt_processing_finished": false,
+        "output_token_ids": [],
+        "logical_blocks": 1
+       }
+      },
+      "iteration_id": 1,
+      "num_running_batches": 1,
+      "waiting": [],
+      "running": [
+       0,
+       1
+      ]
+     }
+    }
+   ],
+   "central_ops": [
+    [
+     "append",
+     0,
+     [
+      7
+     ],
+     [
+      7
+     ]
+    ]
+   ],
+   "after": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 6,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "block_tables": {
+     "0": [
+      7
+     ],
+     "1": [
+      6
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 5,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004
+      ],
+      "prompt_tokens_processed": 5,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       17573
+      ],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 8,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "iteration_id": 1,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [
+     0,
+     1
+    ]
+   },
+   "worker_after": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 6,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "block_tables": {
+     "0": [
+      7
+     ],
+     "1": [
+      6
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 5,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004
+      ],
+      "prompt_tokens_processed": 5,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       17573
+      ],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 8,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "block_ops": [
+     [
+      "append",
+      1,
+      [
+       6
+      ],
+      [
+       6
+      ]
+     ],
+     [
+      "append",
+      0,
+      [
+       7
+      ],
+      [
+       7
+      ]
+     ]
+    ],
+    "cache_config_num_gpu_blocks": 8,
+    "cache_engine_num_gpu_blocks": 8,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     8
+    ],
+    "cache_tensor_shapes": [
+     [
+      8,
+      16,
+      4,
+      64
+     ]
+    ],
+    "allocator_num_blocks": 8
+   },
+   "sampler_outputs": [
+    [
+     1,
+     15619
+    ],
+    [
+     0,
+     17573
+    ]
+   ],
+   "request_outputs": [
+    {
+     "seq_id": 1,
+     "prompt_token_ids": [
+      2000,
+      2001,
+      2002,
+      2003,
+      2004,
+      2005,
+      2006,
+      2007
+     ],
+     "token_ids": [],
+     "text": "",
+     "finished": false,
+     "finish_reason": null
+    },
+    {
+     "seq_id": 0,
+     "prompt_token_ids": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004
+     ],
+     "token_ids": [
+      17573
+     ],
+     "text": " repos",
+     "finished": false,
+     "finish_reason": null
+    }
+   ]
+  },
+  {
+   "index": 2,
+   "before": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 6,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "block_tables": {
+     "0": [
+      7
+     ],
+     "1": [
+      6
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 5,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004
+      ],
+      "prompt_tokens_processed": 5,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       17573
+      ],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 8,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "iteration_id": 1,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [
+     0,
+     1
+    ]
+   },
+   "worker_before": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 6,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "block_tables": {
+     "0": [
+      7
+     ],
+     "1": [
+      6
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 5,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004
+      ],
+      "prompt_tokens_processed": 5,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       17573
+      ],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 8,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "block_ops": [],
+    "cache_config_num_gpu_blocks": 8,
+    "cache_engine_num_gpu_blocks": 8,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     8
+    ],
+    "cache_tensor_shapes": [
+     [
+      8,
+      16,
+      4,
+      64
+     ]
+    ],
+    "allocator_num_blocks": 8
+   },
+   "proposals": [
+    {
+     "decision_time": 615323.859279509,
+     "running_order": [
+      0,
+      1
+     ],
+     "arrived_waiting_order": [],
+     "free_blocks": 6,
+     "watermark_blocks": 0,
+     "token_budget": 8,
+     "victims": [],
+     "actions": [
+      {
+       "seq_id": 0,
+       "kind": "decode",
+       "num_tokens": 1,
+       "block_demand": 0
+      },
+      {
+       "seq_id": 1,
+       "kind": "decode",
+       "num_tokens": 1,
+       "block_demand": 0
+      }
+     ],
+     "running_stop_reason": "running_exhausted",
+     "waiting_stop_reason": "arrived_waiting_exhausted"
+    }
+   ],
+   "schedules": [
+    {
+     "outputs": {
+      "id": 2,
+      "scheduled": [
+       [
+        0,
+        0
+       ],
+       [
+        1,
+        0
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "num_ops": 2,
+     "state": {
+      "total_blocks": 8,
+      "watermark_blocks": 0,
+      "free_blocks": 6,
+      "free_block_ids": [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5
+      ],
+      "block_tables": {
+       "0": [
+        7
+       ],
+       "1": [
+        6
+       ]
+      },
+      "seqs": {
+       "0": {
+        "status": "PAUSED",
+        "prompt_len": 5,
+        "prompt_token_ids": [
+         1000,
+         1001,
+         1002,
+         1003,
+         1004
+        ],
+        "prompt_tokens_processed": 5,
+        "prompt_processing_finished": true,
+        "output_token_ids": [
+         17573
+        ],
+        "logical_blocks": 1
+       },
+       "1": {
+        "status": "PAUSED",
+        "prompt_len": 8,
+        "prompt_token_ids": [
+         2000,
+         2001,
+         2002,
+         2003,
+         2004,
+         2005,
+         2006,
+         2007
+        ],
+        "prompt_tokens_processed": 8,
+        "prompt_processing_finished": true,
+        "output_token_ids": [],
+        "logical_blocks": 1
+       }
+      },
+      "iteration_id": 2,
+      "num_running_batches": 1,
+      "waiting": [],
+      "running": [
+       0,
+       1
+      ]
+     }
+    }
+   ],
+   "central_ops": [
+    [
+     "append",
+     0,
+     [
+      7
+     ],
+     [
+      7
+     ]
+    ],
+    [
+     "append",
+     1,
+     [
+      6
+     ],
+     [
+      6
+     ]
+    ],
+    [
+     "free",
+     0,
+     [
+      7
+     ],
+     []
+    ]
+   ],
+   "after": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 7,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     7
+    ],
+    "block_tables": {
+     "1": [
+      6
+     ]
+    },
+    "seqs": {
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 8,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       15619
+      ],
+      "logical_blocks": 1
+     }
+    },
+    "iteration_id": 2,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [
+     1
+    ]
+   },
+   "worker_after": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 7,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     7
+    ],
+    "block_tables": {
+     "1": [
+      6
+     ]
+    },
+    "seqs": {
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 8,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       15619
+      ],
+      "logical_blocks": 1
+     }
+    },
+    "block_ops": [
+     [
+      "append",
+      0,
+      [
+       7
+      ],
+      [
+       7
+      ]
+     ],
+     [
+      "append",
+      1,
+      [
+       6
+      ],
+      [
+       6
+      ]
+     ],
+     [
+      "free",
+      0,
+      [
+       7
+      ],
+      []
+     ]
+    ],
+    "cache_config_num_gpu_blocks": 8,
+    "cache_engine_num_gpu_blocks": 8,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     8
+    ],
+    "cache_tensor_shapes": [
+     [
+      8,
+      16,
+      4,
+      64
+     ]
+    ],
+    "allocator_num_blocks": 8
+   },
+   "sampler_outputs": [
+    [
+     0,
+     18757
+    ],
+    [
+     1,
+     15619
+    ]
+   ],
+   "request_outputs": [
+    {
+     "seq_id": 0,
+     "prompt_token_ids": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004
+     ],
+     "token_ids": [
+      17573,
+      18757
+     ],
+     "text": " repos hung",
+     "finished": true,
+     "finish_reason": "length"
+    },
+    {
+     "seq_id": 1,
+     "prompt_token_ids": [
+      2000,
+      2001,
+      2002,
+      2003,
+      2004,
+      2005,
+      2006,
+      2007
+     ],
+     "token_ids": [
+      15619
+     ],
+     "text": "timeout",
+     "finished": false,
+     "finish_reason": null
+    }
+   ]
+  },
+  {
+   "index": 3,
+   "before": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 7,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     7
+    ],
+    "block_tables": {
+     "1": [
+      6
+     ]
+    },
+    "seqs": {
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 8,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       15619
+      ],
+      "logical_blocks": 1
+     }
+    },
+    "iteration_id": 2,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [
+     1
+    ]
+   },
+   "worker_before": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 7,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     7
+    ],
+    "block_tables": {
+     "1": [
+      6
+     ]
+    },
+    "seqs": {
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 8,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       15619
+      ],
+      "logical_blocks": 1
+     }
+    },
+    "block_ops": [],
+    "cache_config_num_gpu_blocks": 8,
+    "cache_engine_num_gpu_blocks": 8,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     8
+    ],
+    "cache_tensor_shapes": [
+     [
+      8,
+      16,
+      4,
+      64
+     ]
+    ],
+    "allocator_num_blocks": 8
+   },
+   "proposals": [
+    {
+     "decision_time": 615323.877809692,
+     "running_order": [
+      1
+     ],
+     "arrived_waiting_order": [],
+     "free_blocks": 7,
+     "watermark_blocks": 0,
+     "token_budget": 8,
+     "victims": [],
+     "actions": [
+      {
+       "seq_id": 1,
+       "kind": "decode",
+       "num_tokens": 1,
+       "block_demand": 0
+      }
+     ],
+     "running_stop_reason": "running_exhausted",
+     "waiting_stop_reason": "arrived_waiting_exhausted"
+    }
+   ],
+   "schedules": [
+    {
+     "outputs": {
+      "id": 3,
+      "scheduled": [
+       [
+        1,
+        0
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "num_ops": 1,
+     "state": {
+      "total_blocks": 8,
+      "watermark_blocks": 0,
+      "free_blocks": 7,
+      "free_block_ids": [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       7
+      ],
+      "block_tables": {
+       "1": [
+        6
+       ]
+      },
+      "seqs": {
+       "1": {
+        "status": "PAUSED",
+        "prompt_len": 8,
+        "prompt_token_ids": [
+         2000,
+         2001,
+         2002,
+         2003,
+         2004,
+         2005,
+         2006,
+         2007
+        ],
+        "prompt_tokens_processed": 8,
+        "prompt_processing_finished": true,
+        "output_token_ids": [
+         15619
+        ],
+        "logical_blocks": 1
+       }
+      },
+      "iteration_id": 3,
+      "num_running_batches": 1,
+      "waiting": [],
+      "running": [
+       1
+      ]
+     }
+    }
+   ],
+   "central_ops": [
+    [
+     "append",
+     1,
+     [
+      6
+     ],
+     [
+      6
+     ]
+    ],
+    [
+     "free",
+     1,
+     [
+      6
+     ],
+     []
+    ]
+   ],
+   "after": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 8,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     7,
+     6
+    ],
+    "block_tables": {},
+    "seqs": {},
+    "iteration_id": 3,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": []
+   },
+   "worker_after": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 8,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     7,
+     6
+    ],
+    "block_tables": {},
+    "seqs": {},
+    "block_ops": [
+     [
+      "append",
+      1,
+      [
+       6
+      ],
+      [
+       6
+      ]
+     ],
+     [
+      "free",
+      1,
+      [
+       6
+      ],
+      []
+     ]
+    ],
+    "cache_config_num_gpu_blocks": 8,
+    "cache_engine_num_gpu_blocks": 8,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     8
+    ],
+    "cache_tensor_shapes": [
+     [
+      8,
+      16,
+      4,
+      64
+     ]
+    ],
+    "allocator_num_blocks": 8
+   },
+   "sampler_outputs": [
+    [
+     1,
+     13105
+    ]
+   ],
+   "request_outputs": [
+    {
+     "seq_id": 1,
+     "prompt_token_ids": [
+      2000,
+      2001,
+      2002,
+      2003,
+      2004,
+      2005,
+      2006,
+      2007
+     ],
+     "token_ids": [
+      15619,
+      13105
+     ],
+     "text": "timeout \u00d7",
+     "finished": true,
+     "finish_reason": "length"
+    }
+   ]
+  }
+ ],
+ "idle": {
+  "before": {
+   "total_blocks": 8,
+   "watermark_blocks": 0,
+   "free_blocks": 8,
+   "free_block_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    7,
+    6
+   ],
+   "block_tables": {},
+   "seqs": {},
+   "iteration_id": 3,
+   "num_running_batches": 0,
+   "waiting": [],
+   "running": []
+  },
+  "after": {
+   "total_blocks": 8,
+   "watermark_blocks": 0,
+   "free_blocks": 8,
+   "free_block_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    7,
+    6
+   ],
+   "block_tables": {},
+   "seqs": {},
+   "iteration_id": 4,
+   "num_running_batches": 0,
+   "waiting": [],
+   "running": []
+  },
+  "proposals": [
+   {
+    "decision_time": 615323.937068481,
+    "running_order": [],
+    "arrived_waiting_order": [],
+    "free_blocks": 8,
+    "watermark_blocks": 0,
+    "token_budget": 8,
+    "victims": [],
+    "actions": [],
+    "running_stop_reason": "running_exhausted",
+    "waiting_stop_reason": "arrived_waiting_exhausted"
+   }
+  ],
+  "schedules": [
+   {
+    "outputs": {
+     "id": 4,
+     "scheduled": [],
+     "ignored_seq_ids": [],
+     "preempted_seq_ids": []
+    },
+    "num_ops": 0,
+    "state": {
+     "total_blocks": 8,
+     "watermark_blocks": 0,
+     "free_blocks": 8,
+     "free_block_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      7,
+      6
+     ],
+     "block_tables": {},
+     "seqs": {},
+     "iteration_id": 4,
+     "num_running_batches": 0,
+     "waiting": [],
+     "running": []
+    }
+   }
+  ],
+  "central_ops": [],
+  "worker_after": {
+   "total_blocks": 8,
+   "watermark_blocks": 0,
+   "free_blocks": 8,
+   "free_block_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    7,
+    6
+   ],
+   "block_tables": {},
+   "seqs": {},
+   "block_ops": [],
+   "cache_config_num_gpu_blocks": 8,
+   "cache_engine_num_gpu_blocks": 8,
+   "cache_layers": 22,
+   "cache_tensor_block_dims": [
+    8
+   ],
+   "cache_tensor_shapes": [
+    [
+     8,
+     16,
+     4,
+     64
+    ]
+   ],
+   "allocator_num_blocks": 8
+  }
+ },
+ "token_events": {
+  "0": 2,
+  "1": 2
+ }
+}

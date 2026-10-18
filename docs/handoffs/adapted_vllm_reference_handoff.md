@@ -326,3 +326,101 @@ bound 12. Generated-token events must be `{0: 2, 1: 2}` and
 reset; it is not cumulative generation. A pass would not establish
 physical-ID equality, cache-content correctness, sampler generality, or
 generation quality.
+
+## GPU validation run (2026-10-18)
+
+**Scope.** The two prepared cases only, one process each, with no changes to
+driver, workload, or production code. The earlier sections, including their
+"GPU unexecuted" boundary, describe the CPU stage and are unchanged.
+
+**Evidence:** [`validation_output/adapted_vllm_gpu/20261018T060946Z/`](../../validation_output/adapted_vllm_gpu/20261018T060946Z/)
+(`mixed/` and `preemption/`: `command.txt`, `console.log`, `exit_status.txt`,
+`summary.json`, `decision_trace.json`, `cleanup.json`,
+`metrics_store_unused/config.yml`; plus `shell_environment.txt`,
+`git_state.txt`, `sha256sums.txt`). Tested at committed HEAD
+`9b9273aba5823b9d0b9192e546fe397a6f61d692` with no tracked changes
+(`git diff HEAD` hash is the empty-input hash). The driver hash `cdf6b7f4…`
+equals the CPU-tested one. Host `gpu049`, Slurm job `65821002` (partition
+`gpu-preempt`), NVIDIA A16 (`GPU-550e163c-e6cb-b9a9-8f68-342d097c2226`,
+15356 MiB, driver 595.91.07), torch 2.3.0+cu121, transformers 4.57.6, ray
+2.58.0, vllm-flash-attn 2.5.9. Modules `uri/main`,
+`Python/3.10.8-GCCcore-12.2.0`, `CUDA/12.1.1`; `env/bin/python` 3.10.8;
+repository root on `PYTHONPATH`. Model:
+`/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6`
+(config `_commit_hash` equals that revision), dummy weights, float16, offline.
+
+**Commands** (each with `set -o pipefail`, logged through `tee`):
+
+```text
+timeout 600s python -B scripts/check_adapted_vllm_gpu.py --case mixed \
+  --model-path <model dir> --output-dir validation_output/adapted_vllm_gpu/20261018T060946Z/mixed
+timeout 600s python -B scripts/check_adapted_vllm_gpu.py --case preemption \
+  --model-path <model dir> --output-dir validation_output/adapted_vllm_gpu/20261018T060946Z/preemption
+```
+
+Both runs exited with pipeline status 0. Under `pipefail` this means the
+`timeout`/Python process also returned 0. Both printed `RESULT: PASS`, with
+`ray_initialized_after_shutdown: false`. There was one attempt per case, with
+no failures, timeouts, or retries. Console warnings were only the
+transformers `torch_dtype` deprecation notice and `Casting torch.bfloat16 to
+torch.float16`.
+
+**Capacity.** Profiling ran once per process and returned 15616 (mixed) and
+15606 (preemption) available blocks. The chosen 8 and 4 went through native
+`_init_cache`. The engine cache configuration, central manager, worker cache
+engine, worker allocator, and every one of the 22 layer cache tensors used
+exactly that pool (`[8,16,4,64]` and `[4,16,4,64]`); the watermark was 0. The
+registered scheduler was `AdaptedVLLMScheduler`, built from `EngineArgs`
+with tensor and pipeline parallelism 1.
+
+**Observed decisions** (from `decision_trace.json`; every field matched
+`CASES`):
+
+- **Mixed.** Decision 0 selected A:5 then B:3, with one allocation each.
+  Decision 1 selected A's decode (demand 0) then B's resident prefill of 5,
+  emitted `[[1,5],[0,0]]`. Central made one zero-demand append (A); the
+  worker made two, B's no-op then A's, in emitted order. Decisions 2–3 were
+  decodes. A finished at decision 2 and B at 3, each with 2 tokens. Both
+  managers freed each request at completion; the final free count was 8 on
+  both sides, followed by an ordinary idle call (iteration 3 → 4, no other
+  change).
+- **Preemption.** Decision 0 admitted all four requests, leaving 0 free.
+  Decision 1 ran four zero-demand decodes with 0 free; appends allocated
+  nothing and every gap became 1. In decision 2, request 0's demand of 1
+  evicted tail 3, then 1's demand evicted 2. Central and worker both ran
+  `free 3, free 2, append 0 (+1 block), append 1 (+1 block)`, and waiting
+  became `[2, 3]` (native front insertion). Recomputation folded each
+  victim's one generated token into a 17-token prompt with progress 0. In
+  decision 3, 0 and 1 decoded, the 2-block head stopped on
+  `admission_memory`, and 0 and 1 finished and were freed (4 free). Decision
+  4 readmitted 2 and 3 with 17-token, 2-block contexts, and decisions 5–7
+  decoded them to completion, followed by ordinary idle (4 free on both
+  sides).
+- **Inherited counter reset.** Cumulative generated-token events (emitted
+  decode entries) were `{0:3, 1:3, 2:4, 3:4}`. Restarted 2 and 3 finished
+  with a reset native output count of 3, and their `RequestOutput` lists only
+  the 3 tokens after the restart, on a 17-token prompt. They produced 4
+  token events against `max_tokens` 3. This is the inherited overgeneration
+  behavior, not repaired; the counter is not cumulative generation.
+- **Physical IDs.** Through decision 3 the central and worker tables were
+  identical. From the readmission at decision 4 they differed (central
+  `2:[2,0]`, worker `2:[0,2]`), with equal lengths and free counts and a
+  conserved pool in each manager. This is the inherited set-order free; each
+  worker uses its own tables.
+- **Inherited sampling pattern (observed only).** Each request's first decode
+  sample equalled its discarded final-prefill sample (for example A: 17573
+  at decisions 0 and 1). This is consistent with the decode re-processing the
+  last prompt token. No token ID was prescribed or judged.
+
+### GPU coverage
+
+| Behavior | Case/decision | Observed |
+|---|---|---|
+| Mixed prefill/decode, prompt-first layout vs selection order | mixed 1 | selection A decode, B:5; emitted `[[1,5],[0,0]]`; sampler order matched |
+| Zero-demand decode with 0 free blocks | preemption 1 | 4 appends, no allocation, both managers |
+| Allocation-driven tail preemption, no admission after it | preemption 2 | victims 3, 2; `skipped_after_preemption`; frees before appends |
+| Recomputation and readmission | preemption 2–4 | 17-token prompts, progress 0, readmitted `[[2,17],[3,17]]`, 2 blocks each |
+| Admission stops at the head's memory failure | preemption 3 | `admission_memory` with 0 free |
+| Completion, release, idle | both | `length` finishes, frees on both managers, ordinary idle |
+| Central/worker agreement | every decision | sequence state, table lengths, free counts, per-manager conservation |
+| **Not established** | — | cache contents or attention correctness, physical-ID equality, sampler generality, generation quality, policy equivalence, fairness, arbitrary workloads, performance; Q11 remains OPEN |
