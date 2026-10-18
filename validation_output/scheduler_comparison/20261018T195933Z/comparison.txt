@@ -1,0 +1,104 @@
+=== adapted_vllm: validation_passed=True outcome=drained decisions=8 unfinished=[] exit=timeout_python_exit_status=0 tee_exit_status=0
+idx free running waiting | preempted scheduled | victim reasons (preemption-free alternative) | relaxed->integer objective, extraction changed | central==worker physical IDs
+ 0 4 [] [0, 1, 2, 3] | [] [[0, 16], [1, 16], [2, 16], [3, 16]] | [] (True) | - | True
+   samples [[0, 10935], [1, 3591], [2, 10123], [3, 14666]]
+ 1 0 [0, 1, 2, 3] [] | [] [[0, 0], [1, 0], [2, 0], [3, 0]] | [] (True) | - | True
+   samples [[0, 10935], [1, 3591], [2, 10123], [3, 14666]]
+ 2 0 [0, 1, 2, 3] [] | [3, 2] [[0, 0], [1, 0]] | ['decode_block_demand'] (False) | - | True
+   samples [[0, 15928], [1, 7027]]
+ 3 0 [0, 1] [2, 3] | [] [[0, 0], [1, 0]] | [] (True) | - | True
+   samples [[0, 554], [1, 30481]]
+ 4 4 [] [2, 3] | [] [[2, 17], [3, 17]] | [] (True) | - | False
+   samples [[2, 30925], [3, 11030]]
+ 5 0 [2, 3] [] | [] [[2, 0], [3, 0]] | [] (True) | - | False
+   samples [[2, 30925], [3, 11030]]
+ 6 0 [2, 3] [] | [] [[2, 0], [3, 0]] | [] (True) | - | False
+   samples [[2, 4974], [3, 30978]]
+ 7 0 [2, 3] [] | [] [[2, 0], [3, 0]] | [] (True) | - | True
+   samples [[2, 20646], [3, 4792]]
+final free central/worker 4 4 residual allocations {} idle True
+  A: first_prefill=0 first_decode=1 completion=3 generated_token_events=3 native_output_count=3 overgeneration=0 preemptions=0 preemptions_after_output=0 discarded_prompt_tokens=0 generated_tokens_moved_to_context=0 prefill_actions=1 prefill_tokens_executed=16 prefill_tokens_first_time=16 prefill_tokens_replayed=0 prefill_tokens_expanded_context=0 omitted=[]
+  B: first_prefill=0 first_decode=1 completion=3 generated_token_events=3 native_output_count=3 overgeneration=0 preemptions=0 preemptions_after_output=0 discarded_prompt_tokens=0 generated_tokens_moved_to_context=0 prefill_actions=1 prefill_tokens_executed=16 prefill_tokens_first_time=16 prefill_tokens_replayed=0 prefill_tokens_expanded_context=0 omitted=[]
+  C: first_prefill=0 first_decode=1 completion=7 generated_token_events=4 native_output_count=3 overgeneration=1 preemptions=1 preemptions_after_output=1 discarded_prompt_tokens=16 generated_tokens_moved_to_context=1 prefill_actions=2 prefill_tokens_executed=33 prefill_tokens_first_time=16 prefill_tokens_replayed=16 prefill_tokens_expanded_context=1 omitted=[3]
+  D: first_prefill=0 first_decode=1 completion=7 generated_token_events=4 native_output_count=3 overgeneration=1 preemptions=1 preemptions_after_output=1 discarded_prompt_tokens=16 generated_tokens_moved_to_context=1 prefill_actions=2 prefill_tokens_executed=33 prefill_tokens_first_time=16 prefill_tokens_replayed=16 prefill_tokens_expanded_context=1 omitted=[3]
+
+=== lp_uniform: validation_passed=True outcome=bounded_unfinished decisions=16 unfinished=['A', 'B', 'C', 'D'] exit=timeout_python_exit_status=0 tee_exit_status=0
+idx free running waiting | preempted scheduled | victim reasons (preemption-free alternative) | relaxed->integer objective, extraction changed | central==worker physical IDs
+ 0 4 [] [0, 1, 2, 3] | [] [[0, 16], [1, 16], [2, 16], [3, 16]] | [] (True) | 64.000->64.000 False | True
+   samples [[0, 10935], [1, 3591], [2, 10123], [3, 14666]]
+ 1 0 [0, 1, 2, 3] [] | [0] [[1, 0], [2, 0], [3, 0]] | ['lp_decode_prerequisite'] (False) | 2.400->2.000 True | True
+   samples [[1, 3591], [2, 10123], [3, 14666]]
+ 2 1 [1, 2, 3] [0] | [] [[0, 16]] | [] (True) | 16.000->16.000 False | True
+   samples [[0, 10935]]
+ 3 0 [1, 2, 3, 0] [] | [1] [[0, 0], [3, 0]] | ['decode_block_demand'] (False) | 1.000->1.000 False | True
+   samples [[0, 10935], [3, 11030]]
+ 4 0 [2, 3, 0] [1] | [0, 2] [[1, 17]] | ['admission_charges'] (False) | 16.000->15.000 True | True
+   samples [[1, 7027]]
+ 5 0 [3, 1] [2, 0] | [1, 3] [[2, 17], [0, 17]] | ['admission_charges'] (False) | 32.000->32.000 False | False
+   samples [[2, 30925], [0, 15928]]
+ 6 0 [2, 0] [3, 1] | [0, 2] [[3, 18], [1, 17]] | ['admission_charges'] (False) | 33.000->33.000 False | False
+   samples [[3, 30978], [1, 7027]]
+ 7 0 [3, 1] [2, 0] | [1, 3] [[2, 17], [0, 17]] | ['admission_charges'] (False) | 32.000->32.000 False | False
+   samples [[2, 30925], [0, 15928]]
+ 8 0 [2, 0] [3, 1] | [0, 2] [[3, 18], [1, 17]] | ['admission_charges'] (False) | 33.000->33.000 False | False
+   samples [[3, 30978], [1, 7027]]
+ 9 0 [3, 1] [2, 0] | [1, 3] [[2, 17], [0, 17]] | ['admission_charges'] (False) | 32.000->32.000 False | False
+   samples [[2, 30925], [0, 15928]]
+10 0 [2, 0] [3, 1] | [0, 2] [[3, 18], [1, 17]] | ['admission_charges'] (False) | 33.000->33.000 False | False
+   samples [[3, 30978], [1, 7027]]
+11 0 [3, 1] [2, 0] | [1, 3] [[2, 17], [0, 17]] | ['admission_charges'] (False) | 32.000->32.000 False | False
+   samples [[2, 30925], [0, 15928]]
+12 0 [2, 0] [3, 1] | [0, 2] [[3, 18], [1, 17]] | ['admission_charges'] (False) | 33.000->33.000 False | False
+   samples [[3, 30978], [1, 7027]]
+13 0 [3, 1] [2, 0] | [1, 3] [[2, 17], [0, 17]] | ['admission_charges'] (False) | 32.000->32.000 False | False
+   samples [[2, 30925], [0, 15928]]
+14 0 [2, 0] [3, 1] | [0, 2] [[3, 18], [1, 17]] | ['admission_charges'] (False) | 33.000->33.000 False | False
+   samples [[3, 30978], [1, 7027]]
+15 0 [3, 1] [2, 0] | [1, 3] [[2, 17], [0, 17]] | ['admission_charges'] (False) | 32.000->32.000 False | False
+   samples [[2, 30925], [0, 15928]]
+final free central/worker 0 0 residual allocations {'C': 2, 'A': 2} idle False
+  A: first_prefill=0 first_decode=3 completion=None generated_token_events=1 native_output_count=0 overgeneration=None preemptions=7 preemptions_after_output=1 discarded_prompt_tokens=117 generated_tokens_moved_to_context=1 prefill_actions=8 prefill_tokens_executed=134 prefill_tokens_first_time=16 prefill_tokens_replayed=117 prefill_tokens_expanded_context=1 omitted=[]
+  B: first_prefill=0 first_decode=1 completion=None generated_token_events=1 native_output_count=0 overgeneration=None preemptions=7 preemptions_after_output=1 discarded_prompt_tokens=118 generated_tokens_moved_to_context=1 prefill_actions=7 prefill_tokens_executed=118 prefill_tokens_first_time=16 prefill_tokens_replayed=101 prefill_tokens_expanded_context=1 omitted=[2]
+  C: first_prefill=0 first_decode=1 completion=None generated_token_events=1 native_output_count=0 overgeneration=None preemptions=6 preemptions_after_output=1 discarded_prompt_tokens=101 generated_tokens_moved_to_context=1 prefill_actions=7 prefill_tokens_executed=118 prefill_tokens_first_time=16 prefill_tokens_replayed=101 prefill_tokens_expanded_context=1 omitted=[2, 3]
+  D: first_prefill=0 first_decode=1 completion=None generated_token_events=2 native_output_count=0 overgeneration=None preemptions=6 preemptions_after_output=1 discarded_prompt_tokens=106 generated_tokens_moved_to_context=2 prefill_actions=6 prefill_tokens_executed=106 prefill_tokens_first_time=16 prefill_tokens_replayed=88 prefill_tokens_expanded_context=2 omitted=[2, 4]
+
+=== lp_rank_based: validation_passed=True outcome=bounded_unfinished decisions=16 unfinished=['A', 'B', 'C', 'D'] exit=timeout_python_exit_status=0 tee_exit_status=0
+idx free running waiting | preempted scheduled | victim reasons (preemption-free alternative) | relaxed->integer objective, extraction changed | central==worker physical IDs
+ 0 4 [] [0, 1, 2, 3] | [] [[0, 16], [1, 16], [2, 16], [3, 16]] | [] (True) | 33.333->33.333 False | True
+   samples [[0, 10935], [1, 3591], [2, 10123], [3, 14666]]
+ 1 0 [0, 1, 2, 3] [] | [3] [[0, 0], [1, 0], [2, 0]] | ['lp_decode_prerequisite'] (False) | 1.683->1.583 True | True
+   samples [[0, 10935], [1, 3591], [2, 10123]]
+ 2 1 [0, 1, 2] [3] | [2] [[3, 16], [0, 0]] | ['admission_charges'] (True) | 4.667->4.667 False | True
+   samples [[3, 14666], [0, 15928]]
+ 3 0 [0, 1, 3] [2] | [3, 1] [[2, 17]] | ['admission_charges'] (False) | 4.194->3.417 True | True
+   samples [[2, 30925]]
+ 4 0 [0, 2] [1, 3] | [2, 0] [[1, 17], [3, 16]] | ['admission_charges'] (False) | 9.056->8.167 True | False
+   samples [[1, 7027], [3, 14666]]
+ 5 1 [1, 3] [0, 2] | [3, 1] [[0, 18], [2, 17]] | ['admission_charges'] (True) | 8.750->8.750 False | False
+   samples [[0, 554], [2, 30925]]
+ 6 0 [0, 2] [1, 3] | [2, 0] [[1, 17], [3, 16]] | ['admission_charges'] (False) | 9.056->8.167 True | False
+   samples [[1, 7027], [3, 14666]]
+ 7 1 [1, 3] [0, 2] | [3, 1] [[0, 18], [2, 17]] | ['admission_charges'] (True) | 8.750->8.750 False | False
+   samples [[0, 554], [2, 30925]]
+ 8 0 [0, 2] [1, 3] | [2, 0] [[1, 17], [3, 16]] | ['admission_charges'] (False) | 9.056->8.167 True | False
+   samples [[1, 7027], [3, 14666]]
+ 9 1 [1, 3] [0, 2] | [3, 1] [[0, 18], [2, 17]] | ['admission_charges'] (True) | 8.750->8.750 False | False
+   samples [[0, 554], [2, 30925]]
+10 0 [0, 2] [1, 3] | [2, 0] [[1, 17], [3, 16]] | ['admission_charges'] (False) | 9.056->8.167 True | False
+   samples [[1, 7027], [3, 14666]]
+11 1 [1, 3] [0, 2] | [3, 1] [[0, 18], [2, 17]] | ['admission_charges'] (True) | 8.750->8.750 False | False
+   samples [[0, 554], [2, 30925]]
+12 0 [0, 2] [1, 3] | [2, 0] [[1, 17], [3, 16]] | ['admission_charges'] (False) | 9.056->8.167 True | False
+   samples [[1, 7027], [3, 14666]]
+13 1 [1, 3] [0, 2] | [3, 1] [[0, 18], [2, 17]] | ['admission_charges'] (True) | 8.750->8.750 False | False
+   samples [[0, 554], [2, 30925]]
+14 0 [0, 2] [1, 3] | [2, 0] [[1, 17], [3, 16]] | ['admission_charges'] (False) | 9.056->8.167 True | False
+   samples [[1, 7027], [3, 14666]]
+15 1 [1, 3] [0, 2] | [3, 1] [[0, 18], [2, 17]] | ['admission_charges'] (True) | 8.750->8.750 False | False
+   samples [[0, 554], [2, 30925]]
+final free central/worker 0 0 residual allocations {'A': 2, 'C': 2} idle False
+  A: first_prefill=0 first_decode=1 completion=None generated_token_events=2 native_output_count=0 overgeneration=None preemptions=6 preemptions_after_output=1 discarded_prompt_tokens=106 generated_tokens_moved_to_context=2 prefill_actions=7 prefill_tokens_executed=124 prefill_tokens_first_time=16 prefill_tokens_replayed=106 prefill_tokens_expanded_context=2 omitted=[3]
+  B: first_prefill=0 first_decode=1 completion=None generated_token_events=1 native_output_count=0 overgeneration=None preemptions=7 preemptions_after_output=1 discarded_prompt_tokens=118 generated_tokens_moved_to_context=1 prefill_actions=7 prefill_tokens_executed=118 prefill_tokens_first_time=16 prefill_tokens_replayed=101 prefill_tokens_expanded_context=1 omitted=[2]
+  C: first_prefill=0 first_decode=1 completion=None generated_token_events=1 native_output_count=0 overgeneration=None preemptions=7 preemptions_after_output=1 discarded_prompt_tokens=118 generated_tokens_moved_to_context=1 prefill_actions=8 prefill_tokens_executed=135 prefill_tokens_first_time=16 prefill_tokens_replayed=118 prefill_tokens_expanded_context=1 omitted=[]
+  D: first_prefill=0 first_decode=None completion=None generated_token_events=0 native_output_count=0 overgeneration=None preemptions=8 preemptions_after_output=0 discarded_prompt_tokens=128 generated_tokens_moved_to_context=0 prefill_actions=8 prefill_tokens_executed=128 prefill_tokens_first_time=16 prefill_tokens_replayed=112 prefill_tokens_expanded_context=0 omitted=[]
+

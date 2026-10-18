@@ -1,0 +1,144 @@
+$ python -B -m unittest tests.test_compare_scheduler_gpu -v
+INFO 10-18 19:59:54 metrics_store.py:72] MetricsStore disabled
+test_check_detects_a_contract_violation (tests.test_compare_scheduler_gpu.BoundAndFailureTest) ... ok
+test_decision_bound_leaves_work_visibly_unfinished (tests.test_compare_scheduler_gpu.BoundAndFailureTest) ... two_request adapted_vllm limit 2 decision 0: preempted [] emitted [[0, 5], [1, 3]] free 6/6
+two_request adapted_vllm limit 2 decision 1: preempted [] emitted [[1, 5], [0, 0]] free 6/6
+two_request adapted_vllm limit 2 decision 2: preempted [] emitted [[0, 0], [1, 0]] free 7/7
+ok
+test_solver_failure_is_a_failure_with_partial_trace (tests.test_compare_scheduler_gpu.BoundAndFailureTest) ... ok
+test_chosen_pool_reaches_native_initialization (tests.test_compare_scheduler_gpu.CacheCapacityTest) ... INFO 10-18 19:59:54 base_llm_engine.py:243] # GPU blocks: 8
+ok
+test_memory_pressure_pool_of_four (tests.test_compare_scheduler_gpu.CacheCapacityTest) ... INFO 10-18 19:59:54 base_llm_engine.py:243] # GPU blocks: 4
+ok
+test_shortfall_fails_before_initialization (tests.test_compare_scheduler_gpu.CacheCapacityTest) ... ok
+test_import_and_help_load_no_engine_worker_ray_or_torch (tests.test_compare_scheduler_gpu.DriverImportAndHelpTest) ... ok
+test_failure_is_recorded_without_a_gpu (tests.test_compare_scheduler_gpu.EvidenceTest) ... ok
+test_memory_pressure_command_line (tests.test_compare_scheduler_gpu.EvidenceTest) ... ok
+test_trace_serialization (tests.test_compare_scheduler_gpu.EvidenceTest) ... two_request lp_rank_based limit 1 decision 0: preempted [] emitted [[0, 5]] free 7/7
+two_request lp_rank_based limit 1 decision 1: preempted [0] emitted [[1, 8]] free 7/7
+two_request lp_rank_based limit 1 decision 2: preempted [1] emitted [[0, 5]] free 7/7
+two_request lp_rank_based limit 1 decision 3: preempted [0] emitted [[1, 8]] free 7/7
+two_request lp_rank_based limit 1 decision 4: preempted [1] emitted [[0, 5]] free 7/7
+two_request lp_rank_based limit 1 decision 5: preempted [0] emitted [[1, 8]] free 7/7
+two_request lp_rank_based limit 1 decision 6: preempted [1] emitted [[0, 5]] free 7/7
+two_request lp_rank_based limit 1 decision 7: preempted [0] emitted [[1, 8]] free 7/7
+ok
+test_three_native_configurations (tests.test_compare_scheduler_gpu.MemoryPressureConfigurationTest) ... ok
+test_mid_run_failure_keeps_the_partial_trace (tests.test_compare_scheduler_gpu.MemoryPressureDetectionTest) ... memory_pressure lp_uniform limit 4 decision 0: preempted [] emitted [[0, 16], [1, 16], [2, 16], [3, 16]] free 0/0
+memory_pressure lp_uniform limit 4 decision 1: preempted [0] emitted [[1, 0], [2, 0], [3, 0]] free 1/1
+ok
+test_misassociated_sample_is_detected (tests.test_compare_scheduler_gpu.MemoryPressureDetectionTest) ... memory_pressure adapted_vllm limit 4 decision 0: preempted [] emitted [[0, 16], [1, 16], [2, 16], [3, 16]] free 0/0
+ok
+memory_pressure adapted_vllm limit 4 decision 0: preempted [] emitted [[0, 16], [1, 16], [2, 16], [3, 16]] free 0/0
+memory_pressure adapted_vllm limit 4 decision 1: preempted [] emitted [[0, 0], [1, 0], [2, 0], [3, 0]] free 0/0
+memory_pressure adapted_vllm limit 4 decision 2: preempted [3, 2] emitted [[0, 0], [1, 0]] free 0/0
+memory_pressure adapted_vllm limit 4 decision 3: preempted [] emitted [[0, 0], [1, 0]] free 4/4
+memory_pressure adapted_vllm limit 4 decision 4: preempted [] emitted [[2, 17], [3, 17]] free 0/0
+memory_pressure adapted_vllm limit 4 decision 5: preempted [] emitted [[2, 0], [3, 0]] free 0/0
+memory_pressure adapted_vllm limit 4 decision 6: preempted [] emitted [[2, 0], [3, 0]] free 0/0
+memory_pressure adapted_vllm limit 4 decision 7: preempted [] emitted [[2, 0], [3, 0]] free 4/4
+memory_pressure lp_uniform limit 4 decision 0: preempted [] emitted [[0, 16], [1, 16], [2, 16], [3, 16]] free 0/0
+memory_pressure lp_uniform limit 4 decision 1: preempted [0] emitted [[1, 0], [2, 0], [3, 0]] free 1/1
+memory_pressure lp_uniform limit 4 decision 2: preempted [] emitted [[0, 16]] free 0/0
+memory_pressure lp_uniform limit 4 decision 3: preempted [1] emitted [[0, 0], [3, 0]] free 0/0
+memory_pressure lp_uniform limit 4 decision 4: preempted [0, 2] emitted [[1, 17]] free 0/0
+memory_pressure lp_uniform limit 4 decision 5: preempted [1, 3] emitted [[2, 17], [0, 17]] free 0/0
+memory_pressure lp_uniform limit 4 decision 6: preempted [0, 2] emitted [[3, 18], [1, 17]] free 0/0
+memory_pressure lp_uniform limit 4 decision 7: preempted [1, 3] emitted [[2, 17], [0, 17]] free 0/0
+memory_pressure lp_uniform limit 4 decision 8: preempted [0, 2] emitted [[3, 18], [1, 17]] free 0/0
+memory_pressure lp_uniform limit 4 decision 9: preempted [1, 3] emitted [[2, 17], [0, 17]] free 0/0
+memory_pressure lp_uniform limit 4 decision 10: preempted [0, 2] emitted [[3, 18], [1, 17]] free 0/0
+memory_pressure lp_uniform limit 4 decision 11: preempted [1, 3] emitted [[2, 17], [0, 17]] free 0/0
+memory_pressure lp_uniform limit 4 decision 12: preempted [0, 2] emitted [[3, 18], [1, 17]] free 0/0
+memory_pressure lp_uniform limit 4 decision 13: preempted [1, 3] emitted [[2, 17], [0, 17]] free 0/0
+memory_pressure lp_uniform limit 4 decision 14: preempted [0, 2] emitted [[3, 18], [1, 17]] free 0/0
+memory_pressure lp_uniform limit 4 decision 15: preempted [1, 3] emitted [[2, 17], [0, 17]] free 0/0
+memory_pressure lp_rank_based limit 4 decision 0: preempted [] emitted [[0, 16], [1, 16], [2, 16], [3, 16]] free 0/0
+memory_pressure lp_rank_based limit 4 decision 1: preempted [3] emitted [[0, 0], [1, 0], [2, 0]] free 1/1
+memory_pressure lp_rank_based limit 4 decision 2: preempted [2] emitted [[3, 16], [0, 0]] free 0/0
+memory_pressure lp_rank_based limit 4 decision 3: preempted [3, 1] emitted [[2, 17]] free 0/0
+memory_pressure lp_rank_based limit 4 decision 4: preempted [2, 0] emitted [[1, 17], [3, 16]] free 1/1
+memory_pressure lp_rank_based limit 4 decision 5: preempted [3, 1] emitted [[0, 18], [2, 17]] free 0/0
+memory_pressure lp_rank_based limit 4 decision 6: preempted [2, 0] emitted [[1, 17], [3, 16]] free 1/1
+memory_pressure lp_rank_based limit 4 decision 7: preempted [3, 1] emitted [[0, 18], [2, 17]] free 0/0
+memory_pressure lp_rank_based limit 4 decision 8: preempted [2, 0] emitted [[1, 17], [3, 16]] free 1/1
+memory_pressure lp_rank_based limit 4 decision 9: preempted [3, 1] emitted [[0, 18], [2, 17]] free 0/0
+memory_pressure lp_rank_based limit 4 decision 10: preempted [2, 0] emitted [[1, 17], [3, 16]] free 1/1
+memory_pressure lp_rank_based limit 4 decision 11: preempted [3, 1] emitted [[0, 18], [2, 17]] free 0/0
+memory_pressure lp_rank_based limit 4 decision 12: preempted [2, 0] emitted [[1, 17], [3, 16]] free 1/1
+memory_pressure lp_rank_based limit 4 decision 13: preempted [3, 1] emitted [[0, 18], [2, 17]] free 0/0
+memory_pressure lp_rank_based limit 4 decision 14: preempted [2, 0] emitted [[1, 17], [3, 16]] free 1/1
+memory_pressure lp_rank_based limit 4 decision 15: preempted [3, 1] emitted [[0, 18], [2, 17]] free 0/0
+test_lp_decode_prerequisite_at_zero_free_blocks (tests.test_compare_scheduler_gpu.MemoryPressureReplayTest)
+Same state as the reference's decision 1: four residents with ... ok
+test_lp_runs_are_consistent_where_observed (tests.test_compare_scheduler_gpu.MemoryPressureReplayTest) ... ok
+test_multiple_actions_keep_order_and_sample_association (tests.test_compare_scheduler_gpu.MemoryPressureReplayTest) ... ok
+test_reference_follows_its_specification (tests.test_compare_scheduler_gpu.MemoryPressureReplayTest) ... ok
+test_limit_one_preemptions_are_voluntary (tests.test_compare_scheduler_gpu.NativeCpuReplayTest)
+Every LP victim at limit 1 has decode demand 0 and the pool has ... two_request lp_uniform limit 1 decision 0: preempted [] emitted [[1, 8]] free 7/7
+two_request lp_uniform limit 1 decision 1: preempted [1] emitted [[0, 5]] free 7/7
+two_request lp_uniform limit 1 decision 2: preempted [0] emitted [[1, 8]] free 7/7
+two_request lp_uniform limit 1 decision 3: preempted [1] emitted [[0, 5]] free 7/7
+two_request lp_uniform limit 1 decision 4: preempted [0] emitted [[1, 8]] free 7/7
+two_request lp_uniform limit 1 decision 5: preempted [1] emitted [[0, 5]] free 7/7
+two_request lp_uniform limit 1 decision 6: preempted [0] emitted [[1, 8]] free 7/7
+two_request lp_uniform limit 1 decision 7: preempted [1] emitted [[0, 5]] free 7/7
+two_request lp_rank_based limit 1 decision 0: preempted [] emitted [[0, 5]] free 7/7
+two_request lp_rank_based limit 1 decision 1: preempted [0] emitted [[1, 8]] free 7/7
+two_request lp_rank_based limit 1 decision 2: preempted [1] emitted [[0, 5]] free 7/7
+two_request lp_rank_based limit 1 decision 3: preempted [0] emitted [[1, 8]] free 7/7
+two_request lp_rank_based limit 1 decision 4: preempted [1] emitted [[0, 5]] free 7/7
+two_request lp_rank_based limit 1 decision 5: preempted [0] emitted [[1, 8]] free 7/7
+two_request lp_rank_based limit 1 decision 6: preempted [1] emitted [[0, 5]] free 7/7
+two_request lp_rank_based limit 1 decision 7: preempted [0] emitted [[1, 8]] free 7/7
+ok
+test_six_runs_through_native_central_and_worker_replay (tests.test_compare_scheduler_gpu.NativeCpuReplayTest) ... two_request adapted_vllm limit 2 decision 0: preempted [] emitted [[0, 5], [1, 3]] free 6/6
+two_request adapted_vllm limit 2 decision 1: preempted [] emitted [[1, 5], [0, 0]] free 6/6
+two_request adapted_vllm limit 2 decision 2: preempted [] emitted [[0, 0], [1, 0]] free 7/7
+two_request adapted_vllm limit 2 decision 3: preempted [] emitted [[1, 0]] free 8/8
+two_request lp_uniform limit 2 decision 0: preempted [] emitted [[1, 8]] free 7/7
+two_request lp_uniform limit 2 decision 1: preempted [] emitted [[0, 5]] free 6/6
+two_request lp_uniform limit 2 decision 2: preempted [] emitted [[1, 0]] free 6/6
+two_request lp_uniform limit 2 decision 3: preempted [] emitted [[1, 0]] free 7/7
+two_request lp_uniform limit 2 decision 4: preempted [] emitted [[0, 0]] free 7/7
+two_request lp_uniform limit 2 decision 5: preempted [] emitted [[0, 0]] free 8/8
+two_request lp_rank_based limit 2 decision 0: preempted [] emitted [[0, 5]] free 7/7
+two_request lp_rank_based limit 2 decision 1: preempted [] emitted [[1, 8]] free 6/6
+two_request lp_rank_based limit 2 decision 2: preempted [] emitted [[0, 0]] free 6/6
+two_request lp_rank_based limit 2 decision 3: preempted [] emitted [[0, 0]] free 7/7
+two_request lp_rank_based limit 2 decision 4: preempted [] emitted [[1, 0]] free 7/7
+two_request lp_rank_based limit 2 decision 5: preempted [] emitted [[1, 0]] free 8/8
+two_request adapted_vllm limit 1 decision 0: preempted [] emitted [[0, 5]] free 7/7
+two_request adapted_vllm limit 1 decision 1: preempted [] emitted [[0, 0]] free 7/7
+two_request adapted_vllm limit 1 decision 2: preempted [] emitted [[0, 0]] free 8/8
+two_request adapted_vllm limit 1 decision 3: preempted [] emitted [[1, 8]] free 7/7
+two_request adapted_vllm limit 1 decision 4: preempted [] emitted [[1, 0]] free 7/7
+two_request adapted_vllm limit 1 decision 5: preempted [] emitted [[1, 0]] free 8/8
+two_request lp_uniform limit 1 decision 0: preempted [] emitted [[1, 8]] free 7/7
+two_request lp_uniform limit 1 decision 1: preempted [1] emitted [[0, 5]] free 7/7
+two_request lp_uniform limit 1 decision 2: preempted [0] emitted [[1, 8]] free 7/7
+two_request lp_uniform limit 1 decision 3: preempted [1] emitted [[0, 5]] free 7/7
+two_request lp_uniform limit 1 decision 4: preempted [0] emitted [[1, 8]] free 7/7
+two_request lp_uniform limit 1 decision 5: preempted [1] emitted [[0, 5]] free 7/7
+two_request lp_uniform limit 1 decision 6: preempted [0] emitted [[1, 8]] free 7/7
+two_request lp_uniform limit 1 decision 7: preempted [1] emitted [[0, 5]] free 7/7
+two_request lp_rank_based limit 1 decision 0: preempted [] emitted [[0, 5]] free 7/7
+two_request lp_rank_based limit 1 decision 1: preempted [0] emitted [[1, 8]] free 7/7
+two_request lp_rank_based limit 1 decision 2: preempted [1] emitted [[0, 5]] free 7/7
+two_request lp_rank_based limit 1 decision 3: preempted [0] emitted [[1, 8]] free 7/7
+two_request lp_rank_based limit 1 decision 4: preempted [1] emitted [[0, 5]] free 7/7
+two_request lp_rank_based limit 1 decision 5: preempted [0] emitted [[1, 8]] free 7/7
+two_request lp_rank_based limit 1 decision 6: preempted [1] emitted [[0, 5]] free 7/7
+two_request lp_rank_based limit 1 decision 7: preempted [0] emitted [[1, 8]] free 7/7
+ok
+test_wrappers_return_the_native_result_unchanged (tests.test_compare_scheduler_gpu.NativeCpuReplayTest) ... ok
+test_all_six_native_configurations (tests.test_compare_scheduler_gpu.RunConfigurationTest) ... ok
+test_coefficient_policy_selection (tests.test_compare_scheduler_gpu.RunConfigurationTest) ... ok
+test_shared_inputs (tests.test_compare_scheduler_gpu.RunConfigurationTest) ... ok
+test_worker_helpers_pickle_by_value (tests.test_compare_scheduler_gpu.WorkerSerializationTest) ... ok
+
+----------------------------------------------------------------------
+Ran 24 tests in 21.548s
+
+OK
+exit_status=0

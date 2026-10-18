@@ -1,14 +1,19 @@
 """CPU checks for the scheduler comparison GPU driver.
 
-No engine, Ray worker, model, or GPU is used. Each of the six runs goes
+No engine, Ray worker, model, or GPU is used. Each of the six two-request
+runs and the three memory-pressure runs goes
 through the driver's ``run_comparison`` with the registered scheduler built
 from the driver's native ``EngineArgs`` (model metadata mocked), the central
 block manager, the engine sequence manager, and a worker sequence manager
 holding separate copies, replayed in the engine's single-stage order at the
-run's block size 16, 8-block pool, budgets, and output limits. Sampled
-tokens are synthetic; no token ID or tied LP choice is prescribed by the
-driver. The expected summaries below are the earlier bounded CPU comparison
-(block size 4) rows, which this block-size-16 fixture is checked against.
+run's block size 16, pool, budgets, and output limits. Sampled tokens are
+synthetic and distinct per request and step; no token ID or tied LP choice
+is prescribed by the driver. The expected two-request summaries below are
+the earlier bounded CPU comparison (block size 4) rows, which this
+block-size-16 fixture is checked against. Memory-pressure expectations come
+from the reference specification and its earlier preemption-case run, the
+LP decode prerequisite, and the strictly ordered rank-based coefficients;
+the LP runs are not required to drain.
 """
 
 import copy
@@ -51,8 +56,8 @@ from sarathi.engine import arg_utils  # noqa: E402
 setUpModule = lpt.setUpModule
 tearDownModule = lpt.tearDownModule
 
-SAMPLED_TOKEN = 7
 RUNS = [(p, n) for n in driver.RESIDENT_LIMITS for p in driver.POLICIES]
+PRESSURE = driver.MEMORY_PRESSURE
 
 # Earlier CPU comparison rows (validation_output/adapted_vllm_reference/
 # 20261018T051258Z/comparison.txt): decisions, first prefill, first decode,
@@ -69,15 +74,16 @@ EARLIER_CPU = {
 }
 
 
-def native_configs(policy, limit, tmp):
+def native_configs(policy, limit, tmp, case=driver.TWO_REQUEST):
     """The driver's ``EngineArgs`` configurations, model metadata mocked."""
     model_config = mock.Mock()
-    model_config.get_max_model_len.return_value = driver.MAX_MODEL_LEN
+    model_config.get_max_model_len.return_value = driver.case_inputs(
+        case)["max_model_len"]
     model_config.get_total_num_layers.return_value = 2
     with mock.patch.object(arg_utils, "ModelConfig",
                            return_value=model_config) as cls:
         args = driver.engine_args(policy, limit, Path(tmp) / "model",
-                                  Path(tmp) / "metrics")
+                                  Path(tmp) / "metrics", case)
         configs = args.create_engine_configs()
     return cls.call_args.kwargs, configs
 
@@ -85,11 +91,12 @@ def native_configs(policy, limit, tmp):
 class CpuRuntime:
     """``run_comparison`` runtime with native central and worker replay."""
 
-    def __init__(self, policy, limit):
+    def __init__(self, policy, limit, case=driver.TWO_REQUEST):
         with tempfile.TemporaryDirectory() as tmp:
             _, (_, cache_config, _, sched_config, _) = native_configs(
-                policy, limit, tmp)
-        cache_config.num_gpu_blocks = driver.NUM_GPU_BLOCKS  # as _init_cache
+                policy, limit, tmp, case)
+        # As _init_cache with the case's chosen pool.
+        cache_config.num_gpu_blocks = driver.case_inputs(case)["num_gpu_blocks"]
         self.scheduler = SchedulerRegistry.get(sched_config.type, sched_config,
                                                cache_config)
         self.engine_seqs = lpt._EngineSequenceManager()
@@ -99,6 +106,12 @@ class CpuRuntime:
         driver.instrument_block_manager(self.worker_seqs.block_manager,
                                         self.worker_ops)
         self.lp = policy != "adapted_vllm"
+        self.steps = 0
+
+    def sample(self, seq_id):
+        # Synthetic and distinct per request and step, so a misassociated
+        # sample is detectable.
+        return 100 * (self.steps + 1) + seq_id
 
     def submit(self, prompt_ids, sampling_params):
         # Same construction, arrival clock, and LP check as add_request.
@@ -116,8 +129,9 @@ class CpuRuntime:
             return [], None
         ignored, metadata = self.engine_seqs.on_schedule(outputs)
         self.worker_seqs.on_schedule(outputs)
-        samples = [SamplerOutput(m.seq_id, SAMPLED_TOKEN)
+        samples = [SamplerOutput(m.seq_id, self.sample(m.seq_id))
                    for m in outputs.scheduled_seq_metadata_list]
+        self.steps += 1
         self.worker_seqs.on_step_completed(outputs, samples)
         self.engine_seqs.on_step_completed(outputs, samples)
         self.scheduler.on_step_completed()
@@ -129,9 +143,9 @@ class CpuRuntime:
                                                       self.worker_ops)
 
 
-def _run(policy, limit):
-    runtime, trace = CpuRuntime(policy, limit), {}
-    outcome = driver.run_comparison(policy, limit, runtime, trace)
+def _run(policy, limit, case=driver.TWO_REQUEST, runtime=None):
+    runtime, trace = runtime or CpuRuntime(policy, limit, case), {}
+    outcome = driver.run_comparison(policy, limit, runtime, trace, case)
     return runtime, trace, outcome
 
 
@@ -163,7 +177,8 @@ class DriverImportAndHelpTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("--policy {adapted_vllm,lp_uniform,lp_rank_based}",
                       result.stdout)
-        self.assertIn("--resident-limit {2,1}", result.stdout)
+        self.assertIn("--resident-limit {2,1,4}", result.stdout)
+        self.assertIn("--case {two_request,memory_pressure}", result.stdout)
         self.assertEqual(result.stdout.strip().splitlines()[-1], "RESULT 0 []")
 
 
@@ -269,8 +284,9 @@ class NativeCpuReplayTest(unittest.TestCase):
                     self.assertIsNone(trace["idle"])
                     self.assertTrue(runtime.scheduler.has_unfinished_seqs())
                     # Restarts happen before any output, so nothing generated.
-                    self.assertEqual(acc["A"]["discarded_generated_tokens"]
-                                     + acc["B"]["discarded_generated_tokens"], 0)
+                    self.assertEqual(
+                        acc["A"]["generated_tokens_moved_to_context"]
+                        + acc["B"]["generated_tokens_moved_to_context"], 0)
                     self.assertGreater(acc["A"]["prefill_tokens_executed"]
                                        + acc["B"]["prefill_tokens_executed"], 13)
         # The wrapped module functions are restored after every run.
@@ -356,8 +372,8 @@ class BoundAndFailureTest(unittest.TestCase):
 
 
 class CacheCapacityTest(unittest.TestCase):
-    def _init(self, profiled):
-        selection = driver.CacheCapacitySelection(chosen=driver.NUM_GPU_BLOCKS)
+    def _init(self, profiled, chosen=driver.NUM_GPU_BLOCKS):
+        selection = driver.CacheCapacitySelection(chosen=chosen)
         engine_class = driver.build_engine_class(selection)
         engine = object.__new__(engine_class)
         engine.cache_config = CacheConfig(block_size=16,
@@ -381,6 +397,16 @@ class CacheCapacityTest(unittest.TestCase):
     def test_shortfall_fails_before_initialization(self):
         with self.assertRaisesRegex(driver.CheckFailure, "below the chosen 8"):
             self._init(7)
+
+    def test_memory_pressure_pool_of_four(self):
+        chosen = driver.case_inputs(PRESSURE)["num_gpu_blocks"]
+        engine, selection, calls = self._init(4, chosen)
+        self.assertEqual(calls, [driver.PROFILE_METHOD, driver.INIT_CACHE_METHOD])
+        self.assertEqual(engine.cache_config.num_gpu_blocks, 4)
+        self.assertEqual(selection.record()["initializations"][0]
+                         ["num_gpu_blocks"], 4)
+        with self.assertRaisesRegex(driver.CheckFailure, "below the chosen 4"):
+            self._init(3, chosen)
 
 
 class WorkerSerializationTest(unittest.TestCase):
@@ -480,6 +506,289 @@ class EvidenceTest(unittest.TestCase):
                                    capture_output=True, text=True)
             self.assertEqual(again.returncode, 2)
             self.assertIn("already holds run artifacts", again.stderr)
+
+    def test_memory_pressure_command_line(self):
+        env = dict(os.environ, CUDA_VISIBLE_DEVICES="",
+                   PYTHONPATH=str(REPO_ROOT))
+        with tempfile.TemporaryDirectory() as tmp:
+            def run(*extra, out="out"):
+                cmd = [sys.executable, "-B", "scripts/compare_scheduler_gpu.py",
+                       "--policy", "lp_rank_based", "--model-path",
+                       str(Path(tmp) / "absent"), "--output-dir",
+                       str(Path(tmp) / out), *extra]
+                return subprocess.run(cmd, cwd=REPO_ROOT, env=env,
+                                      capture_output=True, text=True)
+            # The limit defaults to 4 for this case; other limits are rejected,
+            # and the original case still requires 2 or 1.
+            result = run("--case", "memory_pressure")
+            self.assertEqual(result.returncode, 1, result.stderr)
+            summary = json.loads((Path(tmp) / "out/summary.json").read_text())
+            self.assertEqual(
+                {k: summary["run"][k] for k in (
+                    "case", "resident_limit", "num_gpu_blocks", "max_model_len",
+                    "token_budget", "b_max", "c_max", "s_max", "max_tokens",
+                    "max_decisions")},
+                dict(case="memory_pressure", resident_limit=4, num_gpu_blocks=4,
+                     max_model_len=64, token_budget=64, b_max=64, c_max=64,
+                     s_max=4, max_tokens=3, max_decisions=16))
+            self.assertEqual(summary["workload_outcome"], "failure")
+            for extra, out in ((("--case", "memory_pressure",
+                                 "--resident-limit", "2"), "bad1"),
+                               ((), "bad2"), (("--resident-limit", "4"), "bad3")):
+                bad = run(*extra, out=out)
+                self.assertEqual(bad.returncode, 2, (extra, bad.stderr))
+                self.assertIn("--resident-limit for case", bad.stderr)
+
+
+def _pair(trace, key):
+    acc = trace["final"]["accounting"]
+    return tuple(acc[n][key] for n in "ABCD")
+
+
+def _emitted(d):
+    return d["schedules"][0]["outputs"]
+
+
+class MemoryPressureConfigurationTest(unittest.TestCase):
+
+    def test_three_native_configurations(self):
+        inputs = driver.case_inputs(PRESSURE)
+        self.assertEqual({n: (p[0], len(p)) for n, p in inputs["prompts"].items()},
+                         dict(A=(1000, 16), B=(2000, 16), C=(3000, 16),
+                              D=(4000, 16)))
+        flat = [t for p in inputs["prompts"].values() for t in p]
+        self.assertEqual(len(flat), len(set(flat)))
+        for policy in driver.POLICIES:
+            with self.subTest(policy=policy), tempfile.TemporaryDirectory() as tmp:
+                kwargs, (_, cache, parallel, sched, _) = native_configs(
+                    policy, 4, tmp, PRESSURE)
+                self.assertEqual((kwargs["load_format"], kwargs["dtype"],
+                                  kwargs["max_model_len"],
+                                  kwargs["attention_backend"]),
+                                 ("dummy", "float16", 64, "flash_attention"))
+                self.assertEqual((parallel.tensor_parallel_size,
+                                  parallel.pipeline_parallel_size,
+                                  cache.block_size, cache.gpu_memory_utilization),
+                                 (1, 1, 16, 0.5))
+                self.assertEqual((sched.max_num_seqs, sched.max_model_len,
+                                  sched.num_pipeline_stages,
+                                  sched.max_num_batched_tokens), (4, 64, 1, 64))
+                params = driver.run_parameters(policy, 4, PRESSURE)
+                self.assertEqual((params["native_watermark_blocks"],
+                                  params["max_decisions"]), (0, 16))
+                if policy == "adapted_vllm":
+                    self.assertIs(type(sched), AdaptedVLLMSchedulerConfig)
+                else:
+                    self.assertIs(type(sched), LPSchedulerConfig)
+                    self.assertEqual(
+                        (sched.b_max, sched.c_max, sched.s_max,
+                         sched.decode_utility, sched.prefill_token_utility,
+                         sched.preemption_penalty),
+                        (64, 64, 4, 1.0, 1.0, 1.0))
+                    self.assertEqual(sched.numerical_policy,
+                                     lrs.NumericalPolicy(
+                                         **driver.NUMERICAL_POLICY_FIELDS))
+        # The original case's LP caps and limits are unchanged.
+        self.assertEqual(driver.run_parameters("lp_uniform", 1)["s_max"], 1)
+        with self.assertRaises(driver.CheckFailure):
+            driver.run_parameters("lp_uniform", 4)
+        with self.assertRaises(driver.CheckFailure):
+            driver.run_parameters("lp_uniform", 2, PRESSURE)
+
+
+class MemoryPressureReplayTest(unittest.TestCase):
+    """The three policies through real schedulers and native central and
+    worker replay. Every decision passed the driver's checks if ``_run``
+    returned."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.runs = {p: _run(p, 4, PRESSURE) for p in driver.POLICIES}
+
+    def test_reference_follows_its_specification(self):
+        # Matches the earlier reference preemption case (same workload).
+        runtime, trace, outcome = self.runs["adapted_vllm"]
+        self.assertEqual(outcome, driver.DRAINED)
+        d = trace["decisions"]
+        self.assertEqual([_emitted(x)["preempted_seq_ids"] for x in d],
+                         [[], [], [3, 2], [], [], [], [], []])
+        self.assertEqual([_emitted(x)["scheduled"] for x in d][:5], [
+            [[i, 16] for i in range(4)], [[i, 0] for i in range(4)],
+            [[0, 0], [1, 0]], [[0, 0], [1, 0]], [[2, 17], [3, 17]]])
+        # Zero-demand decodes with zero free blocks: four appends, no block.
+        self.assertEqual(d[1]["before"]["free_blocks"], 0)
+        self.assertEqual([op[:2] + [len(op[2]), len(op[3])]
+                          for op in d[1]["central_ops"]],
+                         [["append", i, 1, 1] for i in range(4)])
+        self.assertTrue(d[1]["victim_need"]["preemption_free_alternative"])
+        # Actual one-block demand: tail victims 3 then 2, then growth 1 -> 2.
+        need = d[2]["victim_need"]
+        self.assertEqual((need["reasons"], need["decode_demands"],
+                          need["preemption_free_alternative"]),
+                         (["decode_block_demand"],
+                          {str(i): 1 for i in range(4)}, False))
+        self.assertEqual([op[:2] + [len(op[2]), len(op[3])]
+                          for op in d[2]["central_ops"]],
+                         [["free", 3, 1, 0], ["free", 2, 1, 0],
+                          ["append", 0, 1, 2], ["append", 1, 1, 2]])
+        self.assertEqual(d[2]["proposals"][0]["waiting_stop_reason"],
+                         "skipped_after_preemption")
+        # Recomputation after generated output: prompt 17, counter reset,
+        # victims front-inserted in reverse preemption order.
+        after = d[2]["after"]
+        self.assertEqual(after["waiting"], [2, 3])
+        for sid in (2, 3):
+            seq = after["seqs"][str(sid)]
+            self.assertEqual((seq["prompt_len"], seq["output_token_ids"],
+                              seq["prompt_tokens_processed"], seq["logical_blocks"]),
+                             (17, [], 0, 2))
+            self.assertEqual(seq["prompt_token_ids"][16], 200 + sid)
+        self.assertEqual(_pair(trace, "generated_token_events"), (3, 3, 4, 4))
+        self.assertEqual(_pair(trace, "overgeneration"), (0, 0, 1, 1))
+        self.assertEqual(_pair(trace, "generated_tokens_moved_to_context"),
+                         (0, 0, 1, 1))
+        self.assertEqual(_pair(trace, "prefill_tokens_replayed"), (0, 0, 16, 16))
+        self.assertEqual(_pair(trace, "prefill_tokens_expanded_context"),
+                         (0, 0, 1, 1))
+        self.assertEqual(trace["idle"]["after"]["free_blocks"], 4)
+
+    def test_lp_decode_prerequisite_at_zero_free_blocks(self):
+        """Same state as the reference's decision 1: four residents with
+        complete prompts, decode demand 0, no free block. No LP plan without
+        a victim is useful, so exactly one victim funds H = 1 and the other
+        three decode."""
+        ref_state = self.runs["adapted_vllm"][1]["decisions"][1]["before"]
+        for policy in ("lp_uniform", "lp_rank_based"):
+            with self.subTest(policy=policy):
+                d = self.runs[policy][1]["decisions"]
+                self.assertEqual(
+                    {k: v for k, v in d[1]["before"].items()
+                     if k in ("running", "waiting", "free_blocks")},
+                    {k: v for k, v in ref_state.items()
+                     if k in ("running", "waiting", "free_blocks")})
+                need = d[1]["victim_need"]
+                self.assertEqual(
+                    (need["reasons"], need["decode_demands"],
+                     need["victim_blocks_needed_physical"],
+                     need["victim_blocks_needed_with_lp_prerequisite"],
+                     need["non_preemptive_actions"]),
+                    (["lp_decode_prerequisite"], {str(i): 0 for i in range(4)},
+                     0, 1, []))
+                victims = _emitted(d[1])["preempted_seq_ids"]
+                self.assertEqual(len(victims), 1)
+                self.assertEqual(sorted(s for s, _ in _emitted(d[1])["scheduled"]),
+                                 sorted(set(range(4)) - set(victims)))
+                plan = d[1]["lp_events"][1]["result"]["plan"]
+                self.assertEqual(plan["free_blocks_before_decodes"], 1)
+                # The relaxation funds H fractionally; extraction rounds it.
+                comparison = d[1]["lp_comparison"]
+                self.assertTrue(comparison["extraction_changed_relaxed"])
+                self.assertGreater(comparison["relaxed_objective"],
+                                   comparison["integer_objective"])
+        # Rank-based: penalty and decode reward are both 1/(1+s), so dropping
+        # the tail (s = 3) is the unique integer optimum: 1 + 1/2 + 1/3 - 1/4.
+        d1 = self.runs["lp_rank_based"][1]["decisions"][1]
+        self.assertEqual(_emitted(d1)["preempted_seq_ids"], [3])
+        self.assertAlmostEqual(d1["lp_comparison"]["integer_objective"],
+                               1 + 1 / 2 + 1 / 3 - 1 / 4)
+        # Uniform: every single-victim plan ties at 3 - 1; the victim is the
+        # solver's vertex and is not prescribed.
+        d1 = self.runs["lp_uniform"][1]["decisions"][1]
+        self.assertAlmostEqual(d1["lp_comparison"]["integer_objective"], 2.0)
+
+    def test_lp_runs_are_consistent_where_observed(self):
+        for policy in ("lp_uniform", "lp_rank_based"):
+            with self.subTest(policy=policy):
+                runtime, trace, outcome = self.runs[policy]
+                self.assertIn(outcome, (driver.DRAINED, driver.BOUNDED_UNFINISHED))
+                acc = trace["final"]["accounting"]
+                for name, a in acc.items():
+                    self.assertEqual(a["prefill_tokens_executed"],
+                                     a["prefill_tokens_first_time"]
+                                     + a["prefill_tokens_replayed"]
+                                     + a["prefill_tokens_expanded_context"])
+                    self.assertLessEqual(a["prefill_tokens_first_time"], 16)
+                    self.assertLessEqual(a["prefill_tokens_expanded_context"],
+                                         a["generated_tokens_moved_to_context"])
+                    if a["completion"] is None:
+                        self.assertIsNone(a["overgeneration"])
+                for d in trace["decisions"]:
+                    victims = _emitted(d)["preempted_seq_ids"]
+                    self.assertEqual(bool(d["victim_need"]["reasons"]),
+                                     bool(victims))
+                    comparison = d["lp_comparison"]
+                    if comparison["fractional_request_count"]:
+                        self.assertTrue(comparison["extraction_changed_relaxed"])
+                if outcome == driver.BOUNDED_UNFINISHED:
+                    final = trace["final"]
+                    self.assertEqual(len(trace["decisions"]), 16)
+                    self.assertIsNone(trace["idle"])
+                    self.assertTrue(runtime.scheduler.has_unfinished_seqs())
+                    self.assertEqual(
+                        final["residual_allocations"],
+                        {"ABCD"[int(k)]: len(v)
+                         for k, v in final["central"]["block_tables"].items()})
+                    self.assertEqual(sorted(final["unfinished"]),
+                                     sorted("ABCD"[int(k)]
+                                            for k in final["central"]["seqs"]))
+                # Preemption after generated output and expanded readmission
+                # are reached in these traces.
+                self.assertGreater(sum(a["preemptions_after_output"]
+                                       for a in acc.values()), 0)
+                self.assertGreater(sum(a["prefill_tokens_expanded_context"]
+                                       for a in acc.values()), 0)
+
+    def test_multiple_actions_keep_order_and_sample_association(self):
+        for policy, (_, trace, _) in self.runs.items():
+            multi = [d for d in trace["decisions"]
+                     if len(_emitted(d)["scheduled"]) > 1]
+            self.assertTrue(multi, policy)
+            for d in multi:
+                # Sampler outputs follow the emitted order, one per entry, with
+                # the synthetic per-request token of that step.
+                step = d["index"] + 1
+                self.assertEqual(d["sampler_outputs"],
+                                 [[s, 100 * step + s]
+                                  for s, _ in _emitted(d)["scheduled"]])
+
+
+class MemoryPressureDetectionTest(unittest.TestCase):
+
+    def test_misassociated_sample_is_detected(self):
+        runtime = CpuRuntime("adapted_vllm", 4, PRESSURE)
+        native = runtime.step
+
+        def swapped():
+            outputs, samples = native()
+            if samples and len(samples) > 1 and runtime.steps == 2:
+                # Report the first two samples under each other's IDs.
+                # The native state keeps the true tokens.
+                samples[0][1], samples[1][1] = samples[1][1], samples[0][1]
+            return outputs, samples
+        runtime.step = swapped
+        with self.assertRaisesRegex(driver.CheckFailure,
+                                    "decision 1: request 0 progress"):
+            _run("adapted_vllm", 4, PRESSURE, runtime)
+
+    def test_mid_run_failure_keeps_the_partial_trace(self):
+        native = lrs.solve_and_extract
+        calls = []
+
+        def fail_third(problem):
+            calls.append(problem.problem_id)
+            if len(calls) == 3:
+                return lrs.Failure(problem.problem_id, lrs.STAGE_SOLVER,
+                                   lrs.OUTCOME_NUMERICAL, "injected", "test")
+            return native(problem)
+        trace = {}
+        runtime = CpuRuntime("lp_uniform", 4, PRESSURE)
+        with mock.patch.object(lrs, "solve_and_extract", fail_third):
+            with self.assertRaises(LPSchedulingError):
+                driver.run_comparison("lp_uniform", 4, runtime, trace, PRESSURE)
+        self.assertEqual(len(trace["decisions"]), 3)
+        self.assertIn("victim_need", trace["decisions"][1])
+        self.assertEqual(trace["decisions"][2]["central_ops"], [])
+        self.assertIsNone(trace["final"])
 
 
 if __name__ == "__main__":

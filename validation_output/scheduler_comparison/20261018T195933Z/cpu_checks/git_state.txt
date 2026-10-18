@@ -1,0 +1,14 @@
+branch=main
+head=d988ed1643689bfff0a4de05aa62a774bfa63190
+base_reviewed=d988ed1643689bfff0a4de05aa62a774bfa63190
+--- git status --short --untracked-files=all
+ M scripts/compare_scheduler_gpu.py
+ M tests/test_compare_scheduler_gpu.py
+?? validation_output/scheduler_comparison/20261018T195933Z/cpu_checks/environment.txt
+?? validation_output/scheduler_comparison/20261018T195933Z/cpu_checks/git_state.txt
+?? validation_output/scheduler_comparison/20261018T195933Z/cpu_checks/run_checks.sh
+--- git diff HEAD --stat (tracked changes)
+ scripts/compare_scheduler_gpu.py    | 462 +++++++++++++++++++++++++++---------
+ tests/test_compare_scheduler_gpu.py | 351 +++++++++++++++++++++++++--
+ 2 files changed, 677 insertions(+), 136 deletions(-)
+git_diff_head_sha256=3e0a22246fb511ad557b4ad3a7f2f689f14a9af75eaf28251ece3bbc6c25af07  -

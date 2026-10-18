@@ -213,3 +213,197 @@ PYTHONPATH="$PWD" timeout 600s python -B scripts/compare_scheduler_gpu.py \
 ```
 
 All six: exit 0, `RESULT: PASS`, outcomes as in the table above.
+
+## Addendum 2026-10-18: memory-pressure case
+
+**Scope.** One new case, `--case memory_pressure`, in the same driver: the
+reference check's `preemption` workload. A, B, C, D have 16 prompt tokens
+each (IDs 1000–1015, 2000–2015, 3000–3015, 4000–4015, rechecked against the
+tokenizer in every run) and 3 outputs each. Pool 4 blocks of 16,
+`max_model_len` 64, budget 64, resident limit 4, bound 16 nonempty decisions.
+LP caps are `b_max` 64, `c_max` 64, `s_max` 4. They add no restriction here,
+because every action's request is resident afterwards, so actions ≤ 4. The
+coefficients, numerical policy, model settings, and seed are unchanged. The
+original case, its constants, and its command (`--case` defaults to
+`two_request`) are unchanged. Q11 remains OPEN. No production file, contract,
+or design document changed.
+
+**Evidence:** [`validation_output/scheduler_comparison/20261018T195933Z/`](../../validation_output/scheduler_comparison/20261018T195933Z/)
+(`cpu_checks/`; `memory_pressure_<policy>/` with `command.txt`, `console.log`,
+`exit_status.txt`, `summary.json`, `decision_trace.json`, `cleanup.json`;
+`comparison.txt` from `scripts/summarize.py`; `run_gpu.sh`,
+`shell_environment.txt`, `git_state_gpu.txt`, `sha256sums*.txt`). Tested at
+HEAD `d988ed1643689bfff0a4de05aa62a774bfa63190` plus uncommitted changes to
+the driver and test only (`cpu_checks/working_tree.diff`; `git diff HEAD`
+sha256 `3e0a2224…`, identical at the CPU gate and GPU start). Driver sha256
+`d1d16aef…` and test sha256 `d792f336…` are the same in the CPU gate, the GPU
+start, and every `summary.json`. Host `gpu055`, Slurm job `65832130`
+(partition `gpu-preempt`), NVIDIA A16
+`GPU-0f8ce0e5-4e07-31f1-d565-6353513166db`, driver 580.178.04. Modules
+`uri/main`, `Python/3.10.8-GCCcore-12.2.0`, `CUDA/12.1.1`; `env/bin/python`
+3.10.8, torch 2.3.0+cu121, ray 2.58.0, numpy 2.2.6, scipy 1.15.3. Same
+TinyLlama snapshot `fe8a4ea1…`, offline.
+
+### Driver changes (validation only)
+
+`case_inputs` selects the case. The checks now cover several actions and
+victims, decode demands 0 and 1, and preemption after output:
+
+- one plan decision per mapped request;
+- actual memory and the decode prerequisite (`H ≥ 1` if any decode);
+- the relaxed objective, recomputed from the relaxed values, bounds the
+  integer objective;
+- the running order is retained, victims are front-inserted in preemption
+  order, and admissions are appended in emitted order;
+- each decode's actual sampled token is checked against the sequence state
+  and the request output, including at completion;
+- a victim's prompt grows by its outputs and keeps its logical blocks.
+
+The accounting is driver-only. It counts cumulative generated-token events
+and the native counter (reset by recomputation), and reports overgeneration.
+It counts discarded prompt progress, generated tokens moved into the prompt,
+and prefill actions. It splits executed prefill tokens into first-time,
+replayed, and expanded-context positions. The field
+`discarded_generated_tokens` was renamed `generated_tokens_moved_to_context`,
+because those tokens are not discarded.
+
+Each decision also records `victim_need` (which constraint, if any, needed
+its victims for the selected batch, and whether a single action with no
+victim existed under that policy's contract), `lp_comparison` (relaxed vs.
+integer values and objectives), and whether central and worker physical IDs
+are equal. Two test-fixture defects were fixed: the CPU runtime sampled one
+constant token, which could not detect a sample/request mix-up, and the
+helpers could not take a case. Helper scripts are unchanged.
+
+### Critical review
+
+Analytical unless marked observed.
+
+1. **The LP decode prerequisite is a modeling contract, not a physical
+   requirement in LPServe.** `append_slot` allocates only when the logical
+   table is longer than the physical one
+   (`base_block_space_manager.py:101–110`). `can_append_slot` (free > 0) is a
+   separate query. The inherited schedulers call it in their loops; the
+   worker calls it and ignores the result (`worker_sequence_manager.py:47`).
+   So the executor comment "The native append gate requires a free block even
+   for gap 0" (`lpserve_plan_execution.py:413`) and design §8.3 ("native
+   append gate's free-block requirement") describe that query, not a
+   constraint of `append_slot`. The adapted reference does not call it, and
+   its zero-demand decodes at 0 free blocks ran on GPU (observed, here and in
+   the earlier reference run); cache-content correctness was not checked.
+   Consequence (observed, decision 1): with 4 residents at demand 0 and 0
+   free blocks, no LP plan without a victim is useful, so the LP must preempt
+   finished prefill work to decode. The contract is approved (D-09/R07) and
+   was kept. The smallest alternative would require a free block only for
+   one-block decodes, which actual memory already covers, by dropping the
+   prerequisite row. That would change §§7.1, 8.3, 11.3 and the math source,
+   so it needs a decision.
+2. **The prerequisite row `Σy ≤ S_max·H` relaxes weakly.** A fractional
+   victim buys up to `S_max` decodes. At decision 1 (uniform) the relaxed
+   optimum is y = (0.2, 1, 1, 1), z_A = 0.8, objective 2.4. The integer
+   optimum is 2. Extraction found the integer optimum, so the gap is the
+   relaxation's (observed). Rank-based decisions 3, 4, 6, … show extraction
+   losses (4.19 → 3.42, 9.06 → 8.17) from fractional self-funding
+   (y_i + z_i = 1 with small z_i).
+3. **Both LP policies cycle with period 2 from decision 4/5 (observed to the
+   bound).** A readmitted request finishes its prompt with no output (the
+   inherited final-prefill sample is discarded), decode demand 0, and 0 free
+   blocks. The objective then prefers preempting both residents and
+   readmitting the two waiting requests. Uniform: 17 + 17 − 2 = 32 against
+   decoding both = 2. Rank-based: 17/3 + 16/4 − 1.5 = 8.17 against 1.5. The
+   replacement wins even without the prerequisite, so the cycle comes from
+   the objective and coefficients: per-token prefill reward and no
+   discarded-work cost (κ is OPEN under Q11). It is bounded noncompletion,
+   not proof of starvation; nothing was tuned.
+4. **A preemption at 0 free blocks is not always allocation pressure.**
+   Reference decision 2 is pure decode demand. LP decision 1 is the
+   prerequisite alone. From LP decision 4 on, the blocks are needed by the
+   policy's chosen admissions (`admission_charges`, replacement). At
+   rank-based decisions 2, 5, 7, … a preemption-free single action existed.
+
+No validation-driver defect remained after the CPU gate. Review scope: the
+driver and reused helpers, both schedulers, the mapper's rank and
+coefficient path, LP construction, extraction and plan validation, the
+executor's order and append gate, native preempt/recompute, the worker
+sequence manager, and the block manager. Kernels, cache contents, and
+multi-worker paths were not reviewed.
+
+### Results (executed)
+
+The three fresh processes ran sequentially, once each. All printed
+`RESULT: PASS`, with `timeout`/Python and `tee` exit statuses 0, and shut
+down their own Ray (`ray_initialized_after_shutdown: false`). Profiling ran
+once (15603 blocks); exactly 4 blocks went through native initialization
+(central, worker allocator, cache tensor dimension 4). The only warning was
+the bfloat16→float16 cast. GPU decision sequences equal the CPU-gate traces
+decision for decision.
+
+| Policy | Outcome | Dec. | Finished | Token events A/B/C/D (native counter) | Overgen. | Preemptions (after output) | Prefill exec. = first + replayed + expanded | Resources |
+|---|---|---|---|---|---|---|---|---|
+| reference | drained | 8 | all 4 | 3/3/4/4 (3 each) | C, D +1 | 2 (2) | 98 = 64 + 32 + 2 | full release, idle ordinary |
+| LP uniform | bounded_unfinished | 16 | none | 1/1/1/2 (0 each) | – | 26 (4) | 476 = 64 + 407 + 5 | consistent; residual A:2, C:2 blocks, 0 free |
+| LP rank-based | bounded_unfinished | 16 | none | 2/1/1/0 (0 each) | – | 28 (3) | 505 = 64 + 437 + 4 | consistent; residual A:2, C:2 blocks, 0 free |
+
+In every decision of all three runs, the central and worker states, table
+lengths, and free counts agreed. Physical block IDs differed after 3
+(reference), 11 (uniform), and 12 (rank-based) decisions; they are recorded,
+not required. Request D (rank-based) was preempted 8 times and generated no
+token within the bound.
+
+**First material divergence: decision 1, identical state.** All four are
+resident with complete prompts, demand 0, and 0 free blocks. The reference
+decodes all four with no allocation (its contract). Both LPs preempt one
+request and decode three, with H = 1. The preemption comes from the
+formulation (decode prerequisite, finding 1). The victim comes from the
+coefficients for rank-based: tail D is the unique optimum, 1 + 1/2 + 1/3 −
+1/4. For uniform it comes from the solver vertex: every single victim ties
+at 2; the vertex put z = 0.8 on head A, and extraction kept it. Execution
+matched each plan. Later indices are not corresponding states: the
+reference's genuine one-block tail preemption (victims 3, 2) and its
+17-token readmissions never occur in the LP runs.
+
+**Inherited behavior seen (not repaired):** the first decode sample equals
+the discarded final-prefill sample (reference: 10935, 3591, 10123, 14666).
+Recomputation moves outputs into the prompt and resets the counter; after
+restart, completion took 3 more events (C, D: 4 in total).
+
+### Coverage
+
+| Obligation | Check | Result |
+|---|---|---|
+| Inputs, coefficients/ranks, mapped physical state | `check_lp_decision` / `check_reference_decision` | pass, every decision |
+| Integer plan: arithmetic, eligibility, one decision per request, caps, memory, prerequisite, objective, relaxed bound | `check_lp_decision` | pass |
+| Emitted order and central calls per policy | `check_declared_order` / prompt-first layout; `check_execution` | pass |
+| Worker replay, conservation, central/worker agreement | `check_execution`, `check_quiescent` | pass; IDs recorded |
+| Running order, victim reinsertion, readmission, completion removal | `check_execution` | pass |
+| Sample IDs and token values vs state updates and outputs | `check_execution`; CPU swap test | pass; mix-up detected |
+| Recomputation (prompt growth, counter reset, logical blocks) | `check_execution` | pass (reference 2, uniform 26, rank-based 28 victims) |
+| Drained / bounded-unfinished / failure reporting | `run_comparison`; CPU tests | pass |
+| **Not established** | — | cache contents, attention correctness, sampler generality, quality, physical-ID equality, recovery, starvation, fairness, performance |
+
+### Commands
+
+CPU gate (`CUDA_VISIBLE_DEVICES=""`):
+`bash validation_output/scheduler_comparison/20261018T195933Z/cpu_checks/run_checks.sh <dir>/cpu_checks`.
+Steps 01 `py_compile`, 02 `--help` under `-W error`, 04 trailing whitespace,
+and 05 `git diff --check` exited 0. Step 03,
+`python -B -m unittest tests.test_compare_scheduler_gpu -v`, passed 24 tests:
+the 15 earlier tests, with the six two-request rows unchanged, plus 9 new
+ones. The new tests cover the three native configurations and CLI case
+limits, reference replay (zero-demand decodes at 0 free blocks, one-block
+growth, victims 3, 2, reset and expansion), the LP prerequisite at decision
+1, LP accounting consistency and the bounded-unfinished record,
+multiple-action sample association, sample mix-up detection, mid-run solver
+failure with the partial trace, and 4-block capacity selection (3 fails
+before initialization). The worker serialization test is unchanged and
+passes. Not rerun: unchanged LP, mapper, executor, scheduler, and reference
+suites, and the six two-request GPU runs.
+
+GPU: `bash validation_output/scheduler_comparison/20261018T195933Z/run_gpu.sh <dir>`
+ran, sequentially, for each policy:
+
+```text
+PYTHONPATH="$PWD" timeout 600s python -B scripts/compare_scheduler_gpu.py \
+  --case memory_pressure --policy <policy> --model-path <model dir> \
+  --output-dir validation_output/scheduler_comparison/20261018T195933Z/memory_pressure_<policy>
+```

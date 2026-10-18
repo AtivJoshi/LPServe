@@ -1,0 +1,63 @@
+`torch_dtype` is deprecated! Use `dtype` instead!
+WARNING 10-18 20:02:05 config.py:666] Casting torch.bfloat16 to torch.float16.
+environment: {
+ "hostname": "gpu055",
+ "slurm": {
+  "SLURM_JOB_ID": "65832130",
+  "SLURM_JOB_NODELIST": "gpu055",
+  "SLURM_JOB_PARTITION": "gpu-preempt",
+  "SLURM_STEP_ID": "4294967290"
+ },
+ "cuda_visible_devices": "0",
+ "gpu": "0, NVIDIA A16, GPU-0f8ce0e5-4e07-31f1-d565-6353513166db, 580.178.04, 15356 MiB",
+ "torch_cuda": "12.1",
+ "python_executable": "/home/atjoshi_umass_edu/LPServe/env/bin/python",
+ "python_version": "3.10.8",
+ "virtual_env": "/home/atjoshi_umass_edu/LPServe/env",
+ "pythonpath": "/home/atjoshi_umass_edu/LPServe",
+ "versions": {
+  "torch": "2.3.0+cu121",
+  "transformers": "4.57.6",
+  "ray": "2.58.0",
+  "numpy": "2.2.6",
+  "scipy": "1.15.3",
+  "flashinfer": "0.2.0.post1+cu121torch2.3",
+  "vllm-flash-attn": "2.5.9",
+  "sarathi": "0.1.7",
+  "nvidia-ml-py": "13.595.45",
+  "huggingface-hub": "0.36.2",
+  "tokenizers": "0.22.2"
+ },
+ "git_head": "d988ed1643689bfff0a4de05aa62a774bfa63190",
+ "git_status_short": "M scripts/compare_scheduler_gpu.py\n M tests/test_compare_scheduler_gpu.py\n?? validation_output/scheduler_comparison/20261018T195933Z/cpu_checks/01_py_compile.txt\n?? validation_output/scheduler_comparison/20261018T195933Z/cpu_checks/02_help.txt\n?? validation_output/scheduler_comparison/20261018T195933Z/cpu_checks/03_driver_cpu.txt\n?? validation_output/scheduler_comparison/20261018T195933Z/cpu_checks/04_whitespace.txt\n?? validation_output/scheduler_comparison/20261018T195933Z/cpu_checks/05_git_diff_check.txt\n?? validation_output/scheduler_comparison/20261018T195933Z/cpu_checks/environment.txt\n?? validation_output/scheduler_comparison/20261018T195933Z/cpu_checks/git_state.txt\n?? validation_output/scheduler_comparison/20261018T195933Z/cpu_checks/run_checks.sh\n?? validation_output/scheduler_comparison/20261018T195933Z/cpu_checks/sha256sums.txt\n?? validation_output/scheduler_comparison/20261018T195933Z/cpu_checks/working_tree.diff\n?? validation_output/scheduler_comparison/20261018T195933Z/git_state_gpu.txt\n?? validation_output/scheduler_comparison/20261018T195933Z/memory_pressure_adapted_vllm/cleanup.json\n?? validation_output/scheduler_comparison/20261018T195933Z/memory_pressure_adapted_vllm/command.txt\n?? validation_output/scheduler_comparison/20261018T195933Z/memory_pressure_adapted_vllm/decision_trace.json\n?? validation_output/scheduler_comparison/20261018T195933Z/memory_pressure_adapted_vllm/exit_status.txt\n?? validation_output/scheduler_comparison/20261018T195933Z/memory_pressure_adapted_vllm/metrics_store_unused/config.yml\n?? validation_output/scheduler_comparison/20261018T195933Z/memory_pressure_adapted_vllm/summary.json\n?? validation_output/scheduler_comparison/20261018T195933Z/memory_pressure_lp_rank_based/command.txt\n?? validation_output/scheduler_comparison/20261018T195933Z/memory_pressure_lp_rank_based/metrics_store_unused/config.yml\n?? validation_output/scheduler_comparison/20261018T195933Z/memory_pressure_lp_uniform/cleanup.json\n?? validation_output/scheduler_comparison/20261018T195933Z/memory_pressure_lp_uniform/command.txt\n?? validation_output/scheduler_comparison/20261018T195933Z/memory_pressure_lp_uniform/decision_trace.json\n?? validation_output/scheduler_comparison/20261018T195933Z/memory_pressure_lp_uniform/exit_status.txt\n?? validation_output/scheduler_comparison/20261018T195933Z/memory_pressure_lp_uniform/metrics_store_unused/config.yml\n?? validation_output/scheduler_comparison/20261018T195933Z/memory_pressure_lp_uniform/summary.json\n?? validation_output/scheduler_comparison/20261018T195933Z/run_gpu.sh\n?? validation_output/scheduler_comparison/20261018T195933Z/run_gpu_stdout.txt\n?? validation_output/scheduler_comparison/20261018T195933Z/sha256sums_gpu.txt\n?? validation_output/scheduler_comparison/20261018T195933Z/shell_environment.txt",
+ "cwd": "/home/atjoshi_umass_edu/LPServe"
+}
+INFO 10-18 20:02:05 base_llm_engine.py:69] Initializing an LLM engine with config: model='/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6', tokenizer='/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6', tokenizer_mode=auto, revision=None, trust_remote_code=True, dtype=torch.float16, download_dir=None, load_format=dummy, tensor_parallel_size=1, pipeline_parallel_size=1, seed=42)
+2026-10-18 20:02:12,134	INFO worker.py:2024 -- Started a local Ray instance.
+INFO 10-18 20:02:25 base_llm_engine.py:147] Starting workers with resource mapping: [(None, 0)]
+INFO 10-18 20:02:25 base_llm_engine.py:190] Initializing workers with distributed init method: tcp://10.100.20.55:44410
+[36m(RayWorker pid=282288)[0m INFO 10-18 20:02:31 base_worker.py:103] Worker 0 is using device 0
+[36m(RayWorker pid=282288)[0m INFO 10-18 20:02:32 base_worker.py:122] Initializing worker 0 on device cuda:0, tensor parallel rank 0 and pipeline parallel rank 0.
+[36m(RayWorker pid=282288)[0m INFO 10-18 20:02:32 base_worker.py:138] Model initialized on worker 0.
+INFO 10-18 20:02:32 base_llm_engine.py:243] # GPU blocks: 4
+INFO 10-18 20:02:32 base_llm_engine.py:130] Scheduler initialised, block_manager has 4 total blocks
+cache capacity: {"profiled_available_blocks": [15603], "chosen_initialized_blocks": 4, "profile_calls": 1, "initializations": [{"num_gpu_blocks": 4, "result": [null]}], "engine_cache_config_num_gpu_blocks": 4, "central_manager_total_blocks": 4, "worker": {"total_blocks": 4, "watermark_blocks": 0, "free_blocks": 4, "free_block_ids": [0, 1, 2, 3], "block_tables": {}, "block_ops": [], "cache_config_num_gpu_blocks": 4, "cache_engine_num_gpu_blocks": 4, "cache_layers": 22, "cache_tensor_block_dims": [4], "cache_tensor_shapes": [[4, 16, 4, 64]], "allocator_num_blocks": 4}}
+config: {"model": "TinyLlama/TinyLlama-1.1B-Chat-v1.0", "engine_args": {"model": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6", "replica_id": 0, "replica_resource_mapping": [], "tokenizer": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6", "tokenizer_mode": "auto", "trust_remote_code": true, "download_dir": null, "load_format": "dummy", "dtype": "float16", "seed": 42, "pipeline_parallel_size": 1, "tensor_parallel_size": 1, "block_size": 16, "gpu_memory_utilization": 0.5, "revision": null, "scheduler_type": "lp", "max_model_len": 64, "max_num_seqs": 4, "max_num_batched_tokens": null, "chunk_size": null, "enable_dynamic_chunking_schedule": false, "low_chunk_size": null, "high_chunk_size": null, "chunk_schedule_max_tokens": null, "chunk_schedule_stages": null, "token_budget": null, "fcfs": null, "fixed_offset": null, "below_memory_limit_offset": null, "above_memory_limit_offset": null, "memory_limit": null, "user_priority": null, "time_between_tokens": null, "process_smallest_prefill": null, "limit_total_decodes": null, "hold_n_scheduler_hold_n": null, "hold_n_scheduler_token_budget": null, "hold_n_scheduler_prefill_factor": null, "write_metrics": true, "output_dir": "validation_output/scheduler_comparison/20261018T195933Z/memory_pressure_lp_rank_based/metrics_store_unused", "wandb_project": null, "wandb_sweep_id": null, "wandb_run_id": null, "wandb_group": null, "wandb_run_name": null, "enable_op_level_metrics": false, "enable_cpu_op_level_metrics": false, "enable_chrome_trace": false, "enable_request_outputs": false, "keep_individual_batch_metrics": true, "attention_backend": "flash_attention", "lp_b_max": 64, "lp_c_max": 64, "lp_s_max": 4, "lp_memory_reserve": "<omitted>", "lp_decode_memory_policy_id": "<omitted>", "lp_decode_utility": 1.0, "lp_prefill_token_utility": 1.0, "lp_preemption_penalty": 1.0, "lp_numerical_policy": {"policy_id": "lp_relaxation_mvp_v1", "feasibility_tol": 1e-07, "integrality_tol": 1e-06, "objective_abs_tol": 1e-09, "objective_rel_tol": 1e-09}}, "resolved_dtype": "torch.float16", "hf_config_commit_hash": "fe8a4ea1ffedaf415f4da2f062534de366a451e6", "scheduler_class": "LPScheduler", "scheduler_config": {"max_num_seqs": 4, "max_model_len": 64, "num_pipeline_stages": 1, "b_max": 64, "c_max": 64, "s_max": 4, "decode_utility": 1.0, "prefill_token_utility": 1.0, "preemption_penalty": 1.0, "numerical_policy": {"policy_id": "lp_relaxation_mvp_v1", "feasibility_tol": 1e-07, "integrality_tol": 1e-06, "objective_abs_tol": 1e-09, "objective_rel_tol": 1e-09}}, "vocab_size": 32000, "eos_token_id": 2, "engine_init_seconds": 26.842}
+memory_pressure lp_rank_based limit 4 decision 0: preempted [] emitted [[0, 16], [1, 16], [2, 16], [3, 16]] free 0/0
+memory_pressure lp_rank_based limit 4 decision 1: preempted [3] emitted [[0, 0], [1, 0], [2, 0]] free 1/1
+memory_pressure lp_rank_based limit 4 decision 2: preempted [2] emitted [[3, 16], [0, 0]] free 0/0
+memory_pressure lp_rank_based limit 4 decision 3: preempted [3, 1] emitted [[2, 17]] free 0/0
+memory_pressure lp_rank_based limit 4 decision 4: preempted [2, 0] emitted [[1, 17], [3, 16]] free 1/1
+memory_pressure lp_rank_based limit 4 decision 5: preempted [3, 1] emitted [[0, 18], [2, 17]] free 0/0
+memory_pressure lp_rank_based limit 4 decision 6: preempted [2, 0] emitted [[1, 17], [3, 16]] free 1/1
+memory_pressure lp_rank_based limit 4 decision 7: preempted [3, 1] emitted [[0, 18], [2, 17]] free 0/0
+memory_pressure lp_rank_based limit 4 decision 8: preempted [2, 0] emitted [[1, 17], [3, 16]] free 1/1
+memory_pressure lp_rank_based limit 4 decision 9: preempted [3, 1] emitted [[0, 18], [2, 17]] free 0/0
+memory_pressure lp_rank_based limit 4 decision 10: preempted [2, 0] emitted [[1, 17], [3, 16]] free 1/1
+memory_pressure lp_rank_based limit 4 decision 11: preempted [3, 1] emitted [[0, 18], [2, 17]] free 0/0
+memory_pressure lp_rank_based limit 4 decision 12: preempted [2, 0] emitted [[1, 17], [3, 16]] free 1/1
+memory_pressure lp_rank_based limit 4 decision 13: preempted [3, 1] emitted [[0, 18], [2, 17]] free 0/0
+memory_pressure lp_rank_based limit 4 decision 14: preempted [2, 0] emitted [[1, 17], [3, 16]] free 1/1
+memory_pressure lp_rank_based limit 4 decision 15: preempted [3, 1] emitted [[0, 18], [2, 17]] free 0/0
+cleanup: {"engine_constructed": true, "ray_initialized_before_shutdown": true, "ray_initialized_after_shutdown": false}
+RESULT: PASS workload: bounded_unfinished

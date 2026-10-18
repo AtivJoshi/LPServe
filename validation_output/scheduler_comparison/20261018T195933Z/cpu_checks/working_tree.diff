@@ -1,0 +1,1256 @@
+diff --git a/scripts/compare_scheduler_gpu.py b/scripts/compare_scheduler_gpu.py
+index 60fec46..2bb6cde 100644
+--- a/scripts/compare_scheduler_gpu.py
++++ b/scripts/compare_scheduler_gpu.py
+@@ -1,7 +1,7 @@
+ """Bounded dummy-weight GPU comparison of the adapted vLLM reference and two
+-LP coefficient policies on one two-request workload.
++LP coefficient policies on one of two small workloads.
+ 
+-One process runs one (policy, resident limit) pair through a real
++One process runs one (case, policy, resident limit) through a real
+ ``BaseLLMEngine`` built from native ``EngineArgs``, one GPU worker (tensor
+ and pipeline parallelism 1), dummy TinyLlama weights, greedy sampling with
+ EOS ignored, and native replay and completion. Policies:
+@@ -15,24 +15,40 @@ EOS ignored, and native replay and completion. Policies:
+   through the existing ``_coefficient_policy`` hook; the configured triple
+   is then unused.
+ 
+-Both LP policies use ``b_max`` 8, ``c_max`` 8, ``s_max`` 1, and numerical
+-policy ``lp_relaxation_mvp_v1``. The action cap is a deliberate difference
+-from the reference.
+-
+-Workload: A (5 prompt tokens) then B (8), two output tokens each, both
+-submitted before the first decision; block size 16, 8 initialized blocks,
+-``max_model_len`` 32, resident limit 2 or 1.
++Both LP policies use numerical policy ``lp_relaxation_mvp_v1``.
++
++Cases (``--case``):
++
++- ``two_request`` (default): A (5 prompt tokens) then B (8), two output
++  tokens each, both submitted before the first decision; block size 16, 8
++  initialized blocks, ``max_model_len`` 32, budget 8, resident limit 2 or 1,
++  LP ``b_max`` 8, ``c_max`` 8, ``s_max`` 1 (the action cap is a deliberate
++  difference from the reference), bound 8 nonempty decisions.
++- ``memory_pressure``: the reference check's ``preemption`` workload. A, B,
++  C, D (16 prompt tokens each, explicit ranges from 1000/2000/3000/4000),
++  three output tokens each, all submitted before the first decision; block
++  size 16, 4 initialized blocks, ``max_model_len`` 64, budget 64, resident
++  limit 4, LP ``b_max`` 64, ``c_max`` 64, ``s_max`` 4 (no restriction beyond
++  the budget and resident limit), bound 16 nonempty decisions. The four
++  prefills can fill the pool while decode demand is still zero: the
++  reference runs zero-demand decodes with zero free blocks, while the LP's
++  decode prerequisite requires at least one free block before any decode.
++  Both contracts are kept; each decision records which constraint, if any,
++  required its victims for the selected batch.
+ 
+ The decision sequence is not prescribed. Each nonempty decision is checked
+ against its policy's own contract (mapped or proposed inputs, plan or
+ proposal validity, emitted order, central and worker block operations,
+ replay, sampler association, progress, completion and release) and recorded
+-with the before/after state. ``MAX_DECISIONS`` bounds the observation: work
+-still unfinished at the bound is reported as ``bounded_unfinished``, not
+-forced to finish. A scheduler, mapping, solver, execution, worker, or check
+-error is a ``failure``. Generated-token events count emitted decode entries;
+-the native output counter resets on recomputation and is reported
+-separately.
++with the before/after state. The case's decision bound limits the
++observation: work still unfinished at the bound is reported as
++``bounded_unfinished``, not forced to finish. A scheduler, mapping, solver,
++execution, worker, or check error is a ``failure``. Generated-token events count emitted decode entries
++cumulatively; the native output counter resets on recomputation, so a
++restarted request can produce more events than ``max_tokens`` (inherited,
++reported as overgeneration). Executed prefill tokens are split into
++first-time original-prompt positions, replayed positions, and positions of
++generated tokens moved into the prompt (expanded context).
+ 
+ Not established: physical-ID equality between managers, cache-content or
+ attention correctness, sampler generality, generation quality, policy
+@@ -46,6 +62,9 @@ process, on an allocated GPU node:
+         --model-path <local TinyLlama snapshot directory> \\
+         --output-dir validation_output/scheduler_comparison_gpu/<UTC>/<run>
+ 
++The memory-pressure case adds ``--case memory_pressure`` (resident limit 4,
++the default for that case).
++
+ Exit status is zero only if every check passes; the workload outcome is
+ reported separately.
+ """
+@@ -96,7 +115,6 @@ MAX_TOKENS = 2
+ # Explicit disjoint prompt tokens, submitted A then B (seq 0 then seq 1).
+ # They equal the accepted mixed-case selection from search starts 1000/2000.
+ PROMPTS = dict(A=list(range(1000, 1005)), B=list(range(2000, 2008)))
+-NAMES = {0: "A", 1: "B"}
+ TOKEN_BUDGET = 8
+ RESIDENT_LIMITS = (2, 1)
+ LP_B_MAX = 8
+@@ -114,6 +132,16 @@ NUMERICAL_POLICY_FIELDS = dict(
+ )
+ POLICIES = ("adapted_vllm", "lp_uniform", "lp_rank_based")
+ MAX_DECISIONS = 8  # observation bound per run, not a scheduler restart cap
++TWO_REQUEST, MEMORY_PRESSURE = "two_request", "memory_pressure"
++CASES = (TWO_REQUEST, MEMORY_PRESSURE)
++# The reference check's ``preemption`` workload (same prompt IDs, outputs,
++# pool, length, budget, and resident limit). LP caps equal the budget and
++# resident limit, so they add no restriction in this case.
++MEMORY_PRESSURE_INPUTS = dict(
++    prompts=dict(A=list(range(1000, 1016)), B=list(range(2000, 2016)),
++                 C=list(range(3000, 3016)), D=list(range(4000, 4016))),
++    max_tokens=3, token_budget=64, num_gpu_blocks=4, max_model_len=64,
++    resident_limits=(4,), b_max=64, c_max=64, s_max=4, max_decisions=16)
+ PROCESS_TIMEOUT_SECONDS = 600
+ PROFILE_METHOD = preemption.PROFILE_METHOD
+ INIT_CACHE_METHOD = preemption.INIT_CACHE_METHOD
+@@ -123,23 +151,43 @@ ADMISSION, PREFILL, DECODE = "admission", "resident_prefill", "decode"
+ LP_CALLS = ["map_scheduler_state", "solve_and_extract", "execute_plan"]
+ 
+ 
+-def run_parameters(policy, resident_limit):
++def case_inputs(case):
++    """The workload, capacity, limit, and LP cap inputs of ``case``. The
++    two-request values are read from the module constants at call time."""
++    check(case in CASES, f"unknown case {case}")
++    if case == MEMORY_PRESSURE:
++        inputs = json.loads(json.dumps(MEMORY_PRESSURE_INPUTS))
++        inputs["resident_limits"] = tuple(inputs["resident_limits"])
++    else:
++        inputs = dict(prompts=PROMPTS, max_tokens=MAX_TOKENS,
++                      token_budget=TOKEN_BUDGET, num_gpu_blocks=NUM_GPU_BLOCKS,
++                      max_model_len=MAX_MODEL_LEN,
++                      resident_limits=RESIDENT_LIMITS, b_max=LP_B_MAX,
++                      c_max=LP_C_MAX, s_max=LP_S_MAX,
++                      max_decisions=MAX_DECISIONS)
++    inputs["names"] = dict(enumerate(inputs["prompts"]))
++    return inputs
++
++
++def run_parameters(policy, resident_limit, case=TWO_REQUEST):
+     """The provisional inputs of one run, as recorded and checked."""
+-    check(policy in POLICIES and resident_limit in RESIDENT_LIMITS,
+-          f"unknown run {policy} {resident_limit}")
++    c = case_inputs(case)
++    check(policy in POLICIES and resident_limit in c["resident_limits"],
++          f"unknown run {case} {policy} {resident_limit}")
+     params = dict(
+-        policy=policy, resident_limit=resident_limit, block_size=BLOCK_SIZE,
+-        num_gpu_blocks=NUM_GPU_BLOCKS, max_model_len=MAX_MODEL_LEN,
+-        native_watermark_blocks=int(0.01 * NUM_GPU_BLOCKS),
+-        prompts=PROMPTS, max_tokens=MAX_TOKENS, token_budget=TOKEN_BUDGET,
+-        max_decisions=MAX_DECISIONS)
++        case=case, policy=policy, resident_limit=resident_limit,
++        block_size=BLOCK_SIZE, num_gpu_blocks=c["num_gpu_blocks"],
++        max_model_len=c["max_model_len"],
++        native_watermark_blocks=int(0.01 * c["num_gpu_blocks"]),
++        prompts=c["prompts"], max_tokens=c["max_tokens"],
++        token_budget=c["token_budget"], max_decisions=c["max_decisions"])
+     if policy == "adapted_vllm":
+         params.update(scheduler_type="adapted_vllm",
+-                      max_num_batched_tokens=TOKEN_BUDGET,
++                      max_num_batched_tokens=c["token_budget"],
+                       chunk_cap=None, action_cap=None)
+     else:
+-        params.update(scheduler_type="lp", b_max=LP_B_MAX, c_max=LP_C_MAX,
+-                      s_max=LP_S_MAX, numerical_policy=NUMERICAL_POLICY_FIELDS,
++        params.update(scheduler_type="lp", b_max=c["b_max"], c_max=c["c_max"],
++                      s_max=c["s_max"], numerical_policy=NUMERICAL_POLICY_FIELDS,
+                       configured_triple=UNIFORM,
+                       coefficient_policy=(
+                           "configured uniform triple" if policy == "lp_uniform"
+@@ -148,10 +196,12 @@ def run_parameters(policy, resident_limit):
+     return params
+ 
+ 
+-def engine_args(policy, resident_limit, model_path, metrics_dir):
++def engine_args(policy, resident_limit, model_path, metrics_dir,
++                case=TWO_REQUEST):
+     """Native ``EngineArgs`` for one run."""
+     from sarathi.engine.arg_utils import EngineArgs
+ 
++    c = case_inputs(case)
+     common = dict(
+         model=str(model_path), tokenizer=str(model_path),
+         tokenizer_mode=TOKENIZER_MODE, trust_remote_code=TRUST_REMOTE_CODE,
+@@ -159,7 +209,7 @@ def engine_args(policy, resident_limit, model_path, metrics_dir):
+         pipeline_parallel_size=PIPELINE_PARALLEL_SIZE,
+         tensor_parallel_size=TENSOR_PARALLEL_SIZE, block_size=BLOCK_SIZE,
+         gpu_memory_utilization=GPU_MEMORY_UTILIZATION,
+-        max_model_len=MAX_MODEL_LEN, max_num_seqs=resident_limit,
++        max_model_len=c["max_model_len"], max_num_seqs=resident_limit,
+         # Enabled metrics with optional outputs off, as in the earlier
+         # bounded checks; nothing is plotted.
+         write_metrics=True, output_dir=str(metrics_dir),
+@@ -169,11 +219,11 @@ def engine_args(policy, resident_limit, model_path, metrics_dir):
+         attention_backend=ATTENTION_BACKEND)
+     if policy == "adapted_vllm":
+         return EngineArgs(scheduler_type="adapted_vllm",
+-                          max_num_batched_tokens=TOKEN_BUDGET, **common)
++                          max_num_batched_tokens=c["token_budget"], **common)
+     from lp_relaxation_scheduler import NumericalPolicy
+     return EngineArgs(
+-        scheduler_type="lp", lp_b_max=LP_B_MAX, lp_c_max=LP_C_MAX,
+-        lp_s_max=LP_S_MAX, lp_decode_utility=UNIFORM["decode_utility"],
++        scheduler_type="lp", lp_b_max=c["b_max"], lp_c_max=c["c_max"],
++        lp_s_max=c["s_max"], lp_decode_utility=UNIFORM["decode_utility"],
+         lp_prefill_token_utility=UNIFORM["prefill_token_utility"],
+         lp_preemption_penalty=UNIFORM["preemption_penalty"],
+         lp_numerical_policy=NumericalPolicy(**NUMERICAL_POLICY_FIELDS),
+@@ -271,7 +321,7 @@ def _gap(before, sid):
+             - len(before["block_tables"][str(sid)]))
+ 
+ 
+-def check_reference_decision(tag, before, record, resident_limit):
++def check_reference_decision(tag, before, record, resident_limit, c):
+     check(len(record["proposals"]) == 1 and record["lp_events"] == [],
+           f"{tag}: {len(record['proposals'])} reference proposals")
+     p = record["proposals"][0]
+@@ -279,7 +329,7 @@ def check_reference_decision(tag, before, record, resident_limit):
+           and p["arrived_waiting_order"] == before["waiting"]
+           and p["free_blocks"] == before["free_blocks"]
+           and p["watermark_blocks"] == before["watermark_blocks"]
+-          and p["token_budget"] == TOKEN_BUDGET,
++          and p["token_budget"] == c["token_budget"],
+           f"{tag}: proposal inputs {p}")
+     actions, victims = p["actions"], list(p["victims"])
+     selected = [a["seq_id"] for a in actions]
+@@ -301,7 +351,7 @@ def check_reference_decision(tag, before, record, resident_limit):
+                   and seq["prompt_processing_finished"] and a["num_tokens"] == 1
+                   and a["block_demand"] == _gap(before, sid))
+         check(ok, f"{tag}: ineligible or malformed action {a}")
+-    check(sum(a["num_tokens"] for a in actions) <= TOKEN_BUDGET,
++    check(sum(a["num_tokens"] for a in actions) <= c["token_budget"],
+           f"{tag}: selected tokens exceed the budget")
+     admitted = sum(a["kind"] == ADMISSION for a in actions)
+     check(len(before["running"]) - len(victims) + admitted <= resident_limit,
+@@ -329,7 +379,7 @@ def expected_coefficients(policy, snap, request):
+                 preemption_penalty=penalty)
+ 
+ 
+-def check_lp_decision(tag, before, record, policy, resident_limit):
++def check_lp_decision(tag, before, record, policy, resident_limit, c):
+     events = record["lp_events"]
+     check([e["call"] for e in events] == LP_CALLS and not record["proposals"],
+           f"{tag}: LP calls {[e['call'] for e in events]}; expected one "
+@@ -355,7 +405,8 @@ def check_lp_decision(tag, before, record, policy, resident_limit):
+           f"{tag}: mapped state differs from the observed state")
+     check((problem["b_max"], problem["c_max"], problem["s_max"],
+            problem["resident_limit"], problem["resident_count"])
+-          == (LP_B_MAX, LP_C_MAX, LP_S_MAX, resident_limit, len(before["running"]))
++          == (c["b_max"], c["c_max"], c["s_max"], resident_limit,
++              len(before["running"]))
+           and snap["numerical_policy"] == NUMERICAL_POLICY_FIELDS
+           and problem["numerical_policy"] == NUMERICAL_POLICY_FIELDS,
+           f"{tag}: mapped limits or numerical policy")
+@@ -385,6 +436,8 @@ def check_lp_decision(tag, before, record, policy, resident_limit):
+     # Integer-plan validity against the mapped problem (independent sums).
+     check(plan["problem_id"] == problem["problem_id"]
+           == result["problem_id"], f"{tag}: plan/problem identity")
++    check(sorted(d["request_id"] for d in plan["decisions"]) == sorted(inputs),
++          f"{tag}: plan decisions are not one per mapped request")
+     prefill = decode = actions = admitted = preempted = 0
+     memory = problem["m_free"]
+     objective = 0.0
+@@ -394,7 +447,7 @@ def check_lp_decision(tag, before, record, policy, resident_limit):
+         check((x > 0) + y + z <= 1 and y in (0, 1) and z in (0, 1) and x >= 0,
+               f"{tag}: conflicting actions {d}")
+         check(x == 0 or (r["prefill_eligible"] and x <= r["prefill_upper_bound"]
+-                         <= min(LP_C_MAX, r["prompt_tokens_remaining"])),
++                         <= min(c["c_max"], r["prompt_tokens_remaining"])),
+               f"{tag}: ineligible prefill {d}")
+         check(not y or r["decode_eligible"], f"{tag}: ineligible decode {d}")
+         check(not z or (r["preemption_eligible"]
+@@ -408,19 +461,48 @@ def check_lp_decision(tag, before, record, policy, resident_limit):
+             r["prefill_fixed_charge"] if x > 0 and not r["resident"] else 0)
+         objective += (x * r["prefill_token_utility"] + y * r["decode_utility"]
+                       - z * r["preemption_penalty"])
+-    check(prefill + decode == plan["token_use"] <= LP_B_MAX
+-          and 1 <= actions == plan["action_count"] <= LP_S_MAX,
++    check(prefill + decode == plan["token_use"] <= c["b_max"]
++          and 1 <= actions == plan["action_count"] <= c["s_max"],
+           f"{tag}: token or action limits")
+     check(problem["resident_count"] - preempted + admitted
+           == plan["resident_count_after"] <= resident_limit,
+           f"{tag}: resident count after the plan")
++    demand = sum(inputs[d["request_id"]]["decode_demand"] * d["decode"]
++                 for d in plan["decisions"])
+     check(memory >= (problem["admission_watermark"] if admitted else 0)
+           and memory == plan["free_blocks_before_decodes"]
+-          and memory - plan["decode_demand"] >= 0,
+-          f"{tag}: plan memory {memory} {plan['free_blocks_before_decodes']}")
++          and demand == plan["decode_demand"] and memory - demand >= 0
++          and (decode == 0 or memory >= 1),
++          f"{tag}: plan memory H={memory} ({plan['free_blocks_before_decodes']}) "
++          f"demand {demand} decodes {decode}: actual memory or decode "
++          "prerequisite")
+     tol = NUMERICAL_POLICY_FIELDS["feasibility_tol"]
+     check(abs(objective - plan["objective"]) <= tol * max(1.0, abs(objective)),
+           f"{tag}: plan objective {plan['objective']} vs {objective}")
++    # The integer plan is feasible for the relaxation, so the relaxed
++    # objective (recomputed from the relaxed values) bounds it above.
++    relaxed = {d["request_id"]: d for d in result["relaxed"]["decisions"]}
++    check(set(relaxed) == set(inputs), f"{tag}: relaxed decisions")
++    relaxed_objective = sum(
++        relaxed[rid]["x"] * r["prefill_token_utility"]
++        + relaxed[rid]["y"] * r["decode_utility"]
++        - relaxed[rid]["z"] * r["preemption_penalty"]
++        for rid, r in inputs.items())
++    check(relaxed_objective >= objective - tol * max(1.0, abs(objective)),
++          f"{tag}: relaxed objective {relaxed_objective} below the integer "
++          f"plan's {objective}")
++    values = {facts[rid]["raw_seq_id"]: [v["x"], v["y"], v["prefill_indicator"],
++                                         v["z"]] for rid, v in relaxed.items()}
++    chosen = {facts[d["request_id"]]["raw_seq_id"]:
++              [d["prefill_tokens"], d["decode"], d["prefill_indicator"],
++               d["preempt"]] for d in plan["decisions"]}
++    eps = NUMERICAL_POLICY_FIELDS["integrality_tol"]
++    record["lp_comparison"] = dict(
++        relaxed_objective=relaxed_objective, integer_objective=objective,
++        fractional_request_count=plan["extraction"]["fractional_request_count"],
++        extraction_changed_relaxed=any(
++            abs(a - b) > eps for k in values for a, b in zip(values[k], chosen[k])),
++        relaxed=values, integer=chosen)
+ 
+     # Emitted order is the derived declared order, and the executor's own
+     # output is what the scheduler emitted.
+@@ -445,9 +527,9 @@ def check_lp_decision(tag, before, record, policy, resident_limit):
+ # ---------------------------------------------------------------------------
+ 
+ 
+-def check_execution(tag, before, record, victims, layout, resident_limit):
++def check_execution(tag, before, record, victims, layout, resident_limit, c):
+     """Central calls, emitted output, worker replay, sampler association,
+-    progress, completion, and release for one completed step."""
++    queue order, progress, completion, and release for one completed step."""
+     check(len(record["schedules"]) == 1, f"{tag}: schedule calls")
+     scheduled = record["schedules"][0]
+     emitted = scheduled["outputs"]
+@@ -477,17 +559,27 @@ def check_execution(tag, before, record, victims, layout, resident_limit):
+                   f"{tag}: append growth of {sid}")
+     sched_state = scheduled["state"]
+     recovered = sum(len(before["block_tables"][str(v)]) for v in victims)
++    # Retained residents keep their order, admissions are appended in
++    # emitted order, and victims are front-inserted in preemption order.
++    admitted = [sid for sid, kind, _, _ in layout if kind == ADMISSION]
++    running_order = [s for s in before["running"] if s not in victims] + admitted
++    waiting_order = victims[::-1] + [s for s in before["waiting"]
++                                     if s not in admitted]
+     check(sched_state["free_blocks"]
+           == before["free_blocks"] + recovered - sum(demand.values())
+           and sched_state["seqs"] == before["seqs"]
+           and sched_state["num_running_batches"] == 1
++          and sched_state["running"] == running_order
++          and sched_state["waiting"] == waiting_order
+           and len(sched_state["running"]) <= resident_limit,
+-          f"{tag}: central state at the end of scheduling")
++          f"{tag}: central state at the end of scheduling (running "
++          f"{sched_state['running']} vs {running_order}, waiting "
++          f"{sched_state['waiting']} vs {waiting_order})")
+ 
+     after, worker_after = record["after"], record["worker_after"]
+     check(after["iteration_id"] == before["iteration_id"] + 1,
+           f"{tag}: iteration advanced {after['iteration_id'] - before['iteration_id']}")
+-    check_quiescent(f"{tag} (after)", dict(num_gpu_blocks=NUM_GPU_BLOCKS,
++    check_quiescent(f"{tag} (after)", dict(num_gpu_blocks=c["num_gpu_blocks"],
+                                            max_num_seqs=resident_limit),
+                     after, worker_after)
+ 
+@@ -514,6 +606,13 @@ def check_execution(tag, before, record, victims, layout, resident_limit):
+     check(sorted(o["seq_id"] for o in record["request_outputs"])
+           == sorted(s for s, _ in emitted["scheduled"]),
+           f"{tag}: request outputs {record['request_outputs']}")
++    check(after["running"] == [s for s in running_order if s not in finished]
++          and after["waiting"] == waiting_order,
++          f"{tag}: queues after completion {after['running']} "
++          f"{after['waiting']}; expected {running_order} less {finished}, "
++          f"{waiting_order}")
++    sampled = dict(sampler)
++    outputs = {o["seq_id"]: o for o in record["request_outputs"]}
+ 
+     # Progress: prefill advances by its chunk, decode appends one token,
+     # victims are reset for recomputation, everything else is unchanged.
+@@ -521,10 +620,13 @@ def check_execution(tag, before, record, victims, layout, resident_limit):
+     for key, seq in before["seqs"].items():
+         sid = int(key)
+         if sid in finished:
+-            out = [o for o in record["request_outputs"] if o["seq_id"] == sid][0]
++            # Native completion: the counter (reset by recomputation)
++            # reaches max_tokens with this step's actual sampled token.
++            out = outputs[sid]
+             check(chunks.get(sid) == 0 and out["finish_reason"] == "length"
+-                  and len(seq["output_token_ids"]) + 1 == MAX_TOKENS
+-                  and out["token_ids"] == seq["output_token_ids"] + [out["token_ids"][-1]]
++                  and len(seq["output_token_ids"]) + 1 == c["max_tokens"]
++                  and out["token_ids"] == seq["output_token_ids"] + [sampled[sid]]
++                  and out["prompt_token_ids"] == seq["prompt_token_ids"]
+                   and key not in after["seqs"] and key not in worker_after["seqs"]
+                   and key not in after["block_tables"]
+                   and key not in worker_after["block_tables"],
+@@ -532,19 +634,28 @@ def check_execution(tag, before, record, victims, layout, resident_limit):
+             continue
+         now = after["seqs"][key]
+         if sid in victims:
++            # Recomputation: generated tokens move into the prompt and the
++            # native output counter resets; the logical context is kept.
+             ok = (now["status"] == "WAITING" and now["prompt_tokens_processed"] == 0
+                   and not now["prompt_processing_finished"]
+                   and now["output_token_ids"] == []
+                   and now["prompt_token_ids"]
+-                  == seq["prompt_token_ids"] + seq["output_token_ids"])
++                  == seq["prompt_token_ids"] + seq["output_token_ids"]
++                  and now["prompt_len"] == len(now["prompt_token_ids"])
++                  and now["logical_blocks"] == seq["logical_blocks"])
+         elif chunks.get(sid, 0) > 0:
++            # A prompt-completing chunk's sample is discarded (inherited).
+             done = seq["prompt_tokens_processed"] + chunks[sid]
+             ok = (now["prompt_tokens_processed"] == done
+                   and now["prompt_processing_finished"] == (done == seq["prompt_len"])
+-                  and now["output_token_ids"] == seq["output_token_ids"])
++                  and now["output_token_ids"] == seq["output_token_ids"]
++                  and outputs[sid]["token_ids"] == seq["output_token_ids"])
+         elif sid in chunks:
+-            ok = (now["output_token_ids"][:-1] == seq["output_token_ids"]
+-                  and len(now["output_token_ids"]) == len(seq["output_token_ids"]) + 1
++            ok = (now["output_token_ids"]
++                  == seq["output_token_ids"] + [sampled[sid]]
++                  and outputs[sid]["token_ids"] == now["output_token_ids"]
++                  and outputs[sid]["prompt_token_ids"] == seq["prompt_token_ids"]
++                  and not outputs[sid]["finished"]
+                   and now["prompt_tokens_processed"] == seq["prompt_tokens_processed"])
+         else:
+             ok = now == seq
+@@ -557,25 +668,55 @@ def check_execution(tag, before, record, victims, layout, resident_limit):
+ # ---------------------------------------------------------------------------
+ 
+ 
+-def _accounting():
+-    return {n: dict(first_prefill=None, first_decode=None, completion=None,
+-                    generated_token_events=0, preemptions=0,
+-                    discarded_prompt_tokens=0, discarded_generated_tokens=0,
+-                    prefill_tokens_executed=0, omitted_decisions=[])
+-            for n in NAMES.values()}
+-
+-
+-def _update_accounting(acc, index, before, victims, layout, finished):
++def _accounting(c):
++    """Driver-side cumulative accounting (no production history ledger).
++
++    ``generated_token_events`` counts emitted decodes cumulatively; the
++    native output counter resets on recomputation, so ``overgeneration`` is
++    events minus ``max_tokens`` at completion. ``discarded_prompt_tokens`` is
++    prompt progress lost at preemption and ``generated_tokens_moved_to_context``
++    the outputs a victim had. Executed prefill tokens are split by prompt
++    position: ``first_time`` (original prompt, never prefilled before),
++    ``replayed`` (prefilled in an earlier attempt), and ``expanded_context``
++    (a generated token moved into the prompt, prefilled for the first time;
++    its cache entry may already have been computed by an earlier decode)."""
++    return {n: dict(original_prompt_len=len(c["prompts"][n]), first_prefill=None,
++                    first_decode=None, completion=None,
++                    generated_token_events=0, native_output_count=0,
++                    overgeneration=None, preemptions=0,
++                    preemptions_after_output=0, discarded_prompt_tokens=0,
++                    generated_tokens_moved_to_context=0, prefill_actions=0,
++                    prefill_tokens_executed=0, prefill_tokens_first_time=0,
++                    prefill_tokens_replayed=0,
++                    prefill_tokens_expanded_context=0,
++                    prefilled_position_high_water=0, omitted_decisions=[])
++            for n in c["names"].values()}
++
++
++def _update_accounting(acc, c, index, before, after, victims, layout, finished):
++    names = c["names"]
+     served = {sid for sid, _, _, _ in layout}
+     for sid in victims:
+-        seq, a = before["seqs"][str(sid)], acc[NAMES[sid]]
++        seq, a = before["seqs"][str(sid)], acc[names[sid]]
+         a["preemptions"] += 1
++        a["preemptions_after_output"] += bool(seq["output_token_ids"])
+         a["discarded_prompt_tokens"] += seq["prompt_tokens_processed"]
+-        a["discarded_generated_tokens"] += len(seq["output_token_ids"])
++        a["generated_tokens_moved_to_context"] += len(seq["output_token_ids"])
+     for sid, _, chunk, _ in layout:
+-        a = acc[NAMES[sid]]
++        a = acc[names[sid]]
+         if chunk > 0:
++            start = before["seqs"][str(sid)]["prompt_tokens_processed"]
++            end, high = start + chunk, a["prefilled_position_high_water"]
++            fresh_start = max(start, high)
++            a["prefill_actions"] += 1
+             a["prefill_tokens_executed"] += chunk
++            a["prefill_tokens_replayed"] += max(0, min(end, high) - start)
++            original = a["original_prompt_len"]
++            a["prefill_tokens_first_time"] += max(
++                0, min(end, original) - fresh_start)
++            a["prefill_tokens_expanded_context"] += max(
++                0, end - max(fresh_start, original))
++            a["prefilled_position_high_water"] = max(high, end)
+             a["first_prefill"] = (index if a["first_prefill"] is None
+                                   else a["first_prefill"])
+         else:
+@@ -583,18 +724,93 @@ def _update_accounting(acc, index, before, victims, layout, finished):
+             a["first_decode"] = index if a["first_decode"] is None else a["first_decode"]
+     for sid in before["waiting"] + before["running"]:
+         if sid not in served and sid not in victims:
+-            acc[NAMES[sid]]["omitted_decisions"].append(index)
+-    for sid in finished:
+-        acc[NAMES[sid]]["completion"] = index
+-
+-
+-def run_comparison(policy, resident_limit, runtime, trace):
+-    """Submit the workload, observe at most MAX_DECISIONS nonempty decisions,
++            acc[names[sid]]["omitted_decisions"].append(index)
++        a = acc[names[sid]]
++        if sid in finished:
++            a["completion"] = index
++            a["native_output_count"] = c["max_tokens"]
++            a["overgeneration"] = a["generated_token_events"] - c["max_tokens"]
++        else:
++            a["native_output_count"] = len(after["seqs"][str(sid)]["output_token_ids"])
++
++
++def victim_need(policy, before, victims, layout, resident_limit, record):
++    """Why victims were or were not required, relative to this decision's
++    selected batch and the policy's own contract (diagnostic, not a check).
++
++    Without victims, the selected decodes need ``demands`` free blocks and
++    the selected admissions ``charges`` more; the LP decode prerequisite
++    additionally needs one free block before any decode (zero-demand decodes
++    included). Reasons: ``decode_block_demand`` (the decodes alone exceed the
++    free blocks), ``admission_charges`` (admitted waiting requests use the
++    recovered blocks, i.e. replacement), ``lp_decode_prerequisite`` (blocks
++    needed only for H >= 1), ``resident_capacity``, or
++    ``not_required_by_selected_batch``. ``non_preemptive_actions`` lists the
++    single actions the policy's contract allows with no victim; when it is
++    empty, every useful batch under that contract preempts."""
++    free, running = before["free_blocks"], before["running"]
++    charges = sum(d for _, k, _, d in layout if k == ADMISSION)
++    demands = sum(d for _, k, _, d in layout if k == DECODE)
++    decodes = sum(k == DECODE for _, k, _, _ in layout)
++    admissions = sum(k == ADMISSION for _, k, _, _ in layout)
++    lp = policy != "adapted_vllm"
++    for_decodes = max(0, demands - free)
++    physical = max(0, charges + demands - free)
++    prerequisite = (max(0, charges + max(demands, 1 if decodes else 0) - free)
++                    if lp else None)
++    residents = max(0, len(running) + admissions - resident_limit)
++    reasons = []
++    if for_decodes:
++        reasons.append("decode_block_demand")
++    if physical > for_decodes:
++        reasons.append("admission_charges")
++    if lp and prerequisite > physical:
++        reasons.append("lp_decode_prerequisite")
++    if residents:
++        reasons.append("resident_capacity")
++    if victims and not reasons:
++        reasons.append("not_required_by_selected_batch")
++    alone = []
++    for key, seq in before["seqs"].items():
++        sid = int(key)
++        if sid in running and not seq["prompt_processing_finished"]:
++            alone.append([sid, PREFILL])
++        elif sid in running:
++            if _gap(before, sid) <= free and (not lp or free >= 1):
++                alone.append([sid, DECODE])
++        elif (len(running) < resident_limit
++              and seq["logical_blocks"] <= free - before["watermark_blocks"]):
++            alone.append([sid, ADMISSION])
++    return dict(
++        free_blocks=free, victims=list(victims),
++        recovered_blocks=sum(len(before["block_tables"][str(v)])
++                             for v in victims),
++        selected_admission_charges=charges, selected_decode_demands=demands,
++        selected_decodes=decodes,
++        decode_demands={str(s): _gap(before, s) for s in running
++                        if before["seqs"][str(s)]["prompt_processing_finished"]},
++        victim_blocks_needed_for_decodes=for_decodes,
++        victim_blocks_needed_physical=physical,
++        victim_blocks_needed_with_lp_prerequisite=prerequisite,
++        victims_needed_for_resident_limit=residents,
++        reasons=reasons if victims else [],
++        non_preemptive_actions=alone,
++        preemption_free_alternative=bool(alone),
++        extraction_changed_relaxed=(
++            record["lp_comparison"]["extraction_changed_relaxed"] if lp
++            else None))
++
++
++def run_comparison(policy, resident_limit, runtime, trace, case=TWO_REQUEST):
++    """Submit the workload, observe at most the case's bound of nonempty decisions,
+     and check each against its policy's contract, filling ``trace`` as it
+     goes so a failure keeps the partial record. Returns the workload outcome
+     (``drained`` or ``bounded_unfinished``); raises on any failure."""
+     from sarathi.core.datatypes.sampling_params import SamplingParams
+ 
++    c = case_inputs(case)
++    names, pool = c["names"], c["num_gpu_blocks"]
++    quiescent = dict(num_gpu_blocks=pool, max_num_seqs=resident_limit)
+     scheduler = runtime.scheduler
+     config = scheduler.scheduler_config
+     expected_type = ("AdaptedVLLMScheduler" if policy == "adapted_vllm"
+@@ -603,49 +819,47 @@ def run_comparison(policy, resident_limit, runtime, trace):
+           f"registered scheduler is {type(scheduler).__name__}")
+     limits = (config.max_num_seqs, config.max_model_len, config.num_pipeline_stages,
+               config.max_num_batched_tokens)
+-    check(limits == (resident_limit, MAX_MODEL_LEN, 1, TOKEN_BUDGET),
++    check(limits == (resident_limit, c["max_model_len"], 1, c["token_budget"]),
+           f"scheduler configuration {limits}")
+     if policy != "adapted_vllm":
+         check((config.b_max, config.c_max, config.s_max)
+-              == (LP_B_MAX, LP_C_MAX, LP_S_MAX)
++              == (c["b_max"], c["c_max"], c["s_max"])
+               and to_jsonable(config.numerical_policy) == NUMERICAL_POLICY_FIELDS
+               and (config.decode_utility, config.prefill_token_utility,
+                    config.preemption_penalty) == tuple(UNIFORM.values()),
+               "LP scheduler configuration")
+     manager = scheduler.block_manager
+-    check(manager.num_total_gpu_blocks == NUM_GPU_BLOCKS
+-          and manager.get_num_free_gpu_blocks() == NUM_GPU_BLOCKS
++    check(manager.num_total_gpu_blocks == pool
++          and manager.get_num_free_gpu_blocks() == pool
+           and manager.watermark_blocks == 0 and not manager.block_tables
+           and manager.block_size == BLOCK_SIZE, "central pool before requests")
+ 
+     select_coefficient_policy(scheduler, policy)
+     observer = DecisionObserver(scheduler, runtime.seq_map, policy)
+-    trace.update(policy=policy, resident_limit=resident_limit, prompts={},
+-                 arrival_times={}, decisions=[], final=None, idle=None)
+-    acc = _accounting()
++    trace.update(case=case, policy=policy, resident_limit=resident_limit,
++                 prompts={}, arrival_times={}, decisions=[], final=None,
++                 idle=None)
++    acc = _accounting(c)
+     try:
+-        for sid, name in NAMES.items():
+-            runtime.submit(list(PROMPTS[name]), SamplingParams(
+-                temperature=TEMPERATURE, max_tokens=MAX_TOKENS,
++        for sid, name in names.items():
++            runtime.submit(list(c["prompts"][name]), SamplingParams(
++                temperature=TEMPERATURE, max_tokens=c["max_tokens"],
+                 ignore_eos=IGNORE_EOS, stop=None))
+             check(sorted(runtime.seq_map) == list(range(sid + 1)),
+                   f"request {name} must be seq {sid}")
+-            trace["prompts"][name] = list(PROMPTS[name])
++            trace["prompts"][name] = list(c["prompts"][name])
+             trace["arrival_times"][name] = runtime.seq_map[sid].arrival_time
+         runtime.worker_state()  # drop registration-time worker operations
+ 
+-        for index in range(MAX_DECISIONS):
++        for index in range(c["max_decisions"]):
+             if not scheduler.has_unfinished_seqs():
+                 break
+-            tag = f"{policy} limit {resident_limit} decision {index}"
++            tag = f"{case} {policy} limit {resident_limit} decision {index}"
+             before = central_state(scheduler, runtime.seq_map)
+             before["arrival_times"] = {str(s): runtime.seq_map[s].arrival_time
+                                        for s in runtime.seq_map}
+             worker_before = runtime.worker_state()
+-            check_quiescent(f"{tag} (before)",
+-                            dict(num_gpu_blocks=NUM_GPU_BLOCKS,
+-                                 max_num_seqs=resident_limit),
+-                            before, worker_before)
++            check_quiescent(f"{tag} (before)", quiescent, before, worker_before)
+             check(worker_before["block_ops"] == [],
+                   f"{tag}: worker operations outside a step")
+             observer.take()
+@@ -675,13 +889,20 @@ def run_comparison(policy, resident_limit, runtime, trace):
+                       f"{tag}: requests not yet arrived at the first decision")
+             if policy == "adapted_vllm":
+                 victims, layout = check_reference_decision(
+-                    tag, before, record, resident_limit)
++                    tag, before, record, resident_limit, c)
+             else:
+                 victims, layout = check_lp_decision(
+-                    tag, before, record, policy, resident_limit)
++                    tag, before, record, policy, resident_limit, c)
+             finished = check_execution(tag, before, record, victims, layout,
+-                                       resident_limit)
+-            _update_accounting(acc, index, before, victims, layout, finished)
++                                       resident_limit, c)
++            record["victim_need"] = victim_need(policy, before, victims, layout,
++                                                resident_limit, record)
++            # Recorded, not required: physical IDs may differ between managers.
++            record["physical_block_ids_equal"] = (
++                record["after"]["block_tables"]
++                == record["worker_after"]["block_tables"])
++            _update_accounting(acc, c, index, before, record["after"], victims,
++                               layout, finished)
+             record["accounting"] = json.loads(json.dumps(acc))
+             print(f"{tag}: preempted {victims} emitted "
+                   f"{record['schedules'][0]['outputs']['scheduled']} free "
+@@ -690,24 +911,25 @@ def run_comparison(policy, resident_limit, runtime, trace):
+ 
+         final = central_state(scheduler, runtime.seq_map)
+         worker_final = runtime.worker_state()
+-        unfinished = sorted(NAMES[int(k)] for k in final["seqs"])
+-        trace["final"] = dict(central=final, worker=worker_final,
+-                              unfinished=unfinished, accounting=acc)
++        unfinished = sorted(names[int(k)] for k in final["seqs"])
++        trace["final"] = dict(
++            central=final, worker=worker_final, unfinished=unfinished,
++            residual_allocations={names[int(k)]: len(v) for k, v in
++                                  final["block_tables"].items()},
++            accounting=acc)
+         if scheduler.has_unfinished_seqs():
+             # Bounded: retain the final native state; nothing is forced.
+-            check(unfinished and len(trace["decisions"]) == MAX_DECISIONS,
++            check(unfinished and len(trace["decisions"]) == c["max_decisions"],
+                   "unfinished work without reaching the decision bound")
+-            check_quiescent("final", dict(num_gpu_blocks=NUM_GPU_BLOCKS,
+-                                          max_num_seqs=resident_limit),
+-                            final, worker_final)
++            check_quiescent("final", quiescent, final, worker_final)
+             return BOUNDED_UNFINISHED
+ 
+         # Drained: full release, then one ordinary idle call.
+         check(final["waiting"] == [] and final["running"] == []
+               and final["seqs"] == {} and final["block_tables"] == {}
+-              and final["free_blocks"] == NUM_GPU_BLOCKS
++              and final["free_blocks"] == pool
+               and worker_final["seqs"] == {} and worker_final["block_tables"] == {}
+-              and worker_final["free_blocks"] == NUM_GPU_BLOCKS
++              and worker_final["free_blocks"] == pool
+               and all(a["completion"] is not None for a in acc.values()),
+               f"not drained {final} {worker_final}")
+         observer.take()
+@@ -773,9 +995,11 @@ def provenance_record():
+ 
+ def parse_args(argv=None):
+     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
++    parser.add_argument("--case", default=TWO_REQUEST, choices=CASES)
+     parser.add_argument("--policy", required=True, choices=POLICIES)
+-    parser.add_argument("--resident-limit", required=True, type=int,
+-                        choices=RESIDENT_LIMITS)
++    parser.add_argument("--resident-limit", type=int, choices=(2, 1, 4),
++                        help="two_request: 2 or 1 (required); "
++                        "memory_pressure: 4 (default)")
+     parser.add_argument("--model-path", required=True,
+                         help="existing local directory with the TinyLlama "
+                         "config and tokenizer")
+@@ -785,6 +1009,12 @@ def parse_args(argv=None):
+ 
+ def main(argv=None):
+     parser, args = parse_args(argv)
++    c = case_inputs(args.case)
++    if args.resident_limit is None and len(c["resident_limits"]) == 1:
++        args.resident_limit = c["resident_limits"][0]
++    if args.resident_limit not in c["resident_limits"]:
++        parser.error(f"--resident-limit for case {args.case} must be one of "
++                     f"{list(c['resident_limits'])}")
+     out_dir = Path(args.output_dir)
+     out_dir.mkdir(parents=True, exist_ok=True)
+     if any((out_dir / f).exists() for f in ("decision_trace.json", "summary.json")):
+@@ -797,7 +1027,8 @@ def main(argv=None):
+ 
+     trace = {}
+     summary = dict(validation_passed=False, workload_outcome=FAILURE, failure=None,
+-                   run=run_parameters(args.policy, args.resident_limit),
++                   run=run_parameters(args.policy, args.resident_limit,
++                                      args.case),
+                    process_timeout_seconds=PROCESS_TIMEOUT_SECONDS,
+                    provenance=provenance_record(), argv=sys.argv,
+                    model_path=str(model_path))
+@@ -813,21 +1044,21 @@ def main(argv=None):
+               "PYTHONPATH so the Ray worker can import sarathi and the LP modules")
+ 
+         args_record = engine_args(args.policy, args.resident_limit, model_path,
+-                                  out_dir / "metrics_store_unused")
++                                  out_dir / "metrics_store_unused", args.case)
+         configs = args_record.create_engine_configs()
+         model_config, cache_config, parallel_config, scheduler_config, _ = configs
+         check((parallel_config.tensor_parallel_size,
+                parallel_config.pipeline_parallel_size)
+               == (TENSOR_PARALLEL_SIZE, PIPELINE_PARALLEL_SIZE)
+               and cache_config.block_size == BLOCK_SIZE
+-              and model_config.max_model_len == MAX_MODEL_LEN
++              and model_config.max_model_len == c["max_model_len"]
+               and scheduler_config.max_num_seqs == args.resident_limit,
+               "native configuration differs from the run")
+ 
+         summary["environment"] = environment_record()
+         print("environment:", json.dumps(summary["environment"], indent=1), flush=True)
+         register_worker_helpers_by_value()
+-        selection = CacheCapacitySelection(chosen=NUM_GPU_BLOCKS)
++        selection = CacheCapacitySelection(chosen=c["num_gpu_blocks"])
+         t0 = time.monotonic()
+         engine = build_engine_class(selection)(*configs)
+         init_seconds = time.monotonic() - t0
+@@ -842,12 +1073,12 @@ def main(argv=None):
+             worker={k: v for k, v in worker_init.items() if k != "seqs"})
+         print("cache capacity:", json.dumps(to_jsonable(summary["cache_capacity"])),
+               flush=True)
+-        adapted.check_capacity(dict(num_gpu_blocks=NUM_GPU_BLOCKS), selection,
+-                               cache_config, engine.scheduler.block_manager,
+-                               worker_init)
+-        for start, name in ((1000, "A"), (2000, "B")):
+-            check(select_prompt_ids(engine.tokenizer, runtime.vocab_size, start,
+-                                    len(PROMPTS[name]))[0] == PROMPTS[name],
++        adapted.check_capacity(dict(num_gpu_blocks=c["num_gpu_blocks"]),
++                               selection, cache_config,
++                               engine.scheduler.block_manager, worker_init)
++        for name, ids in c["prompts"].items():
++            check(select_prompt_ids(engine.tokenizer, runtime.vocab_size, ids[0],
++                                    len(ids))[0] == ids,
+                   f"prompt {name} contains a special or out-of-vocabulary token")
+         summary["config"] = dict(
+             model=MODEL_NAME, engine_args=to_jsonable(vars(args_record)),
+@@ -861,7 +1092,8 @@ def main(argv=None):
+             engine_init_seconds=round(init_seconds, 3))
+         print("config:", json.dumps(summary["config"]), flush=True)
+ 
+-        outcome = run_comparison(args.policy, args.resident_limit, runtime, trace)
++        outcome = run_comparison(args.policy, args.resident_limit, runtime,
++                                 trace, args.case)
+         summary.update(validation_passed=True, workload_outcome=outcome,
+                        decisions=len(trace["decisions"]),
+                        unfinished=trace["final"]["unfinished"],
+diff --git a/tests/test_compare_scheduler_gpu.py b/tests/test_compare_scheduler_gpu.py
+index 7d58a1f..d953be4 100644
+--- a/tests/test_compare_scheduler_gpu.py
++++ b/tests/test_compare_scheduler_gpu.py
+@@ -1,14 +1,19 @@
+ """CPU checks for the scheduler comparison GPU driver.
+ 
+-No engine, Ray worker, model, or GPU is used. Each of the six runs goes
++No engine, Ray worker, model, or GPU is used. Each of the six two-request
++runs and the three memory-pressure runs goes
+ through the driver's ``run_comparison`` with the registered scheduler built
+ from the driver's native ``EngineArgs`` (model metadata mocked), the central
+ block manager, the engine sequence manager, and a worker sequence manager
+ holding separate copies, replayed in the engine's single-stage order at the
+-run's block size 16, 8-block pool, budgets, and output limits. Sampled
+-tokens are synthetic; no token ID or tied LP choice is prescribed by the
+-driver. The expected summaries below are the earlier bounded CPU comparison
+-(block size 4) rows, which this block-size-16 fixture is checked against.
++run's block size 16, pool, budgets, and output limits. Sampled tokens are
++synthetic and distinct per request and step; no token ID or tied LP choice
++is prescribed by the driver. The expected two-request summaries below are
++the earlier bounded CPU comparison (block size 4) rows, which this
++block-size-16 fixture is checked against. Memory-pressure expectations come
++from the reference specification and its earlier preemption-case run, the
++LP decode prerequisite, and the strictly ordered rank-based coefficients;
++the LP runs are not required to drain.
+ """
+ 
+ import copy
+@@ -51,8 +56,8 @@ from sarathi.engine import arg_utils  # noqa: E402
+ setUpModule = lpt.setUpModule
+ tearDownModule = lpt.tearDownModule
+ 
+-SAMPLED_TOKEN = 7
+ RUNS = [(p, n) for n in driver.RESIDENT_LIMITS for p in driver.POLICIES]
++PRESSURE = driver.MEMORY_PRESSURE
+ 
+ # Earlier CPU comparison rows (validation_output/adapted_vllm_reference/
+ # 20261018T051258Z/comparison.txt): decisions, first prefill, first decode,
+@@ -69,15 +74,16 @@ EARLIER_CPU = {
+ }
+ 
+ 
+-def native_configs(policy, limit, tmp):
++def native_configs(policy, limit, tmp, case=driver.TWO_REQUEST):
+     """The driver's ``EngineArgs`` configurations, model metadata mocked."""
+     model_config = mock.Mock()
+-    model_config.get_max_model_len.return_value = driver.MAX_MODEL_LEN
++    model_config.get_max_model_len.return_value = driver.case_inputs(
++        case)["max_model_len"]
+     model_config.get_total_num_layers.return_value = 2
+     with mock.patch.object(arg_utils, "ModelConfig",
+                            return_value=model_config) as cls:
+         args = driver.engine_args(policy, limit, Path(tmp) / "model",
+-                                  Path(tmp) / "metrics")
++                                  Path(tmp) / "metrics", case)
+         configs = args.create_engine_configs()
+     return cls.call_args.kwargs, configs
+ 
+@@ -85,11 +91,12 @@ def native_configs(policy, limit, tmp):
+ class CpuRuntime:
+     """``run_comparison`` runtime with native central and worker replay."""
+ 
+-    def __init__(self, policy, limit):
++    def __init__(self, policy, limit, case=driver.TWO_REQUEST):
+         with tempfile.TemporaryDirectory() as tmp:
+             _, (_, cache_config, _, sched_config, _) = native_configs(
+-                policy, limit, tmp)
+-        cache_config.num_gpu_blocks = driver.NUM_GPU_BLOCKS  # as _init_cache
++                policy, limit, tmp, case)
++        # As _init_cache with the case's chosen pool.
++        cache_config.num_gpu_blocks = driver.case_inputs(case)["num_gpu_blocks"]
+         self.scheduler = SchedulerRegistry.get(sched_config.type, sched_config,
+                                                cache_config)
+         self.engine_seqs = lpt._EngineSequenceManager()
+@@ -99,6 +106,12 @@ class CpuRuntime:
+         driver.instrument_block_manager(self.worker_seqs.block_manager,
+                                         self.worker_ops)
+         self.lp = policy != "adapted_vllm"
++        self.steps = 0
++
++    def sample(self, seq_id):
++        # Synthetic and distinct per request and step, so a misassociated
++        # sample is detectable.
++        return 100 * (self.steps + 1) + seq_id
+ 
+     def submit(self, prompt_ids, sampling_params):
+         # Same construction, arrival clock, and LP check as add_request.
+@@ -116,8 +129,9 @@ class CpuRuntime:
+             return [], None
+         ignored, metadata = self.engine_seqs.on_schedule(outputs)
+         self.worker_seqs.on_schedule(outputs)
+-        samples = [SamplerOutput(m.seq_id, SAMPLED_TOKEN)
++        samples = [SamplerOutput(m.seq_id, self.sample(m.seq_id))
+                    for m in outputs.scheduled_seq_metadata_list]
++        self.steps += 1
+         self.worker_seqs.on_step_completed(outputs, samples)
+         self.engine_seqs.on_step_completed(outputs, samples)
+         self.scheduler.on_step_completed()
+@@ -129,9 +143,9 @@ class CpuRuntime:
+                                                       self.worker_ops)
+ 
+ 
+-def _run(policy, limit):
+-    runtime, trace = CpuRuntime(policy, limit), {}
+-    outcome = driver.run_comparison(policy, limit, runtime, trace)
++def _run(policy, limit, case=driver.TWO_REQUEST, runtime=None):
++    runtime, trace = runtime or CpuRuntime(policy, limit, case), {}
++    outcome = driver.run_comparison(policy, limit, runtime, trace, case)
+     return runtime, trace, outcome
+ 
+ 
+@@ -163,7 +177,8 @@ class DriverImportAndHelpTest(unittest.TestCase):
+         self.assertEqual(result.returncode, 0, result.stderr)
+         self.assertIn("--policy {adapted_vllm,lp_uniform,lp_rank_based}",
+                       result.stdout)
+-        self.assertIn("--resident-limit {2,1}", result.stdout)
++        self.assertIn("--resident-limit {2,1,4}", result.stdout)
++        self.assertIn("--case {two_request,memory_pressure}", result.stdout)
+         self.assertEqual(result.stdout.strip().splitlines()[-1], "RESULT 0 []")
+ 
+ 
+@@ -269,8 +284,9 @@ class NativeCpuReplayTest(unittest.TestCase):
+                     self.assertIsNone(trace["idle"])
+                     self.assertTrue(runtime.scheduler.has_unfinished_seqs())
+                     # Restarts happen before any output, so nothing generated.
+-                    self.assertEqual(acc["A"]["discarded_generated_tokens"]
+-                                     + acc["B"]["discarded_generated_tokens"], 0)
++                    self.assertEqual(
++                        acc["A"]["generated_tokens_moved_to_context"]
++                        + acc["B"]["generated_tokens_moved_to_context"], 0)
+                     self.assertGreater(acc["A"]["prefill_tokens_executed"]
+                                        + acc["B"]["prefill_tokens_executed"], 13)
+         # The wrapped module functions are restored after every run.
+@@ -356,8 +372,8 @@ class BoundAndFailureTest(unittest.TestCase):
+ 
+ 
+ class CacheCapacityTest(unittest.TestCase):
+-    def _init(self, profiled):
+-        selection = driver.CacheCapacitySelection(chosen=driver.NUM_GPU_BLOCKS)
++    def _init(self, profiled, chosen=driver.NUM_GPU_BLOCKS):
++        selection = driver.CacheCapacitySelection(chosen=chosen)
+         engine_class = driver.build_engine_class(selection)
+         engine = object.__new__(engine_class)
+         engine.cache_config = CacheConfig(block_size=16,
+@@ -382,6 +398,16 @@ class CacheCapacityTest(unittest.TestCase):
+         with self.assertRaisesRegex(driver.CheckFailure, "below the chosen 8"):
+             self._init(7)
+ 
++    def test_memory_pressure_pool_of_four(self):
++        chosen = driver.case_inputs(PRESSURE)["num_gpu_blocks"]
++        engine, selection, calls = self._init(4, chosen)
++        self.assertEqual(calls, [driver.PROFILE_METHOD, driver.INIT_CACHE_METHOD])
++        self.assertEqual(engine.cache_config.num_gpu_blocks, 4)
++        self.assertEqual(selection.record()["initializations"][0]
++                         ["num_gpu_blocks"], 4)
++        with self.assertRaisesRegex(driver.CheckFailure, "below the chosen 4"):
++            self._init(3, chosen)
++
+ 
+ class WorkerSerializationTest(unittest.TestCase):
+     """The reused worker observation helpers load in a fresh interpreter
+@@ -481,6 +507,289 @@ class EvidenceTest(unittest.TestCase):
+             self.assertEqual(again.returncode, 2)
+             self.assertIn("already holds run artifacts", again.stderr)
+ 
++    def test_memory_pressure_command_line(self):
++        env = dict(os.environ, CUDA_VISIBLE_DEVICES="",
++                   PYTHONPATH=str(REPO_ROOT))
++        with tempfile.TemporaryDirectory() as tmp:
++            def run(*extra, out="out"):
++                cmd = [sys.executable, "-B", "scripts/compare_scheduler_gpu.py",
++                       "--policy", "lp_rank_based", "--model-path",
++                       str(Path(tmp) / "absent"), "--output-dir",
++                       str(Path(tmp) / out), *extra]
++                return subprocess.run(cmd, cwd=REPO_ROOT, env=env,
++                                      capture_output=True, text=True)
++            # The limit defaults to 4 for this case; other limits are rejected,
++            # and the original case still requires 2 or 1.
++            result = run("--case", "memory_pressure")
++            self.assertEqual(result.returncode, 1, result.stderr)
++            summary = json.loads((Path(tmp) / "out/summary.json").read_text())
++            self.assertEqual(
++                {k: summary["run"][k] for k in (
++                    "case", "resident_limit", "num_gpu_blocks", "max_model_len",
++                    "token_budget", "b_max", "c_max", "s_max", "max_tokens",
++                    "max_decisions")},
++                dict(case="memory_pressure", resident_limit=4, num_gpu_blocks=4,
++                     max_model_len=64, token_budget=64, b_max=64, c_max=64,
++                     s_max=4, max_tokens=3, max_decisions=16))
++            self.assertEqual(summary["workload_outcome"], "failure")
++            for extra, out in ((("--case", "memory_pressure",
++                                 "--resident-limit", "2"), "bad1"),
++                               ((), "bad2"), (("--resident-limit", "4"), "bad3")):
++                bad = run(*extra, out=out)
++                self.assertEqual(bad.returncode, 2, (extra, bad.stderr))
++                self.assertIn("--resident-limit for case", bad.stderr)
++
++
++def _pair(trace, key):
++    acc = trace["final"]["accounting"]
++    return tuple(acc[n][key] for n in "ABCD")
++
++
++def _emitted(d):
++    return d["schedules"][0]["outputs"]
++
++
++class MemoryPressureConfigurationTest(unittest.TestCase):
++
++    def test_three_native_configurations(self):
++        inputs = driver.case_inputs(PRESSURE)
++        self.assertEqual({n: (p[0], len(p)) for n, p in inputs["prompts"].items()},
++                         dict(A=(1000, 16), B=(2000, 16), C=(3000, 16),
++                              D=(4000, 16)))
++        flat = [t for p in inputs["prompts"].values() for t in p]
++        self.assertEqual(len(flat), len(set(flat)))
++        for policy in driver.POLICIES:
++            with self.subTest(policy=policy), tempfile.TemporaryDirectory() as tmp:
++                kwargs, (_, cache, parallel, sched, _) = native_configs(
++                    policy, 4, tmp, PRESSURE)
++                self.assertEqual((kwargs["load_format"], kwargs["dtype"],
++                                  kwargs["max_model_len"],
++                                  kwargs["attention_backend"]),
++                                 ("dummy", "float16", 64, "flash_attention"))
++                self.assertEqual((parallel.tensor_parallel_size,
++                                  parallel.pipeline_parallel_size,
++                                  cache.block_size, cache.gpu_memory_utilization),
++                                 (1, 1, 16, 0.5))
++                self.assertEqual((sched.max_num_seqs, sched.max_model_len,
++                                  sched.num_pipeline_stages,
++                                  sched.max_num_batched_tokens), (4, 64, 1, 64))
++                params = driver.run_parameters(policy, 4, PRESSURE)
++                self.assertEqual((params["native_watermark_blocks"],
++                                  params["max_decisions"]), (0, 16))
++                if policy == "adapted_vllm":
++                    self.assertIs(type(sched), AdaptedVLLMSchedulerConfig)
++                else:
++                    self.assertIs(type(sched), LPSchedulerConfig)
++                    self.assertEqual(
++                        (sched.b_max, sched.c_max, sched.s_max,
++                         sched.decode_utility, sched.prefill_token_utility,
++                         sched.preemption_penalty),
++                        (64, 64, 4, 1.0, 1.0, 1.0))
++                    self.assertEqual(sched.numerical_policy,
++                                     lrs.NumericalPolicy(
++                                         **driver.NUMERICAL_POLICY_FIELDS))
++        # The original case's LP caps and limits are unchanged.
++        self.assertEqual(driver.run_parameters("lp_uniform", 1)["s_max"], 1)
++        with self.assertRaises(driver.CheckFailure):
++            driver.run_parameters("lp_uniform", 4)
++        with self.assertRaises(driver.CheckFailure):
++            driver.run_parameters("lp_uniform", 2, PRESSURE)
++
++
++class MemoryPressureReplayTest(unittest.TestCase):
++    """The three policies through real schedulers and native central and
++    worker replay. Every decision passed the driver's checks if ``_run``
++    returned."""
++
++    @classmethod
++    def setUpClass(cls):
++        cls.runs = {p: _run(p, 4, PRESSURE) for p in driver.POLICIES}
++
++    def test_reference_follows_its_specification(self):
++        # Matches the earlier reference preemption case (same workload).
++        runtime, trace, outcome = self.runs["adapted_vllm"]
++        self.assertEqual(outcome, driver.DRAINED)
++        d = trace["decisions"]
++        self.assertEqual([_emitted(x)["preempted_seq_ids"] for x in d],
++                         [[], [], [3, 2], [], [], [], [], []])
++        self.assertEqual([_emitted(x)["scheduled"] for x in d][:5], [
++            [[i, 16] for i in range(4)], [[i, 0] for i in range(4)],
++            [[0, 0], [1, 0]], [[0, 0], [1, 0]], [[2, 17], [3, 17]]])
++        # Zero-demand decodes with zero free blocks: four appends, no block.
++        self.assertEqual(d[1]["before"]["free_blocks"], 0)
++        self.assertEqual([op[:2] + [len(op[2]), len(op[3])]
++                          for op in d[1]["central_ops"]],
++                         [["append", i, 1, 1] for i in range(4)])
++        self.assertTrue(d[1]["victim_need"]["preemption_free_alternative"])
++        # Actual one-block demand: tail victims 3 then 2, then growth 1 -> 2.
++        need = d[2]["victim_need"]
++        self.assertEqual((need["reasons"], need["decode_demands"],
++                          need["preemption_free_alternative"]),
++                         (["decode_block_demand"],
++                          {str(i): 1 for i in range(4)}, False))
++        self.assertEqual([op[:2] + [len(op[2]), len(op[3])]
++                          for op in d[2]["central_ops"]],
++                         [["free", 3, 1, 0], ["free", 2, 1, 0],
++                          ["append", 0, 1, 2], ["append", 1, 1, 2]])
++        self.assertEqual(d[2]["proposals"][0]["waiting_stop_reason"],
++                         "skipped_after_preemption")
++        # Recomputation after generated output: prompt 17, counter reset,
++        # victims front-inserted in reverse preemption order.
++        after = d[2]["after"]
++        self.assertEqual(after["waiting"], [2, 3])
++        for sid in (2, 3):
++            seq = after["seqs"][str(sid)]
++            self.assertEqual((seq["prompt_len"], seq["output_token_ids"],
++                              seq["prompt_tokens_processed"], seq["logical_blocks"]),
++                             (17, [], 0, 2))
++            self.assertEqual(seq["prompt_token_ids"][16], 200 + sid)
++        self.assertEqual(_pair(trace, "generated_token_events"), (3, 3, 4, 4))
++        self.assertEqual(_pair(trace, "overgeneration"), (0, 0, 1, 1))
++        self.assertEqual(_pair(trace, "generated_tokens_moved_to_context"),
++                         (0, 0, 1, 1))
++        self.assertEqual(_pair(trace, "prefill_tokens_replayed"), (0, 0, 16, 16))
++        self.assertEqual(_pair(trace, "prefill_tokens_expanded_context"),
++                         (0, 0, 1, 1))
++        self.assertEqual(trace["idle"]["after"]["free_blocks"], 4)
++
++    def test_lp_decode_prerequisite_at_zero_free_blocks(self):
++        """Same state as the reference's decision 1: four residents with
++        complete prompts, decode demand 0, no free block. No LP plan without
++        a victim is useful, so exactly one victim funds H = 1 and the other
++        three decode."""
++        ref_state = self.runs["adapted_vllm"][1]["decisions"][1]["before"]
++        for policy in ("lp_uniform", "lp_rank_based"):
++            with self.subTest(policy=policy):
++                d = self.runs[policy][1]["decisions"]
++                self.assertEqual(
++                    {k: v for k, v in d[1]["before"].items()
++                     if k in ("running", "waiting", "free_blocks")},
++                    {k: v for k, v in ref_state.items()
++                     if k in ("running", "waiting", "free_blocks")})
++                need = d[1]["victim_need"]
++                self.assertEqual(
++                    (need["reasons"], need["decode_demands"],
++                     need["victim_blocks_needed_physical"],
++                     need["victim_blocks_needed_with_lp_prerequisite"],
++                     need["non_preemptive_actions"]),
++                    (["lp_decode_prerequisite"], {str(i): 0 for i in range(4)},
++                     0, 1, []))
++                victims = _emitted(d[1])["preempted_seq_ids"]
++                self.assertEqual(len(victims), 1)
++                self.assertEqual(sorted(s for s, _ in _emitted(d[1])["scheduled"]),
++                                 sorted(set(range(4)) - set(victims)))
++                plan = d[1]["lp_events"][1]["result"]["plan"]
++                self.assertEqual(plan["free_blocks_before_decodes"], 1)
++                # The relaxation funds H fractionally; extraction rounds it.
++                comparison = d[1]["lp_comparison"]
++                self.assertTrue(comparison["extraction_changed_relaxed"])
++                self.assertGreater(comparison["relaxed_objective"],
++                                   comparison["integer_objective"])
++        # Rank-based: penalty and decode reward are both 1/(1+s), so dropping
++        # the tail (s = 3) is the unique integer optimum: 1 + 1/2 + 1/3 - 1/4.
++        d1 = self.runs["lp_rank_based"][1]["decisions"][1]
++        self.assertEqual(_emitted(d1)["preempted_seq_ids"], [3])
++        self.assertAlmostEqual(d1["lp_comparison"]["integer_objective"],
++                               1 + 1 / 2 + 1 / 3 - 1 / 4)
++        # Uniform: every single-victim plan ties at 3 - 1; the victim is the
++        # solver's vertex and is not prescribed.
++        d1 = self.runs["lp_uniform"][1]["decisions"][1]
++        self.assertAlmostEqual(d1["lp_comparison"]["integer_objective"], 2.0)
++
++    def test_lp_runs_are_consistent_where_observed(self):
++        for policy in ("lp_uniform", "lp_rank_based"):
++            with self.subTest(policy=policy):
++                runtime, trace, outcome = self.runs[policy]
++                self.assertIn(outcome, (driver.DRAINED, driver.BOUNDED_UNFINISHED))
++                acc = trace["final"]["accounting"]
++                for name, a in acc.items():
++                    self.assertEqual(a["prefill_tokens_executed"],
++                                     a["prefill_tokens_first_time"]
++                                     + a["prefill_tokens_replayed"]
++                                     + a["prefill_tokens_expanded_context"])
++                    self.assertLessEqual(a["prefill_tokens_first_time"], 16)
++                    self.assertLessEqual(a["prefill_tokens_expanded_context"],
++                                         a["generated_tokens_moved_to_context"])
++                    if a["completion"] is None:
++                        self.assertIsNone(a["overgeneration"])
++                for d in trace["decisions"]:
++                    victims = _emitted(d)["preempted_seq_ids"]
++                    self.assertEqual(bool(d["victim_need"]["reasons"]),
++                                     bool(victims))
++                    comparison = d["lp_comparison"]
++                    if comparison["fractional_request_count"]:
++                        self.assertTrue(comparison["extraction_changed_relaxed"])
++                if outcome == driver.BOUNDED_UNFINISHED:
++                    final = trace["final"]
++                    self.assertEqual(len(trace["decisions"]), 16)
++                    self.assertIsNone(trace["idle"])
++                    self.assertTrue(runtime.scheduler.has_unfinished_seqs())
++                    self.assertEqual(
++                        final["residual_allocations"],
++                        {"ABCD"[int(k)]: len(v)
++                         for k, v in final["central"]["block_tables"].items()})
++                    self.assertEqual(sorted(final["unfinished"]),
++                                     sorted("ABCD"[int(k)]
++                                            for k in final["central"]["seqs"]))
++                # Preemption after generated output and expanded readmission
++                # are reached in these traces.
++                self.assertGreater(sum(a["preemptions_after_output"]
++                                       for a in acc.values()), 0)
++                self.assertGreater(sum(a["prefill_tokens_expanded_context"]
++                                       for a in acc.values()), 0)
++
++    def test_multiple_actions_keep_order_and_sample_association(self):
++        for policy, (_, trace, _) in self.runs.items():
++            multi = [d for d in trace["decisions"]
++                     if len(_emitted(d)["scheduled"]) > 1]
++            self.assertTrue(multi, policy)
++            for d in multi:
++                # Sampler outputs follow the emitted order, one per entry, with
++                # the synthetic per-request token of that step.
++                step = d["index"] + 1
++                self.assertEqual(d["sampler_outputs"],
++                                 [[s, 100 * step + s]
++                                  for s, _ in _emitted(d)["scheduled"]])
++
++
++class MemoryPressureDetectionTest(unittest.TestCase):
++
++    def test_misassociated_sample_is_detected(self):
++        runtime = CpuRuntime("adapted_vllm", 4, PRESSURE)
++        native = runtime.step
++
++        def swapped():
++            outputs, samples = native()
++            if samples and len(samples) > 1 and runtime.steps == 2:
++                # Report the first two samples under each other's IDs.
++                # The native state keeps the true tokens.
++                samples[0][1], samples[1][1] = samples[1][1], samples[0][1]
++            return outputs, samples
++        runtime.step = swapped
++        with self.assertRaisesRegex(driver.CheckFailure,
++                                    "decision 1: request 0 progress"):
++            _run("adapted_vllm", 4, PRESSURE, runtime)
++
++    def test_mid_run_failure_keeps_the_partial_trace(self):
++        native = lrs.solve_and_extract
++        calls = []
++
++        def fail_third(problem):
++            calls.append(problem.problem_id)
++            if len(calls) == 3:
++                return lrs.Failure(problem.problem_id, lrs.STAGE_SOLVER,
++                                   lrs.OUTCOME_NUMERICAL, "injected", "test")
++            return native(problem)
++        trace = {}
++        runtime = CpuRuntime("lp_uniform", 4, PRESSURE)
++        with mock.patch.object(lrs, "solve_and_extract", fail_third):
++            with self.assertRaises(LPSchedulingError):
++                driver.run_comparison("lp_uniform", 4, runtime, trace, PRESSURE)
++        self.assertEqual(len(trace["decisions"]), 3)
++        self.assertIn("victim_need", trace["decisions"][1])
++        self.assertEqual(trace["decisions"][2]["central_ops"], [])
++        self.assertIsNone(trace["final"])
++
+ 
+ if __name__ == "__main__":
+     unittest.main()
