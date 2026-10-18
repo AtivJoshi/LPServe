@@ -1,0 +1,63 @@
+model: /home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6
+replica_id: 0
+replica_resource_mapping: []
+tokenizer: /home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6
+tokenizer_mode: auto
+trust_remote_code: true
+download_dir: null
+load_format: dummy
+dtype: float16
+seed: 42
+pipeline_parallel_size: 1
+tensor_parallel_size: 1
+block_size: 16
+gpu_memory_utilization: 0.5
+revision: null
+scheduler_type: lp
+max_model_len: 32
+max_num_seqs: 2
+max_num_batched_tokens: null
+chunk_size: null
+enable_dynamic_chunking_schedule: false
+low_chunk_size: null
+high_chunk_size: null
+chunk_schedule_max_tokens: null
+chunk_schedule_stages: null
+token_budget: null
+fcfs: null
+fixed_offset: null
+below_memory_limit_offset: null
+above_memory_limit_offset: null
+memory_limit: null
+user_priority: null
+time_between_tokens: null
+process_smallest_prefill: null
+limit_total_decodes: null
+hold_n_scheduler_hold_n: null
+hold_n_scheduler_token_budget: null
+hold_n_scheduler_prefill_factor: null
+write_metrics: true
+output_dir: validation_output/scheduler_comparison/20261018T063322Z/lp_uniform_resident2/metrics_store_unused
+wandb_project: null
+wandb_sweep_id: null
+wandb_run_id: null
+wandb_group: null
+wandb_run_name: null
+enable_op_level_metrics: false
+enable_cpu_op_level_metrics: false
+enable_chrome_trace: false
+enable_request_outputs: false
+keep_individual_batch_metrics: true
+attention_backend: flash_attention
+lp_b_max: 8
+lp_c_max: 8
+lp_s_max: 1
+lp_decode_utility: 1.0
+lp_prefill_token_utility: 1.0
+lp_preemption_penalty: 1.0
+lp_numerical_policy:
+  policy_id: lp_relaxation_mvp_v1
+  feasibility_tol: 1.0e-07
+  integrality_tol: 1.0e-06
+  objective_abs_tol: 1.0e-09
+  objective_rel_tol: 1.0e-09

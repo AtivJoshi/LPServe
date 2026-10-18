@@ -1,0 +1,53 @@
+`torch_dtype` is deprecated! Use `dtype` instead!
+WARNING 10-18 06:36:01 config.py:666] Casting torch.bfloat16 to torch.float16.
+environment: {
+ "hostname": "gpu049",
+ "slurm": {
+  "SLURM_JOB_ID": "65821002",
+  "SLURM_JOB_NODELIST": "gpu049",
+  "SLURM_JOB_PARTITION": "gpu-preempt",
+  "SLURM_STEP_ID": "4294967290"
+ },
+ "cuda_visible_devices": "0",
+ "gpu": "0, NVIDIA A16, GPU-550e163c-e6cb-b9a9-8f68-342d097c2226, 595.91.07, 15356 MiB",
+ "torch_cuda": "12.1",
+ "python_executable": "/home/atjoshi_umass_edu/LPServe/env/bin/python",
+ "python_version": "3.10.8",
+ "virtual_env": "/home/atjoshi_umass_edu/LPServe/env",
+ "pythonpath": "/home/atjoshi_umass_edu/LPServe",
+ "versions": {
+  "torch": "2.3.0+cu121",
+  "transformers": "4.57.6",
+  "ray": "2.58.0",
+  "numpy": "2.2.6",
+  "scipy": "1.15.3",
+  "flashinfer": "0.2.0.post1+cu121torch2.3",
+  "vllm-flash-attn": "2.5.9",
+  "sarathi": "0.1.7",
+  "nvidia-ml-py": "13.595.45",
+  "huggingface-hub": "0.36.2",
+  "tokenizers": "0.22.2"
+ },
+ "git_head": "0aa6cb741f81406032b15c3e1753e13678b4c0fc",
+ "git_status_short": "?? scripts/compare_scheduler_gpu.py\n?? validation_output/scheduler_comparison/20261018T063322Z/adapted_vllm_resident2/cleanup.json\n?? validation_output/scheduler_comparison/20261018T063322Z/adapted_vllm_resident2/command.txt\n?? validation_output/scheduler_comparison/20261018T063322Z/adapted_vllm_resident2/decision_trace.json\n?? validation_output/scheduler_comparison/20261018T063322Z/adapted_vllm_resident2/exit_status.txt\n?? validation_output/scheduler_comparison/20261018T063322Z/adapted_vllm_resident2/metrics_store_unused/config.yml\n?? validation_output/scheduler_comparison/20261018T063322Z/adapted_vllm_resident2/summary.json\n?? validation_output/scheduler_comparison/20261018T063322Z/cpu_checks/01_py_compile.txt\n?? validation_output/scheduler_comparison/20261018T063322Z/cpu_checks/02_help.txt\n?? validation_output/scheduler_comparison/20261018T063322Z/cpu_checks/03_driver_cpu.txt\n?? validation_output/scheduler_comparison/20261018T063322Z/cpu_checks/04_whitespace.txt\n?? validation_output/scheduler_comparison/20261018T063322Z/cpu_checks/05_git_diff_check.txt\n?? validation_output/scheduler_comparison/20261018T063322Z/cpu_checks/environment.txt\n?? validation_output/scheduler_comparison/20261018T063322Z/cpu_checks/git_state.txt\n?? validation_output/scheduler_comparison/20261018T063322Z/cpu_checks/run_checks.sh\n?? validation_output/scheduler_comparison/20261018T063322Z/cpu_checks/sha256sums.txt\n?? validation_output/scheduler_comparison/20261018T063322Z/cpu_checks/working_tree.diff\n?? validation_output/scheduler_comparison/20261018T063322Z/git_state_gpu.txt\n?? validation_output/scheduler_comparison/20261018T063322Z/lp_rank_based_resident2/command.txt\n?? validation_output/scheduler_comparison/20261018T063322Z/lp_rank_based_resident2/metrics_store_unused/config.yml\n?? validation_output/scheduler_comparison/20261018T063322Z/lp_uniform_resident2/cleanup.json\n?? validation_output/scheduler_comparison/20261018T063322Z/lp_uniform_resident2/command.txt\n?? validation_output/scheduler_comparison/20261018T063322Z/lp_uniform_resident2/decision_trace.json\n?? validation_output/scheduler_comparison/20261018T063322Z/lp_uniform_resident2/exit_status.txt\n?? validation_output/scheduler_comparison/20261018T063322Z/lp_uniform_resident2/metrics_store_unused/config.yml\n?? validation_output/scheduler_comparison/20261018T063322Z/lp_uniform_resident2/summary.json\n?? validation_output/scheduler_comparison/20261018T063322Z/run_gpu.sh\n?? validation_output/scheduler_comparison/20261018T063322Z/run_gpu_stdout.txt\n?? validation_output/scheduler_comparison/20261018T063322Z/scripts/summarize.py\n?? validation_output/scheduler_comparison/20261018T063322Z/sha256sums_gpu.txt\n?? validation_output/scheduler_comparison/20261018T063322Z/shell_environment.txt",
+ "cwd": "/home/atjoshi_umass_edu/LPServe"
+}
+INFO 10-18 06:36:01 base_llm_engine.py:69] Initializing an LLM engine with config: model='/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6', tokenizer='/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6', tokenizer_mode=auto, revision=None, trust_remote_code=True, dtype=torch.float16, download_dir=None, load_format=dummy, tensor_parallel_size=1, pipeline_parallel_size=1, seed=42)
+2026-10-18 06:36:08,064	INFO worker.py:2024 -- Started a local Ray instance.
+INFO 10-18 06:36:20 base_llm_engine.py:147] Starting workers with resource mapping: [(None, 0)]
+INFO 10-18 06:36:20 base_llm_engine.py:190] Initializing workers with distributed init method: tcp://10.100.20.49:48229
+[36m(RayWorker pid=2459186)[0m INFO 10-18 06:36:27 base_worker.py:103] Worker 0 is using device 0
+[36m(RayWorker pid=2459186)[0m INFO 10-18 06:36:27 base_worker.py:122] Initializing worker 0 on device cuda:0, tensor parallel rank 0 and pipeline parallel rank 0.
+[36m(RayWorker pid=2459186)[0m INFO 10-18 06:36:27 base_worker.py:138] Model initialized on worker 0.
+INFO 10-18 06:36:28 base_llm_engine.py:243] # GPU blocks: 8
+INFO 10-18 06:36:28 base_llm_engine.py:130] Scheduler initialised, block_manager has 8 total blocks
+cache capacity: {"profiled_available_blocks": [15616], "chosen_initialized_blocks": 8, "profile_calls": 1, "initializations": [{"num_gpu_blocks": 8, "result": [null]}], "engine_cache_config_num_gpu_blocks": 8, "central_manager_total_blocks": 8, "worker": {"total_blocks": 8, "watermark_blocks": 0, "free_blocks": 8, "free_block_ids": [0, 1, 2, 3, 4, 5, 6, 7], "block_tables": {}, "block_ops": [], "cache_config_num_gpu_blocks": 8, "cache_engine_num_gpu_blocks": 8, "cache_layers": 22, "cache_tensor_block_dims": [8], "cache_tensor_shapes": [[8, 16, 4, 64]], "allocator_num_blocks": 8}}
+config: {"model": "TinyLlama/TinyLlama-1.1B-Chat-v1.0", "engine_args": {"model": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6", "replica_id": 0, "replica_resource_mapping": [], "tokenizer": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6", "tokenizer_mode": "auto", "trust_remote_code": true, "download_dir": null, "load_format": "dummy", "dtype": "float16", "seed": 42, "pipeline_parallel_size": 1, "tensor_parallel_size": 1, "block_size": 16, "gpu_memory_utilization": 0.5, "revision": null, "scheduler_type": "lp", "max_model_len": 32, "max_num_seqs": 2, "max_num_batched_tokens": null, "chunk_size": null, "enable_dynamic_chunking_schedule": false, "low_chunk_size": null, "high_chunk_size": null, "chunk_schedule_max_tokens": null, "chunk_schedule_stages": null, "token_budget": null, "fcfs": null, "fixed_offset": null, "below_memory_limit_offset": null, "above_memory_limit_offset": null, "memory_limit": null, "user_priority": null, "time_between_tokens": null, "process_smallest_prefill": null, "limit_total_decodes": null, "hold_n_scheduler_hold_n": null, "hold_n_scheduler_token_budget": null, "hold_n_scheduler_prefill_factor": null, "write_metrics": true, "output_dir": "validation_output/scheduler_comparison/20261018T063322Z/lp_rank_based_resident2/metrics_store_unused", "wandb_project": null, "wandb_sweep_id": null, "wandb_run_id": null, "wandb_group": null, "wandb_run_name": null, "enable_op_level_metrics": false, "enable_cpu_op_level_metrics": false, "enable_chrome_trace": false, "enable_request_outputs": false, "keep_individual_batch_metrics": true, "attention_backend": "flash_attention", "lp_b_max": 8, "lp_c_max": 8, "lp_s_max": 1, "lp_memory_reserve": "<omitted>", "lp_decode_memory_policy_id": "<omitted>", "lp_decode_utility": 1.0, "lp_prefill_token_utility": 1.0, "lp_preemption_penalty": 1.0, "lp_numerical_policy": {"policy_id": "lp_relaxation_mvp_v1", "feasibility_tol": 1e-07, "integrality_tol": 1e-06, "objective_abs_tol": 1e-09, "objective_rel_tol": 1e-09}}, "resolved_dtype": "torch.float16", "hf_config_commit_hash": "fe8a4ea1ffedaf415f4da2f062534de366a451e6", "scheduler_class": "LPScheduler", "scheduler_config": {"max_num_seqs": 2, "max_model_len": 32, "num_pipeline_stages": 1, "b_max": 8, "c_max": 8, "s_max": 1, "decode_utility": 1.0, "prefill_token_utility": 1.0, "preemption_penalty": 1.0, "numerical_policy": {"policy_id": "lp_relaxation_mvp_v1", "feasibility_tol": 1e-07, "integrality_tol": 1e-06, "objective_abs_tol": 1e-09, "objective_rel_tol": 1e-09}}, "vocab_size": 32000, "eos_token_id": 2, "engine_init_seconds": 26.068}
+lp_rank_based limit 2 decision 0: preempted [] emitted [[0, 5]] free 7/7
+lp_rank_based limit 2 decision 1: preempted [] emitted [[1, 8]] free 6/6
+lp_rank_based limit 2 decision 2: preempted [] emitted [[0, 0]] free 6/6
+lp_rank_based limit 2 decision 3: preempted [] emitted [[0, 0]] free 7/7
+lp_rank_based limit 2 decision 4: preempted [] emitted [[1, 0]] free 7/7
+lp_rank_based limit 2 decision 5: preempted [] emitted [[1, 0]] free 8/8
+cleanup: {"engine_constructed": true, "ray_initialized_before_shutdown": true, "ray_initialized_after_shutdown": false}
+RESULT: PASS workload: drained

@@ -1,0 +1,141 @@
+GPU comparison (decision indices; dummy weights; not latency)
+
+run                         valid            outcome  dec  1st pre  1st dec     done  events   preempt    recomp   omitted
+adapted_vllm_resident2       True            drained    4      0/0      1/2      2/3     2/2       0/0       0/0       0/0
+lp_uniform_resident2         True            drained    6      1/0      4/2      5/3     2/2       0/0       0/0       3/1
+lp_rank_based_resident2      True            drained    6      0/1      2/4      3/5     2/2       0/0       0/0       1/3
+adapted_vllm_resident1       True            drained    6      0/3      1/4      2/5     2/2       0/0       0/0       0/3
+lp_uniform_resident1         True bounded_unfinished    8      1/0      -/-      -/-     0/0       3/4     15/24       1/0
+lp_rank_based_resident1      True bounded_unfinished    8      0/1      -/-      -/-     0/0       4/3     15/24       0/1
+
+Columns are A/B. recomp = prefill tokens executed beyond the original prompt (repeated computation); omitted = decisions in which an unfinished arrived request was neither served nor preempted.
+
+Capacity and arrivals
+  adapted_vllm_resident2: profiled [15616] initialized 8; arrivals A=616807.371594851 B=616807.372902668 first decision 616807.375460473
+  lp_uniform_resident2: profiled [15616] initialized 8; arrivals A=616846.578853387 B=616846.580209587 first decision 616846.58283188
+  lp_rank_based_resident2: profiled [15616] initialized 8; arrivals A=616883.768215726 B=616883.769626359 first decision 616883.772170072
+  adapted_vllm_resident1: profiled [15616] initialized 8; arrivals A=616919.015395551 B=616919.016880086 first decision 616919.019526015
+  lp_uniform_resident1: profiled [15616] initialized 8; arrivals A=616954.613795839 B=616954.61515987 first decision 616954.61778695
+  lp_rank_based_resident1: profiled [15616] initialized 8; arrivals A=616993.422162448 B=616993.423484596 first decision 616993.425918352
+
+Per decision: before-state -> policy record -> emitted (free central/worker after)
+[adapted_vllm_resident2]
+  0: R[-] W[A,B] free=8 A(0/5,o0) B(0/8,o0)
+     select [('A', 'adm', 5), ('B', 'adm', 3)] victims [] stop=(running_exhausted,arrived_waiting_exhausted)
+     -> preempt [] emit [('A', 5), ('B', 3)] (free 6/6) samples [[0, 17573], [1, 12297]]
+  1: R[A,B] W[-] free=6 A(5/5,o0) B(3/8,o0)
+     select [('A', 'dec', 1), ('B', 'res', 5)] victims [] stop=(running_exhausted,arrived_waiting_exhausted)
+     -> preempt [] emit [('B', 5), ('A', 0)] (free 6/6) samples [[1, 15619], [0, 17573]]
+  2: R[A,B] W[-] free=6 A(5/5,o1) B(8/8,o0)
+     select [('A', 'dec', 1), ('B', 'dec', 1)] victims [] stop=(running_exhausted,arrived_waiting_exhausted)
+     -> preempt [] emit [('A', 0), ('B', 0)] (free 7/7) samples [[0, 18757], [1, 15619]]
+  3: R[B] W[-] free=7 B(8/8,o1)
+     select [('B', 'dec', 1)] victims [] stop=(running_exhausted,arrived_waiting_exhausted)
+     -> preempt [] emit [('B', 0)] (free 8/8) samples [[1, 13105]]
+[lp_uniform_resident2]
+  0: R[-] W[A,B] free=8 A(0/5,o0) B(0/8,o0)
+     coeff(a,b,g) A=(1,1,1) B=(1,1,1); status 0 it 3; relaxed A:x=-0,y=0,I=-0,z=0 B:x=8,y=0,I=1,z=0 obj 8; plan A:(0,0,0) B:(8,0,0) obj 8 frac 0
+     -> preempt [] emit [('B', 8)] (free 7/7) samples [[1, 15619]]
+  1: R[B] W[A] free=7 A(0/5,o0) B(8/8,o0)
+     coeff(a,b,g) A=(1,1,1) B=(1,1,1); status 0 it 0; relaxed A:x=5,y=0,I=1,z=0 B:x=-0,y=0,I=0,z=0 obj 5; plan A:(5,0,0) B:(0,0,0) obj 5 frac 0
+     -> preempt [] emit [('A', 5)] (free 6/6) samples [[0, 17573]]
+  2: R[B,A] W[-] free=6 A(5/5,o0) B(8/8,o0)
+     coeff(a,b,g) A=(1,1,1) B=(1,1,1); status 0 it 0; relaxed A:x=-0,y=0,I=0,z=0 B:x=-0,y=1,I=0,z=0 obj 1; plan A:(0,0,0) B:(0,1,0) obj 1 frac 0
+     -> preempt [] emit [('B', 0)] (free 6/6) samples [[1, 15619]]
+  3: R[B,A] W[-] free=6 A(5/5,o0) B(8/8,o1)
+     coeff(a,b,g) A=(1,1,1) B=(1,1,1); status 0 it 0; relaxed A:x=-0,y=0,I=0,z=0 B:x=-0,y=1,I=0,z=0 obj 1; plan A:(0,0,0) B:(0,1,0) obj 1 frac 0
+     -> preempt [] emit [('B', 0)] (free 7/7) samples [[1, 13105]]
+  4: R[A] W[-] free=7 A(5/5,o0)
+     coeff(a,b,g) A=(1,1,1); status 0 it 0; relaxed A:x=-0,y=1,I=0,z=0 obj 1; plan A:(0,1,0) obj 1 frac 0
+     -> preempt [] emit [('A', 0)] (free 7/7) samples [[0, 17573]]
+  5: R[A] W[-] free=7 A(5/5,o1)
+     coeff(a,b,g) A=(1,1,1); status 0 it 0; relaxed A:x=-0,y=1,I=0,z=0 obj 1; plan A:(0,1,0) obj 1 frac 0
+     -> preempt [] emit [('A', 0)] (free 8/8) samples [[0, 18757]]
+[lp_rank_based_resident2]
+  0: R[-] W[A,B] free=8 A(0/5,o0) B(0/8,o0)
+     coeff(a,b,g) A=(1,1,0) B=(0.5,0.5,0); status 0 it 3; relaxed A:x=5,y=0,I=1,z=0 B:x=-0,y=0,I=0,z=0 obj 5; plan A:(5,0,0) B:(0,0,0) obj 5 frac 0
+     -> preempt [] emit [('A', 5)] (free 7/7) samples [[0, 17573]]
+  1: R[A] W[B] free=7 A(5/5,o0) B(0/8,o0)
+     coeff(a,b,g) A=(1,1,1) B=(0.5,0.5,0); status 0 it 2; relaxed A:x=-0,y=-0,I=0,z=0 B:x=8,y=0,I=1,z=0 obj 4; plan A:(0,0,0) B:(8,0,0) obj 4 frac 0
+     -> preempt [] emit [('B', 8)] (free 6/6) samples [[1, 15619]]
+  2: R[A,B] W[-] free=6 A(5/5,o0) B(8/8,o0)
+     coeff(a,b,g) A=(1,1,1) B=(0.5,0.5,0.5); status 0 it 0; relaxed A:x=-0,y=1,I=0,z=0 B:x=-0,y=0,I=0,z=0 obj 1; plan A:(0,1,0) B:(0,0,0) obj 1 frac 0
+     -> preempt [] emit [('A', 0)] (free 6/6) samples [[0, 17573]]
+  3: R[A,B] W[-] free=6 A(5/5,o1) B(8/8,o0)
+     coeff(a,b,g) A=(1,1,1) B=(0.5,0.5,0.5); status 0 it 0; relaxed A:x=-0,y=1,I=0,z=0 B:x=-0,y=0,I=0,z=0 obj 1; plan A:(0,1,0) B:(0,0,0) obj 1 frac 0
+     -> preempt [] emit [('A', 0)] (free 7/7) samples [[0, 18757]]
+  4: R[B] W[-] free=7 B(8/8,o0)
+     coeff(a,b,g) B=(1,1,1); status 0 it 0; relaxed B:x=-0,y=1,I=0,z=0 obj 1; plan B:(0,1,0) obj 1 frac 0
+     -> preempt [] emit [('B', 0)] (free 7/7) samples [[1, 15619]]
+  5: R[B] W[-] free=7 B(8/8,o1)
+     coeff(a,b,g) B=(1,1,1); status 0 it 0; relaxed B:x=-0,y=1,I=0,z=0 obj 1; plan B:(0,1,0) obj 1 frac 0
+     -> preempt [] emit [('B', 0)] (free 8/8) samples [[1, 13105]]
+[adapted_vllm_resident1]
+  0: R[-] W[A,B] free=8 A(0/5,o0) B(0/8,o0)
+     select [('A', 'adm', 5)] victims [] stop=(running_exhausted,resident_limit)
+     -> preempt [] emit [('A', 5)] (free 7/7) samples [[0, 17573]]
+  1: R[A] W[B] free=7 A(5/5,o0) B(0/8,o0)
+     select [('A', 'dec', 1)] victims [] stop=(running_exhausted,resident_limit)
+     -> preempt [] emit [('A', 0)] (free 7/7) samples [[0, 17573]]
+  2: R[A] W[B] free=7 A(5/5,o1) B(0/8,o0)
+     select [('A', 'dec', 1)] victims [] stop=(running_exhausted,resident_limit)
+     -> preempt [] emit [('A', 0)] (free 8/8) samples [[0, 18757]]
+  3: R[-] W[B] free=8 B(0/8,o0)
+     select [('B', 'adm', 8)] victims [] stop=(running_exhausted,arrived_waiting_exhausted)
+     -> preempt [] emit [('B', 8)] (free 7/7) samples [[1, 15619]]
+  4: R[B] W[-] free=7 B(8/8,o0)
+     select [('B', 'dec', 1)] victims [] stop=(running_exhausted,arrived_waiting_exhausted)
+     -> preempt [] emit [('B', 0)] (free 7/7) samples [[1, 15619]]
+  5: R[B] W[-] free=7 B(8/8,o1)
+     select [('B', 'dec', 1)] victims [] stop=(running_exhausted,arrived_waiting_exhausted)
+     -> preempt [] emit [('B', 0)] (free 8/8) samples [[1, 13105]]
+[lp_uniform_resident1]
+  0: R[-] W[A,B] free=8 A(0/5,o0) B(0/8,o0)
+     coeff(a,b,g) A=(1,1,1) B=(1,1,1); status 0 it 3; relaxed A:x=-0,y=0,I=-0,z=0 B:x=8,y=0,I=1,z=0 obj 8; plan A:(0,0,0) B:(8,0,0) obj 8 frac 0
+     -> preempt [] emit [('B', 8)] (free 7/7) samples [[1, 15619]]
+  1: R[B] W[A] free=7 A(0/5,o0) B(8/8,o0)
+     coeff(a,b,g) A=(1,1,1) B=(1,1,1); status 0 it 0; relaxed A:x=5,y=0,I=1,z=0 B:x=-0,y=-0,I=0,z=1 obj 4; plan A:(5,0,0) B:(0,0,1) obj 4 frac 0
+     -> preempt ['B'] emit [('A', 5)] (free 7/7) samples [[0, 17573]]
+  2: R[A] W[B] free=7 A(5/5,o0) B(0/8,o0)
+     coeff(a,b,g) A=(1,1,1) B=(1,1,1); status 0 it 2; relaxed A:x=-0,y=-0,I=0,z=1 B:x=8,y=0,I=1,z=0 obj 7; plan A:(0,0,1) B:(8,0,0) obj 7 frac 0
+     -> preempt ['A'] emit [('B', 8)] (free 7/7) samples [[1, 15619]]
+  3: R[B] W[A] free=7 A(0/5,o0) B(8/8,o0)
+     coeff(a,b,g) A=(1,1,1) B=(1,1,1); status 0 it 0; relaxed A:x=5,y=0,I=1,z=0 B:x=-0,y=-0,I=0,z=1 obj 4; plan A:(5,0,0) B:(0,0,1) obj 4 frac 0
+     -> preempt ['B'] emit [('A', 5)] (free 7/7) samples [[0, 17573]]
+  4: R[A] W[B] free=7 A(5/5,o0) B(0/8,o0)
+     coeff(a,b,g) A=(1,1,1) B=(1,1,1); status 0 it 2; relaxed A:x=-0,y=-0,I=0,z=1 B:x=8,y=0,I=1,z=0 obj 7; plan A:(0,0,1) B:(8,0,0) obj 7 frac 0
+     -> preempt ['A'] emit [('B', 8)] (free 7/7) samples [[1, 15619]]
+  5: R[B] W[A] free=7 A(0/5,o0) B(8/8,o0)
+     coeff(a,b,g) A=(1,1,1) B=(1,1,1); status 0 it 0; relaxed A:x=5,y=0,I=1,z=0 B:x=-0,y=-0,I=0,z=1 obj 4; plan A:(5,0,0) B:(0,0,1) obj 4 frac 0
+     -> preempt ['B'] emit [('A', 5)] (free 7/7) samples [[0, 17573]]
+  6: R[A] W[B] free=7 A(5/5,o0) B(0/8,o0)
+     coeff(a,b,g) A=(1,1,1) B=(1,1,1); status 0 it 2; relaxed A:x=-0,y=-0,I=0,z=1 B:x=8,y=0,I=1,z=0 obj 7; plan A:(0,0,1) B:(8,0,0) obj 7 frac 0
+     -> preempt ['A'] emit [('B', 8)] (free 7/7) samples [[1, 15619]]
+  7: R[B] W[A] free=7 A(0/5,o0) B(8/8,o0)
+     coeff(a,b,g) A=(1,1,1) B=(1,1,1); status 0 it 0; relaxed A:x=5,y=0,I=1,z=0 B:x=-0,y=-0,I=0,z=1 obj 4; plan A:(5,0,0) B:(0,0,1) obj 4 frac 0
+     -> preempt ['B'] emit [('A', 5)] (free 7/7) samples [[0, 17573]]
+[lp_rank_based_resident1]
+  0: R[-] W[A,B] free=8 A(0/5,o0) B(0/8,o0)
+     coeff(a,b,g) A=(1,1,0) B=(0.5,0.5,0); status 0 it 3; relaxed A:x=5,y=0,I=1,z=0 B:x=-0,y=0,I=0,z=0 obj 5; plan A:(5,0,0) B:(0,0,0) obj 5 frac 0
+     -> preempt [] emit [('A', 5)] (free 7/7) samples [[0, 17573]]
+  1: R[A] W[B] free=7 A(5/5,o0) B(0/8,o0)
+     coeff(a,b,g) A=(1,1,1) B=(0.5,0.5,0); status 0 it 2; relaxed A:x=-0,y=-0,I=0,z=1 B:x=8,y=0,I=1,z=0 obj 3; plan A:(0,0,1) B:(8,0,0) obj 3 frac 0
+     -> preempt ['A'] emit [('B', 8)] (free 7/7) samples [[1, 15619]]
+  2: R[B] W[A] free=7 A(0/5,o0) B(8/8,o0)
+     coeff(a,b,g) A=(0.5,0.5,0) B=(1,1,1); status 0 it 0; relaxed A:x=5,y=0,I=1,z=0 B:x=-0,y=-0,I=0,z=1 obj 1.5; plan A:(5,0,0) B:(0,0,1) obj 1.5 frac 0
+     -> preempt ['B'] emit [('A', 5)] (free 7/7) samples [[0, 17573]]
+  3: R[A] W[B] free=7 A(5/5,o0) B(0/8,o0)
+     coeff(a,b,g) A=(1,1,1) B=(0.5,0.5,0); status 0 it 2; relaxed A:x=-0,y=-0,I=0,z=1 B:x=8,y=0,I=1,z=0 obj 3; plan A:(0,0,1) B:(8,0,0) obj 3 frac 0
+     -> preempt ['A'] emit [('B', 8)] (free 7/7) samples [[1, 15619]]
+  4: R[B] W[A] free=7 A(0/5,o0) B(8/8,o0)
+     coeff(a,b,g) A=(0.5,0.5,0) B=(1,1,1); status 0 it 0; relaxed A:x=5,y=0,I=1,z=0 B:x=-0,y=-0,I=0,z=1 obj 1.5; plan A:(5,0,0) B:(0,0,1) obj 1.5 frac 0
+     -> preempt ['B'] emit [('A', 5)] (free 7/7) samples [[0, 17573]]
+  5: R[A] W[B] free=7 A(5/5,o0) B(0/8,o0)
+     coeff(a,b,g) A=(1,1,1) B=(0.5,0.5,0); status 0 it 2; relaxed A:x=-0,y=-0,I=0,z=1 B:x=8,y=0,I=1,z=0 obj 3; plan A:(0,0,1) B:(8,0,0) obj 3 frac 0
+     -> preempt ['A'] emit [('B', 8)] (free 7/7) samples [[1, 15619]]
+  6: R[B] W[A] free=7 A(0/5,o0) B(8/8,o0)
+     coeff(a,b,g) A=(0.5,0.5,0) B=(1,1,1); status 0 it 0; relaxed A:x=5,y=0,I=1,z=0 B:x=-0,y=-0,I=0,z=1 obj 1.5; plan A:(5,0,0) B:(0,0,1) obj 1.5 frac 0
+     -> preempt ['B'] emit [('A', 5)] (free 7/7) samples [[0, 17573]]
+  7: R[A] W[B] free=7 A(5/5,o0) B(0/8,o0)
+     coeff(a,b,g) A=(1,1,1) B=(0.5,0.5,0); status 0 it 2; relaxed A:x=-0,y=-0,I=0,z=1 B:x=8,y=0,I=1,z=0 obj 3; plan A:(0,0,1) B:(8,0,0) obj 3 frac 0
+     -> preempt ['A'] emit [('B', 8)] (free 7/7) samples [[1, 15619]]
