@@ -1,0 +1,55 @@
+`torch_dtype` is deprecated! Use `dtype` instead!
+WARNING 10-18 06:11:17 config.py:666] Casting torch.bfloat16 to torch.float16.
+environment: {
+ "hostname": "gpu049",
+ "slurm": {
+  "SLURM_JOB_ID": "65821002",
+  "SLURM_JOB_NODELIST": "gpu049",
+  "SLURM_JOB_PARTITION": "gpu-preempt",
+  "SLURM_STEP_ID": "4294967290"
+ },
+ "cuda_visible_devices": "0",
+ "gpu": "0, NVIDIA A16, GPU-550e163c-e6cb-b9a9-8f68-342d097c2226, 595.91.07, 15356 MiB",
+ "torch_cuda": "12.1",
+ "python_executable": "/home/atjoshi_umass_edu/LPServe/env/bin/python",
+ "python_version": "3.10.8",
+ "virtual_env": "/home/atjoshi_umass_edu/LPServe/env",
+ "pythonpath": "/home/atjoshi_umass_edu/LPServe:/modules/uri_apps/software/Python/3.10.8-GCCcore-12.2.0/easybuild/python",
+ "versions": {
+  "torch": "2.3.0+cu121",
+  "transformers": "4.57.6",
+  "ray": "2.58.0",
+  "numpy": "2.2.6",
+  "scipy": "1.15.3",
+  "flashinfer": "0.2.0.post1+cu121torch2.3",
+  "vllm-flash-attn": "2.5.9",
+  "sarathi": "0.1.7",
+  "nvidia-ml-py": "13.595.45",
+  "huggingface-hub": "0.36.2",
+  "tokenizers": "0.22.2"
+ },
+ "git_head": "9b9273aba5823b9d0b9192e546fe397a6f61d692",
+ "git_status_short": "?? validation_output/adapted_vllm_gpu/20261018T060946Z/mixed/cleanup.json\n?? validation_output/adapted_vllm_gpu/20261018T060946Z/mixed/command.txt\n?? validation_output/adapted_vllm_gpu/20261018T060946Z/mixed/decision_trace.json\n?? validation_output/adapted_vllm_gpu/20261018T060946Z/mixed/exit_status.txt\n?? validation_output/adapted_vllm_gpu/20261018T060946Z/mixed/metrics_store_unused/config.yml\n?? validation_output/adapted_vllm_gpu/20261018T060946Z/mixed/summary.json\n?? validation_output/adapted_vllm_gpu/20261018T060946Z/preemption/command.txt\n?? validation_output/adapted_vllm_gpu/20261018T060946Z/preemption/metrics_store_unused/config.yml\n?? validation_output/adapted_vllm_gpu/20261018T060946Z/shell_environment.txt",
+ "cwd": "/home/atjoshi_umass_edu/LPServe"
+}
+INFO 10-18 06:11:17 base_llm_engine.py:69] Initializing an LLM engine with config: model='/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6', tokenizer='/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6', tokenizer_mode=auto, revision=None, trust_remote_code=True, dtype=torch.float16, download_dir=None, load_format=dummy, tensor_parallel_size=1, pipeline_parallel_size=1, seed=42)
+2026-10-18 06:11:23,628	INFO worker.py:2024 -- Started a local Ray instance.
+INFO 10-18 06:11:36 base_llm_engine.py:147] Starting workers with resource mapping: [(None, 0)]
+INFO 10-18 06:11:36 base_llm_engine.py:190] Initializing workers with distributed init method: tcp://10.100.20.49:35915
+[36m(RayWorker pid=2445817)[0m INFO 10-18 06:11:43 base_worker.py:103] Worker 0 is using device 0
+[36m(RayWorker pid=2445817)[0m INFO 10-18 06:11:43 base_worker.py:122] Initializing worker 0 on device cuda:0, tensor parallel rank 0 and pipeline parallel rank 0.
+[36m(RayWorker pid=2445817)[0m INFO 10-18 06:11:43 base_worker.py:138] Model initialized on worker 0.
+INFO 10-18 06:11:44 base_llm_engine.py:243] # GPU blocks: 4
+INFO 10-18 06:11:44 base_llm_engine.py:130] Scheduler initialised, block_manager has 4 total blocks
+cache capacity: {"profiled_available_blocks": [15606], "chosen_initialized_blocks": 4, "profile_calls": 1, "initializations": [{"num_gpu_blocks": 4, "result": [null]}], "engine_cache_config_num_gpu_blocks": 4, "central_manager_total_blocks": 4, "worker": {"total_blocks": 4, "watermark_blocks": 0, "free_blocks": 4, "free_block_ids": [0, 1, 2, 3], "block_tables": {}, "block_ops": [], "cache_config_num_gpu_blocks": 4, "cache_engine_num_gpu_blocks": 4, "cache_layers": 22, "cache_tensor_block_dims": [4], "cache_tensor_shapes": [[4, 16, 4, 64]], "allocator_num_blocks": 4}}
+config: {"model": "TinyLlama/TinyLlama-1.1B-Chat-v1.0", "engine_args": {"model": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6", "replica_id": 0, "replica_resource_mapping": [], "tokenizer": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6", "tokenizer_mode": "auto", "trust_remote_code": true, "download_dir": null, "load_format": "dummy", "dtype": "float16", "seed": 42, "pipeline_parallel_size": 1, "tensor_parallel_size": 1, "block_size": 16, "gpu_memory_utilization": 0.5, "revision": null, "scheduler_type": "adapted_vllm", "max_model_len": 64, "max_num_seqs": 4, "max_num_batched_tokens": 64, "chunk_size": null, "enable_dynamic_chunking_schedule": false, "low_chunk_size": null, "high_chunk_size": null, "chunk_schedule_max_tokens": null, "chunk_schedule_stages": null, "token_budget": null, "fcfs": null, "fixed_offset": null, "below_memory_limit_offset": null, "above_memory_limit_offset": null, "memory_limit": null, "user_priority": null, "time_between_tokens": null, "process_smallest_prefill": null, "limit_total_decodes": null, "hold_n_scheduler_hold_n": null, "hold_n_scheduler_token_budget": null, "hold_n_scheduler_prefill_factor": null, "write_metrics": true, "output_dir": "validation_output/adapted_vllm_gpu/20261018T060946Z/preemption/metrics_store_unused", "wandb_project": null, "wandb_sweep_id": null, "wandb_run_id": null, "wandb_group": null, "wandb_run_name": null, "enable_op_level_metrics": false, "enable_cpu_op_level_metrics": false, "enable_chrome_trace": false, "enable_request_outputs": false, "keep_individual_batch_metrics": true, "attention_backend": "flash_attention", "lp_b_max": null, "lp_c_max": null, "lp_s_max": null, "lp_memory_reserve": "<omitted>", "lp_decode_memory_policy_id": "<omitted>", "lp_decode_utility": null, "lp_prefill_token_utility": null, "lp_preemption_penalty": null, "lp_numerical_policy": null}, "resolved_dtype": "torch.float16", "hf_config_commit_hash": "fe8a4ea1ffedaf415f4da2f062534de366a451e6", "scheduler_class": "AdaptedVLLMScheduler", "scheduler_config": {"max_num_seqs": 4, "max_model_len": 64, "num_pipeline_stages": 1, "_max_num_batched_tokens": 64}, "vocab_size": 32000, "eos_token_id": 2, "engine_init_seconds": 26.819}
+preemption decision 0: preempted [] scheduled [[0, 16], [1, 16], [2, 16], [3, 16]] free 0
+preemption decision 1: preempted [] scheduled [[0, 0], [1, 0], [2, 0], [3, 0]] free 0
+preemption decision 2: preempted [3, 2] scheduled [[0, 0], [1, 0]] free 0
+preemption decision 3: preempted [] scheduled [[0, 0], [1, 0]] free 4
+preemption decision 4: preempted [] scheduled [[2, 17], [3, 17]] free 0
+preemption decision 5: preempted [] scheduled [[2, 0], [3, 0]] free 0
+preemption decision 6: preempted [] scheduled [[2, 0], [3, 0]] free 0
+preemption decision 7: preempted [] scheduled [[2, 0], [3, 0]] free 4
+cleanup: {"engine_constructed": true, "ray_initialized_before_shutdown": true, "ray_initialized_after_shutdown": false}
+RESULT: PASS
