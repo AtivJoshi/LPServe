@@ -1,0 +1,25 @@
+date_utc=2026-10-24T21:38:17Z
+host=gpu052
+CUDA_VISIBLE_DEVICES=
+LOADEDMODULES=uri/main:ICU/75.1-GCCcore-13.3.0:nodejs/20.13.1-GCCcore-13.3.0:GCCcore/12.2.0:zlib/.1.2.12-GCCcore-12.2.0:binutils/.2.39-GCCcore-12.2.0:bzip2/.1.0.8-GCCcore-12.2.0:ncurses/.6.3-GCCcore-12.2.0:libreadline/.8.2-GCCcore-12.2.0:Tcl/.8.6.12-GCCcore-12.2.0:SQLite/.3.39.4-GCCcore-12.2.0:XZ/.5.2.7-GCCcore-12.2.0:GMP/.6.2.1-GCCcore-12.2.0:libffi/3.4.4-GCCcore-12.2.0:OpenSSL/1.1:Python/3.10.8-GCCcore-12.2.0:CUDA/12.1.1
+PYTHONPATH=/home/atjoshi_umass_edu/LPServe
+SLURM_JOB_ID=66025629
+SLURM_JOB_NODELIST=gpu052
+SLURM_JOB_PARTITION=gpu-preempt
+VIRTUAL_ENV=/home/atjoshi_umass_edu/LPServe/env
+which_python=/home/atjoshi_umass_edu/LPServe/env/bin/python
+Python 3.10.8
+numpy 2.2.6
+scipy 1.15.3
+torch 2.3.0+cu121
+ray 2.58.0
+index, name, uuid, driver_version, memory.used [MiB], memory.total [MiB]
+0, NVIDIA A16, GPU-e400b1c6-777d-5eac-faef-7253f7d4d5f8, 595.91.07, 0 MiB, 15356 MiB
+model_dir=/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6
+config.json
+model.safetensors
+special_tokens_map.json
+tokenizer_config.json
+tokenizer.json
+tokenizer.model
+driver=validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/fake_driver.py offline=validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/fake_offline.py

@@ -1,0 +1,68 @@
+$ env PYTHONPATH=/home/atjoshi_umass_edu/LPServe python -B scripts/compare_coefficient_policies_cpu.py --batch queue_growth --cases queue48_burst_pool12 --output-dir validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_comparison
+INFO 10-24 21:37:56 metrics_store.py:72] MetricsStore disabled
+rollout queue48_burst_pool12 adapted_vllm
+  -> valid True outcome drained decisions 117 coverage complete True
+rollout queue48_burst_pool12 lp_reciprocal_square
+  -> valid True outcome drained decisions 118 coverage complete True
+rollout queue48_burst_pool12 ilp_reciprocal_square
+  -> valid True outcome drained decisions 117 coverage complete True
+Queue-growth batch (CPU, native central/worker replay; resident limit 8)
+
+Rollouts
+case | method | valid | outcome | dec | done | preempt | after_out | adm+victim | discarded | replayed | expanded | events | overgen | res_omit | max_streak | adm_inv | done_inv
+queue48_burst_pool12 | adapted_vllm | True | drained | 117 | 48 | 6 | 3 | 0 | 102 | 102 | 3 | 227 | 3 | 0 | 0 | 0 | 27
+queue48_burst_pool12 | lp_reciprocal_square | True | drained | 118 | 48 | 5 | 3 | 3 | 226 | 226 | 3 | 227 | 3 | 0 | 0 | 208 | 246
+queue48_burst_pool12 | ilp_reciprocal_square | True | drained | 117 | 48 | 8 | 1 | 3 | 193 | 193 | 1 | 225 | 1 | 0 | 0 | 202 | 224
+
+Comparison coverage (every reached decision)
+case | method | reached | records | valid | no_problem | solved | reused | optimal | time_limit | other_fail | errors | missing | round_trip_fail | complete
+queue48_burst_pool12 | adapted_vllm | 117 | 117 | 117 | 0 | 117 | 0 | 117 | 0 | 0 | 0 | 0 | 0 | True
+queue48_burst_pool12 | lp_reciprocal_square | 118 | 118 | 118 | 0 | 118 | 0 | 118 | 0 | 0 | 0 | 0 | 0 | True
+queue48_burst_pool12 | ilp_reciprocal_square | 117 | 117 | 117 | 0 | 0 | 117 | 117 | 0 | 0 | 0 | 0 | 0 | True
+
+Same-state results (identical problems only; objectives of different policies are not compared)
+  queue48_burst_pool12 adapted_vllm: reference vs reciprocal-square integer optimum {'strict_objective_preference': 45, 'identical_actions': 64, 'contract_difference': 8}; violated LP rows {'decode_prerequisite': 8}; smallest strict preference 0.015625; near ties []; integer raw statuses {'0': 117}, max integrality deviation 0
+  queue48_burst_pool12 lp_reciprocal_square: {'extraction_loss': 6, 'identical_actions': 112}; fractional relaxations 92; relaxation gaps 92 (max 0.21875); extraction losses [[0, 0.0011121612243407686], [8, 0.00042201316801238065], [13, 6.174976915973573e-05], [20, 0.08376201460976551], [24, 0.000754462039253001], [34, 0.09130506245890868]]; action differences [[0, 'extraction_loss'], [8, 'extraction_loss'], [13, 'extraction_loss'], [20, 'extraction_loss'], [24, 'extraction_loss'], [34, 'extraction_loss']]; near ties []; integer raw statuses {'0': 118}, max integrality deviation 2.22045e-16
+  queue48_burst_pool12 ilp_reciprocal_square: integer results reused from the rollout; integer raw statuses {'0': 117}, max integrality deviation 3.55271e-15
+
+Numerical scale (eligible terms over all valid problems)
+  queue48_burst_pool12 adapted_vllm: max rank 47, min positive coefficient 3.39084e-06, min gaps {'prefill_token': 4.96e-08, 'full_chunk': 1.87e-05, 'decode': 0.0225, 'penalty': 0.0225}, exact ties {'decode': 0, 'prefill_token': 116, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.0248562 s
+  queue48_burst_pool12 lp_reciprocal_square: max rank 47, min positive coefficient 3.39084e-06, min gaps {'prefill_token': 4.96e-08, 'full_chunk': 1.87e-05, 'decode': 0.00478, 'penalty': 0.00478}, exact ties {'decode': 0, 'prefill_token': 37, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00925373 s
+  queue48_burst_pool12 ilp_reciprocal_square: max rank 47, min positive coefficient 3.39084e-06, min gaps {'prefill_token': 4.96e-08, 'full_chunk': 1.87e-05, 'decode': 0.00737, 'penalty': 0.00737}, exact ties {'decode': 0, 'prefill_token': 45, 'full_chunk': 0, 'penalty': 0}, max offline solve None s
+
+Victims: [decision, victim, running position / count, had output, reasons, admitted in the same decision]
+  queue48_burst_pool12 adapted_vllm:
+    23 R14 3/4 False ['decode_block_demand'] []
+    38 R20 3/4 True ['decode_block_demand'] []
+    52 R26 3/4 False ['decode_block_demand'] []
+    67 R32 3/4 True ['decode_block_demand'] []
+    81 R38 3/4 False ['decode_block_demand'] []
+    96 R44 3/4 True ['decode_block_demand'] []
+  queue48_burst_pool12 lp_reciprocal_square:
+    2 R08 6/8 True ['decode_block_demand'] []
+    11 R04 4/5 True ['admission_charges', 'lp_decode_prerequisite'] ['R21', 'R24']
+    20 R16 2/4 False ['admission_charges', 'lp_decode_prerequisite'] ['R36', 'R27']
+    25 R38 4/5 False ['decode_block_demand'] []
+    34 R34 2/4 True ['decode_block_demand', 'admission_charges'] ['R44']
+  queue48_burst_pool12 ilp_reciprocal_square:
+    1 R07 6/7 False ['lp_decode_prerequisite'] []
+    2 R04 4/6 False ['decode_block_demand', 'admission_charges'] ['R07', 'R08']
+    6 R12 4/5 False ['lp_decode_prerequisite'] []
+    13 R25 5/6 False ['decode_block_demand'] []
+    14 R24 4/5 True ['lp_decode_prerequisite'] []
+    18 R21 5/6 False ['decode_block_demand', 'admission_charges'] ['R31']
+    25 R27 4/5 False ['admission_charges', 'lp_decode_prerequisite'] ['R43']
+    28 R38 5/6 False ['decode_block_demand'] []
+
+Mean first-prefill and completion decision index by prompt length (decision indices, not time)
+  queue48_burst_pool12 adapted_vllm: 8: 44.375/46.375 (max done 96), 16: 44.375/48.375 (max done 98), 17: 45/56.75 (max done 107), 32: 51.875/53.875 (max done 105), 64: 51.875/56 (max done 107), 128: 57/65.5 (max done 116)
+  queue48_burst_pool12 lp_reciprocal_square: 8: 9.375/11.375 (max done 29), 16: 12.125/16.125 (max done 36), 17: 13.25/21.875 (max done 42), 32: 15.75/17.75 (max done 37), 64: 26.75/32.25 (max done 45), 128: 77.5/85.5 (max done 117)
+  queue48_burst_pool12 ilp_reciprocal_square: 8: 10.375/13.125 (max done 25), 16: 11.875/16.625 (max done 29), 17: 16/24.25 (max done 40), 32: 18.5/21.25 (max done 37), 64: 23.875/28.25 (max done 44), 128: 76.5/84.5 (max done 116)
+
+First emitted difference between rollouts (closed loop): first index whose emitted output differs, and first index whose selected set (victims and served requests) differs
+  queue48_burst_pool12 lp_reciprocal_square vs ilp_reciprocal_square: {'emitted': {'index': 0, 'same_before_state': True, 'a': [[], [[0, 8], [1, 16], [2, 17], [3, 32], [6, 8], [7, 16], [8, 17], [12, 8]]], 'b': [[], [[0, 8], [1, 16], [2, 17], [3, 32], [4, 31], [6, 8], [7, 16]]]}, 'first_selection_difference': 0}
+  queue48_burst_pool12 adapted_vllm vs lp_reciprocal_square: {'emitted': {'index': 0, 'same_before_state': True, 'a': [[], [[0, 8], [1, 16], [2, 17], [3, 32], [4, 55]]], 'b': [[], [[0, 8], [1, 16], [2, 17], [3, 32], [6, 8], [7, 16], [8, 17], [12, 8]]]}, 'first_selection_difference': 0}
+  queue48_burst_pool12 adapted_vllm vs ilp_reciprocal_square: {'emitted': {'index': 0, 'same_before_state': True, 'a': [[], [[0, 8], [1, 16], [2, 17], [3, 32], [4, 55]]], 'b': [[], [[0, 8], [1, 16], [2, 17], [3, 32], [4, 31], [6, 8], [7, 16]]]}, 'first_selection_difference': 0}
+
+RESULT: PASS
+exit_status=0

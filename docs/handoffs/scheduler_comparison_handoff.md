@@ -1093,3 +1093,159 @@ physical-ID equality, recovery, starvation, fairness, latency, throughput,
 and eventual completion beyond these bounded CPU runs. Inherited behavior
 (final-prefill sample discarded, counter reset with overgeneration after
 restart) is recorded, not repaired.
+
+## Correction 2026-10-24: constrained case at context 192 and GPU confirmation
+
+**Approved change.** The user explicitly approved `max_model_len` 192 for
+`queue48_burst_pool12` only. This satisfies native cache initialization
+(`ceil(192/16)` = 12 blocks) while keeping the 12-block pool, and with it
+the memory pressure. Every other input is unchanged: the 48 requests,
+lengths, arrivals, resident limit 8, budgets 128, action cap 8, bound 384,
+coefficients, numerical policy, and model settings. The other five
+queue-growth cases keep 256. The native engine check was neither bypassed
+nor weakened. The failed GPU attempts and the CPU results at 256 above
+remain historical evidence for their inputs.
+
+**Evidence:** [`validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/`](../../validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/)
+(`cpu_checks/` with `run_checks.sh`, step logs 01–10, `working_tree.diff`,
+`sha256sums.txt`, `git_state.txt`, `environment.txt`, and
+`runner_propagation/`; `cpu_comparison/` holds the corrected CPU rerun of
+this case only; `gpu_queue48_burst_pool12_{lp_reciprocal_square,adapted_vllm}/`
+with `command.txt`, `console.log`, `exit_status.txt`, `summary.json`,
+`decision_trace.json.gz` plus the uncompressed sha256, and `cleanup.json`;
+`gpu_offline_comparison/`; `run_gpu.sh`, `run_gpu_stdout.txt`,
+`runner_failures.txt`, `runner_exit_status.txt`, `shell_environment.txt`,
+`git_state_gpu.txt`, `sha256sums_gpu.txt`). Tested at HEAD
+`7cdf3868565ad608be361009b8e8d35860b46795` plus uncommitted changes to
+`scripts/compare_scheduler_gpu.py`, `scripts/compare_coefficient_policies_cpu.py`,
+and `tests/test_compare_scheduler_gpu.py`. The `git diff HEAD` sha256
+`d7076e5d…` is the same at the CPU gate and the GPU start. File hashes are
+equal at the gate, the GPU start, and report time. Host `gpu052`, Slurm job
+`66025629`, NVIDIA A16 `GPU-e400b1c6-777d-5eac-faef-7253f7d4d5f8`, driver
+595.91.07. Modules, interpreter, packages, and the TinyLlama snapshot
+`fe8a4ea1…` are as before (`shell_environment.txt`).
+
+### Changes
+
+- `compare_scheduler_gpu.py`: `_queue_growth` takes a per-case
+  `max_model_len` (default 256), and the constrained case passes 192.
+  `check_native_capacity` mirrors the native rule `num_gpu_blocks >=
+  ceil(max_model_len / block_size)`. `main` runs it first inside its
+  recorded `try`, so an incompatible case fails, with `summary.json`
+  written, before engine arguments, Ray, workers, or CUDA. The native check
+  still runs afterwards. Passing the preflight proves only that this one
+  rule holds.
+- `compare_coefficient_policies_cpu.py`: `--batch queue_growth --cases …`
+  limits the batch to the named cases, recorded as `selected_cases`. The
+  default is all six, and the other batches are unchanged.
+- Tests: 4 new tests, and `test_queue_growth_inputs` now expects 192 for the
+  constrained case. The new tests check that only that case's context
+  changed (the longest request stays 136 tokens). They check that the
+  preflight agrees with native `BaseLLMEngine._init_cache`, called on CPU
+  with a stub: 12/192 is accepted, 12/256 is rejected by both, and every
+  GPU case is accepted. They check that a 12/256 case fails in `main`
+  before `engine_args` or `build_engine_class` is called, and they test case
+  selection.
+- New runner `run_gpu.sh`, in the new evidence directory; the historical
+  script is unchanged. It records each required step's Python/timeout,
+  tee, artifact, and offline-comparison status in `runner_failures.txt` and
+  ends with an explicit `exit` derived from them. A trailing
+  `echo`/`tee`/`tail` can no longer mask a failure. That had happened in
+  the 20261024T210104Z run: both GPU processes and the offline comparison
+  failed, yet `run_gpu_sh_exit=0`.
+
+### Critical review
+
+1. **The context change cannot alter decisions here** (analytical, then
+   executed). In the scheduling path, `max_model_len` appears only in
+   guards: context ≤ limit in the mapper, LP checks, and executor, and
+   decode length < limit in the reference. No request exceeds 136 tokens.
+   This holds only for these inputs. Any request longer than 192 tokens
+   would now be rejected as a visible failure.
+2. **The preflight copies a native rule and could drift from it.** The
+   stub test calls the native function itself, so a change to the rule
+   would fail the test. The CPU runtime still sets the pool directly
+   without native initialization. The preflight guards the GPU driver
+   only, which is the path where the failure occurred.
+3. **The earlier runner masked failures.** This is fixed for new runs and
+   shown by injection. The historical artifacts were left unchanged.
+
+No other issue was found. Review scope: the case definitions, the native
+`_init_cache` rule, `max_model_len` uses in the mapper, executor, LP
+scheduler, and reference, the driver `main` order, and both runners.
+
+### Results (executed)
+
+**CPU rerun at 192** (`cpu_comparison/`, selected cases
+`["queue48_burst_pool12"]`). All three methods passed validation and
+drained. Their emitted decisions, decision for decision, and their
+same-state records, apart from problem IDs, are identical to the 256-token
+CPU runs (step 07):
+
+| Method | Decisions | Preemptions | Replayed tokens | Events / overgeneration |
+|---|---|---|---|---|
+| reference | 117 | 6 | 102 | 227 / 3 |
+| reciprocal-square LP | 118 | 5 | 226 | 227 / 3 |
+| reciprocal-square ILP | 117 | 8 | 193 | 225 / 1 |
+
+Coverage was complete for 352 decisions: 235 offline solves and 117 reused
+integer results. All were optimal, with no time limit, failure, or missing
+record.
+
+**GPU confirmation** (`bash <run>/run_gpu.sh <run>`, two fresh processes,
+one attempt each, `timeout 600s`). For each run: profiling reported 15,597
+blocks, exactly 12 were initialized natively (`# GPU blocks: 12`; the
+preflight required 12), the engine was constructed, and its own Ray shut
+down. Both printed `RESULT: PASS workload: drained`, with Python and tee
+statuses 0. The only warning was the bfloat16→float16 cast. Engine
+initialization took about 76 s and 53 s.
+
+| GPU run | validation_passed | workload_outcome | Decisions | Preemptions | Replayed | Emitted = corrected CPU run |
+|---|---|---|---|---|---|---|
+| reciprocal-square LP | true | drained | 118 | 5 | 226 | yes, every decision |
+| reference | true | drained | 117 | 6 | 102 | yes, every decision |
+
+Offline CPU comparison (`gpu_offline_comparison/`, `RESULT: PASS`, exit
+0): every reached GPU decision had a valid, round-trip-identical problem
+and one offline solve (118 and 117), all HiGHS-optimal (raw status 0).
+
+- LP: identical actions in 112 decisions; extraction losses at decisions
+  0, 8, 13, 20, 24, and 34. These are the same decisions and causes as on
+  CPU.
+- Reference against the reciprocal-square optimum: 64 identical actions,
+  45 strict objective preferences (the smallest gap is 0.0156), and 8
+  contract differences (`decode_prerequisite`), all as on CPU.
+
+Central and worker physical block IDs differed after 107 (LP) and 106
+(reference) decisions. This is recorded, not required: the inherited
+set-order free. Table lengths, free counts, and conservation were checked
+equal at every decision.
+
+**Runner.** `runner_failures=0` and `run_gpu_sh_exit=0`, consistent with
+the per-step statuses above. With injected fake children, on CPU, the same
+script exited 1 when the first GPU process failed and when the offline
+comparison failed, and 0 when all succeeded (step 08).
+
+**Checks** (`CUDA_VISIBLE_DEVICES=""`,
+`bash <run>/cpu_checks/run_checks.sh <run>`; every step exited 0):
+
+| Step | Result |
+|---|---|
+| 01 `py_compile` (3 changed files), 02/03 `--help` under `-W error` | pass |
+| 04 new and updated tests | 5 passed |
+| 05 `tests.test_compare_scheduler_gpu` | 48 passed (44 earlier, one expectation updated, plus 4 new) |
+| 06 corrected CPU rerun | `RESULT: PASS` |
+| 07 comparison with the 256-token CPU runs | identical |
+| 08 runner failure propagation | as expected in all three scenarios |
+| 09 whitespace, 10 `git diff --check` | pass |
+
+Not run: the other suites (their code is unchanged and not imported
+differently), the other five queue-growth cases, any GPU ILP, and any
+broader GPU matrix.
+
+**Established:** for this one bounded workload and its two methods, native
+GPU execution produced the CPU-predicted decisions and passed every
+per-decision driver check, with complete same-state ILP coverage.
+**Not established:** cache contents, attention correctness, quality,
+physical-ID equality, recovery, fairness, latency, throughput, or
+completion of other workloads.

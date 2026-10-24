@@ -1,0 +1,2 @@
+$ bash -c ! grep -nP '[ \t]+$' scripts/compare_scheduler_gpu.py scripts/compare_coefficient_policies_cpu.py tests/test_compare_scheduler_gpu.py docs/handoffs/scheduler_comparison_handoff.md
+exit_status=0

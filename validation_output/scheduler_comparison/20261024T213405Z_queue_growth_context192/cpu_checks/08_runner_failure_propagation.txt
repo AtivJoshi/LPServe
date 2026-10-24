@@ -1,0 +1,5 @@
+$ bash validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/check.sh validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192
+gpu_process_fails: runner exit 1 (expected 1); failures: FAILED: lp_reciprocal_square: GPU process exited 3;
+offline_fails: runner exit 1 (expected 1); failures: FAILED: offline comparison exited 2;
+all_succeed: runner exit 0 (expected 0); failures: 
+exit_status=0

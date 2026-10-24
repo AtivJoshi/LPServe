@@ -1,0 +1,18 @@
+$ python -B -m unittest tests.test_compare_scheduler_gpu.QueueGrowthTest.test_only_the_constrained_context_changed tests.test_compare_scheduler_gpu.QueueGrowthTest.test_native_capacity_preflight_agrees_with_native_initialization tests.test_compare_scheduler_gpu.QueueGrowthTest.test_incompatible_pool_fails_before_engine_construction tests.test_compare_scheduler_gpu.QueueGrowthTest.test_queue_growth_case_selection tests.test_compare_scheduler_gpu.QueueGrowthTest.test_queue_growth_inputs -v
+INFO 10-24 21:35:46 metrics_store.py:72] MetricsStore disabled
+test_only_the_constrained_context_changed (tests.test_compare_scheduler_gpu.QueueGrowthTest) ... ok
+test_native_capacity_preflight_agrees_with_native_initialization (tests.test_compare_scheduler_gpu.QueueGrowthTest) ... INFO 10-24 21:35:46 base_llm_engine.py:243] # GPU blocks: 12
+INFO 10-24 21:35:46 base_llm_engine.py:243] # GPU blocks: 12
+INFO 10-24 21:35:46 base_llm_engine.py:243] # GPU blocks: 8
+INFO 10-24 21:35:46 base_llm_engine.py:243] # GPU blocks: 4
+INFO 10-24 21:35:46 base_llm_engine.py:243] # GPU blocks: 12
+ok
+test_incompatible_pool_fails_before_engine_construction (tests.test_compare_scheduler_gpu.QueueGrowthTest) ... ok
+test_queue_growth_case_selection (tests.test_compare_scheduler_gpu.QueueGrowthTest) ... ok
+test_queue_growth_inputs (tests.test_compare_scheduler_gpu.QueueGrowthTest) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 5.615s
+
+OK
+exit_status=0

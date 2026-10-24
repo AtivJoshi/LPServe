@@ -1,0 +1,164 @@
+`torch_dtype` is deprecated! Use `dtype` instead!
+WARNING 10-24 21:42:14 config.py:666] Casting torch.bfloat16 to torch.float16.
+environment: {
+ "hostname": "gpu052",
+ "slurm": {
+  "SLURM_JOB_ID": "66025629",
+  "SLURM_JOB_NODELIST": "gpu052",
+  "SLURM_JOB_PARTITION": "gpu-preempt",
+  "SLURM_STEP_ID": "4294967290"
+ },
+ "cuda_visible_devices": "0",
+ "gpu": "0, NVIDIA A16, GPU-e400b1c6-777d-5eac-faef-7253f7d4d5f8, 595.91.07, 15356 MiB",
+ "torch_cuda": "12.1",
+ "python_executable": "/home/atjoshi_umass_edu/LPServe/env/bin/python",
+ "python_version": "3.10.8",
+ "virtual_env": "/home/atjoshi_umass_edu/LPServe/env",
+ "pythonpath": "/home/atjoshi_umass_edu/LPServe",
+ "versions": {
+  "torch": "2.3.0+cu121",
+  "transformers": "4.57.6",
+  "ray": "2.58.0",
+  "numpy": "2.2.6",
+  "scipy": "1.15.3",
+  "flashinfer": "0.2.0.post1+cu121torch2.3",
+  "vllm-flash-attn": "2.5.9",
+  "sarathi": "0.1.7",
+  "nvidia-ml-py": "13.595.45",
+  "huggingface-hub": "0.36.2",
+  "tokenizers": "0.22.2"
+ },
+ "git_head": "7cdf3868565ad608be361009b8e8d35860b46795",
+ "git_status_short": "M scripts/compare_coefficient_policies_cpu.py\n M scripts/compare_scheduler_gpu.py\n M tests/test_compare_scheduler_gpu.py\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/01_py_compile.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/02_help_gpu_driver.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/03_help_cpu_batch.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/04_new_tests.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/05_compare_driver.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/06_constrained_cpu_rerun.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/07_compare_with_prior_cpu.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/08_runner_failure_propagation.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/09_whitespace.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/10_git_diff_check.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/environment.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/git_state.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/run_checks.sh\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/all_succeed/git_state_gpu.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/all_succeed/gpu_offline_comparison_exit_status.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/all_succeed/gpu_offline_comparison_stdout.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/all_succeed/gpu_queue48_burst_pool12_adapted_vllm/command.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/all_succeed/gpu_queue48_burst_pool12_adapted_vllm/decision_trace.json.gz\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/all_succeed/gpu_queue48_burst_pool12_adapted_vllm/decision_trace_json_sha256.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/all_succeed/gpu_queue48_burst_pool12_adapted_vllm/exit_status.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/all_succeed/gpu_queue48_burst_pool12_lp_reciprocal_square/command.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/all_succeed/gpu_queue48_burst_pool12_lp_reciprocal_square/decision_trace.json.gz\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/all_succeed/gpu_queue48_burst_pool12_lp_reciprocal_square/decision_trace_json_sha256.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/all_succeed/gpu_queue48_burst_pool12_lp_reciprocal_square/exit_status.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/all_succeed/runner_exit_status.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/all_succeed/runner_failures.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/all_succeed/runner_stdout.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/all_succeed/sha256sums_gpu.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/all_succeed/shell_environment.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/check.sh\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/fake_driver.py\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/fake_offline.py\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/gpu_process_fails/git_state_gpu.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/gpu_process_fails/gpu_offline_comparison_exit_status.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/gpu_process_fails/gpu_offline_comparison_stdout.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/gpu_process_fails/gpu_queue48_burst_pool12_adapted_vllm/command.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/gpu_process_fails/gpu_queue48_burst_pool12_adapted_vllm/decision_trace.json.gz\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/gpu_process_fails/gpu_queue48_burst_pool12_adapted_vllm/decision_trace_json_sha256.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/gpu_process_fails/gpu_queue48_burst_pool12_adapted_vllm/exit_status.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/gpu_process_fails/gpu_queue48_burst_pool12_lp_reciprocal_square/command.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/gpu_process_fails/gpu_queue48_burst_pool12_lp_reciprocal_square/decision_trace.json.gz\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/gpu_process_fails/gpu_queue48_burst_pool12_lp_reciprocal_square/decision_trace_json_sha256.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/gpu_process_fails/gpu_queue48_burst_pool12_lp_reciprocal_square/exit_status.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/gpu_process_fails/runner_exit_status.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/gpu_process_fails/runner_failures.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/gpu_process_fails/runner_stdout.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/gpu_process_fails/sha256sums_gpu.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/gpu_process_fails/shell_environment.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/offline_fails/git_state_gpu.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/offline_fails/gpu_offline_comparison_exit_status.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/offline_fails/gpu_offline_comparison_stdout.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/offline_fails/gpu_queue48_burst_pool12_adapted_vllm/command.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/offline_fails/gpu_queue48_burst_pool12_adapted_vllm/decision_trace.json.gz\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/offline_fails/gpu_queue48_burst_pool12_adapted_vllm/decision_trace_json_sha256.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/offline_fails/gpu_queue48_burst_pool12_adapted_vllm/exit_status.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/offline_fails/gpu_queue48_burst_pool12_lp_reciprocal_square/command.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/offline_fails/gpu_queue48_burst_pool12_lp_reciprocal_square/decision_trace.json.gz\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/offline_fails/gpu_queue48_burst_pool12_lp_reciprocal_square/decision_trace_json_sha256.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/offline_fails/gpu_queue48_burst_pool12_lp_reciprocal_square/exit_status.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/offline_fails/runner_exit_status.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/offline_fails/runner_failures.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/offline_fails/runner_stdout.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/offline_fails/sha256sums_gpu.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/offline_fails/shell_environment.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/sha256sums.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/working_tree.diff\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_comparison/comparison.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_comparison/divergences.json\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_comparison/rollouts/queue48_burst_pool12/adapted_vllm/comparisons.json\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_comparison/rollouts/queue48_burst_pool12/adapted_vllm/decision_trace.json.gz\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_comparison/rollouts/queue48_burst_pool12/adapted_vllm/summary.json\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_comparison/rollouts/queue48_burst_pool12/ilp_reciprocal_square/comparisons.json\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_comparison/rollouts/queue48_burst_pool12/ilp_reciprocal_square/decision_trace.json.gz\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_comparison/rollouts/queue48_burst_pool12/ilp_reciprocal_square/summary.json\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_comparison/rollouts/queue48_burst_pool12/lp_reciprocal_square/comparisons.json\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_comparison/rollouts/queue48_burst_pool12/lp_reciprocal_square/decision_trace.json.gz\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_comparison/rollouts/queue48_burst_pool12/lp_reciprocal_square/summary.json\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_comparison/run_record.json\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/git_state_gpu.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/gpu_queue48_burst_pool12_adapted_vllm/command.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/gpu_queue48_burst_pool12_adapted_vllm/metrics_store_unused/config.yml\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/gpu_queue48_burst_pool12_lp_reciprocal_square/cleanup.json\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/gpu_queue48_burst_pool12_lp_reciprocal_square/command.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/gpu_queue48_burst_pool12_lp_reciprocal_square/decision_trace.json.gz\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/gpu_queue48_burst_pool12_lp_reciprocal_square/decision_trace_json_sha256.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/gpu_queue48_burst_pool12_lp_reciprocal_square/exit_status.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/gpu_queue48_burst_pool12_lp_reciprocal_square/metrics_store_unused/config.yml\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/gpu_queue48_burst_pool12_lp_reciprocal_square/summary.json\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/run_gpu.sh\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/run_gpu_stdout.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/runner_failures.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/sha256sums_gpu.txt\n?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/shell_environment.txt",
+ "cwd": "/home/atjoshi_umass_edu/LPServe"
+}
+INFO 10-24 21:42:15 base_llm_engine.py:69] Initializing an LLM engine with config: model='/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6', tokenizer='/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6', tokenizer_mode=auto, revision=None, trust_remote_code=True, dtype=torch.float16, download_dir=None, load_format=dummy, tensor_parallel_size=1, pipeline_parallel_size=1, seed=42)
+2026-10-24 21:42:27,554	INFO worker.py:2024 -- Started a local Ray instance.
+INFO 10-24 21:42:41 base_llm_engine.py:147] Starting workers with resource mapping: [(None, 0)]
+INFO 10-24 21:42:41 base_llm_engine.py:190] Initializing workers with distributed init method: tcp://10.100.20.52:27258
+[36m(RayWorker pid=3671205)[0m INFO 10-24 21:43:07 base_worker.py:103] Worker 0 is using device 0
+[36m(RayWorker pid=3671205)[0m INFO 10-24 21:43:07 base_worker.py:122] Initializing worker 0 on device cuda:0, tensor parallel rank 0 and pipeline parallel rank 0.
+[36m(RayWorker pid=3671205)[0m INFO 10-24 21:43:07 base_worker.py:138] Model initialized on worker 0.
+INFO 10-24 21:43:08 base_llm_engine.py:243] # GPU blocks: 12
+INFO 10-24 21:43:08 base_llm_engine.py:130] Scheduler initialised, block_manager has 12 total blocks
+cache capacity: {"profiled_available_blocks": [15597], "chosen_initialized_blocks": 12, "profile_calls": 1, "initializations": [{"num_gpu_blocks": 12, "result": [null]}], "engine_cache_config_num_gpu_blocks": 12, "central_manager_total_blocks": 12, "worker": {"total_blocks": 12, "watermark_blocks": 0, "free_blocks": 12, "free_block_ids": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], "block_tables": {}, "block_ops": [], "cache_config_num_gpu_blocks": 12, "cache_engine_num_gpu_blocks": 12, "cache_layers": 22, "cache_tensor_block_dims": [12], "cache_tensor_shapes": [[12, 16, 4, 64]], "allocator_num_blocks": 12}}
+config: {"model": "TinyLlama/TinyLlama-1.1B-Chat-v1.0", "engine_args": {"model": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6", "replica_id": 0, "replica_resource_mapping": [], "tokenizer": "/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6", "tokenizer_mode": "auto", "trust_remote_code": true, "download_dir": null, "load_format": "dummy", "dtype": "float16", "seed": 42, "pipeline_parallel_size": 1, "tensor_parallel_size": 1, "block_size": 16, "gpu_memory_utilization": 0.5, "revision": null, "scheduler_type": "adapted_vllm", "max_model_len": 192, "max_num_seqs": 8, "max_num_batched_tokens": 128, "chunk_size": null, "enable_dynamic_chunking_schedule": false, "low_chunk_size": null, "high_chunk_size": null, "chunk_schedule_max_tokens": null, "chunk_schedule_stages": null, "token_budget": null, "fcfs": null, "fixed_offset": null, "below_memory_limit_offset": null, "above_memory_limit_offset": null, "memory_limit": null, "user_priority": null, "time_between_tokens": null, "process_smallest_prefill": null, "limit_total_decodes": null, "hold_n_scheduler_hold_n": null, "hold_n_scheduler_token_budget": null, "hold_n_scheduler_prefill_factor": null, "write_metrics": true, "output_dir": "validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/gpu_queue48_burst_pool12_adapted_vllm/metrics_store_unused", "wandb_project": null, "wandb_sweep_id": null, "wandb_run_id": null, "wandb_group": null, "wandb_run_name": null, "enable_op_level_metrics": false, "enable_cpu_op_level_metrics": false, "enable_chrome_trace": false, "enable_request_outputs": false, "keep_individual_batch_metrics": true, "attention_backend": "flash_attention", "lp_b_max": null, "lp_c_max": null, "lp_s_max": null, "lp_memory_reserve": "<omitted>", "lp_decode_memory_policy_id": "<omitted>", "lp_decode_utility": null, "lp_prefill_token_utility": null, "lp_preemption_penalty": null, "lp_numerical_policy": null}, "resolved_dtype": "torch.float16", "hf_config_commit_hash": "fe8a4ea1ffedaf415f4da2f062534de366a451e6", "scheduler_class": "AdaptedVLLMScheduler", "scheduler_config": {"max_num_seqs": 8, "max_model_len": 192, "num_pipeline_stages": 1, "_max_num_batched_tokens": 128}, "vocab_size": 32000, "eos_token_id": 2, "engine_init_seconds": 52.534}
+queue48_burst_pool12 adapted_vllm limit 8 decision 0: preempted [] emitted [[0, 8], [1, 16], [2, 17], [3, 32], [4, 55]] free 2/2
+queue48_burst_pool12 adapted_vllm limit 8 decision 1: preempted [] emitted [[4, 9], [0, 0], [1, 0], [2, 0], [3, 0]] free 2/2
+queue48_burst_pool12 adapted_vllm limit 8 decision 2: preempted [] emitted [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0]] free 4/4
+queue48_burst_pool12 adapted_vllm limit 8 decision 3: preempted [] emitted [[1, 0], [2, 0], [4, 0]] free 3/3
+queue48_burst_pool12 adapted_vllm limit 8 decision 4: preempted [] emitted [[1, 0], [2, 0], [4, 0]] free 5/5
+queue48_burst_pool12 adapted_vllm limit 8 decision 5: preempted [] emitted [[2, 0], [4, 0]] free 10/10
+queue48_burst_pool12 adapted_vllm limit 8 decision 6: preempted [] emitted [[5, 127], [2, 0]] free 2/2
+queue48_burst_pool12 adapted_vllm limit 8 decision 7: preempted [] emitted [[5, 1], [6, 8], [7, 16], [2, 0]] free 0/0
+queue48_burst_pool12 adapted_vllm limit 8 decision 8: preempted [] emitted [[2, 0], [5, 0], [6, 0], [7, 0]] free 2/2
+queue48_burst_pool12 adapted_vllm limit 8 decision 9: preempted [] emitted [[5, 0], [6, 0], [7, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 10: preempted [] emitted [[5, 0], [7, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 11: preempted [] emitted [[5, 0], [7, 0]] free 3/3
+queue48_burst_pool12 adapted_vllm limit 8 decision 12: preempted [] emitted [[8, 17], [5, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 13: preempted [] emitted [[5, 0], [8, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 14: preempted [] emitted [[5, 0], [8, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 15: preempted [] emitted [[5, 0], [8, 0]] free 10/10
+queue48_burst_pool12 adapted_vllm limit 8 decision 16: preempted [] emitted [[9, 32], [10, 64], [8, 0]] free 4/4
+queue48_burst_pool12 adapted_vllm limit 8 decision 17: preempted [] emitted [[8, 0], [9, 0], [10, 0]] free 4/4
+queue48_burst_pool12 adapted_vllm limit 8 decision 18: preempted [] emitted [[8, 0], [9, 0], [10, 0]] free 5/5
+queue48_burst_pool12 adapted_vllm limit 8 decision 19: preempted [] emitted [[8, 0], [10, 0]] free 5/5
+queue48_burst_pool12 adapted_vllm limit 8 decision 20: preempted [] emitted [[8, 0], [10, 0]] free 12/12
+queue48_burst_pool12 adapted_vllm limit 8 decision 21: preempted [] emitted [[11, 128]] free 4/4
+queue48_burst_pool12 adapted_vllm limit 8 decision 22: preempted [] emitted [[12, 8], [13, 16], [14, 17], [11, 0]] free 0/0
+queue48_burst_pool12 adapted_vllm limit 8 decision 23: preempted [14] emitted [[11, 0], [12, 0], [13, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 24: preempted [] emitted [[11, 0], [12, 0], [13, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 25: preempted [] emitted [[11, 0], [13, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 26: preempted [] emitted [[11, 0], [13, 0]] free 3/3
+queue48_burst_pool12 adapted_vllm limit 8 decision 27: preempted [] emitted [[14, 17], [11, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 28: preempted [] emitted [[11, 0], [14, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 29: preempted [] emitted [[11, 0], [14, 0]] free 10/10
+queue48_burst_pool12 adapted_vllm limit 8 decision 30: preempted [] emitted [[15, 32], [16, 64], [14, 0]] free 4/4
+queue48_burst_pool12 adapted_vllm limit 8 decision 31: preempted [] emitted [[14, 0], [15, 0], [16, 0]] free 4/4
+queue48_burst_pool12 adapted_vllm limit 8 decision 32: preempted [] emitted [[14, 0], [15, 0], [16, 0]] free 5/5
+queue48_burst_pool12 adapted_vllm limit 8 decision 33: preempted [] emitted [[14, 0], [16, 0]] free 5/5
+queue48_burst_pool12 adapted_vllm limit 8 decision 34: preempted [] emitted [[14, 0], [16, 0]] free 10/10
+queue48_burst_pool12 adapted_vllm limit 8 decision 35: preempted [] emitted [[17, 127], [14, 0]] free 4/4
+queue48_burst_pool12 adapted_vllm limit 8 decision 36: preempted [] emitted [[17, 1], [18, 8], [19, 16], [20, 17]] free 0/0
+queue48_burst_pool12 adapted_vllm limit 8 decision 37: preempted [] emitted [[17, 0], [18, 0], [19, 0], [20, 0]] free 0/0
+queue48_burst_pool12 adapted_vllm limit 8 decision 38: preempted [20] emitted [[17, 0], [18, 0], [19, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 39: preempted [] emitted [[17, 0], [19, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 40: preempted [] emitted [[17, 0], [19, 0]] free 3/3
+queue48_burst_pool12 adapted_vllm limit 8 decision 41: preempted [] emitted [[20, 18], [17, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 42: preempted [] emitted [[17, 0], [20, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 43: preempted [] emitted [[17, 0], [20, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 44: preempted [] emitted [[17, 0], [20, 0]] free 10/10
+queue48_burst_pool12 adapted_vllm limit 8 decision 45: preempted [] emitted [[21, 32], [22, 64], [20, 0]] free 4/4
+queue48_burst_pool12 adapted_vllm limit 8 decision 46: preempted [] emitted [[20, 0], [21, 0], [22, 0]] free 4/4
+queue48_burst_pool12 adapted_vllm limit 8 decision 47: preempted [] emitted [[20, 0], [21, 0], [22, 0]] free 5/5
+queue48_burst_pool12 adapted_vllm limit 8 decision 48: preempted [] emitted [[20, 0], [22, 0]] free 5/5
+queue48_burst_pool12 adapted_vllm limit 8 decision 49: preempted [] emitted [[20, 0], [22, 0]] free 12/12
+queue48_burst_pool12 adapted_vllm limit 8 decision 50: preempted [] emitted [[23, 128]] free 4/4
+queue48_burst_pool12 adapted_vllm limit 8 decision 51: preempted [] emitted [[24, 8], [25, 16], [26, 17], [23, 0]] free 0/0
+queue48_burst_pool12 adapted_vllm limit 8 decision 52: preempted [26] emitted [[23, 0], [24, 0], [25, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 53: preempted [] emitted [[23, 0], [24, 0], [25, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 54: preempted [] emitted [[23, 0], [25, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 55: preempted [] emitted [[23, 0], [25, 0]] free 3/3
+queue48_burst_pool12 adapted_vllm limit 8 decision 56: preempted [] emitted [[26, 17], [23, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 57: preempted [] emitted [[23, 0], [26, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 58: preempted [] emitted [[23, 0], [26, 0]] free 10/10
+queue48_burst_pool12 adapted_vllm limit 8 decision 59: preempted [] emitted [[27, 32], [28, 64], [26, 0]] free 4/4
+queue48_burst_pool12 adapted_vllm limit 8 decision 60: preempted [] emitted [[26, 0], [27, 0], [28, 0]] free 4/4
+queue48_burst_pool12 adapted_vllm limit 8 decision 61: preempted [] emitted [[26, 0], [27, 0], [28, 0]] free 5/5
+queue48_burst_pool12 adapted_vllm limit 8 decision 62: preempted [] emitted [[26, 0], [28, 0]] free 5/5
+queue48_burst_pool12 adapted_vllm limit 8 decision 63: preempted [] emitted [[26, 0], [28, 0]] free 10/10
+queue48_burst_pool12 adapted_vllm limit 8 decision 64: preempted [] emitted [[29, 127], [26, 0]] free 4/4
+queue48_burst_pool12 adapted_vllm limit 8 decision 65: preempted [] emitted [[29, 1], [30, 8], [31, 16], [32, 17]] free 0/0
+queue48_burst_pool12 adapted_vllm limit 8 decision 66: preempted [] emitted [[29, 0], [30, 0], [31, 0], [32, 0]] free 0/0
+queue48_burst_pool12 adapted_vllm limit 8 decision 67: preempted [32] emitted [[29, 0], [30, 0], [31, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 68: preempted [] emitted [[29, 0], [31, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 69: preempted [] emitted [[29, 0], [31, 0]] free 3/3
+queue48_burst_pool12 adapted_vllm limit 8 decision 70: preempted [] emitted [[32, 18], [29, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 71: preempted [] emitted [[29, 0], [32, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 72: preempted [] emitted [[29, 0], [32, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 73: preempted [] emitted [[29, 0], [32, 0]] free 10/10
+queue48_burst_pool12 adapted_vllm limit 8 decision 74: preempted [] emitted [[33, 32], [34, 64], [32, 0]] free 4/4
+queue48_burst_pool12 adapted_vllm limit 8 decision 75: preempted [] emitted [[32, 0], [33, 0], [34, 0]] free 4/4
+queue48_burst_pool12 adapted_vllm limit 8 decision 76: preempted [] emitted [[32, 0], [33, 0], [34, 0]] free 5/5
+queue48_burst_pool12 adapted_vllm limit 8 decision 77: preempted [] emitted [[32, 0], [34, 0]] free 5/5
+queue48_burst_pool12 adapted_vllm limit 8 decision 78: preempted [] emitted [[32, 0], [34, 0]] free 12/12
+queue48_burst_pool12 adapted_vllm limit 8 decision 79: preempted [] emitted [[35, 128]] free 4/4
+queue48_burst_pool12 adapted_vllm limit 8 decision 80: preempted [] emitted [[36, 8], [37, 16], [38, 17], [35, 0]] free 0/0
+queue48_burst_pool12 adapted_vllm limit 8 decision 81: preempted [38] emitted [[35, 0], [36, 0], [37, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 82: preempted [] emitted [[35, 0], [36, 0], [37, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 83: preempted [] emitted [[35, 0], [37, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 84: preempted [] emitted [[35, 0], [37, 0]] free 3/3
+queue48_burst_pool12 adapted_vllm limit 8 decision 85: preempted [] emitted [[38, 17], [35, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 86: preempted [] emitted [[35, 0], [38, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 87: preempted [] emitted [[35, 0], [38, 0]] free 10/10
+queue48_burst_pool12 adapted_vllm limit 8 decision 88: preempted [] emitted [[39, 32], [40, 64], [38, 0]] free 4/4
+queue48_burst_pool12 adapted_vllm limit 8 decision 89: preempted [] emitted [[38, 0], [39, 0], [40, 0]] free 4/4
+queue48_burst_pool12 adapted_vllm limit 8 decision 90: preempted [] emitted [[38, 0], [39, 0], [40, 0]] free 5/5
+queue48_burst_pool12 adapted_vllm limit 8 decision 91: preempted [] emitted [[38, 0], [40, 0]] free 5/5
+queue48_burst_pool12 adapted_vllm limit 8 decision 92: preempted [] emitted [[38, 0], [40, 0]] free 10/10
+queue48_burst_pool12 adapted_vllm limit 8 decision 93: preempted [] emitted [[41, 127], [38, 0]] free 4/4
+queue48_burst_pool12 adapted_vllm limit 8 decision 94: preempted [] emitted [[41, 1], [42, 8], [43, 16], [44, 17]] free 0/0
+queue48_burst_pool12 adapted_vllm limit 8 decision 95: preempted [] emitted [[41, 0], [42, 0], [43, 0], [44, 0]] free 0/0
+queue48_burst_pool12 adapted_vllm limit 8 decision 96: preempted [44] emitted [[41, 0], [42, 0], [43, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 97: preempted [] emitted [[41, 0], [43, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 98: preempted [] emitted [[41, 0], [43, 0]] free 3/3
+queue48_burst_pool12 adapted_vllm limit 8 decision 99: preempted [] emitted [[44, 18], [41, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 100: preempted [] emitted [[41, 0], [44, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 101: preempted [] emitted [[41, 0], [44, 0]] free 1/1
+queue48_burst_pool12 adapted_vllm limit 8 decision 102: preempted [] emitted [[41, 0], [44, 0]] free 10/10
+queue48_burst_pool12 adapted_vllm limit 8 decision 103: preempted [] emitted [[45, 32], [46, 64], [44, 0]] free 4/4
+queue48_burst_pool12 adapted_vllm limit 8 decision 104: preempted [] emitted [[44, 0], [45, 0], [46, 0]] free 4/4
+queue48_burst_pool12 adapted_vllm limit 8 decision 105: preempted [] emitted [[44, 0], [45, 0], [46, 0]] free 5/5
+queue48_burst_pool12 adapted_vllm limit 8 decision 106: preempted [] emitted [[44, 0], [46, 0]] free 5/5
+queue48_burst_pool12 adapted_vllm limit 8 decision 107: preempted [] emitted [[44, 0], [46, 0]] free 12/12
+queue48_burst_pool12 adapted_vllm limit 8 decision 108: preempted [] emitted [[47, 128]] free 4/4
+queue48_burst_pool12 adapted_vllm limit 8 decision 109: preempted [] emitted [[47, 0]] free 4/4
+queue48_burst_pool12 adapted_vllm limit 8 decision 110: preempted [] emitted [[47, 0]] free 3/3
+queue48_burst_pool12 adapted_vllm limit 8 decision 111: preempted [] emitted [[47, 0]] free 3/3
+queue48_burst_pool12 adapted_vllm limit 8 decision 112: preempted [] emitted [[47, 0]] free 3/3
+queue48_burst_pool12 adapted_vllm limit 8 decision 113: preempted [] emitted [[47, 0]] free 3/3
+queue48_burst_pool12 adapted_vllm limit 8 decision 114: preempted [] emitted [[47, 0]] free 3/3
+queue48_burst_pool12 adapted_vllm limit 8 decision 115: preempted [] emitted [[47, 0]] free 3/3
+queue48_burst_pool12 adapted_vllm limit 8 decision 116: preempted [] emitted [[47, 0]] free 12/12
+cleanup: {"engine_constructed": true, "ray_initialized_before_shutdown": true, "ray_initialized_after_shutdown": false}
+RESULT: PASS workload: drained

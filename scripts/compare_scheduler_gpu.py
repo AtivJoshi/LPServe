@@ -52,7 +52,7 @@ Cases (``--case``):
   Both contracts are kept; each decision records which constraint, if any,
   required its victims for the selected batch.
 - ``queue48_burst_pool12``: 48 requests at virtual time 0 (see
-  ``QUEUE_GROWTH_INPUTS``), 12 initialized blocks, ``max_model_len`` 256,
+  ``QUEUE_GROWTH_INPUTS``), 12 initialized blocks, ``max_model_len`` 192,
   budget 128, resident limit 8, LP ``b_max`` 128, ``c_max`` 128, ``s_max``
   8, bound 384 nonempty decisions. For the reference, each decision's
   pre-decision state is also mapped read-only into a reciprocal-square
@@ -218,10 +218,13 @@ REPRESENTATIVE_CASES = tuple(REPRESENTATIVE_INPUTS)
 # limit 8, budget/b_max/c_max 128, s_max 8, bound 8 nonempty decisions per
 # request. Burst: every request at virtual time 0; staggered: request k at
 # 2k. The watermark is the shared block manager's native int(0.01 * pool).
+# queue48_burst_pool12 alone uses max_model_len 192 (12 blocks of 16), as
+# native cache initialization requires (approved 2026-10-24; its earlier 256
+# failed before any decision). No request exceeds 136 tokens.
 QUEUE_PROMPT_LENGTHS, QUEUE_OUTPUT_LENGTHS = [8, 16, 17, 32, 64, 128], [2, 4, 8]
 
 
-def _queue_growth(count, staggered, pool):
+def _queue_growth(count, staggered, pool, max_model_len=256):
     names = [f"R{k:02d}" for k in range(count)]
     return dict(
         prompts={n: list(range(1000 + 256 * k, 1000 + 256 * k
@@ -230,7 +233,7 @@ def _queue_growth(count, staggered, pool):
         max_tokens={n: QUEUE_OUTPUT_LENGTHS[k % 3]
                     for k, n in enumerate(names)},
         arrivals={n: 2 * k if staggered else 0 for k, n in enumerate(names)},
-        token_budget=128, num_gpu_blocks=pool, max_model_len=256,
+        token_budget=128, num_gpu_blocks=pool, max_model_len=max_model_len,
         resident_limits=(8,), b_max=128, c_max=128, s_max=8,
         max_decisions=8 * count)
 
@@ -242,7 +245,7 @@ QUEUE_GROWTH_INPUTS = {
     "queue24_burst": _queue_growth(24, False, 128),
     "queue48_burst": _queue_growth(48, False, 128),
     "queue48_staggered": _queue_growth(48, True, 128),
-    CONSTRAINED_QUEUE_CASE: _queue_growth(48, False, 12),
+    CONSTRAINED_QUEUE_CASE: _queue_growth(48, False, 12, max_model_len=192),
 }
 QUEUE_GROWTH_CASES = tuple(QUEUE_GROWTH_INPUTS)
 CASES = (TWO_REQUEST, MEMORY_PRESSURE) + REPRESENTATIVE_CASES + QUEUE_GROWTH_CASES
@@ -282,6 +285,22 @@ def case_inputs(case):
     inputs["names"] = dict(enumerate(inputs["prompts"]))
     inputs.setdefault("arrivals", {n: 0 for n in inputs["prompts"]})
     return inputs
+
+
+def check_native_capacity(c):
+    """Preflight of native cache initialization for case inputs ``c``.
+
+    ``BaseLLMEngine._init_cache`` rejects a pool smaller than one
+    maximum-length request, ``ceil(max_model_len / block_size)`` blocks.
+    This check mirrors that rule so an incompatible case fails before any
+    engine, worker, or CUDA initialization; it does not replace the native
+    check, which still runs, and passing it proves nothing about execution."""
+    need = -(-c["max_model_len"] // BLOCK_SIZE)
+    check(c["num_gpu_blocks"] >= need,
+          f"pool of {c['num_gpu_blocks']} blocks is below the "
+          f"{need} blocks native cache initialization requires for "
+          f"max_model_len {c['max_model_len']} at block size {BLOCK_SIZE}")
+    return need
 
 
 def max_tokens(c, name):
@@ -1288,6 +1307,8 @@ def main(argv=None):
                    model_path=str(model_path))
     engine = None
     try:
+        # Before any engine, worker, or CUDA initialization.
+        summary["native_capacity_blocks_required"] = check_native_capacity(c)
         check((model_path / "config.json").is_file()
               and (model_path / "tokenizer.json").is_file(),
               f"model path {model_path} lacks config.json/tokenizer.json")

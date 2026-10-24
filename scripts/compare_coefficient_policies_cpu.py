@@ -1052,13 +1052,13 @@ def analyse_run(trace, method, case):
                 consistent=all(comparison_consistent(r) for r in records))
 
 
-def queue_growth_main(out):
+def queue_growth_main(out, cases=driver.QUEUE_GROWTH_CASES):
     import test_compare_scheduler_gpu as cpu
     cpu.setUpModule()
-    record = dict(argv=sys.argv, batch="queue_growth",
-                  runs=[list(r) for r in QUEUE_RUNS], resident_limit=QUEUE_LIMIT,
-                  cases={case: driver.case_inputs(case)
-                         for case in driver.QUEUE_GROWTH_CASES},
+    runs = [r for r in QUEUE_RUNS if r[0] in cases]
+    record = dict(argv=sys.argv, batch="queue_growth", selected_cases=list(cases),
+                  runs=[list(r) for r in runs], resident_limit=QUEUE_LIMIT,
+                  cases={case: driver.case_inputs(case) for case in cases},
                   reciprocal_square="w = 1 / (1 + r) ** 2; q = min(remaining, "
                   "c_max, b_max); decode w, prefill token w / q, penalty w",
                   coordinated=driver.COORDINATED,
@@ -1069,7 +1069,7 @@ def queue_growth_main(out):
                   provenance=driver.provenance_record(),
                   environment=driver.environment_record())
     rows, traces = [], {}
-    for case, method in QUEUE_RUNS:
+    for case, method in runs:
         print(f"rollout {case} {method}", flush=True)
         run_dir = out / "rollouts" / case / method
         run_dir.mkdir(parents=True)
@@ -1091,7 +1091,7 @@ def queue_growth_main(out):
     by_key = {(r["summary"]["case"], r["summary"]["method"]): r["summary"]
               for r in rows}
     divergences = {}
-    for case in driver.QUEUE_GROWTH_CASES:
+    for case in cases:
         for a, b in QUEUE_DIVERGENCE_PAIRS:
             if (case, a) in by_key and (case, b) in by_key:
                 divergences[f"{case} {a} vs {b}"] = dict(
@@ -1182,6 +1182,10 @@ def parse_args(argv=None):
     parser.add_argument("--runs", nargs="+", default=[],
                         help="retained_runs: run directories holding "
                         "summary.json and decision_trace.json[.gz]")
+    parser.add_argument("--cases", nargs="+", default=None,
+                        choices=driver.QUEUE_GROWTH_CASES,
+                        help="queue_growth: run only these cases (default: "
+                        "all six)")
     parser.add_argument("--cpu-batch", default=None,
                         help="retained_runs: optional queue_growth output "
                         "directory whose rollouts the runs are checked "
@@ -1198,9 +1202,13 @@ def main(argv=None):
             args.cpu_batch and args.batch != "retained_runs"):
         parser.error("--runs (and --cpu-batch) go with --batch retained_runs "
                      "only, which requires --runs")
+    if args.cases and args.batch != "queue_growth":
+        parser.error("--cases goes with --batch queue_growth only")
     out.mkdir(parents=True, exist_ok=True)
     if args.batch == "queue_growth":
-        return queue_growth_main(out)
+        return queue_growth_main(
+            out, tuple(c for c in driver.QUEUE_GROWTH_CASES
+                       if c in (args.cases or driver.QUEUE_GROWTH_CASES)))
     if args.batch == "retained_runs":
         return retained_runs_main(out, args.runs, args.cpu_batch)
 

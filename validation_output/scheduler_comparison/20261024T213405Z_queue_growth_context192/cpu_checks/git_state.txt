@@ -1,0 +1,20 @@
+branch=main
+head=7cdf3868565ad608be361009b8e8d35860b46795
+base_reviewed=7cdf3868565ad608be361009b8e8d35860b46795
+--- git status --short --untracked-files=all
+ M scripts/compare_coefficient_policies_cpu.py
+ M scripts/compare_scheduler_gpu.py
+ M tests/test_compare_scheduler_gpu.py
+?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/environment.txt
+?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/git_state.txt
+?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/run_checks.sh
+?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/check.sh
+?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/fake_driver.py
+?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_checks/runner_propagation/fake_offline.py
+?? validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/run_gpu.sh
+--- git diff HEAD --stat
+ scripts/compare_coefficient_policies_cpu.py |  24 ++++---
+ scripts/compare_scheduler_gpu.py            |  29 ++++++--
+ tests/test_compare_scheduler_gpu.py         | 101 +++++++++++++++++++++++++++-
+ 3 files changed, 141 insertions(+), 13 deletions(-)
+git_diff_head_sha256=d7076e5def850b81466283a6471b4e875c946b6b105ac897670701f56997e5ed  -

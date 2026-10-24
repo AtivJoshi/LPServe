@@ -1,0 +1,26 @@
+$ env PYTHONPATH=/home/atjoshi_umass_edu/LPServe python -B -W error scripts/compare_coefficient_policies_cpu.py --help
+usage: compare_coefficient_policies_cpu.py [-h] --output-dir OUTPUT_DIR
+                                           [--batch {coordinated_policy,queue_growth,retained_runs}]
+                                           [--runs RUNS [RUNS ...]]
+                                           [--cases {queue6_burst,queue12_burst,queue24_burst,queue48_burst,queue48_staggered,queue48_burst_pool12} [{queue6_burst,queue12_burst,queue24_burst,queue48_burst,queue48_staggered,queue48_burst_pool12} ...]]
+                                           [--cpu-batch CPU_BATCH]
+
+CPU comparison batch: adapted vLLM reference, uniform / rank-based /
+
+options:
+  -h, --help            show this help message and exit
+  --output-dir OUTPUT_DIR
+  --batch {coordinated_policy,queue_growth,retained_runs}
+                        coordinated_policy (default): the coordinated batch;
+                        queue_growth: the reciprocal-square queue-growth
+                        batch; retained_runs: offline comparisons of retained
+                        runs (--runs)
+  --runs RUNS [RUNS ...]
+                        retained_runs: run directories holding summary.json
+                        and decision_trace.json[.gz]
+  --cases {queue6_burst,queue12_burst,queue24_burst,queue48_burst,queue48_staggered,queue48_burst_pool12} [{queue6_burst,queue12_burst,queue24_burst,queue48_burst,queue48_staggered,queue48_burst_pool12} ...]
+                        queue_growth: run only these cases (default: all six)
+  --cpu-batch CPU_BATCH
+                        retained_runs: optional queue_growth output directory
+                        whose rollouts the runs are checked against
+exit_status=0

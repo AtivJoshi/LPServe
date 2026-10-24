@@ -1073,7 +1073,8 @@ class QueueGrowthTest(unittest.TestCase):
                     (c["num_gpu_blocks"], c["max_model_len"],
                      c["resident_limits"], c["token_budget"], c["b_max"],
                      c["c_max"], c["s_max"], c["max_decisions"]),
-                    (pool, 256, (8,), 128, 128, 128, 8, 8 * count))
+                    (pool, 192 if case == driver.CONSTRAINED_QUEUE_CASE
+                     else 256, (8,), 128, 128, 128, 8, 8 * count))
                 flat = [t for p in prompts for t in p]
                 self.assertEqual(len(flat), len(set(flat)))
                 self.assertLess(max(flat), 32000)
@@ -1081,6 +1082,104 @@ class QueueGrowthTest(unittest.TestCase):
         self.assertEqual([c for c in driver.GPU_CASES
                           if c in driver.QUEUE_GROWTH_CASES],
                          [driver.CONSTRAINED_QUEUE_CASE])
+
+    def test_only_the_constrained_context_changed(self):
+        # Every other input of the constrained case is the 256-token
+        # construction's; every other queue case keeps 256.
+        before = driver._queue_growth(48, False, 12)
+        after = driver.QUEUE_GROWTH_INPUTS[driver.CONSTRAINED_QUEUE_CASE]
+        self.assertEqual({k for k in before if before[k] != after[k]},
+                         {"max_model_len"})
+        self.assertEqual((before["max_model_len"], after["max_model_len"]),
+                         (256, 192))
+        self.assertEqual({c: driver.case_inputs(c)["max_model_len"]
+                          for c in driver.QUEUE_GROWTH_CASES
+                          if c != driver.CONSTRAINED_QUEUE_CASE},
+                         dict.fromkeys(("queue6_burst", "queue12_burst",
+                                        "queue24_burst", "queue48_burst",
+                                        "queue48_staggered"), 256))
+        # Every request still fits well below the new limit.
+        longest = max(len(p) + driver.max_tokens(after, n)
+                      for n, p in after["prompts"].items())
+        self.assertEqual(longest, 136)
+
+    def test_native_capacity_preflight_agrees_with_native_initialization(self):
+        from sarathi.engine.base_llm_engine import BaseLLMEngine
+
+        def native_accepts(pool, max_model_len):
+            stub = SimpleNamespace(
+                cache_config=SimpleNamespace(block_size=driver.BLOCK_SIZE,
+                                             gpu_memory_utilization=0.5,
+                                             num_gpu_blocks=None),
+                model_config=SimpleNamespace(max_model_len=max_model_len),
+                _run_workers=lambda method, **kw: [pool])
+            try:
+                BaseLLMEngine._init_cache(stub)
+            except ValueError:
+                return False
+            return True
+        corrected = driver.case_inputs(driver.CONSTRAINED_QUEUE_CASE)
+        self.assertEqual(driver.check_native_capacity(corrected), 12)
+        self.assertTrue(native_accepts(12, 192))
+        old = dict(corrected, max_model_len=256)
+        with self.assertRaisesRegex(driver.CheckFailure,
+                                    "below the 16 blocks native cache "
+                                    "initialization requires"):
+            driver.check_native_capacity(old)
+        self.assertFalse(native_accepts(12, 256))
+        for case in driver.GPU_CASES:
+            with self.subTest(case=case):
+                c = driver.case_inputs(case)
+                driver.check_native_capacity(c)
+                self.assertTrue(native_accepts(c["num_gpu_blocks"],
+                                               c["max_model_len"]))
+
+    def test_incompatible_pool_fails_before_engine_construction(self):
+        old = dict(driver.QUEUE_GROWTH_INPUTS[driver.CONSTRAINED_QUEUE_CASE],
+                   max_model_len=256)
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.dict(driver.QUEUE_GROWTH_INPUTS,
+                                {driver.CONSTRAINED_QUEUE_CASE: old}), \
+                mock.patch.object(driver, "engine_args") as args, \
+                mock.patch.object(driver, "build_engine_class") as build, \
+                contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            code = driver.main(["--case", driver.CONSTRAINED_QUEUE_CASE,
+                                "--policy", driver.RECIPROCAL_SQUARE_POLICY,
+                                "--model-path", str(Path(tmp) / "absent"),
+                                "--output-dir", str(Path(tmp) / "out")])
+            summary = json.loads((Path(tmp) / "out/summary.json").read_text())
+        self.assertEqual(code, 1)
+        args.assert_not_called()
+        build.assert_not_called()
+        self.assertEqual((summary["validation_passed"],
+                          summary["workload_outcome"]), (False, "failure"))
+        self.assertIn("native cache initialization requires",
+                      summary["failure"]["message"])
+
+    def test_queue_growth_case_selection(self):
+        import compare_coefficient_policies_cpu as batch
+        with tempfile.TemporaryDirectory() as tmp, \
+                contextlib.redirect_stdout(io.StringIO()):
+            out = Path(tmp) / "out"
+            self.assertEqual(batch.main(["--batch", "queue_growth", "--cases",
+                                         ANCHOR, "--output-dir", str(out)]), 0)
+            record = json.loads((out / "run_record.json").read_text())
+            ran = sorted(p.name for p in (out / "rollouts").iterdir())
+            methods = sorted(p.name for p in (out / "rollouts" / ANCHOR)
+                             .iterdir())
+        self.assertEqual(record["selected_cases"], [ANCHOR])
+        self.assertEqual(record["runs"], [[ANCHOR, m]
+                                          for m in batch.QUEUE_ANCHOR_METHODS])
+        self.assertEqual((ran, methods),
+                         ([ANCHOR], sorted(batch.QUEUE_ANCHOR_METHODS)))
+        with contextlib.redirect_stderr(io.StringIO()):
+            for argv in (["--cases", ANCHOR],
+                         ["--batch", "queue_growth", "--cases", "two_request"]):
+                with self.subTest(argv=argv), \
+                        self.assertRaises(SystemExit) as caught:
+                    batch.main(argv + ["--output-dir", "unused"])
+                self.assertEqual(caught.exception.code, 2)
 
     def test_configuration_hook_and_native_watermark(self):
         for case, watermark in ((ANCHOR, 1), (driver.CONSTRAINED_QUEUE_CASE, 0)):

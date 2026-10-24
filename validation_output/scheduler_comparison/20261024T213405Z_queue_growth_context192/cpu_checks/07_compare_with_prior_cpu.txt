@@ -1,0 +1,8 @@
+$ python -B - validation_output/scheduler_comparison/20261024T210104Z_queue_growth/cpu_comparison validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_comparison
+adapted_vllm max_model_len 256 -> 192 | emitted identical: True | {'decisions': (117, 117), 'workload_outcome': ('drained', 'drained'), 'preemptions': (6, 6), 'prefill_tokens_replayed': (102, 102), 'discarded_prompt_tokens': (102, 102), 'generated_token_events': (227, 227), 'overgeneration': (3, 3)}
+  same-state records identical apart from problem IDs: True
+lp_reciprocal_square max_model_len 256 -> 192 | emitted identical: True | {'decisions': (118, 118), 'workload_outcome': ('drained', 'drained'), 'preemptions': (5, 5), 'prefill_tokens_replayed': (226, 226), 'discarded_prompt_tokens': (226, 226), 'generated_token_events': (227, 227), 'overgeneration': (3, 3)}
+  same-state records identical apart from problem IDs: True
+ilp_reciprocal_square max_model_len 256 -> 192 | emitted identical: True | {'decisions': (117, 117), 'workload_outcome': ('drained', 'drained'), 'preemptions': (8, 8), 'prefill_tokens_replayed': (193, 193), 'discarded_prompt_tokens': (193, 193), 'generated_token_events': (225, 225), 'overgeneration': (1, 1)}
+  same-state records identical apart from problem IDs: True
+exit_status=0
