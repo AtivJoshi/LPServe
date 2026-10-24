@@ -1,5 +1,5 @@
 """Bounded dummy-weight GPU comparison of the adapted vLLM reference and
-three LP coefficient policies on one of two small workloads.
+LP coefficient policies on one of three small workloads.
 
 One process runs one (case, policy, resident limit) through a real
 ``BaseLLMEngine`` built from native ``EngineArgs``, one GPU worker (tensor
@@ -17,15 +17,21 @@ EOS ignored, and native replay and completion. Policies:
 - ``lp_coordinated``: the registered ``LPScheduler`` with
   ``lpserve_state_mapping.coordinated_rank_utility`` (rank base 1/4, bound to
   the case's ``c_max`` and ``b_max``) selected through the same hook.
+- ``lp_reciprocal_square``: the registered ``LPScheduler`` with
+  ``lpserve_state_mapping.reciprocal_square_rank_utility`` (weight
+  ``1 / (1 + r) ** 2``, bound to the case's ``c_max`` and ``b_max``)
+  selected through the same hook.
 
 The LP policies use numerical policy ``lp_relaxation_mvp_v1``.
 
 CPU-only additions (``run_comparison`` with a CPU runtime; never accepted on
-the command line): the method ``ilp_coordinated``, which takes each decision
-from the integer optimum of the same coordinated problem
-(``exact_integer_plan.integer_decision``), and the representative cases
+the command line): the methods ``ilp_coordinated`` and
+``ilp_reciprocal_square``, which take each decision from the integer optimum
+of the same coordinated or reciprocal-square problem
+(``exact_integer_plan.integer_decision``); the representative cases
 ``REPRESENTATIVE_CASES`` (six requests, optional per-request output limits,
-and virtual arrival times; see ``case_inputs``).
+and virtual arrival times; see ``case_inputs``); and the queue-growth cases
+``QUEUE_GROWTH_CASES`` other than ``queue48_burst_pool12``.
 
 Cases (``--case``):
 
@@ -45,6 +51,13 @@ Cases (``--case``):
   decode prerequisite requires at least one free block before any decode.
   Both contracts are kept; each decision records which constraint, if any,
   required its victims for the selected batch.
+- ``queue48_burst_pool12``: 48 requests at virtual time 0 (see
+  ``QUEUE_GROWTH_INPUTS``), 12 initialized blocks, ``max_model_len`` 256,
+  budget 128, resident limit 8, LP ``b_max`` 128, ``c_max`` 128, ``s_max``
+  8, bound 384 nonempty decisions. For the reference, each decision's
+  pre-decision state is also mapped read-only into a reciprocal-square
+  diagnostic problem (``capture_reference_problems``) for an offline CPU
+  integer comparison; the LP runs retain their own mapped problems.
 
 The decision sequence is not prescribed. Each nonempty decision is checked
 against its policy's own contract (mapped or proposed inputs, plan or
@@ -142,13 +155,21 @@ NUMERICAL_POLICY_FIELDS = dict(
 )
 # Coordinated policy: w = RANK_BASE ** r (provisional, not tuned).
 COORDINATED = dict(rank_base=0.25)
-POLICIES = ("adapted_vllm", "lp_uniform", "lp_rank_based", "lp_coordinated")
+# Reciprocal-square coordinated policy: w = 1 / (1 + r) ** 2 (provisional;
+# the exponent is fixed at two and was not tuned).
+RECIPROCAL_SQUARE_POLICY = "lp_reciprocal_square"
+POLICIES = ("adapted_vllm", "lp_uniform", "lp_rank_based", "lp_coordinated",
+            RECIPROCAL_SQUARE_POLICY)
 INTEGER_POLICY = "ilp_coordinated"  # CPU comparison only
-CPU_POLICIES = POLICIES + (INTEGER_POLICY,)
+RECIPROCAL_SQUARE_INTEGER_POLICY = "ilp_reciprocal_square"  # CPU only
+INTEGER_POLICIES = (INTEGER_POLICY, RECIPROCAL_SQUARE_INTEGER_POLICY)
+CPU_POLICIES = POLICIES + INTEGER_POLICIES
 COORDINATED_POLICIES = ("lp_coordinated", INTEGER_POLICY)
+RECIPROCAL_SQUARE_POLICIES = (RECIPROCAL_SQUARE_POLICY,
+                              RECIPROCAL_SQUARE_INTEGER_POLICY)
 MAX_DECISIONS = 8  # observation bound per run, not a scheduler restart cap
 TWO_REQUEST, MEMORY_PRESSURE = "two_request", "memory_pressure"
-GPU_CASES = (TWO_REQUEST, MEMORY_PRESSURE)
+GPU_CASES = (TWO_REQUEST, MEMORY_PRESSURE, "queue48_burst_pool12")
 # The reference check's ``preemption`` workload (same prompt IDs, outputs,
 # pool, length, budget, and resident limit). LP caps equal the budget and
 # resident limit, so they add no restriction in this case.
@@ -191,7 +212,40 @@ REPRESENTATIVE_INPUTS = {
                                              STAGGERED_ARRIVALS, 6),
 }
 REPRESENTATIVE_CASES = tuple(REPRESENTATIVE_INPUTS)
-CASES = GPU_CASES + REPRESENTATIVE_CASES
+# Queue-growth workloads (provisional inputs): request k has prompt length
+# QUEUE_PROMPT_LENGTHS[k % 6], output limit QUEUE_OUTPUT_LENGTHS[k % 3], and
+# prompt IDs from 1000 + 256 * k. Block size 16, max_model_len 256, resident
+# limit 8, budget/b_max/c_max 128, s_max 8, bound 8 nonempty decisions per
+# request. Burst: every request at virtual time 0; staggered: request k at
+# 2k. The watermark is the shared block manager's native int(0.01 * pool).
+QUEUE_PROMPT_LENGTHS, QUEUE_OUTPUT_LENGTHS = [8, 16, 17, 32, 64, 128], [2, 4, 8]
+
+
+def _queue_growth(count, staggered, pool):
+    names = [f"R{k:02d}" for k in range(count)]
+    return dict(
+        prompts={n: list(range(1000 + 256 * k, 1000 + 256 * k
+                               + QUEUE_PROMPT_LENGTHS[k % 6]))
+                 for k, n in enumerate(names)},
+        max_tokens={n: QUEUE_OUTPUT_LENGTHS[k % 3]
+                    for k, n in enumerate(names)},
+        arrivals={n: 2 * k if staggered else 0 for k, n in enumerate(names)},
+        token_budget=128, num_gpu_blocks=pool, max_model_len=256,
+        resident_limits=(8,), b_max=128, c_max=128, s_max=8,
+        max_decisions=8 * count)
+
+
+CONSTRAINED_QUEUE_CASE = "queue48_burst_pool12"
+QUEUE_GROWTH_INPUTS = {
+    "queue6_burst": _queue_growth(6, False, 128),
+    "queue12_burst": _queue_growth(12, False, 128),
+    "queue24_burst": _queue_growth(24, False, 128),
+    "queue48_burst": _queue_growth(48, False, 128),
+    "queue48_staggered": _queue_growth(48, True, 128),
+    CONSTRAINED_QUEUE_CASE: _queue_growth(48, False, 12),
+}
+QUEUE_GROWTH_CASES = tuple(QUEUE_GROWTH_INPUTS)
+CASES = (TWO_REQUEST, MEMORY_PRESSURE) + REPRESENTATIVE_CASES + QUEUE_GROWTH_CASES
 PROCESS_TIMEOUT_SECONDS = 600
 PROFILE_METHOD = preemption.PROFILE_METHOD
 INIT_CACHE_METHOD = preemption.INIT_CACHE_METHOD
@@ -203,7 +257,7 @@ INTEGER_CALLS = ["map_scheduler_state", "solve_integer_plan", "execute_plan"]
 
 
 def decision_calls(policy):
-    return INTEGER_CALLS if policy == INTEGER_POLICY else LP_CALLS
+    return INTEGER_CALLS if policy in INTEGER_POLICIES else LP_CALLS
 
 
 def case_inputs(case):
@@ -213,9 +267,10 @@ def case_inputs(case):
     maps each request to its virtual arrival time (0 for every request when
     a case gives none)."""
     check(case in CASES, f"unknown case {case}")
-    if case == MEMORY_PRESSURE or case in REPRESENTATIVE_INPUTS:
-        inputs = json.loads(json.dumps(REPRESENTATIVE_INPUTS.get(
-            case, MEMORY_PRESSURE_INPUTS)))
+    if case != TWO_REQUEST:
+        inputs = json.loads(json.dumps({
+            MEMORY_PRESSURE: MEMORY_PRESSURE_INPUTS, **REPRESENTATIVE_INPUTS,
+            **QUEUE_GROWTH_INPUTS}[case]))
         inputs["resident_limits"] = tuple(inputs["resident_limits"])
     else:
         inputs = dict(prompts=PROMPTS, max_tokens=MAX_TOKENS,
@@ -257,7 +312,7 @@ def run_parameters(policy, resident_limit, case=TWO_REQUEST):
                       s_max=c["s_max"], numerical_policy=NUMERICAL_POLICY_FIELDS,
                       configured_triple=UNIFORM,
                       coefficient_policy=coefficient_policy_record(policy, c))
-    if policy == INTEGER_POLICY:
+    if policy in INTEGER_POLICIES:
         import exact_integer_plan as eip
         params.update(decision_method="integer optimum (CPU comparison only)",
                       integer_solver=eip.SOLVER,
@@ -271,6 +326,13 @@ def coefficient_policy_record(policy, c):
         return "configured uniform triple"
     if policy == "lp_rank_based":
         return dict(rank_based_utility=RANK_SCALES,
+                    note="configured triple unused")
+    if policy in RECIPROCAL_SQUARE_POLICIES:
+        return dict(reciprocal_square_rank_utility=dict(c_max=c["c_max"],
+                                                        b_max=c["b_max"]),
+                    formula="w = 1 / (1 + r) ** 2 (r: running then arrived "
+                    "waiting position); q = min(remaining, c_max, b_max); "
+                    "decode w; prefill token w / q; penalty w",
                     note="configured triple unused")
     return dict(coordinated_rank_utility=dict(COORDINATED, c_max=c["c_max"],
                                               b_max=c["b_max"]),
@@ -326,12 +388,49 @@ def select_coefficient_policy(scheduler, policy, case=TWO_REQUEST):
         coefficients = functools.partial(
             lsm.coordinated_rank_utility, c_max=c["c_max"], b_max=c["b_max"],
             **COORDINATED)
+    elif policy in RECIPROCAL_SQUARE_POLICIES:
+        coefficients = reciprocal_square_policy(case_inputs(case))
     else:
         return
     scheduler._coefficient_policy = lambda: coefficients
-    if policy == INTEGER_POLICY:
+    if policy in INTEGER_POLICIES:
         import exact_integer_plan as eip
         scheduler._schedule = functools.partial(eip.integer_decision, scheduler)
+
+
+def reciprocal_square_policy(c):
+    """The reciprocal-square policy bound to case inputs ``c``'s LP caps."""
+    import lpserve_state_mapping as lsm
+    return functools.partial(lsm.reciprocal_square_rank_utility,
+                             c_max=c["c_max"], b_max=c["b_max"])
+
+
+def capture_reference_problems(runtime, case):
+    """Wrap ``runtime.step`` so that, before each reference decision with
+    unfinished work, the quiescent pre-decision state is mapped once,
+    read-only, with the reciprocal-square coefficients and the case's LP
+    caps. Returns the list that receives one JSON record (``LPProblem`` or
+    ``MappingFailure``) per such step, in decision order. Diagnostic only:
+    the reference does not read it, and ordinary idle steps map nothing."""
+    import lp_relaxation_scheduler as lrs
+    import lpserve_state_mapping as lsm
+    c, records, native = case_inputs(case), [], runtime.step
+
+    def step():
+        scheduler = runtime.scheduler
+        if scheduler.has_unfinished_seqs():
+            snap = lsm.map_scheduler_state(
+                scheduler, snapshot_time=time.monotonic(), b_max=c["b_max"],
+                c_max=c["c_max"], s_max=c["s_max"],
+                coefficient_policy=reciprocal_square_policy(c),
+                rank_profile=lsm.vllm_oriented_ranks,
+                numerical_policy=lrs.NumericalPolicy(**NUMERICAL_POLICY_FIELDS))
+            records.append(dict(
+                result_type=type(snap).__name__,
+                result=to_jsonable(getattr(snap, "lp_problem", snap))))
+        return native()
+    runtime.step = step
+    return records
 
 
 def register_worker_helpers_by_value():
@@ -366,7 +465,7 @@ class DecisionObserver:
             import lpserve_plan_execution as lpe
             import lpserve_state_mapping as lsm
             solver = lrs
-            if policy == INTEGER_POLICY:
+            if policy in INTEGER_POLICIES:
                 import exact_integer_plan as solver
             for module, name in zip((lsm, solver, lpe), decision_calls(policy)):
                 self._wrap(module, name, functools.partial(self._lp, name))
@@ -468,8 +567,9 @@ def expected_coefficients(policy, snap, request, c):
         return UNIFORM
     order = list(snap["running_order"]) + list(snap["arrived_waiting_order"])
     r = order.index(request["raw_seq_id"])
-    if policy in COORDINATED_POLICIES:
-        w = COORDINATED["rank_base"] ** r
+    if policy in COORDINATED_POLICIES + RECIPROCAL_SQUARE_POLICIES:
+        w = (COORDINATED["rank_base"] ** r if policy in COORDINATED_POLICIES
+             else 1.0 / (1 + r) ** 2)
         q = min(request["prompt_tokens_remaining"], c["c_max"], c["b_max"])
         return dict(
             decode_utility=w if request["decode_eligible"] else 0.0,
@@ -486,7 +586,7 @@ def expected_coefficients(policy, snap, request, c):
 
 def check_lp_decision(tag, before, record, policy, resident_limit, c):
     events = record["lp_events"]
-    integer = policy == INTEGER_POLICY
+    integer = policy in INTEGER_POLICIES
     check([e["call"] for e in events] == decision_calls(policy)
           and not record["proposals"],
           f"{tag}: LP calls {[e['call'] for e in events]}; expected one "
@@ -962,8 +1062,9 @@ def run_comparison(policy, resident_limit, runtime, trace, case=TWO_REQUEST):
     manager = scheduler.block_manager
     check(manager.num_total_gpu_blocks == pool
           and manager.get_num_free_gpu_blocks() == pool
-          and manager.watermark_blocks == 0 and not manager.block_tables
-          and manager.block_size == BLOCK_SIZE, "central pool before requests")
+          and manager.watermark_blocks == int(0.01 * pool)
+          and not manager.block_tables and manager.block_size == BLOCK_SIZE,
+          "central pool before requests")
 
     select_coefficient_policy(scheduler, policy, case)
     observer = DecisionObserver(scheduler, runtime.seq_map, policy)
@@ -1149,9 +1250,10 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--case", default=TWO_REQUEST, choices=GPU_CASES)
     parser.add_argument("--policy", required=True, choices=POLICIES)
-    parser.add_argument("--resident-limit", type=int, choices=(2, 1, 4),
+    parser.add_argument("--resident-limit", type=int, choices=(2, 1, 4, 8),
                         help="two_request: 2 or 1 (required); "
-                        "memory_pressure: 4 (default)")
+                        "memory_pressure: 4 (default); "
+                        "queue48_burst_pool12: 8 (default)")
     parser.add_argument("--model-path", required=True,
                         help="existing local directory with the TinyLlama "
                         "config and tokenizer")
@@ -1244,6 +1346,10 @@ def main(argv=None):
             engine_init_seconds=round(init_seconds, 3))
         print("config:", json.dumps(summary["config"]), flush=True)
 
+        if args.policy == "adapted_vllm" and args.case in QUEUE_GROWTH_CASES:
+            # Read-only diagnostic problems for the offline CPU comparison.
+            trace["reference_diagnostic_problems"] = (
+                capture_reference_problems(runtime, args.case))
         outcome = run_comparison(args.policy, args.resident_limit, runtime,
                                  trace, args.case)
         summary.update(validation_passed=True, workload_outcome=outcome,

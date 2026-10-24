@@ -1,0 +1,1415 @@
+[
+ {
+  "index": 0,
+  "problem_status": "valid",
+  "problem_source": "decision_mapping",
+  "problem_id": "0",
+  "round_trip_equal": true,
+  "scale": {
+   "requests": 24,
+   "residents": 0,
+   "max_service_rank": 23,
+   "decode": {
+    "count": 0,
+    "min_positive": null,
+    "max": null,
+    "min_gap": null,
+    "exact_ties": 0
+   },
+   "prefill_token": {
+    "count": 24,
+    "min_positive": 1.3563368055555555e-05,
+    "max": 0.125,
+    "min_gap": 1.8772827758553937e-07,
+    "exact_ties": 0
+   },
+   "full_chunk": {
+    "count": 24,
+    "min_positive": 0.001736111111111111,
+    "max": 1.0,
+    "min_gap": 0.000154248057130855,
+    "exact_ties": 0
+   },
+   "penalty": {
+    "count": 0,
+    "min_positive": null,
+    "max": null,
+    "min_gap": null,
+    "exact_ties": 0
+   }
+  },
+  "integer_source": "reused_from_rollout",
+  "integer": {
+   "status": "optimal",
+   "objective": 1.4807399533887629,
+   "actions": {
+    "0": "prefill:8",
+    "1": "prefill:16",
+    "2": "prefill:17",
+    "3": "prefill:32",
+    "4": "prefill:14",
+    "6": "prefill:8",
+    "7": "prefill:16",
+    "8": "prefill:17"
+   },
+   "raw_status": 0,
+   "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "dual_bound": 1.4807399533887629,
+   "reported_gap": 0.0,
+   "node_count": 1,
+   "max_integrality_deviation": 1.7763568394002505e-15
+  }
+ },
+ {
+  "index": 1,
+  "problem_status": "valid",
+  "problem_source": "decision_mapping",
+  "problem_id": "1",
+  "round_trip_equal": true,
+  "scale": {
+   "requests": 24,
+   "residents": 8,
+   "max_service_rank": 23,
+   "decode": {
+    "count": 7,
+    "min_positive": 0.015625,
+    "max": 1.0,
+    "min_gap": 0.004783163265306121,
+    "exact_ties": 0
+   },
+   "prefill_token": {
+    "count": 17,
+    "min_positive": 1.3563368055555555e-05,
+    "max": 0.0008,
+    "min_gap": 1.8772827758553937e-07,
+    "exact_ties": 0
+   },
+   "full_chunk": {
+    "count": 17,
+    "min_positive": 0.001736111111111111,
+    "max": 0.04,
+    "min_gap": 0.000154248057130855,
+    "exact_ties": 0
+   },
+   "penalty": {
+    "count": 8,
+    "min_positive": 0.015625,
+    "max": 1.0,
+    "min_gap": 0.004783163265306121,
+    "exact_ties": 0
+   }
+  },
+  "integer_source": "reused_from_rollout",
+  "integer": {
+   "status": "optimal",
+   "objective": 1.527422052154195,
+   "actions": {
+    "0": "decode",
+    "1": "decode",
+    "2": "decode",
+    "3": "decode",
+    "4": "prefill:50",
+    "6": "decode",
+    "7": "decode",
+    "8": "decode"
+   },
+   "raw_status": 0,
+   "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "dual_bound": 1.527422052154195,
+   "reported_gap": 0.0,
+   "node_count": 1,
+   "max_integrality_deviation": 0.0
+  }
+ },
+ {
+  "index": 2,
+  "problem_status": "valid",
+  "problem_source": "decision_mapping",
+  "problem_id": "2",
+  "round_trip_equal": true,
+  "scale": {
+   "requests": 24,
+   "residents": 8,
+   "max_service_rank": 23,
+   "decode": {
+    "count": 8,
+    "min_positive": 0.015625,
+    "max": 1.0,
+    "min_gap": 0.004783163265306121,
+    "exact_ties": 0
+   },
+   "prefill_token": {
+    "count": 16,
+    "min_positive": 1.3563368055555555e-05,
+    "max": 0.0007396449704142012,
+    "min_gap": 1.8772827758553937e-07,
+    "exact_ties": 0
+   },
+   "full_chunk": {
+    "count": 16,
+    "min_positive": 0.001736111111111111,
+    "max": 0.012345679012345678,
+    "min_gap": 0.000154248057130855,
+    "exact_ties": 0
+   },
+   "penalty": {
+    "count": 8,
+    "min_positive": 0.015625,
+    "max": 1.0,
+    "min_gap": 0.004783163265306121,
+    "exact_ties": 0
+   }
+  },
+  "integer_source": "reused_from_rollout",
+  "integer": {
+   "status": "optimal",
+   "objective": 1.527422052154195,
+   "actions": {
+    "0": "decode",
+    "1": "decode",
+    "2": "decode",
+    "3": "decode",
+    "4": "decode",
+    "6": "decode",
+    "7": "decode",
+    "8": "decode"
+   },
+   "raw_status": 0,
+   "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "dual_bound": 1.527422052154195,
+   "reported_gap": 0.0,
+   "node_count": 1,
+   "max_integrality_deviation": 0.0
+  }
+ },
+ {
+  "index": 3,
+  "problem_status": "valid",
+  "problem_source": "decision_mapping",
+  "problem_id": "3",
+  "round_trip_equal": true,
+  "scale": {
+   "requests": 21,
+   "residents": 5,
+   "max_service_rank": 20,
+   "decode": {
+    "count": 5,
+    "min_positive": 0.04,
+    "max": 1.0,
+    "min_gap": 0.0225,
+    "exact_ties": 0
+   },
+   "prefill_token": {
+    "count": 16,
+    "min_positive": 1.7715419501133787e-05,
+    "max": 0.00125,
+    "min_gap": 7.509131103421575e-07,
+    "exact_ties": 0
+   },
+   "full_chunk": {
+    "count": 16,
+    "min_positive": 0.0022675736961451248,
+    "max": 0.027777777777777776,
+    "min_gap": 0.00023242630385487528,
+    "exact_ties": 0
+   },
+   "penalty": {
+    "count": 5,
+    "min_positive": 0.04,
+    "max": 1.0,
+    "min_gap": 0.0225,
+    "exact_ties": 0
+   }
+  },
+  "integer_source": "reused_from_rollout",
+  "integer": {
+   "status": "optimal",
+   "objective": 1.512031427154195,
+   "actions": {
+    "1": "decode",
+    "2": "decode",
+    "4": "decode",
+    "5": "prefill:83",
+    "7": "decode",
+    "8": "decode",
+    "9": "prefill:32",
+    "12": "prefill:8"
+   },
+   "raw_status": 0,
+   "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "dual_bound": 1.512031427154195,
+   "reported_gap": 0.0,
+   "node_count": 1,
+   "max_integrality_deviation": 0.0
+  }
+ },
+ {
+  "index": 4,
+  "problem_status": "valid",
+  "problem_source": "decision_mapping",
+  "problem_id": "4",
+  "round_trip_equal": true,
+  "scale": {
+   "requests": 21,
+   "residents": 8,
+   "max_service_rank": 20,
+   "decode": {
+    "count": 7,
+    "min_positive": 0.015625,
+    "max": 1.0,
+    "min_gap": 0.004783163265306121,
+    "exact_ties": 0
+   },
+   "prefill_token": {
+    "count": 14,
+    "min_positive": 1.7715419501133787e-05,
+    "max": 0.0006172839506172839,
+    "min_gap": 1.5943877551020328e-06,
+    "exact_ties": 0
+   },
+   "full_chunk": {
+    "count": 14,
+    "min_positive": 0.0022675736961451248,
+    "max": 0.027777777777777776,
+    "min_gap": 0.00023242630385487528,
+    "exact_ties": 0
+   },
+   "penalty": {
+    "count": 8,
+    "min_positive": 0.015625,
+    "max": 1.0,
+    "min_gap": 0.004783163265306121,
+    "exact_ties": 0
+   }
+  },
+  "integer_source": "reused_from_rollout",
+  "integer": {
+   "status": "optimal",
+   "objective": 1.527422052154195,
+   "actions": {
+    "1": "decode",
+    "2": "decode",
+    "4": "decode",
+    "5": "prefill:45",
+    "7": "decode",
+    "8": "decode",
+    "9": "decode",
+    "12": "decode"
+   },
+   "raw_status": 0,
+   "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "dual_bound": 1.527422052154195,
+   "reported_gap": 0.0,
+   "node_count": 1,
+   "max_integrality_deviation": 0.0
+  }
+ },
+ {
+  "index": 5,
+  "problem_status": "valid",
+  "problem_source": "decision_mapping",
+  "problem_id": "5",
+  "round_trip_equal": true,
+  "scale": {
+   "requests": 19,
+   "residents": 6,
+   "max_service_rank": 18,
+   "decode": {
+    "count": 6,
+    "min_positive": 0.027777777777777776,
+    "max": 1.0,
+    "min_gap": 0.012222222222222225,
+    "exact_ties": 0
+   },
+   "prefill_token": {
+    "count": 13,
+    "min_positive": 2.1641274238227147e-05,
+    "max": 0.0007716049382716049,
+    "min_gap": 3.7545655517107874e-07,
+    "exact_ties": 0
+   },
+   "full_chunk": {
+    "count": 13,
+    "min_positive": 0.002770083102493075,
+    "max": 0.02040816326530612,
+    "min_gap": 0.0003163366505933448,
+    "exact_ties": 0
+   },
+   "penalty": {
+    "count": 6,
+    "min_positive": 0.027777777777777776,
+    "max": 1.0,
+    "min_gap": 0.012222222222222225,
+    "exact_ties": 0
+   }
+  },
+  "integer_source": "reused_from_rollout",
+  "integer": {
+   "status": "optimal",
+   "objective": 1.5241427311665408,
+   "actions": {
+    "2": "decode",
+    "4": "decode",
+    "5": "decode",
+    "8": "decode",
+    "9": "decode",
+    "10": "prefill:64",
+    "12": "decode",
+    "13": "prefill:16"
+   },
+   "raw_status": 0,
+   "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "dual_bound": 1.5241427311665408,
+   "reported_gap": 0.0,
+   "node_count": 1,
+   "max_integrality_deviation": 0.0
+  }
+ },
+ {
+  "index": 6,
+  "problem_status": "valid",
+  "problem_source": "decision_mapping",
+  "problem_id": "6",
+  "round_trip_equal": true,
+  "scale": {
+   "requests": 16,
+   "residents": 5,
+   "max_service_rank": 15,
+   "decode": {
+    "count": 5,
+    "min_positive": 0.04,
+    "max": 1.0,
+    "min_gap": 0.0225,
+    "exact_ties": 0
+   },
+   "prefill_token": {
+    "count": 11,
+    "min_positive": 3.0517578125e-05,
+    "max": 0.0012004801920768306,
+    "min_gap": 8.680555555555557e-06,
+    "exact_ties": 0
+   },
+   "full_chunk": {
+    "count": 11,
+    "min_positive": 0.00390625,
+    "max": 0.027777777777777776,
+    "min_gap": 0.0005381944444444444,
+    "exact_ties": 0
+   },
+   "penalty": {
+    "count": 5,
+    "min_positive": 0.04,
+    "max": 1.0,
+    "min_gap": 0.0225,
+    "exact_ties": 0
+   }
+  },
+  "integer_source": "reused_from_rollout",
+  "integer": {
+   "status": "optimal",
+   "objective": 1.515703302154195,
+   "actions": {
+    "2": "decode",
+    "5": "decode",
+    "8": "decode",
+    "10": "decode",
+    "11": "prefill:74",
+    "13": "decode",
+    "14": "prefill:17",
+    "15": "prefill:32"
+   },
+   "raw_status": 0,
+   "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "dual_bound": 1.515703302154195,
+   "reported_gap": 0.0,
+   "node_count": 1,
+   "max_integrality_deviation": 3.3306690738754696e-16
+  }
+ },
+ {
+  "index": 7,
+  "problem_status": "valid",
+  "problem_source": "decision_mapping",
+  "problem_id": "7",
+  "round_trip_equal": true,
+  "scale": {
+   "requests": 16,
+   "residents": 8,
+   "max_service_rank": 15,
+   "decode": {
+    "count": 7,
+    "min_positive": 0.015625,
+    "max": 1.0,
+    "min_gap": 0.004783163265306121,
+    "exact_ties": 0
+   },
+   "prefill_token": {
+    "count": 9,
+    "min_positive": 3.0517578125e-05,
+    "max": 0.0010330578512396695,
+    "min_gap": 8.680555555555557e-06,
+    "exact_ties": 0
+   },
+   "full_chunk": {
+    "count": 9,
+    "min_positive": 0.00390625,
+    "max": 0.027777777777777773,
+    "min_gap": 0.0005381944444444444,
+    "exact_ties": 0
+   },
+   "penalty": {
+    "count": 8,
+    "min_positive": 0.015625,
+    "max": 1.0,
+    "min_gap": 0.004783163265306121,
+    "exact_ties": 0
+   }
+  },
+  "integer_source": "reused_from_rollout",
+  "integer": {
+   "status": "optimal",
+   "objective": 1.527422052154195,
+   "actions": {
+    "2": "decode",
+    "5": "decode",
+    "8": "decode",
+    "10": "decode",
+    "11": "prefill:54",
+    "13": "decode",
+    "14": "decode",
+    "15": "decode"
+   },
+   "raw_status": 0,
+   "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "dual_bound": 1.527422052154195,
+   "reported_gap": 0.0,
+   "node_count": 1,
+   "max_integrality_deviation": 0.0
+  }
+ },
+ {
+  "index": 8,
+  "problem_status": "valid",
+  "problem_source": "decision_mapping",
+  "problem_id": "8",
+  "round_trip_equal": true,
+  "scale": {
+   "requests": 16,
+   "residents": 8,
+   "max_service_rank": 15,
+   "decode": {
+    "count": 8,
+    "min_positive": 0.015625,
+    "max": 1.0,
+    "min_gap": 0.004783163265306121,
+    "exact_ties": 0
+   },
+   "prefill_token": {
+    "count": 8,
+    "min_positive": 3.0517578125e-05,
+    "max": 0.0010330578512396695,
+    "min_gap": 8.680555555555557e-06,
+    "exact_ties": 0
+   },
+   "full_chunk": {
+    "count": 8,
+    "min_positive": 0.00390625,
+    "max": 0.012345679012345678,
+    "min_gap": 0.0005381944444444444,
+    "exact_ties": 0
+   },
+   "penalty": {
+    "count": 8,
+    "min_positive": 0.015625,
+    "max": 1.0,
+    "min_gap": 0.004783163265306121,
+    "exact_ties": 0
+   }
+  },
+  "integer_source": "reused_from_rollout",
+  "integer": {
+   "status": "optimal",
+   "objective": 1.527422052154195,
+   "actions": {
+    "2": "decode",
+    "5": "decode",
+    "8": "decode",
+    "10": "decode",
+    "11": "decode",
+    "13": "decode",
+    "14": "decode",
+    "15": "decode"
+   },
+   "raw_status": 0,
+   "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "dual_bound": 1.527422052154195,
+   "reported_gap": 0.0,
+   "node_count": 1,
+   "max_integrality_deviation": 0.0
+  }
+ },
+ {
+  "index": 9,
+  "problem_status": "valid",
+  "problem_source": "decision_mapping",
+  "problem_id": "9",
+  "round_trip_equal": true,
+  "scale": {
+   "requests": 13,
+   "residents": 5,
+   "max_service_rank": 12,
+   "decode": {
+    "count": 5,
+    "min_positive": 0.04,
+    "max": 1.0,
+    "min_gap": 0.0225,
+    "exact_ties": 0
+   },
+   "prefill_token": {
+    "count": 8,
+    "min_positive": 4.622781065088757e-05,
+    "max": 0.001953125,
+    "min_gap": 5.093183106575963e-05,
+    "exact_ties": 0
+   },
+   "full_chunk": {
+    "count": 8,
+    "min_positive": 0.005917159763313609,
+    "max": 0.027777777777777776,
+    "min_gap": 0.0010272846811308347,
+    "exact_ties": 0
+   },
+   "penalty": {
+    "count": 5,
+    "min_positive": 0.04,
+    "max": 1.0,
+    "min_gap": 0.0225,
+    "exact_ties": 0
+   }
+  },
+  "integer_source": "reused_from_rollout",
+  "integer": {
+   "status": "optimal",
+   "objective": 1.5193595679012346,
+   "actions": {
+    "5": "decode",
+    "10": "decode",
+    "11": "decode",
+    "13": "decode",
+    "14": "decode",
+    "16": "prefill:64",
+    "18": "prefill:8",
+    "19": "prefill:16"
+   },
+   "raw_status": 0,
+   "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "dual_bound": 1.5193595679012346,
+   "reported_gap": 0.0,
+   "node_count": 1,
+   "max_integrality_deviation": 0.0
+  }
+ },
+ {
+  "index": 10,
+  "problem_status": "valid",
+  "problem_source": "decision_mapping",
+  "problem_id": "10",
+  "round_trip_equal": true,
+  "scale": {
+   "requests": 11,
+   "residents": 6,
+   "max_service_rank": 10,
+   "decode": {
+    "count": 6,
+    "min_positive": 0.027777777777777776,
+    "max": 1.0,
+    "min_gap": 0.012222222222222225,
+    "exact_ties": 0
+   },
+   "prefill_token": {
+    "count": 5,
+    "min_positive": 6.456611570247934e-05,
+    "max": 0.0009191176470588235,
+    "min_gap": 3.1887755102040657e-06,
+    "exact_ties": 0
+   },
+   "full_chunk": {
+    "count": 5,
+    "min_positive": 0.008264462809917356,
+    "max": 0.02040816326530612,
+    "min_gap": 0.0017355371900826446,
+    "exact_ties": 0
+   },
+   "penalty": {
+    "count": 6,
+    "min_positive": 0.027777777777777776,
+    "max": 1.0,
+    "min_gap": 0.012222222222222225,
+    "exact_ties": 0
+   }
+  },
+  "integer_source": "reused_from_rollout",
+  "integer": {
+   "status": "optimal",
+   "objective": 1.5237549603174603,
+   "actions": {
+    "5": "decode",
+    "11": "decode",
+    "14": "decode",
+    "16": "decode",
+    "17": "prefill:105",
+    "18": "decode",
+    "19": "decode",
+    "20": "prefill:17"
+   },
+   "raw_status": 0,
+   "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "dual_bound": 1.5237549603174603,
+   "reported_gap": 0.0,
+   "node_count": 1,
+   "max_integrality_deviation": 0.0
+  }
+ },
+ {
+  "index": 11,
+  "problem_status": "valid",
+  "problem_source": "decision_mapping",
+  "problem_id": "11",
+  "round_trip_equal": true,
+  "scale": {
+   "requests": 11,
+   "residents": 8,
+   "max_service_rank": 10,
+   "decode": {
+    "count": 7,
+    "min_positive": 0.015625,
+    "max": 1.0,
+    "min_gap": 0.012152777777777776,
+    "exact_ties": 0
+   },
+   "prefill_token": {
+    "count": 4,
+    "min_positive": 6.456611570247934e-05,
+    "max": 0.0008873114463176574,
+    "min_gap": 9.168388429752066e-05,
+    "exact_ties": 0
+   },
+   "full_chunk": {
+    "count": 4,
+    "min_positive": 0.008264462809917356,
+    "max": 0.02040816326530612,
+    "min_gap": 0.0017355371900826446,
+    "exact_ties": 0
+   },
+   "penalty": {
+    "count": 8,
+    "min_positive": 0.015625,
+    "max": 1.0,
+    "min_gap": 0.004783163265306121,
+    "exact_ties": 0
+   }
+  },
+  "integer_source": "reused_from_rollout",
+  "integer": {
+   "status": "optimal",
+   "objective": 1.527422052154195,
+   "actions": {
+    "5": "decode",
+    "11": "decode",
+    "14": "decode",
+    "16": "decode",
+    "17": "prefill:23",
+    "18": "decode",
+    "19": "decode",
+    "20": "decode"
+   },
+   "raw_status": 0,
+   "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "dual_bound": 1.527422052154195,
+   "reported_gap": 0.0,
+   "node_count": 1,
+   "max_integrality_deviation": 0.0
+  }
+ },
+ {
+  "index": 12,
+  "problem_status": "valid",
+  "problem_source": "decision_mapping",
+  "problem_id": "12",
+  "round_trip_equal": true,
+  "scale": {
+   "requests": 10,
+   "residents": 7,
+   "max_service_rank": 9,
+   "decode": {
+    "count": 7,
+    "min_positive": 0.02040816326530612,
+    "max": 1.0,
+    "min_gap": 0.007369614512471655,
+    "exact_ties": 0
+   },
+   "prefill_token": {
+    "count": 3,
+    "min_positive": 7.8125e-05,
+    "max": 0.00048828125,
+    "min_gap": 0.00011477623456790122,
+    "exact_ties": 0
+   },
+   "full_chunk": {
+    "count": 3,
+    "min_positive": 0.01,
+    "max": 0.015625,
+    "min_gap": 0.002345679012345678,
+    "exact_ties": 0
+   },
+   "penalty": {
+    "count": 7,
+    "min_positive": 0.02040816326530612,
+    "max": 1.0,
+    "min_gap": 0.007369614512471655,
+    "exact_ties": 0
+   }
+  },
+  "integer_source": "reused_from_rollout",
+  "integer": {
+   "status": "optimal",
+   "objective": 1.527422052154195,
+   "actions": {
+    "5": "decode",
+    "11": "decode",
+    "14": "decode",
+    "16": "decode",
+    "17": "decode",
+    "19": "decode",
+    "20": "decode",
+    "21": "prefill:32"
+   },
+   "raw_status": 0,
+   "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "dual_bound": 1.527422052154195,
+   "reported_gap": 0.0,
+   "node_count": 1,
+   "max_integrality_deviation": 0.0
+  }
+ },
+ {
+  "index": 13,
+  "problem_status": "valid",
+  "problem_source": "decision_mapping",
+  "problem_id": "13",
+  "round_trip_equal": true,
+  "scale": {
+   "requests": 9,
+   "residents": 7,
+   "max_service_rank": 8,
+   "decode": {
+    "count": 7,
+    "min_positive": 0.02040816326530612,
+    "max": 1.0,
+    "min_gap": 0.007369614512471655,
+    "exact_ties": 0
+   },
+   "prefill_token": {
+    "count": 2,
+    "min_positive": 9.645061728395061e-05,
+    "max": 0.000244140625,
+    "min_gap": 0.0001476900077160494,
+    "exact_ties": 0
+   },
+   "full_chunk": {
+    "count": 2,
+    "min_positive": 0.012345679012345678,
+    "max": 0.015625,
+    "min_gap": 0.0032793209876543217,
+    "exact_ties": 0
+   },
+   "penalty": {
+    "count": 7,
+    "min_positive": 0.02040816326530612,
+    "max": 1.0,
+    "min_gap": 0.007369614512471655,
+    "exact_ties": 0
+   }
+  },
+  "integer_source": "reused_from_rollout",
+  "integer": {
+   "status": "optimal",
+   "objective": 1.527422052154195,
+   "actions": {
+    "11": "decode",
+    "14": "decode",
+    "16": "decode",
+    "17": "decode",
+    "19": "decode",
+    "20": "decode",
+    "21": "decode",
+    "22": "prefill:64"
+   },
+   "raw_status": 0,
+   "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "dual_bound": 1.527422052154195,
+   "reported_gap": 0.0,
+   "node_count": 1,
+   "max_integrality_deviation": 0.0
+  }
+ },
+ {
+  "index": 14,
+  "problem_status": "valid",
+  "problem_source": "decision_mapping",
+  "problem_id": "14",
+  "round_trip_equal": true,
+  "scale": {
+   "requests": 7,
+   "residents": 6,
+   "max_service_rank": 6,
+   "decode": {
+    "count": 6,
+    "min_positive": 0.027777777777777776,
+    "max": 1.0,
+    "min_gap": 0.012222222222222225,
+    "exact_ties": 0
+   },
+   "prefill_token": {
+    "count": 1,
+    "min_positive": 0.00015943877551020407,
+    "max": 0.00015943877551020407,
+    "min_gap": null,
+    "exact_ties": 0
+   },
+   "full_chunk": {
+    "count": 1,
+    "min_positive": 0.02040816326530612,
+    "max": 0.02040816326530612,
+    "min_gap": null,
+    "exact_ties": 0
+   },
+   "penalty": {
+    "count": 6,
+    "min_positive": 0.027777777777777776,
+    "max": 1.0,
+    "min_gap": 0.012222222222222225,
+    "exact_ties": 0
+   }
+  },
+  "integer_source": "reused_from_rollout",
+  "integer": {
+   "status": "optimal",
+   "objective": 1.5108404195011338,
+   "actions": {
+    "11": "decode",
+    "14": "decode",
+    "17": "decode",
+    "20": "decode",
+    "21": "decode",
+    "22": "decode",
+    "23": "prefill:122"
+   },
+   "raw_status": 0,
+   "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "dual_bound": 1.5108404195011338,
+   "reported_gap": 0.0,
+   "node_count": 1,
+   "max_integrality_deviation": 0.0
+  }
+ },
+ {
+  "index": 15,
+  "problem_status": "valid",
+  "problem_source": "decision_mapping",
+  "problem_id": "15",
+  "round_trip_equal": true,
+  "scale": {
+   "requests": 5,
+   "residents": 5,
+   "max_service_rank": 4,
+   "decode": {
+    "count": 4,
+    "min_positive": 0.0625,
+    "max": 1.0,
+    "min_gap": 0.048611111111111105,
+    "exact_ties": 0
+   },
+   "prefill_token": {
+    "count": 1,
+    "min_positive": 0.006666666666666667,
+    "max": 0.006666666666666667,
+    "min_gap": null,
+    "exact_ties": 0
+   },
+   "full_chunk": {
+    "count": 1,
+    "min_positive": 0.04,
+    "max": 0.04,
+    "min_gap": null,
+    "exact_ties": 0
+   },
+   "penalty": {
+    "count": 5,
+    "min_positive": 0.04,
+    "max": 1.0,
+    "min_gap": 0.0225,
+    "exact_ties": 0
+   }
+  },
+  "integer_source": "reused_from_rollout",
+  "integer": {
+   "status": "optimal",
+   "objective": 1.4636111111111112,
+   "actions": {
+    "11": "decode",
+    "17": "decode",
+    "20": "decode",
+    "22": "decode",
+    "23": "prefill:6"
+   },
+   "raw_status": 0,
+   "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "dual_bound": 1.4636111111111112,
+   "reported_gap": 0.0,
+   "node_count": 0,
+   "max_integrality_deviation": 0.0
+  }
+ },
+ {
+  "index": 16,
+  "problem_status": "valid",
+  "problem_source": "decision_mapping",
+  "problem_id": "16",
+  "round_trip_equal": true,
+  "scale": {
+   "requests": 4,
+   "residents": 4,
+   "max_service_rank": 3,
+   "decode": {
+    "count": 4,
+    "min_positive": 0.0625,
+    "max": 1.0,
+    "min_gap": 0.048611111111111105,
+    "exact_ties": 0
+   },
+   "prefill_token": {
+    "count": 0,
+    "min_positive": null,
+    "max": null,
+    "min_gap": null,
+    "exact_ties": 0
+   },
+   "full_chunk": {
+    "count": 0,
+    "min_positive": null,
+    "max": null,
+    "min_gap": null,
+    "exact_ties": 0
+   },
+   "penalty": {
+    "count": 4,
+    "min_positive": 0.0625,
+    "max": 1.0,
+    "min_gap": 0.048611111111111105,
+    "exact_ties": 0
+   }
+  },
+  "integer_source": "reused_from_rollout",
+  "integer": {
+   "status": "optimal",
+   "objective": 1.4236111111111112,
+   "actions": {
+    "17": "decode",
+    "20": "decode",
+    "22": "decode",
+    "23": "decode"
+   },
+   "raw_status": 0,
+   "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "dual_bound": 1.4236111111111112,
+   "reported_gap": 0.0,
+   "node_count": 0,
+   "max_integrality_deviation": 0.0
+  }
+ },
+ {
+  "index": 17,
+  "problem_status": "valid",
+  "problem_source": "decision_mapping",
+  "problem_id": "17",
+  "round_trip_equal": true,
+  "scale": {
+   "requests": 4,
+   "residents": 4,
+   "max_service_rank": 3,
+   "decode": {
+    "count": 4,
+    "min_positive": 0.0625,
+    "max": 1.0,
+    "min_gap": 0.048611111111111105,
+    "exact_ties": 0
+   },
+   "prefill_token": {
+    "count": 0,
+    "min_positive": null,
+    "max": null,
+    "min_gap": null,
+    "exact_ties": 0
+   },
+   "full_chunk": {
+    "count": 0,
+    "min_positive": null,
+    "max": null,
+    "min_gap": null,
+    "exact_ties": 0
+   },
+   "penalty": {
+    "count": 4,
+    "min_positive": 0.0625,
+    "max": 1.0,
+    "min_gap": 0.048611111111111105,
+    "exact_ties": 0
+   }
+  },
+  "integer_source": "reused_from_rollout",
+  "integer": {
+   "status": "optimal",
+   "objective": 1.4236111111111112,
+   "actions": {
+    "17": "decode",
+    "20": "decode",
+    "22": "decode",
+    "23": "decode"
+   },
+   "raw_status": 0,
+   "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "dual_bound": 1.4236111111111112,
+   "reported_gap": 0.0,
+   "node_count": 0,
+   "max_integrality_deviation": 0.0
+  }
+ },
+ {
+  "index": 18,
+  "problem_status": "valid",
+  "problem_source": "decision_mapping",
+  "problem_id": "18",
+  "round_trip_equal": true,
+  "scale": {
+   "requests": 3,
+   "residents": 3,
+   "max_service_rank": 2,
+   "decode": {
+    "count": 3,
+    "min_positive": 0.1111111111111111,
+    "max": 1.0,
+    "min_gap": 0.1388888888888889,
+    "exact_ties": 0
+   },
+   "prefill_token": {
+    "count": 0,
+    "min_positive": null,
+    "max": null,
+    "min_gap": null,
+    "exact_ties": 0
+   },
+   "full_chunk": {
+    "count": 0,
+    "min_positive": null,
+    "max": null,
+    "min_gap": null,
+    "exact_ties": 0
+   },
+   "penalty": {
+    "count": 3,
+    "min_positive": 0.1111111111111111,
+    "max": 1.0,
+    "min_gap": 0.1388888888888889,
+    "exact_ties": 0
+   }
+  },
+  "integer_source": "reused_from_rollout",
+  "integer": {
+   "status": "optimal",
+   "objective": 1.3611111111111112,
+   "actions": {
+    "17": "decode",
+    "20": "decode",
+    "23": "decode"
+   },
+   "raw_status": 0,
+   "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "dual_bound": 1.3611111111111112,
+   "reported_gap": 0.0,
+   "node_count": 0,
+   "max_integrality_deviation": 0.0
+  }
+ },
+ {
+  "index": 19,
+  "problem_status": "valid",
+  "problem_source": "decision_mapping",
+  "problem_id": "19",
+  "round_trip_equal": true,
+  "scale": {
+   "requests": 2,
+   "residents": 2,
+   "max_service_rank": 1,
+   "decode": {
+    "count": 2,
+    "min_positive": 0.25,
+    "max": 1.0,
+    "min_gap": 0.75,
+    "exact_ties": 0
+   },
+   "prefill_token": {
+    "count": 0,
+    "min_positive": null,
+    "max": null,
+    "min_gap": null,
+    "exact_ties": 0
+   },
+   "full_chunk": {
+    "count": 0,
+    "min_positive": null,
+    "max": null,
+    "min_gap": null,
+    "exact_ties": 0
+   },
+   "penalty": {
+    "count": 2,
+    "min_positive": 0.25,
+    "max": 1.0,
+    "min_gap": 0.75,
+    "exact_ties": 0
+   }
+  },
+  "integer_source": "reused_from_rollout",
+  "integer": {
+   "status": "optimal",
+   "objective": 1.25,
+   "actions": {
+    "17": "decode",
+    "23": "decode"
+   },
+   "raw_status": 0,
+   "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "dual_bound": 1.25,
+   "reported_gap": 0.0,
+   "node_count": 0,
+   "max_integrality_deviation": 0.0
+  }
+ },
+ {
+  "index": 20,
+  "problem_status": "valid",
+  "problem_source": "decision_mapping",
+  "problem_id": "20",
+  "round_trip_equal": true,
+  "scale": {
+   "requests": 1,
+   "residents": 1,
+   "max_service_rank": 0,
+   "decode": {
+    "count": 1,
+    "min_positive": 1.0,
+    "max": 1.0,
+    "min_gap": null,
+    "exact_ties": 0
+   },
+   "prefill_token": {
+    "count": 0,
+    "min_positive": null,
+    "max": null,
+    "min_gap": null,
+    "exact_ties": 0
+   },
+   "full_chunk": {
+    "count": 0,
+    "min_positive": null,
+    "max": null,
+    "min_gap": null,
+    "exact_ties": 0
+   },
+   "penalty": {
+    "count": 1,
+    "min_positive": 1.0,
+    "max": 1.0,
+    "min_gap": null,
+    "exact_ties": 0
+   }
+  },
+  "integer_source": "reused_from_rollout",
+  "integer": {
+   "status": "optimal",
+   "objective": 1.0,
+   "actions": {
+    "23": "decode"
+   },
+   "raw_status": 0,
+   "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "dual_bound": 1.0,
+   "reported_gap": 0.0,
+   "node_count": 0,
+   "max_integrality_deviation": 0.0
+  }
+ },
+ {
+  "index": 21,
+  "problem_status": "valid",
+  "problem_source": "decision_mapping",
+  "problem_id": "21",
+  "round_trip_equal": true,
+  "scale": {
+   "requests": 1,
+   "residents": 1,
+   "max_service_rank": 0,
+   "decode": {
+    "count": 1,
+    "min_positive": 1.0,
+    "max": 1.0,
+    "min_gap": null,
+    "exact_ties": 0
+   },
+   "prefill_token": {
+    "count": 0,
+    "min_positive": null,
+    "max": null,
+    "min_gap": null,
+    "exact_ties": 0
+   },
+   "full_chunk": {
+    "count": 0,
+    "min_positive": null,
+    "max": null,
+    "min_gap": null,
+    "exact_ties": 0
+   },
+   "penalty": {
+    "count": 1,
+    "min_positive": 1.0,
+    "max": 1.0,
+    "min_gap": null,
+    "exact_ties": 0
+   }
+  },
+  "integer_source": "reused_from_rollout",
+  "integer": {
+   "status": "optimal",
+   "objective": 1.0,
+   "actions": {
+    "23": "decode"
+   },
+   "raw_status": 0,
+   "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "dual_bound": 1.0,
+   "reported_gap": 0.0,
+   "node_count": 0,
+   "max_integrality_deviation": 0.0
+  }
+ },
+ {
+  "index": 22,
+  "problem_status": "valid",
+  "problem_source": "decision_mapping",
+  "problem_id": "22",
+  "round_trip_equal": true,
+  "scale": {
+   "requests": 1,
+   "residents": 1,
+   "max_service_rank": 0,
+   "decode": {
+    "count": 1,
+    "min_positive": 1.0,
+    "max": 1.0,
+    "min_gap": null,
+    "exact_ties": 0
+   },
+   "prefill_token": {
+    "count": 0,
+    "min_positive": null,
+    "max": null,
+    "min_gap": null,
+    "exact_ties": 0
+   },
+   "full_chunk": {
+    "count": 0,
+    "min_positive": null,
+    "max": null,
+    "min_gap": null,
+    "exact_ties": 0
+   },
+   "penalty": {
+    "count": 1,
+    "min_positive": 1.0,
+    "max": 1.0,
+    "min_gap": null,
+    "exact_ties": 0
+   }
+  },
+  "integer_source": "reused_from_rollout",
+  "integer": {
+   "status": "optimal",
+   "objective": 1.0,
+   "actions": {
+    "23": "decode"
+   },
+   "raw_status": 0,
+   "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "dual_bound": 1.0,
+   "reported_gap": 0.0,
+   "node_count": 0,
+   "max_integrality_deviation": 0.0
+  }
+ },
+ {
+  "index": 23,
+  "problem_status": "valid",
+  "problem_source": "decision_mapping",
+  "problem_id": "23",
+  "round_trip_equal": true,
+  "scale": {
+   "requests": 1,
+   "residents": 1,
+   "max_service_rank": 0,
+   "decode": {
+    "count": 1,
+    "min_positive": 1.0,
+    "max": 1.0,
+    "min_gap": null,
+    "exact_ties": 0
+   },
+   "prefill_token": {
+    "count": 0,
+    "min_positive": null,
+    "max": null,
+    "min_gap": null,
+    "exact_ties": 0
+   },
+   "full_chunk": {
+    "count": 0,
+    "min_positive": null,
+    "max": null,
+    "min_gap": null,
+    "exact_ties": 0
+   },
+   "penalty": {
+    "count": 1,
+    "min_positive": 1.0,
+    "max": 1.0,
+    "min_gap": null,
+    "exact_ties": 0
+   }
+  },
+  "integer_source": "reused_from_rollout",
+  "integer": {
+   "status": "optimal",
+   "objective": 1.0,
+   "actions": {
+    "23": "decode"
+   },
+   "raw_status": 0,
+   "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+   "dual_bound": 1.0,
+   "reported_gap": 0.0,
+   "node_count": 0,
+   "max_integrality_deviation": 0.0
+  }
+ }
+]

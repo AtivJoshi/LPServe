@@ -1,0 +1,27 @@
+Queue-growth batch (CPU, native central/worker replay; resident limit 8)
+
+Rollouts
+case | method | valid | outcome | dec | done | preempt | after_out | adm+victim | discarded | replayed | expanded | events | overgen | res_omit | max_streak | adm_inv | done_inv
+queue48_burst_pool12 | lp_reciprocal_square | False | failure | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0
+queue48_burst_pool12 | adapted_vllm | False | failure | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0
+
+Comparison coverage (every reached decision)
+case | method | reached | records | valid | no_problem | solved | reused | optimal | time_limit | other_fail | errors | missing | round_trip_fail | complete
+queue48_burst_pool12 | lp_reciprocal_square | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | True
+queue48_burst_pool12 | adapted_vllm | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | True
+
+Same-state results (identical problems only; objectives of different policies are not compared)
+  queue48_burst_pool12 lp_reciprocal_square: {}; fractional relaxations 0; relaxation gaps 0 (max 0); extraction losses []; action differences []; near ties []; integer raw statuses {}, max integrality deviation None
+  queue48_burst_pool12 adapted_vllm: reference vs reciprocal-square integer optimum {}; violated LP rows {}; smallest strict preference None; near ties []; integer raw statuses {}, max integrality deviation None
+
+Numerical scale (eligible terms over all valid problems)
+  queue48_burst_pool12 lp_reciprocal_square: max rank None, min positive coefficient None, min gaps {}, exact ties {}, max offline solve None s
+  queue48_burst_pool12 adapted_vllm: max rank None, min positive coefficient None, min gaps {}, exact ties {}, max offline solve None s
+
+Victims: [decision, victim, running position / count, had output, reasons, admitted in the same decision]
+
+Mean first-prefill and completion decision index by prompt length (decision indices, not time)
+  queue48_burst_pool12 lp_reciprocal_square: 
+  queue48_burst_pool12 adapted_vllm: 
+
+First emitted difference between rollouts (closed loop): first index whose emitted output differs, and first index whose selected set (victims and served requests) differs

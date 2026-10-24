@@ -385,6 +385,58 @@ def coordinated_rank_utility(captured, request, *, rank_base, c_max, b_max):
     )
 
 
+def reciprocal_square_rank_utility(captured, request, *, c_max, b_max):
+    """Reciprocal-square coordinated coefficient policy for
+    ``construct_coefficients``.
+
+    Bind the decision's configured ``c_max`` and ``b_max`` (for example with
+    ``functools.partial``) to obtain a ``policy(captured, request)``. With
+    ``r`` the zero-based position of ``request`` in ``running_order``
+    followed by ``arrived_waiting_order``::
+
+        w = 1 / (1 + r) ** 2
+        q = min(prompt_tokens_remaining, c_max, b_max)   (prefill-eligible)
+
+        decode_utility        = w for a decode-eligible request, otherwise 0
+        prefill_token_utility = w / q for a prefill-eligible request,
+                                otherwise 0
+        preemption_penalty    = w for an eligible resident victim,
+                                otherwise 0
+
+    The terms are those of ``coordinated_rank_utility``; only the weight
+    decays more slowly with rank. The exponent is fixed at two. The weight
+    uses the service position for every term; the rank profile's separate
+    victim rank is not read. ``c_max`` and ``b_max`` must be positive
+    integers. Reads only the immutable captured data. This is one
+    provisional candidate (D-01 to D-04 remain OPEN), not a selected policy.
+    """
+    for name, value in (("c_max", c_max), ("b_max", b_max)):
+        _require(
+            _is_int(value) and value > 0,
+            f"reciprocal-square utility {name} must be a positive integer, "
+            f"got {value!r}",
+        )
+    raw_id = request.raw_seq_id
+    position = (
+        captured.running_order + captured.arrived_waiting_order
+    ).index(raw_id)
+    weight = 1.0 / (1 + position) ** 2
+    prefill = 0.0
+    if request.prefill_eligible:
+        chunk = min(request.prompt_tokens_remaining, c_max, b_max)
+        _require(
+            chunk >= 1,
+            f"raw_seq_id {raw_id}: reciprocal-square utility needs a positive "
+            f"available chunk, got {chunk}",
+        )
+        prefill = weight / chunk
+    return RequestUtility(
+        decode_utility=weight if request.decode_eligible else 0.0,
+        prefill_token_utility=prefill,
+        preemption_penalty=weight if request.preemption_eligible else 0.0,
+    )
+
+
 def construct_coefficients(captured, policy):
     """Pure coefficient construction for one decision.
 

@@ -27,6 +27,7 @@ validate, and execute through ``lpserve_plan_execution.execute_plan``. No LP
 is solved to construct its inputs.
 """
 
+import dataclasses
 import math
 import time
 from dataclasses import dataclass
@@ -218,16 +219,74 @@ def solve_integer_plan(problem):
 
 
 def plan_actions(plan):
-    """``{request_id: "prefill:<n>" | "decode" | "preempt"}`` of a plan."""
+    """``{request_id: "prefill:<n>" | "decode" | "preempt"}`` of a plan or
+    of its JSON record."""
+    decisions = (plan["decisions"] if isinstance(plan, dict)
+                 else [dataclasses.asdict(d) for d in plan.decisions])
     out = {}
-    for d in plan.decisions:
-        if d.prefill_tokens:
-            out[d.request_id] = f"prefill:{d.prefill_tokens}"
-        elif d.decode:
-            out[d.request_id] = "decode"
-        elif d.preempt:
-            out[d.request_id] = "preempt"
+    for d in decisions:
+        if d["prefill_tokens"]:
+            out[d["request_id"]] = f"prefill:{d['prefill_tokens']}"
+        elif d["decode"]:
+            out[d["request_id"]] = "decode"
+        elif d["preempt"]:
+            out[d["request_id"]] = "preempt"
     return out
+
+
+def problem_from_record(record):
+    """The ``LPProblem`` of a retained JSON record of one (as written by the
+    comparison drivers). Only the JSON container types are restored: tuple
+    ``order_key``, frozenset legal victims, and the ``NumericalPolicy``.
+    Callers validate the result and check that it serializes back to the
+    same record."""
+    requests = tuple(lrs.RequestInput(**dict(r, order_key=tuple(r["order_key"])))
+                     for r in record["requests"])
+    return lrs.LPProblem(**dict(
+        record, requests=requests,
+        legal_preemption_ids=frozenset(record["legal_preemption_ids"]),
+        numerical_policy=lrs.NumericalPolicy(**record["numerical_policy"])))
+
+
+def lp_summary(result_type, result):
+    """Primitive values of an LP-method result (live, or its JSON record);
+    ``None`` unless it is a ``SchedulingSuccess``."""
+    if result_type != "SchedulingSuccess":
+        return None
+    if not isinstance(result, dict):
+        result = dataclasses.asdict(result)
+    return dict(relaxed_objective=result["relaxed"]["normalized_objective"],
+                plan_objective=result["plan"]["objective"],
+                actions=plan_actions(result["plan"]),
+                fractional_request_count=(
+                    result["plan"]["extraction"]["fractional_request_count"]))
+
+
+def integer_summary(result_type, result):
+    """Primitive record of one integer solve (live, or its JSON record):
+    ``status`` "optimal" with the solver's provenance, or "failure" with the
+    stage, category, status, and any incumbent, bound, and gap kept as
+    diagnostics (an incumbent is never called optimal)."""
+    if not isinstance(result, dict):
+        result = dataclasses.asdict(result)
+    if result_type == "IntegerOptimum":
+        source = result["plan"]["extraction"]
+        return dict(status="optimal", objective=result["plan"]["objective"],
+                    actions=plan_actions(result["plan"]),
+                    raw_status=source["raw_status"], message=source["message"],
+                    dual_bound=source["dual_bound"],
+                    reported_gap=source["reported_gap"],
+                    node_count=source["node_count"],
+                    max_integrality_deviation=(
+                        source["max_integrality_deviation"]))
+    return dict(status="failure", stage=result["stage"],
+                category=result["category"], reason=result["reason"],
+                raw_status=result["raw_status"], message=result["message"],
+                incumbent_objective=result["incumbent_objective"],
+                incumbent_vector=result["incumbent_vector"],
+                dual_bound=result["dual_bound"],
+                reported_gap=result["reported_gap"],
+                node_count=result["node_count"])
 
 
 def evaluate_assignment(problem, assignment):
@@ -272,30 +331,37 @@ def compare_same_state(problem, lp_result, integer_result):
     problem. Gaps are attributed only when both succeeded:
     ``relaxation_gap`` = LP optimum - integer optimum and
     ``extraction_loss`` = integer optimum - returned LP plan utility."""
-    record = dict(problem_id=problem.problem_id, comparison_tol=COMPARISON_TOL,
-                  lp_status=type(lp_result).__name__,
-                  integer_status=type(integer_result).__name__)
-    if isinstance(integer_result, IntegerOptimum):
-        diag = integer_result.plan.extraction
-        record.update(integer_objective=integer_result.plan.objective,
-                      integer_dual_bound=diag.dual_bound,
-                      integer_reported_gap=diag.reported_gap,
-                      integer_node_count=diag.node_count,
-                      integer_actions=plan_actions(integer_result.plan))
+    lp_type, integer_type = (type(lp_result).__name__,
+                             type(integer_result).__name__)
+    return compare_summaries(problem.problem_id, lp_type,
+                             lp_summary(lp_type, lp_result), integer_type,
+                             integer_summary(integer_type, integer_result))
+
+
+def compare_summaries(problem_id, lp_status, lp, integer_status, integer):
+    """``compare_same_state`` on primitive summaries (``lp_summary`` and
+    ``integer_summary``) of results for the identical problem."""
+    record = dict(problem_id=problem_id, comparison_tol=COMPARISON_TOL,
+                  lp_status=lp_status, integer_status=integer_status,
+                  integer=integer)
+    if integer["status"] == "optimal":
+        record.update(integer_objective=integer["objective"],
+                      integer_dual_bound=integer["dual_bound"],
+                      integer_reported_gap=integer["reported_gap"],
+                      integer_node_count=integer["node_count"],
+                      integer_actions=integer["actions"])
     else:
         record.update(integer_failure=dict(
-            stage=integer_result.stage, category=integer_result.category,
-            reason=integer_result.reason,
-            incumbent_objective_diagnostic=integer_result.incumbent_objective,
-            dual_bound=integer_result.dual_bound))
-    if isinstance(lp_result, lrs.SchedulingSuccess):
-        record.update(lp_relaxed_objective=lp_result.relaxed.normalized_objective,
-                      lp_plan_objective=lp_result.plan.objective,
-                      lp_actions=plan_actions(lp_result.plan),
-                      fractional_request_count=(
-                          lp_result.plan.extraction.fractional_request_count))
-    if not (isinstance(lp_result, lrs.SchedulingSuccess)
-            and isinstance(integer_result, IntegerOptimum)):
+            stage=integer["stage"], category=integer["category"],
+            reason=integer["reason"],
+            incumbent_objective_diagnostic=integer["incumbent_objective"],
+            dual_bound=integer["dual_bound"]))
+    if lp is not None:
+        record.update(lp_relaxed_objective=lp["relaxed_objective"],
+                      lp_plan_objective=lp["plan_objective"],
+                      lp_actions=lp["actions"],
+                      fractional_request_count=lp["fractional_request_count"])
+    if lp is None or integer["status"] != "optimal":
         record["attribution"] = "not_comparable"
         return record
     lp_opt, ilp, lp_plan = (record["lp_relaxed_objective"],

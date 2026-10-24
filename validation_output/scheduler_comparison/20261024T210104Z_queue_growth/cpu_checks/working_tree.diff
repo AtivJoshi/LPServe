@@ -1,0 +1,1630 @@
+diff --git a/lpserve_state_mapping.py b/lpserve_state_mapping.py
+index 3f16999..be25bc4 100644
+--- a/lpserve_state_mapping.py
++++ b/lpserve_state_mapping.py
+@@ -385,6 +385,58 @@ def coordinated_rank_utility(captured, request, *, rank_base, c_max, b_max):
+     )
+ 
+ 
++def reciprocal_square_rank_utility(captured, request, *, c_max, b_max):
++    """Reciprocal-square coordinated coefficient policy for
++    ``construct_coefficients``.
++
++    Bind the decision's configured ``c_max`` and ``b_max`` (for example with
++    ``functools.partial``) to obtain a ``policy(captured, request)``. With
++    ``r`` the zero-based position of ``request`` in ``running_order``
++    followed by ``arrived_waiting_order``::
++
++        w = 1 / (1 + r) ** 2
++        q = min(prompt_tokens_remaining, c_max, b_max)   (prefill-eligible)
++
++        decode_utility        = w for a decode-eligible request, otherwise 0
++        prefill_token_utility = w / q for a prefill-eligible request,
++                                otherwise 0
++        preemption_penalty    = w for an eligible resident victim,
++                                otherwise 0
++
++    The terms are those of ``coordinated_rank_utility``; only the weight
++    decays more slowly with rank. The exponent is fixed at two. The weight
++    uses the service position for every term; the rank profile's separate
++    victim rank is not read. ``c_max`` and ``b_max`` must be positive
++    integers. Reads only the immutable captured data. This is one
++    provisional candidate (D-01 to D-04 remain OPEN), not a selected policy.
++    """
++    for name, value in (("c_max", c_max), ("b_max", b_max)):
++        _require(
++            _is_int(value) and value > 0,
++            f"reciprocal-square utility {name} must be a positive integer, "
++            f"got {value!r}",
++        )
++    raw_id = request.raw_seq_id
++    position = (
++        captured.running_order + captured.arrived_waiting_order
++    ).index(raw_id)
++    weight = 1.0 / (1 + position) ** 2
++    prefill = 0.0
++    if request.prefill_eligible:
++        chunk = min(request.prompt_tokens_remaining, c_max, b_max)
++        _require(
++            chunk >= 1,
++            f"raw_seq_id {raw_id}: reciprocal-square utility needs a positive "
++            f"available chunk, got {chunk}",
++        )
++        prefill = weight / chunk
++    return RequestUtility(
++        decode_utility=weight if request.decode_eligible else 0.0,
++        prefill_token_utility=prefill,
++        preemption_penalty=weight if request.preemption_eligible else 0.0,
++    )
++
++
+ def construct_coefficients(captured, policy):
+     """Pure coefficient construction for one decision.
+ 
+diff --git a/scripts/compare_coefficient_policies_cpu.py b/scripts/compare_coefficient_policies_cpu.py
+index c122380..4d537f5 100644
+--- a/scripts/compare_coefficient_policies_cpu.py
++++ b/scripts/compare_coefficient_policies_cpu.py
+@@ -26,11 +26,30 @@ Sections written under ``--output-dir``:
+ 
+ Exit status is zero only if every rollout and diagnostic passed its checks;
+ workload outcomes are reported separately.
++
++``--batch queue_growth`` instead runs the reciprocal-square queue-growth
++batch (``QUEUE_RUNS``: the six ``compare_scheduler_gpu.QUEUE_GROWTH_CASES``
++at resident limit 8; six methods on the six-request anchor, and the
++reference, ``lp_reciprocal_square``, and ``ilp_reciprocal_square`` on the
++larger cases). Each run writes ``rollouts/<case>/<method>/`` with
++``decision_trace.json.gz``, ``summary.json``, ``comparisons.json``, and
++``console.log``. After each rollout, every reached decision receives a
++same-state integer comparison from the retained JSON trace
++(``decision_comparisons``): an offline solve of each LP decision's own
++problem, the rollout's own integer result for the integer-driven method
++(not solved again), and an offline solve of the reference's read-only
++reciprocal-square diagnostic problem. Coverage counts are part of the pass
++criterion; a missing record fails the batch.
++
++``--batch retained_runs --runs <dir> ...`` performs the same offline
++comparisons for retained runs (for example GPU runs), optionally checking
++their emitted decisions against a queue-growth CPU batch (``--cpu-batch``).
+ """
+ 
+ import argparse
+ import contextlib
+ import functools
++import io
+ import itertools
+ import json
+ import math
+@@ -104,19 +123,27 @@ def enumeration_check(problem):
+ def compare_reference(problem, proposal, integer_result):
+     """Classify the reference proposal against the integer optimum of the
+     coordinated problem of the same state."""
++    integer_type = type(integer_result).__name__
++    return classify_reference(problem, proposal, integer_type,
++                              eip.integer_summary(integer_type, integer_result))
++
++
++def classify_reference(problem, proposal, integer_status, integer):
++    """``compare_reference`` on an ``integer_summary`` of the integer
++    result for the same problem."""
+     assignment = reference_assignment(proposal)
+     evaluation = eip.evaluate_assignment(problem, assignment)
+     record = dict(problem_id=problem.problem_id, reference_actions=assignment,
+                   reference_evaluation=evaluation,
+-                  integer_status=type(integer_result).__name__)
+-    if not isinstance(integer_result, eip.IntegerOptimum):
++                  integer_status=integer_status)
++    if integer["status"] != "optimal":
+         record["classification"] = "integer_solve_failed"
+-        record["integer_failure"] = dict(stage=integer_result.stage,
+-                                         category=integer_result.category,
+-                                         reason=integer_result.reason)
++        record["integer_failure"] = dict(stage=integer["stage"],
++                                         category=integer["category"],
++                                         reason=integer["reason"])
+         return record
+-    best = integer_result.plan.objective
+-    actions = eip.plan_actions(integer_result.plan)
++    best = integer["objective"]
++    actions = integer["actions"]
+     tol = eip.COMPARISON_TOL * max(1.0, abs(best), abs(evaluation["objective"]))
+     record.update(integer_objective=best, integer_actions=actions)
+     if not evaluation["feasible"]:
+@@ -540,9 +567,625 @@ def report(rollouts, same_state, divergences, diagnostics):
+     return "\n".join(lines) + "\n"
+ 
+ 
++# ---------------------------------------------------------------------------
++# Queue-growth batch: reciprocal-square policy as the queue grows
++# ---------------------------------------------------------------------------
++
++QUEUE_LIMIT = 8
++QUEUE_ANCHOR = "queue6_burst"
++QUEUE_ANCHOR_METHODS = ("adapted_vllm", "lp_uniform", "lp_rank_based",
++                        "lp_coordinated", driver.RECIPROCAL_SQUARE_POLICY,
++                        driver.RECIPROCAL_SQUARE_INTEGER_POLICY)
++QUEUE_METHODS = ("adapted_vllm", driver.RECIPROCAL_SQUARE_POLICY,
++                 driver.RECIPROCAL_SQUARE_INTEGER_POLICY)
++QUEUE_RUNS = tuple((case, method) for case in driver.QUEUE_GROWTH_CASES
++                   for method in (QUEUE_ANCHOR_METHODS if case == QUEUE_ANCHOR
++                                  else QUEUE_METHODS))
++QUEUE_DIVERGENCE_PAIRS = (
++    (driver.RECIPROCAL_SQUARE_POLICY, driver.RECIPROCAL_SQUARE_INTEGER_POLICY),
++    ("adapted_vllm", driver.RECIPROCAL_SQUARE_POLICY),
++    ("adapted_vllm", driver.RECIPROCAL_SQUARE_INTEGER_POLICY),
++    ("lp_coordinated", driver.RECIPROCAL_SQUARE_POLICY))
++
++
++def write_json_gz(path, value):
++    """Deterministic gzip (no timestamp) of a JSON record."""
++    import gzip
++    with open(path, "wb") as raw, gzip.GzipFile(fileobj=raw, mode="wb",
++                                                mtime=0) as f:
++        f.write(json.dumps(value, indent=1).encode())
++
++
++def read_trace(run_dir):
++    import gzip
++    run_dir = Path(run_dir)
++    if (run_dir / "decision_trace.json.gz").exists():
++        with gzip.open(run_dir / "decision_trace.json.gz", "rt") as f:
++            return json.load(f)
++    return json.loads((run_dir / "decision_trace.json").read_text())
++
++
++def scale_record(problem):
++    """Rank range and coefficient magnitudes of one problem: per term kind,
++    the eligible values' smallest and largest positive value, the smallest
++    positive difference between distinct values, and the count of values
++    equal to another request's (exact ties). Diagnostic only."""
++    reqs = problem.requests
++    kinds = dict(
++        decode=[r.decode_utility for r in reqs if r.decode_eligible],
++        prefill_token=[r.prefill_token_utility for r in reqs
++                       if r.prefill_eligible],
++        full_chunk=[r.prefill_token_utility * r.prefill_upper_bound
++                    for r in reqs if r.prefill_eligible],
++        penalty=[r.preemption_penalty for r in reqs if r.preemption_eligible])
++    record = dict(requests=len(reqs), residents=problem.resident_count,
++                  max_service_rank=max((r.service_rank for r in reqs
++                                        if r.service_rank is not None),
++                                       default=None))
++    for kind, values in kinds.items():
++        positive = sorted(v for v in values if v > 0)
++        distinct = sorted(set(positive))
++        gaps = [b - a for a, b in zip(distinct, distinct[1:])]
++        record[kind] = dict(
++            count=len(values), min_positive=positive[0] if positive else None,
++            max=positive[-1] if positive else None,
++            min_gap=min(gaps) if gaps else None,
++            exact_ties=len(positive) - len(distinct))
++    return record
++
++
++def decision_comparisons(trace, method):
++    """One same-state comparison record per reached decision of a retained
++    (JSON) trace, plus coverage counts.
++
++    LP methods: the decision's own mapped problem, reloaded from the record,
++    receives one offline integer solve, compared with the recorded LP result.
++    Integer-driven methods: the rollout's own integer result is reused, not
++    solved again. Reference: the read-only reciprocal-square diagnostic
++    problem of the pre-decision state receives one offline integer solve,
++    and the recorded proposal is classified against it. A decision without a
++    valid problem gets an explicit record; none is invented."""
++    records = []
++    coverage = dict(reached_decisions=len(trace.get("decisions", [])),
++                    valid_problems=0, mapping_failures=0,
++                    missing_problems=0, round_trip_failures=0, attempted_solves=0,
++                    reused_integer_results=0, optimal=0, time_limits=0,
++                    other_failures=0, comparison_errors=0)
++    reference = method == "adapted_vllm"
++    integer_driven = method in driver.INTEGER_POLICIES
++    diagnostic = trace.get("reference_diagnostic_problems") or []
++    for d in trace.get("decisions", []):
++        index = d["index"]
++        record = dict(index=index)
++        records.append(record)
++        try:
++            events = {e["call"]: e for e in d.get("lp_events", [])}
++            if reference:
++                entry = diagnostic[index] if index < len(diagnostic) else None
++                source = "reference_diagnostic_mapping"
++            else:
++                entry = events.get("map_scheduler_state")
++                source = "decision_mapping"
++                if entry is not None:
++                    entry = dict(result_type=entry["result_type"],
++                                 result=entry["result"].get("lp_problem")
++                                 if entry["result_type"] == "StateSnapshot"
++                                 else entry["result"])
++            if entry is None:
++                record.update(problem_status="missing", problem_source=source)
++                coverage["missing_problems"] += 1
++                continue
++            if entry["result_type"] not in ("LPProblem", "StateSnapshot"):
++                record.update(problem_status="mapping_failure",
++                              problem_source=source,
++                              mapping_failure=entry["result"])
++                coverage["mapping_failures"] += 1
++                continue
++            problem = lrs_validate(eip.problem_from_record(entry["result"]))
++            round_trip = driver.to_jsonable(problem) == entry["result"]
++            coverage["round_trip_failures"] += not round_trip
++            coverage["valid_problems"] += 1
++            record.update(problem_status="valid", problem_source=source,
++                          problem_id=problem.problem_id,
++                          round_trip_equal=round_trip,
++                          scale=scale_record(problem))
++            if integer_driven:
++                solved = events.get("solve_integer_plan")
++                if solved is None:
++                    record["integer_source"] = "missing_from_rollout"
++                    coverage["comparison_errors"] += 1
++                    continue
++                integer = eip.integer_summary(solved["result_type"],
++                                              solved["result"])
++                record["integer_source"] = "reused_from_rollout"
++                coverage["reused_integer_results"] += 1
++            else:
++                start = time.perf_counter()
++                result = eip.solve_integer_plan(problem)
++                record["solve_seconds"] = time.perf_counter() - start
++                integer = eip.integer_summary(type(result).__name__, result)
++                record["integer_source"] = "offline_solve"
++                coverage["attempted_solves"] += 1
++            if integer["status"] == "optimal":
++                coverage["optimal"] += 1
++            elif integer["category"] == "solver_limit":
++                coverage["time_limits"] += 1
++            else:
++                coverage["other_failures"] += 1
++            record["integer"] = integer
++            if reference:
++                proposals = d.get("proposals") or []
++                record["comparison"] = (
++                    classify_reference(problem, proposals[0], integer["status"],
++                                       integer)
++                    if proposals else dict(classification="no_proposal"))
++            elif not integer_driven:
++                solved = events.get("solve_and_extract")
++                lp_type = solved["result_type"] if solved else "missing"
++                record["comparison"] = eip.compare_summaries(
++                    problem.problem_id, lp_type,
++                    eip.lp_summary(lp_type, solved["result"]) if solved
++                    else None, integer["status"], integer)
++        except Exception as err:  # recorded and counted, never skipped
++            record["comparison_error"] = dict(type=type(err).__name__,
++                                              message=str(err))
++            coverage["comparison_errors"] += 1
++    coverage["records"] = len(records)
++    coverage["missing_records"] = coverage["reached_decisions"] - len(records)
++    coverage["no_valid_problem"] = (coverage["mapping_failures"]
++                                    + coverage["missing_problems"])
++    # A mapping failure is an explicit record; a missing problem is not.
++    coverage["complete"] = (
++        coverage["missing_records"] == 0 and coverage["comparison_errors"] == 0
++        and coverage["missing_problems"] == 0
++        and coverage["round_trip_failures"] == 0
++        and coverage["valid_problems"] == coverage["attempted_solves"]
++        + coverage["reused_integer_results"])
++    return records, coverage
++
++
++def lrs_validate(problem):
++    import lp_relaxation_scheduler as lrs
++    canonical = lrs.validate_problem(problem)
++    driver.check(not isinstance(canonical, lrs.Failure),
++                 f"retained problem failed validation: {canonical}")
++    return canonical
++
++
++def comparison_consistent(record):
++    """An optimal same-state record agrees with the LP bound order; the
++    reference never beats the integer optimum."""
++    comparison = record.get("comparison") or {}
++    return (comparison.get("bounds_consistent", True)
++            and comparison.get("classification")
++            != "inconsistent_reference_above_optimum")
++
++
++def service_record(trace, case):
++    """Service, omission, preemption, and order observations of one
++    rollout (from the recorded decisions and driver accounting)."""
++    c = driver.case_inputs(case)
++    names = {int(k): v for k, v in c["names"].items()}
++    order = list(c["prompts"])
++    victims, resident_omissions, streak, longest = [], 0, {}, {}
++    for d in trace.get("decisions", []):
++        if not d.get("schedules"):
++            continue
++        emitted = d["schedules"][0]["outputs"]
++        served = {sid for sid, _ in emitted["scheduled"]}
++        preempted = emitted["preempted_seq_ids"]
++        running = d["before"]["running"]
++        admitted = [names[s] for s in served if s in d["before"]["waiting"]]
++        for sid in preempted:
++            seq = d["before"]["seqs"][str(sid)]
++            victims.append(dict(
++                index=d["index"], victim=names[sid],
++                running_position=running.index(sid),
++                running_count=len(running),
++                had_output=bool(seq["output_token_ids"]),
++                prompt_progress=seq["prompt_tokens_processed"],
++                reasons=(d.get("victim_need") or {}).get("reasons"),
++                admitted_same_decision=admitted))
++        for sid in running:
++            name = names[sid]
++            if sid in served or sid in preempted:
++                streak[name] = 0
++                continue
++            resident_omissions += 1
++            streak[name] = streak.get(name, 0) + 1
++            longest[name] = max(longest.get(name, 0), streak[name])
++    acc = (trace.get("final") or {}).get("accounting") or (
++        trace["decisions"][-1].get("accounting") if trace.get("decisions")
++        else {}) or {}
++
++    def inversions(key):
++        seen = [(order.index(n), a[key]) for n, a in acc.items()
++                if a[key] is not None]
++        return sum(1 for i, a in seen for j, b in seen if i < j and b < a)
++
++    by_length = {}
++    for n, a in acc.items():
++        group = by_length.setdefault(str(len(c["prompts"][n])), dict(
++            requests=0, first_prefill=[], completion=[]))
++        group["requests"] += 1
++        for key in ("first_prefill", "completion"):
++            if a[key] is not None:
++                group[key].append(a[key])
++    for group in by_length.values():
++        for key in ("first_prefill", "completion"):
++            values = group.pop(key)
++            group[f"{key}_mean"] = (sum(values) / len(values) if values
++                                    else None)
++            group[f"{key}_max"] = max(values) if values else None
++            group[f"{key}_count"] = len(values)
++    return dict(
++        victims=victims,
++        victim_running_positions=[[v["running_position"], v["running_count"]]
++                                  for v in victims],
++        decisions_with_victims_and_admissions=len(
++            {v["index"] for v in victims if v["admitted_same_decision"]}),
++        resident_omissions=resident_omissions,
++        longest_resident_omission_streak=max(longest.values(), default=0),
++        admission_order_inversions=inversions("first_prefill"),
++        completion_order_inversions=inversions("completion"),
++        by_prompt_length=by_length)
++
++
++def comparison_summary(records, method):
++    """Counts and extremes of one run's same-state records."""
++    out = dict(attributions={}, relaxation_gaps=[], extraction_losses=[],
++               action_differences=[], reference_classes={},
++               reference_violated_rows={}, near_ties=[],
++               strict_preference_gap_min=None, fractional_lp_decisions=0,
++               max_integrality_deviation=None, integer_raw_statuses={},
++               max_service_rank=None, min_positive_coefficient=None,
++               min_gaps={}, exact_ties={}, solve_seconds_max=None)
++    for r in records:
++        integer = r.get("integer") or {}
++        if integer:
++            key = str(integer["raw_status"])
++            out["integer_raw_statuses"][key] = out["integer_raw_statuses"].get(
++                key, 0) + 1
++        if integer.get("max_integrality_deviation") is not None:
++            out["max_integrality_deviation"] = max(
++                out["max_integrality_deviation"] or 0.0,
++                integer["max_integrality_deviation"])
++        scale = r.get("scale")
++        if scale:
++            out["max_service_rank"] = max(out["max_service_rank"] or 0,
++                                          scale["max_service_rank"] or 0)
++            for kind in ("decode", "prefill_token", "full_chunk", "penalty"):
++                k = scale[kind]
++                for value, key, pick in ((k["min_positive"],
++                                          "min_positive_coefficient", min),):
++                    if value is not None and kind != "full_chunk":
++                        out[key] = (value if out[key] is None
++                                    else pick(out[key], value))
++                if k["min_gap"] is not None:
++                    out["min_gaps"][kind] = min(out["min_gaps"].get(
++                        kind, k["min_gap"]), k["min_gap"])
++                out["exact_ties"][kind] = (out["exact_ties"].get(kind, 0)
++                                           + k["exact_ties"])
++        if "solve_seconds" in r:
++            out["solve_seconds_max"] = max(out["solve_seconds_max"] or 0.0,
++                                           r["solve_seconds"])
++        comparison = r.get("comparison") or {}
++        if method == "adapted_vllm":
++            cls = comparison.get("classification", r.get("problem_status"))
++            out["reference_classes"][cls] = out["reference_classes"].get(
++                cls, 0) + 1
++            for row in (comparison.get("reference_evaluation") or {}).get(
++                    "violated_rows", []):
++                out["reference_violated_rows"][row] = out[
++                    "reference_violated_rows"].get(row, 0) + 1
++            if cls in ("tied_optimum", "strict_objective_preference"):
++                gap = (comparison["integer_objective"]
++                       - comparison["reference_evaluation"]["objective"])
++                if cls == "tied_optimum":
++                    out["near_ties"].append([r["index"], gap])
++                else:
++                    out["strict_preference_gap_min"] = min(
++                        out["strict_preference_gap_min"] or gap, gap)
++            continue
++        if not comparison:
++            continue
++        a = comparison["attribution"]
++        out["attributions"][a] = out["attributions"].get(a, 0) + 1
++        out["fractional_lp_decisions"] += bool(
++            comparison.get("fractional_request_count"))
++        if comparison.get("relaxation_gap_present"):
++            out["relaxation_gaps"].append([r["index"],
++                                           comparison["relaxation_gap"]])
++        if a == "extraction_loss":
++            out["extraction_losses"].append([r["index"],
++                                             comparison["extraction_loss"]])
++        if a != "identical_actions" and a != "not_comparable":
++            out["action_differences"].append([r["index"], a])
++        if a == "tied_optimum_different_actions":
++            out["near_ties"].append([r["index"],
++                                     comparison["extraction_loss"]])
++    return out
++
++
++def queue_report(rows, divergences):
++    lines = ["Queue-growth batch (CPU, native central/worker replay; "
++             "resident limit 8)", "",
++             "Rollouts"]
++    head = ("case", "method", "valid", "outcome", "dec", "done", "preempt",
++            "after_out", "adm+victim", "discarded", "replayed", "expanded",
++            "events", "overgen", "res_omit", "max_streak", "adm_inv",
++            "done_inv")
++    lines.append(" | ".join(head))
++    for r in rows:
++        s, v = r["summary"], r["service"]
++        lines.append(" | ".join(_fmt(x) for x in (
++            s["case"], s["method"], s["validation_passed"],
++            s["workload_outcome"], s["decisions"], len(s["finished"]),
++            s["preemptions"], s["preemptions_after_output"],
++            v["decisions_with_victims_and_admissions"],
++            s["discarded_prompt_tokens"], s["prefill_tokens_replayed"],
++            s["prefill_tokens_expanded_context"], s["generated_token_events"],
++            s["overgeneration"], v["resident_omissions"],
++            v["longest_resident_omission_streak"],
++            v["admission_order_inversions"],
++            v["completion_order_inversions"])))
++    lines += ["", "Comparison coverage (every reached decision)"]
++    head = ("case", "method", "reached", "records", "valid", "no_problem",
++            "solved", "reused", "optimal", "time_limit", "other_fail",
++            "errors", "missing", "round_trip_fail", "complete")
++    lines.append(" | ".join(head))
++    for r in rows:
++        k = r["coverage"]
++        lines.append(" | ".join(_fmt(x) for x in (
++            r["summary"]["case"], r["summary"]["method"],
++            k["reached_decisions"], k["records"], k["valid_problems"],
++            k["no_valid_problem"], k["attempted_solves"],
++            k["reused_integer_results"], k["optimal"], k["time_limits"],
++            k["other_failures"], k["comparison_errors"], k["missing_records"],
++            k["round_trip_failures"], k["complete"])))
++    lines += ["", "Same-state results (identical problems only; objectives "
++              "of different policies are not compared)"]
++    for r in rows:
++        m, s = r["comparisons"], r["summary"]
++        tag = f"  {s['case']} {s['method']}:"
++        solver = (f" integer raw statuses {m['integer_raw_statuses']}, max "
++                  f"integrality deviation "
++                  f"{_fmt(m['max_integrality_deviation'])}")
++        if s["method"] == "adapted_vllm":
++            lines.append(f"{tag} reference vs reciprocal-square integer "
++                         f"optimum {m['reference_classes']}; violated LP rows "
++                         f"{m['reference_violated_rows']}; smallest strict "
++                         f"preference {_fmt(m['strict_preference_gap_min'])}; "
++                         f"near ties {m['near_ties']};{solver}")
++        elif s["method"] in driver.INTEGER_POLICIES:
++            lines.append(f"{tag} integer results reused from the rollout;"
++                         f"{solver}")
++        else:
++            gaps = m["relaxation_gaps"]
++            lines.append(
++                f"{tag} {m['attributions']}; fractional relaxations "
++                f"{m['fractional_lp_decisions']}; relaxation gaps {len(gaps)} "
++                f"(max {_fmt(max((g for _, g in gaps), default=0.0))}); "
++                f"extraction losses {m['extraction_losses']}; action "
++                f"differences {m['action_differences']}; near ties "
++                f"{m['near_ties']};{solver}")
++    lines += ["", "Numerical scale (eligible terms over all valid problems)"]
++    for r in rows:
++        m, s = r["comparisons"], r["summary"]
++        lines.append(
++            f"  {s['case']} {s['method']}: max rank {m['max_service_rank']}, "
++            f"min positive coefficient {_fmt(m['min_positive_coefficient'])}, "
++            f"min gaps { {k: float(f'{v:.3g}') for k, v in m['min_gaps'].items()} }, "
++            f"exact ties {m['exact_ties']}, max offline solve "
++            f"{_fmt(m['solve_seconds_max'])} s")
++    lines += ["", "Victims: [decision, victim, running position / count, "
++              "had output, reasons, admitted in the same decision]"]
++    for r in rows:
++        victims = r["service"]["victims"]
++        if victims:
++            lines.append(f"  {r['summary']['case']} {r['summary']['method']}:")
++            for v in victims:
++                lines.append(f"    {v['index']} {v['victim']} "
++                             f"{v['running_position']}/{v['running_count']} "
++                             f"{v['had_output']} {v['reasons']} "
++                             f"{v['admitted_same_decision']}")
++    lines += ["", "Mean first-prefill and completion decision index by "
++              "prompt length (decision indices, not time)"]
++    for r in rows:
++        groups = r["service"]["by_prompt_length"]
++        cells = ", ".join(
++            f"{k}: {_fmt(g['first_prefill_mean'])}/{_fmt(g['completion_mean'])}"
++            f" (max done {g['completion_max']})" for k, g in sorted(
++                groups.items(), key=lambda kv: int(kv[0])))
++        lines.append(f"  {r['summary']['case']} {r['summary']['method']}: "
++                     f"{cells}")
++    lines += ["", "First emitted difference between rollouts (closed loop): "
++              "first index whose emitted output differs, and first index "
++              "whose selected set (victims and served requests) differs"]
++    for key, value in divergences.items():
++        lines.append(f"  {key}: {value}")
++    return "\n".join(lines) + "\n"
++
++
++def first_selection_divergence(a, b):
++    """First decision index whose victims or served requests differ as sets
++    (an emitted-order-only difference is not a selection difference)."""
++    for i, (x, y) in enumerate(zip(a["emitted"], b["emitted"])):
++        if (sorted(x[0]), sorted(map(tuple, x[1]))) != (
++                sorted(y[0]), sorted(map(tuple, y[1]))):
++            return i
++    return None
++
++
++def run_queue_rollout(cpu, method, case, run_dir):
++    runtime = cpu.CpuRuntime(method, QUEUE_LIMIT, case)
++    trace, failure = {}, None
++    if method == "adapted_vllm":
++        trace["reference_diagnostic_problems"] = (
++            driver.capture_reference_problems(runtime, case))
++    log = io.StringIO()
++    try:
++        with contextlib.redirect_stdout(log):
++            outcome = driver.run_comparison(method, QUEUE_LIMIT, runtime, trace,
++                                            case)
++    except BaseException as err:
++        outcome = driver.FAILURE
++        failure = dict(type=type(err).__name__, message=str(err),
++                       traceback=traceback.format_exc())
++        for name in ("stage", "category", "reason"):
++            if hasattr(err, name):
++                failure[name] = getattr(err, name)
++    (run_dir / "console.log").write_text(log.getvalue())
++    # The comparisons read the retained JSON form, as for a GPU run.
++    trace = json.loads(json.dumps(driver.to_jsonable(trace)))
++    write_json_gz(run_dir / "decision_trace.json.gz", trace)
++    summary = rollout_summary(method, case, QUEUE_LIMIT,
++                              driver.case_inputs(case), trace, outcome, failure)
++    return summary, trace
++
++
++def analyse_run(trace, method, case):
++    records, coverage = decision_comparisons(trace, method)
++    return dict(records=records, coverage=coverage,
++                comparisons=comparison_summary(records, method),
++                service=service_record(trace, case),
++                consistent=all(comparison_consistent(r) for r in records))
++
++
++def queue_growth_main(out):
++    import test_compare_scheduler_gpu as cpu
++    cpu.setUpModule()
++    record = dict(argv=sys.argv, batch="queue_growth",
++                  runs=[list(r) for r in QUEUE_RUNS], resident_limit=QUEUE_LIMIT,
++                  cases={case: driver.case_inputs(case)
++                         for case in driver.QUEUE_GROWTH_CASES},
++                  reciprocal_square="w = 1 / (1 + r) ** 2; q = min(remaining, "
++                  "c_max, b_max); decode w, prefill token w / q, penalty w",
++                  coordinated=driver.COORDINATED,
++                  integer_solver=dict(solver=eip.SOLVER,
++                                      options=eip.SOLVER_OPTIONS,
++                                      conversion_tol=eip.CONVERSION_TOL,
++                                      comparison_tol=eip.COMPARISON_TOL),
++                  provenance=driver.provenance_record(),
++                  environment=driver.environment_record())
++    rows, traces = [], {}
++    for case, method in QUEUE_RUNS:
++        print(f"rollout {case} {method}", flush=True)
++        run_dir = out / "rollouts" / case / method
++        run_dir.mkdir(parents=True)
++        summary, trace = run_queue_rollout(cpu, method, case, run_dir)
++        analysis = analyse_run(trace, method, case)
++        (run_dir / "summary.json").write_text(json.dumps(
++            driver.to_jsonable(dict(summary, coverage=analysis["coverage"],
++                                    service=analysis["service"],
++                                    comparisons=analysis["comparisons"])),
++            indent=1))
++        (run_dir / "comparisons.json").write_text(json.dumps(
++            driver.to_jsonable(analysis["records"]), indent=1))
++        rows.append(dict(summary=summary, **analysis))
++        traces[case, method] = trace
++        print(f"  -> valid {summary['validation_passed']} outcome "
++              f"{summary['workload_outcome']} decisions {summary['decisions']} "
++              f"coverage complete {analysis['coverage']['complete']}",
++              flush=True)
++    by_key = {(r["summary"]["case"], r["summary"]["method"]): r["summary"]
++              for r in rows}
++    divergences = {}
++    for case in driver.QUEUE_GROWTH_CASES:
++        for a, b in QUEUE_DIVERGENCE_PAIRS:
++            if (case, a) in by_key and (case, b) in by_key:
++                divergences[f"{case} {a} vs {b}"] = dict(
++                    emitted=first_divergence(by_key[case, a], by_key[case, b],
++                                             traces[case, a], traces[case, b]),
++                    first_selection_difference=first_selection_divergence(
++                        by_key[case, a], by_key[case, b]))
++    (out / "divergences.json").write_text(json.dumps(
++        driver.to_jsonable(divergences), indent=1))
++    text = queue_report(rows, divergences)
++    (out / "comparison.txt").write_text(text)
++    print(text, flush=True)
++    passed = all(r["summary"]["validation_passed"]
++                 and r["coverage"]["complete"] and r["consistent"]
++                 for r in rows)
++    record["all_checks_passed"] = passed
++    (out / "run_record.json").write_text(json.dumps(
++        driver.to_jsonable(record), indent=1))
++    print("RESULT:", "PASS" if passed else "FAIL", flush=True)
++    return 0 if passed else 1
++
++
++def retained_runs_main(out, run_dirs, cpu_batch):
++    """Offline CPU comparisons of retained (GPU) runs: every reached decision
++    of each run, from its retained problems and results. With
++    ``cpu_batch``, each run's emitted decisions are also compared with the
++    CPU rollout of the same case and method."""
++    record = dict(argv=sys.argv, batch="retained_runs",
++                  runs=[str(d) for d in run_dirs], cpu_batch=cpu_batch,
++                  integer_solver=dict(solver=eip.SOLVER,
++                                      options=eip.SOLVER_OPTIONS,
++                                      conversion_tol=eip.CONVERSION_TOL,
++                                      comparison_tol=eip.COMPARISON_TOL),
++                  provenance=driver.provenance_record(),
++                  environment=driver.environment_record())
++    rows, passed = [], True
++    for run_dir in map(Path, run_dirs):
++        summary = json.loads((run_dir / "summary.json").read_text())
++        method, case = summary["run"]["policy"], summary["run"]["case"]
++        trace = read_trace(run_dir)
++        print(f"retained run {run_dir} ({case} {method})", flush=True)
++        analysis = analyse_run(trace, method, case)
++        rollout = rollout_summary(method, case, summary["run"]["resident_limit"],
++                                  driver.case_inputs(case), trace,
++                                  summary["workload_outcome"],
++                                  summary["failure"])
++        rollout["validation_passed"] = summary["validation_passed"]
++        same_as_cpu = None
++        if cpu_batch:
++            cpu_summary = json.loads((Path(cpu_batch) / "rollouts" / case
++                                      / method / "summary.json").read_text())
++            same_as_cpu = cpu_summary["emitted"] == rollout["emitted"]
++        target = out / run_dir.name
++        target.mkdir(parents=True)
++        (target / "comparisons.json").write_text(json.dumps(
++            driver.to_jsonable(analysis["records"]), indent=1))
++        (target / "summary.json").write_text(json.dumps(driver.to_jsonable(
++            dict(rollout, coverage=analysis["coverage"],
++                 service=analysis["service"],
++                 comparisons=analysis["comparisons"],
++                 emitted_equal_to_cpu_rollout=same_as_cpu)), indent=1))
++        rows.append(dict(summary=rollout, **analysis))
++        passed &= (analysis["coverage"]["complete"] and analysis["consistent"]
++                   and same_as_cpu is not False)
++        print(f"  -> coverage {analysis['coverage']}; emitted equal to CPU "
++              f"rollout {same_as_cpu}", flush=True)
++    text = queue_report(rows, {})
++    (out / "comparison.txt").write_text(text)
++    print(text, flush=True)
++    record["all_checks_passed"] = passed
++    (out / "run_record.json").write_text(json.dumps(
++        driver.to_jsonable(record), indent=1))
++    print("RESULT:", "PASS" if passed else "FAIL", flush=True)
++    return 0 if passed else 1
++
++
++BATCHES = ("coordinated_policy", "queue_growth", "retained_runs")
++
++
+ def parse_args(argv=None):
+     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+     parser.add_argument("--output-dir", required=True)
++    parser.add_argument("--batch", choices=BATCHES, default=BATCHES[0],
++                        help="coordinated_policy (default): the coordinated "
++                        "batch; queue_growth: the reciprocal-square "
++                        "queue-growth batch; retained_runs: offline "
++                        "comparisons of retained runs (--runs)")
++    parser.add_argument("--runs", nargs="+", default=[],
++                        help="retained_runs: run directories holding "
++                        "summary.json and decision_trace.json[.gz]")
++    parser.add_argument("--cpu-batch", default=None,
++                        help="retained_runs: optional queue_growth output "
++                        "directory whose rollouts the runs are checked "
++                        "against")
+     return parser, parser.parse_args(argv)
+ 
+ 
+@@ -551,7 +1194,15 @@ def main(argv=None):
+     out = Path(args.output_dir)
+     if (out / "run_record.json").exists():
+         parser.error(f"{out} already holds run artifacts")
++    if (args.batch == "retained_runs") != bool(args.runs) or (
++            args.cpu_batch and args.batch != "retained_runs"):
++        parser.error("--runs (and --cpu-batch) go with --batch retained_runs "
++                     "only, which requires --runs")
+     out.mkdir(parents=True, exist_ok=True)
++    if args.batch == "queue_growth":
++        return queue_growth_main(out)
++    if args.batch == "retained_runs":
++        return retained_runs_main(out, args.runs, args.cpu_batch)
+ 
+     import test_compare_scheduler_gpu as cpu
+     cpu.setUpModule()
+diff --git a/scripts/compare_scheduler_gpu.py b/scripts/compare_scheduler_gpu.py
+index 325edf1..ff95f32 100644
+--- a/scripts/compare_scheduler_gpu.py
++++ b/scripts/compare_scheduler_gpu.py
+@@ -1,5 +1,5 @@
+ """Bounded dummy-weight GPU comparison of the adapted vLLM reference and
+-three LP coefficient policies on one of two small workloads.
++LP coefficient policies on one of three small workloads.
+ 
+ One process runs one (case, policy, resident limit) through a real
+ ``BaseLLMEngine`` built from native ``EngineArgs``, one GPU worker (tensor
+@@ -17,15 +17,21 @@ EOS ignored, and native replay and completion. Policies:
+ - ``lp_coordinated``: the registered ``LPScheduler`` with
+   ``lpserve_state_mapping.coordinated_rank_utility`` (rank base 1/4, bound to
+   the case's ``c_max`` and ``b_max``) selected through the same hook.
++- ``lp_reciprocal_square``: the registered ``LPScheduler`` with
++  ``lpserve_state_mapping.reciprocal_square_rank_utility`` (weight
++  ``1 / (1 + r) ** 2``, bound to the case's ``c_max`` and ``b_max``)
++  selected through the same hook.
+ 
+ The LP policies use numerical policy ``lp_relaxation_mvp_v1``.
+ 
+ CPU-only additions (``run_comparison`` with a CPU runtime; never accepted on
+-the command line): the method ``ilp_coordinated``, which takes each decision
+-from the integer optimum of the same coordinated problem
+-(``exact_integer_plan.integer_decision``), and the representative cases
++the command line): the methods ``ilp_coordinated`` and
++``ilp_reciprocal_square``, which take each decision from the integer optimum
++of the same coordinated or reciprocal-square problem
++(``exact_integer_plan.integer_decision``); the representative cases
+ ``REPRESENTATIVE_CASES`` (six requests, optional per-request output limits,
+-and virtual arrival times; see ``case_inputs``).
++and virtual arrival times; see ``case_inputs``); and the queue-growth cases
++``QUEUE_GROWTH_CASES`` other than ``queue48_burst_pool12``.
+ 
+ Cases (``--case``):
+ 
+@@ -45,6 +51,13 @@ Cases (``--case``):
+   decode prerequisite requires at least one free block before any decode.
+   Both contracts are kept; each decision records which constraint, if any,
+   required its victims for the selected batch.
++- ``queue48_burst_pool12``: 48 requests at virtual time 0 (see
++  ``QUEUE_GROWTH_INPUTS``), 12 initialized blocks, ``max_model_len`` 256,
++  budget 128, resident limit 8, LP ``b_max`` 128, ``c_max`` 128, ``s_max``
++  8, bound 384 nonempty decisions. For the reference, each decision's
++  pre-decision state is also mapped read-only into a reciprocal-square
++  diagnostic problem (``capture_reference_problems``) for an offline CPU
++  integer comparison; the LP runs retain their own mapped problems.
+ 
+ The decision sequence is not prescribed. Each nonempty decision is checked
+ against its policy's own contract (mapped or proposed inputs, plan or
+@@ -142,13 +155,21 @@ NUMERICAL_POLICY_FIELDS = dict(
+ )
+ # Coordinated policy: w = RANK_BASE ** r (provisional, not tuned).
+ COORDINATED = dict(rank_base=0.25)
+-POLICIES = ("adapted_vllm", "lp_uniform", "lp_rank_based", "lp_coordinated")
++# Reciprocal-square coordinated policy: w = 1 / (1 + r) ** 2 (provisional;
++# the exponent is fixed at two and was not tuned).
++RECIPROCAL_SQUARE_POLICY = "lp_reciprocal_square"
++POLICIES = ("adapted_vllm", "lp_uniform", "lp_rank_based", "lp_coordinated",
++            RECIPROCAL_SQUARE_POLICY)
+ INTEGER_POLICY = "ilp_coordinated"  # CPU comparison only
+-CPU_POLICIES = POLICIES + (INTEGER_POLICY,)
++RECIPROCAL_SQUARE_INTEGER_POLICY = "ilp_reciprocal_square"  # CPU only
++INTEGER_POLICIES = (INTEGER_POLICY, RECIPROCAL_SQUARE_INTEGER_POLICY)
++CPU_POLICIES = POLICIES + INTEGER_POLICIES
+ COORDINATED_POLICIES = ("lp_coordinated", INTEGER_POLICY)
++RECIPROCAL_SQUARE_POLICIES = (RECIPROCAL_SQUARE_POLICY,
++                              RECIPROCAL_SQUARE_INTEGER_POLICY)
+ MAX_DECISIONS = 8  # observation bound per run, not a scheduler restart cap
+ TWO_REQUEST, MEMORY_PRESSURE = "two_request", "memory_pressure"
+-GPU_CASES = (TWO_REQUEST, MEMORY_PRESSURE)
++GPU_CASES = (TWO_REQUEST, MEMORY_PRESSURE, "queue48_burst_pool12")
+ # The reference check's ``preemption`` workload (same prompt IDs, outputs,
+ # pool, length, budget, and resident limit). LP caps equal the budget and
+ # resident limit, so they add no restriction in this case.
+@@ -191,7 +212,40 @@ REPRESENTATIVE_INPUTS = {
+                                              STAGGERED_ARRIVALS, 6),
+ }
+ REPRESENTATIVE_CASES = tuple(REPRESENTATIVE_INPUTS)
+-CASES = GPU_CASES + REPRESENTATIVE_CASES
++# Queue-growth workloads (provisional inputs): request k has prompt length
++# QUEUE_PROMPT_LENGTHS[k % 6], output limit QUEUE_OUTPUT_LENGTHS[k % 3], and
++# prompt IDs from 1000 + 256 * k. Block size 16, max_model_len 256, resident
++# limit 8, budget/b_max/c_max 128, s_max 8, bound 8 nonempty decisions per
++# request. Burst: every request at virtual time 0; staggered: request k at
++# 2k. The watermark is the shared block manager's native int(0.01 * pool).
++QUEUE_PROMPT_LENGTHS, QUEUE_OUTPUT_LENGTHS = [8, 16, 17, 32, 64, 128], [2, 4, 8]
++
++
++def _queue_growth(count, staggered, pool):
++    names = [f"R{k:02d}" for k in range(count)]
++    return dict(
++        prompts={n: list(range(1000 + 256 * k, 1000 + 256 * k
++                               + QUEUE_PROMPT_LENGTHS[k % 6]))
++                 for k, n in enumerate(names)},
++        max_tokens={n: QUEUE_OUTPUT_LENGTHS[k % 3]
++                    for k, n in enumerate(names)},
++        arrivals={n: 2 * k if staggered else 0 for k, n in enumerate(names)},
++        token_budget=128, num_gpu_blocks=pool, max_model_len=256,
++        resident_limits=(8,), b_max=128, c_max=128, s_max=8,
++        max_decisions=8 * count)
++
++
++CONSTRAINED_QUEUE_CASE = "queue48_burst_pool12"
++QUEUE_GROWTH_INPUTS = {
++    "queue6_burst": _queue_growth(6, False, 128),
++    "queue12_burst": _queue_growth(12, False, 128),
++    "queue24_burst": _queue_growth(24, False, 128),
++    "queue48_burst": _queue_growth(48, False, 128),
++    "queue48_staggered": _queue_growth(48, True, 128),
++    CONSTRAINED_QUEUE_CASE: _queue_growth(48, False, 12),
++}
++QUEUE_GROWTH_CASES = tuple(QUEUE_GROWTH_INPUTS)
++CASES = (TWO_REQUEST, MEMORY_PRESSURE) + REPRESENTATIVE_CASES + QUEUE_GROWTH_CASES
+ PROCESS_TIMEOUT_SECONDS = 600
+ PROFILE_METHOD = preemption.PROFILE_METHOD
+ INIT_CACHE_METHOD = preemption.INIT_CACHE_METHOD
+@@ -203,7 +257,7 @@ INTEGER_CALLS = ["map_scheduler_state", "solve_integer_plan", "execute_plan"]
+ 
+ 
+ def decision_calls(policy):
+-    return INTEGER_CALLS if policy == INTEGER_POLICY else LP_CALLS
++    return INTEGER_CALLS if policy in INTEGER_POLICIES else LP_CALLS
+ 
+ 
+ def case_inputs(case):
+@@ -213,9 +267,10 @@ def case_inputs(case):
+     maps each request to its virtual arrival time (0 for every request when
+     a case gives none)."""
+     check(case in CASES, f"unknown case {case}")
+-    if case == MEMORY_PRESSURE or case in REPRESENTATIVE_INPUTS:
+-        inputs = json.loads(json.dumps(REPRESENTATIVE_INPUTS.get(
+-            case, MEMORY_PRESSURE_INPUTS)))
++    if case != TWO_REQUEST:
++        inputs = json.loads(json.dumps({
++            MEMORY_PRESSURE: MEMORY_PRESSURE_INPUTS, **REPRESENTATIVE_INPUTS,
++            **QUEUE_GROWTH_INPUTS}[case]))
+         inputs["resident_limits"] = tuple(inputs["resident_limits"])
+     else:
+         inputs = dict(prompts=PROMPTS, max_tokens=MAX_TOKENS,
+@@ -257,7 +312,7 @@ def run_parameters(policy, resident_limit, case=TWO_REQUEST):
+                       s_max=c["s_max"], numerical_policy=NUMERICAL_POLICY_FIELDS,
+                       configured_triple=UNIFORM,
+                       coefficient_policy=coefficient_policy_record(policy, c))
+-    if policy == INTEGER_POLICY:
++    if policy in INTEGER_POLICIES:
+         import exact_integer_plan as eip
+         params.update(decision_method="integer optimum (CPU comparison only)",
+                       integer_solver=eip.SOLVER,
+@@ -272,6 +327,13 @@ def coefficient_policy_record(policy, c):
+     if policy == "lp_rank_based":
+         return dict(rank_based_utility=RANK_SCALES,
+                     note="configured triple unused")
++    if policy in RECIPROCAL_SQUARE_POLICIES:
++        return dict(reciprocal_square_rank_utility=dict(c_max=c["c_max"],
++                                                        b_max=c["b_max"]),
++                    formula="w = 1 / (1 + r) ** 2 (r: running then arrived "
++                    "waiting position); q = min(remaining, c_max, b_max); "
++                    "decode w; prefill token w / q; penalty w",
++                    note="configured triple unused")
+     return dict(coordinated_rank_utility=dict(COORDINATED, c_max=c["c_max"],
+                                               b_max=c["b_max"]),
+                 formula="w = rank_base ** r (r: running then arrived waiting "
+@@ -326,14 +388,51 @@ def select_coefficient_policy(scheduler, policy, case=TWO_REQUEST):
+         coefficients = functools.partial(
+             lsm.coordinated_rank_utility, c_max=c["c_max"], b_max=c["b_max"],
+             **COORDINATED)
++    elif policy in RECIPROCAL_SQUARE_POLICIES:
++        coefficients = reciprocal_square_policy(case_inputs(case))
+     else:
+         return
+     scheduler._coefficient_policy = lambda: coefficients
+-    if policy == INTEGER_POLICY:
++    if policy in INTEGER_POLICIES:
+         import exact_integer_plan as eip
+         scheduler._schedule = functools.partial(eip.integer_decision, scheduler)
+ 
+ 
++def reciprocal_square_policy(c):
++    """The reciprocal-square policy bound to case inputs ``c``'s LP caps."""
++    import lpserve_state_mapping as lsm
++    return functools.partial(lsm.reciprocal_square_rank_utility,
++                             c_max=c["c_max"], b_max=c["b_max"])
++
++
++def capture_reference_problems(runtime, case):
++    """Wrap ``runtime.step`` so that, before each reference decision with
++    unfinished work, the quiescent pre-decision state is mapped once,
++    read-only, with the reciprocal-square coefficients and the case's LP
++    caps. Returns the list that receives one JSON record (``LPProblem`` or
++    ``MappingFailure``) per such step, in decision order. Diagnostic only:
++    the reference does not read it, and ordinary idle steps map nothing."""
++    import lp_relaxation_scheduler as lrs
++    import lpserve_state_mapping as lsm
++    c, records, native = case_inputs(case), [], runtime.step
++
++    def step():
++        scheduler = runtime.scheduler
++        if scheduler.has_unfinished_seqs():
++            snap = lsm.map_scheduler_state(
++                scheduler, snapshot_time=time.monotonic(), b_max=c["b_max"],
++                c_max=c["c_max"], s_max=c["s_max"],
++                coefficient_policy=reciprocal_square_policy(c),
++                rank_profile=lsm.vllm_oriented_ranks,
++                numerical_policy=lrs.NumericalPolicy(**NUMERICAL_POLICY_FIELDS))
++            records.append(dict(
++                result_type=type(snap).__name__,
++                result=to_jsonable(getattr(snap, "lp_problem", snap))))
++        return native()
++    runtime.step = step
++    return records
++
++
+ def register_worker_helpers_by_value():
+     """The validation worker class reuses observation functions from
+     ``check_adapted_vllm_gpu``; pickle them by value so the Ray worker does
+@@ -366,7 +465,7 @@ class DecisionObserver:
+             import lpserve_plan_execution as lpe
+             import lpserve_state_mapping as lsm
+             solver = lrs
+-            if policy == INTEGER_POLICY:
++            if policy in INTEGER_POLICIES:
+                 import exact_integer_plan as solver
+             for module, name in zip((lsm, solver, lpe), decision_calls(policy)):
+                 self._wrap(module, name, functools.partial(self._lp, name))
+@@ -468,8 +567,9 @@ def expected_coefficients(policy, snap, request, c):
+         return UNIFORM
+     order = list(snap["running_order"]) + list(snap["arrived_waiting_order"])
+     r = order.index(request["raw_seq_id"])
+-    if policy in COORDINATED_POLICIES:
+-        w = COORDINATED["rank_base"] ** r
++    if policy in COORDINATED_POLICIES + RECIPROCAL_SQUARE_POLICIES:
++        w = (COORDINATED["rank_base"] ** r if policy in COORDINATED_POLICIES
++             else 1.0 / (1 + r) ** 2)
+         q = min(request["prompt_tokens_remaining"], c["c_max"], c["b_max"])
+         return dict(
+             decode_utility=w if request["decode_eligible"] else 0.0,
+@@ -486,7 +586,7 @@ def expected_coefficients(policy, snap, request, c):
+ 
+ def check_lp_decision(tag, before, record, policy, resident_limit, c):
+     events = record["lp_events"]
+-    integer = policy == INTEGER_POLICY
++    integer = policy in INTEGER_POLICIES
+     check([e["call"] for e in events] == decision_calls(policy)
+           and not record["proposals"],
+           f"{tag}: LP calls {[e['call'] for e in events]}; expected one "
+@@ -962,8 +1062,9 @@ def run_comparison(policy, resident_limit, runtime, trace, case=TWO_REQUEST):
+     manager = scheduler.block_manager
+     check(manager.num_total_gpu_blocks == pool
+           and manager.get_num_free_gpu_blocks() == pool
+-          and manager.watermark_blocks == 0 and not manager.block_tables
+-          and manager.block_size == BLOCK_SIZE, "central pool before requests")
++          and manager.watermark_blocks == int(0.01 * pool)
++          and not manager.block_tables and manager.block_size == BLOCK_SIZE,
++          "central pool before requests")
+ 
+     select_coefficient_policy(scheduler, policy, case)
+     observer = DecisionObserver(scheduler, runtime.seq_map, policy)
+@@ -1149,9 +1250,10 @@ def parse_args(argv=None):
+     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+     parser.add_argument("--case", default=TWO_REQUEST, choices=GPU_CASES)
+     parser.add_argument("--policy", required=True, choices=POLICIES)
+-    parser.add_argument("--resident-limit", type=int, choices=(2, 1, 4),
++    parser.add_argument("--resident-limit", type=int, choices=(2, 1, 4, 8),
+                         help="two_request: 2 or 1 (required); "
+-                        "memory_pressure: 4 (default)")
++                        "memory_pressure: 4 (default); "
++                        "queue48_burst_pool12: 8 (default)")
+     parser.add_argument("--model-path", required=True,
+                         help="existing local directory with the TinyLlama "
+                         "config and tokenizer")
+@@ -1244,6 +1346,10 @@ def main(argv=None):
+             engine_init_seconds=round(init_seconds, 3))
+         print("config:", json.dumps(summary["config"]), flush=True)
+ 
++        if args.policy == "adapted_vllm" and args.case in QUEUE_GROWTH_CASES:
++            # Read-only diagnostic problems for the offline CPU comparison.
++            trace["reference_diagnostic_problems"] = (
++                capture_reference_problems(runtime, args.case))
+         outcome = run_comparison(args.policy, args.resident_limit, runtime,
+                                  trace, args.case)
+         summary.update(validation_passed=True, workload_outcome=outcome,
+diff --git a/scripts/exact_integer_plan.py b/scripts/exact_integer_plan.py
+index 0e393d7..2709a96 100644
+--- a/scripts/exact_integer_plan.py
++++ b/scripts/exact_integer_plan.py
+@@ -27,6 +27,7 @@ validate, and execute through ``lpserve_plan_execution.execute_plan``. No LP
+ is solved to construct its inputs.
+ """
+ 
++import dataclasses
+ import math
+ import time
+ from dataclasses import dataclass
+@@ -218,18 +219,76 @@ def solve_integer_plan(problem):
+ 
+ 
+ def plan_actions(plan):
+-    """``{request_id: "prefill:<n>" | "decode" | "preempt"}`` of a plan."""
++    """``{request_id: "prefill:<n>" | "decode" | "preempt"}`` of a plan or
++    of its JSON record."""
++    decisions = (plan["decisions"] if isinstance(plan, dict)
++                 else [dataclasses.asdict(d) for d in plan.decisions])
+     out = {}
+-    for d in plan.decisions:
+-        if d.prefill_tokens:
+-            out[d.request_id] = f"prefill:{d.prefill_tokens}"
+-        elif d.decode:
+-            out[d.request_id] = "decode"
+-        elif d.preempt:
+-            out[d.request_id] = "preempt"
++    for d in decisions:
++        if d["prefill_tokens"]:
++            out[d["request_id"]] = f"prefill:{d['prefill_tokens']}"
++        elif d["decode"]:
++            out[d["request_id"]] = "decode"
++        elif d["preempt"]:
++            out[d["request_id"]] = "preempt"
+     return out
+ 
+ 
++def problem_from_record(record):
++    """The ``LPProblem`` of a retained JSON record of one (as written by the
++    comparison drivers). Only the JSON container types are restored: tuple
++    ``order_key``, frozenset legal victims, and the ``NumericalPolicy``.
++    Callers validate the result and check that it serializes back to the
++    same record."""
++    requests = tuple(lrs.RequestInput(**dict(r, order_key=tuple(r["order_key"])))
++                     for r in record["requests"])
++    return lrs.LPProblem(**dict(
++        record, requests=requests,
++        legal_preemption_ids=frozenset(record["legal_preemption_ids"]),
++        numerical_policy=lrs.NumericalPolicy(**record["numerical_policy"])))
++
++
++def lp_summary(result_type, result):
++    """Primitive values of an LP-method result (live, or its JSON record);
++    ``None`` unless it is a ``SchedulingSuccess``."""
++    if result_type != "SchedulingSuccess":
++        return None
++    if not isinstance(result, dict):
++        result = dataclasses.asdict(result)
++    return dict(relaxed_objective=result["relaxed"]["normalized_objective"],
++                plan_objective=result["plan"]["objective"],
++                actions=plan_actions(result["plan"]),
++                fractional_request_count=(
++                    result["plan"]["extraction"]["fractional_request_count"]))
++
++
++def integer_summary(result_type, result):
++    """Primitive record of one integer solve (live, or its JSON record):
++    ``status`` "optimal" with the solver's provenance, or "failure" with the
++    stage, category, status, and any incumbent, bound, and gap kept as
++    diagnostics (an incumbent is never called optimal)."""
++    if not isinstance(result, dict):
++        result = dataclasses.asdict(result)
++    if result_type == "IntegerOptimum":
++        source = result["plan"]["extraction"]
++        return dict(status="optimal", objective=result["plan"]["objective"],
++                    actions=plan_actions(result["plan"]),
++                    raw_status=source["raw_status"], message=source["message"],
++                    dual_bound=source["dual_bound"],
++                    reported_gap=source["reported_gap"],
++                    node_count=source["node_count"],
++                    max_integrality_deviation=(
++                        source["max_integrality_deviation"]))
++    return dict(status="failure", stage=result["stage"],
++                category=result["category"], reason=result["reason"],
++                raw_status=result["raw_status"], message=result["message"],
++                incumbent_objective=result["incumbent_objective"],
++                incumbent_vector=result["incumbent_vector"],
++                dual_bound=result["dual_bound"],
++                reported_gap=result["reported_gap"],
++                node_count=result["node_count"])
++
++
+ def evaluate_assignment(problem, assignment):
+     """Utility and LP-contract feasibility of an integer assignment
+     ``{request_id: "prefill:<n>" | "decode" | "preempt"}`` (absent means no
+@@ -272,30 +331,37 @@ def compare_same_state(problem, lp_result, integer_result):
+     problem. Gaps are attributed only when both succeeded:
+     ``relaxation_gap`` = LP optimum - integer optimum and
+     ``extraction_loss`` = integer optimum - returned LP plan utility."""
+-    record = dict(problem_id=problem.problem_id, comparison_tol=COMPARISON_TOL,
+-                  lp_status=type(lp_result).__name__,
+-                  integer_status=type(integer_result).__name__)
+-    if isinstance(integer_result, IntegerOptimum):
+-        diag = integer_result.plan.extraction
+-        record.update(integer_objective=integer_result.plan.objective,
+-                      integer_dual_bound=diag.dual_bound,
+-                      integer_reported_gap=diag.reported_gap,
+-                      integer_node_count=diag.node_count,
+-                      integer_actions=plan_actions(integer_result.plan))
++    lp_type, integer_type = (type(lp_result).__name__,
++                             type(integer_result).__name__)
++    return compare_summaries(problem.problem_id, lp_type,
++                             lp_summary(lp_type, lp_result), integer_type,
++                             integer_summary(integer_type, integer_result))
++
++
++def compare_summaries(problem_id, lp_status, lp, integer_status, integer):
++    """``compare_same_state`` on primitive summaries (``lp_summary`` and
++    ``integer_summary``) of results for the identical problem."""
++    record = dict(problem_id=problem_id, comparison_tol=COMPARISON_TOL,
++                  lp_status=lp_status, integer_status=integer_status,
++                  integer=integer)
++    if integer["status"] == "optimal":
++        record.update(integer_objective=integer["objective"],
++                      integer_dual_bound=integer["dual_bound"],
++                      integer_reported_gap=integer["reported_gap"],
++                      integer_node_count=integer["node_count"],
++                      integer_actions=integer["actions"])
+     else:
+         record.update(integer_failure=dict(
+-            stage=integer_result.stage, category=integer_result.category,
+-            reason=integer_result.reason,
+-            incumbent_objective_diagnostic=integer_result.incumbent_objective,
+-            dual_bound=integer_result.dual_bound))
+-    if isinstance(lp_result, lrs.SchedulingSuccess):
+-        record.update(lp_relaxed_objective=lp_result.relaxed.normalized_objective,
+-                      lp_plan_objective=lp_result.plan.objective,
+-                      lp_actions=plan_actions(lp_result.plan),
+-                      fractional_request_count=(
+-                          lp_result.plan.extraction.fractional_request_count))
+-    if not (isinstance(lp_result, lrs.SchedulingSuccess)
+-            and isinstance(integer_result, IntegerOptimum)):
++            stage=integer["stage"], category=integer["category"],
++            reason=integer["reason"],
++            incumbent_objective_diagnostic=integer["incumbent_objective"],
++            dual_bound=integer["dual_bound"]))
++    if lp is not None:
++        record.update(lp_relaxed_objective=lp["relaxed_objective"],
++                      lp_plan_objective=lp["plan_objective"],
++                      lp_actions=lp["actions"],
++                      fractional_request_count=lp["fractional_request_count"])
++    if lp is None or integer["status"] != "optimal":
+         record["attribution"] = "not_comparable"
+         return record
+     lp_opt, ilp, lp_plan = (record["lp_relaxed_objective"],
+diff --git a/tests/test_compare_scheduler_gpu.py b/tests/test_compare_scheduler_gpu.py
+index 629c909..adb3d6f 100644
+--- a/tests/test_compare_scheduler_gpu.py
++++ b/tests/test_compare_scheduler_gpu.py
+@@ -184,9 +184,10 @@ class DriverImportAndHelpTest(unittest.TestCase):
+                                 text=True)
+         self.assertEqual(result.returncode, 0, result.stderr)
+         self.assertIn("--policy {adapted_vllm,lp_uniform,lp_rank_based,"
+-                      "lp_coordinated}", result.stdout)
+-        self.assertIn("--resident-limit {2,1,4}", result.stdout)
+-        self.assertIn("--case {two_request,memory_pressure}", result.stdout)
++                      "lp_coordinated,lp_reciprocal_square}", result.stdout)
++        self.assertIn("--resident-limit {2,1,4,8}", result.stdout)
++        self.assertIn("--case {two_request,memory_pressure,"
++                      "queue48_burst_pool12}", result.stdout)
+         self.assertEqual(result.stdout.strip().splitlines()[-1], "RESULT 0 []")
+ 
+ 
+@@ -1028,6 +1029,282 @@ class VirtualArrivalTest(unittest.TestCase):
+         self.assertEqual(runtime.next_seq_id, 6)
+ 
+ 
++RECIPROCAL = (driver.RECIPROCAL_SQUARE_POLICY,
++              driver.RECIPROCAL_SQUARE_INTEGER_POLICY)
++ANCHOR = "queue6_burst"
++
++
++def _queue_run(method, case=ANCHOR):
++    """One queue-growth rollout through the CPU batch, in its retained JSON
++    form, with its offline comparisons."""
++    import compare_coefficient_policies_cpu as batch
++    with tempfile.TemporaryDirectory() as tmp:
++        summary, trace = batch.run_queue_rollout(
++            sys.modules[__name__], method, case, Path(tmp))
++    return summary, trace
++
++
++class QueueGrowthTest(unittest.TestCase):
++    """The reciprocal-square policy, its integer-driven CPU method, and the
++    per-decision comparison records of the queue-growth batch."""
++
++    def test_queue_growth_inputs(self):
++        sizes = dict(queue6_burst=(6, 128, False), queue12_burst=(12, 128, False),
++                     queue24_burst=(24, 128, False),
++                     queue48_burst=(48, 128, False),
++                     queue48_staggered=(48, 128, True),
++                     queue48_burst_pool12=(48, 12, False))
++        self.assertEqual(driver.QUEUE_GROWTH_CASES, tuple(sizes))
++        for case, (count, pool, staggered) in sizes.items():
++            with self.subTest(case=case):
++                c = driver.case_inputs(case)
++                prompts = list(c["prompts"].values())
++                self.assertEqual([len(p) for p in prompts],
++                                 [[8, 16, 17, 32, 64, 128][k % 6]
++                                  for k in range(count)])
++                self.assertEqual([p[0] for p in prompts],
++                                 [1000 + 256 * k for k in range(count)])
++                self.assertEqual(list(c["max_tokens"].values()),
++                                 [[2, 4, 8][k % 3] for k in range(count)])
++                self.assertEqual(list(c["arrivals"].values()),
++                                 [2 * k if staggered else 0
++                                  for k in range(count)])
++                self.assertEqual(
++                    (c["num_gpu_blocks"], c["max_model_len"],
++                     c["resident_limits"], c["token_budget"], c["b_max"],
++                     c["c_max"], c["s_max"], c["max_decisions"]),
++                    (pool, 256, (8,), 128, 128, 128, 8, 8 * count))
++                flat = [t for p in prompts for t in p]
++                self.assertEqual(len(flat), len(set(flat)))
++                self.assertLess(max(flat), 32000)
++        # Only the constrained 48-request case is a GPU (command-line) case.
++        self.assertEqual([c for c in driver.GPU_CASES
++                          if c in driver.QUEUE_GROWTH_CASES],
++                         [driver.CONSTRAINED_QUEUE_CASE])
++
++    def test_configuration_hook_and_native_watermark(self):
++        for case, watermark in ((ANCHOR, 1), (driver.CONSTRAINED_QUEUE_CASE, 0)):
++            for policy in RECIPROCAL:
++                with self.subTest(case=case, policy=policy):
++                    runtime = CpuRuntime(policy, 8, case)
++                    scheduler = runtime.scheduler
++                    self.assertEqual(scheduler.block_manager.watermark_blocks,
++                                     watermark)
++                    driver.select_coefficient_policy(scheduler, policy, case)
++                    bound = scheduler._coefficient_policy()
++                    self.assertIs(bound.func, lsm.reciprocal_square_rank_utility)
++                    self.assertEqual(bound.keywords, dict(c_max=128, b_max=128))
++                    self.assertEqual("_schedule" in vars(scheduler),
++                                     policy == driver.RECIPROCAL_SQUARE_INTEGER_POLICY)
++                    params = driver.run_parameters(policy, 8, case)
++                    self.assertIn("reciprocal_square_rank_utility",
++                                  params["coefficient_policy"])
++                    self.assertEqual(params["native_watermark_blocks"],
++                                     watermark)
++        self.assertEqual(driver.decision_calls(
++            driver.RECIPROCAL_SQUARE_INTEGER_POLICY), driver.INTEGER_CALLS)
++
++    def test_reciprocal_square_coefficients_are_checked(self):
++        # The policy-specific check rejects the geometric weights.
++        native = driver.expected_coefficients
++
++        def geometric(policy, snap, request, c):
++            return native("lp_coordinated", snap, request, c)
++        with mock.patch.object(driver, "expected_coefficients", geometric):
++            with self.assertRaisesRegex(driver.CheckFailure,
++                                        "decision 0: coefficients of"):
++                _run(driver.RECIPROCAL_SQUARE_POLICY, 8, ANCHOR)
++
++    def test_every_decision_has_a_comparison_record(self):
++        import compare_coefficient_policies_cpu as batch
++        native = eip.solve_integer_plan
++        for method in ("adapted_vllm",) + RECIPROCAL:
++            with self.subTest(method=method):
++                summary, trace = _queue_run(method)
++                self.assertTrue(summary["validation_passed"], summary["failure"])
++                self.assertEqual(summary["workload_outcome"], driver.DRAINED)
++                reached = len(trace["decisions"])
++                calls = []
++                with mock.patch.object(
++                        eip, "solve_integer_plan",
++                        lambda p: calls.append(p) or native(p)):
++                    records, coverage = batch.decision_comparisons(trace, method)
++                self.assertEqual([r["index"] for r in records],
++                                 list(range(reached)))
++                integer_driven = method in driver.INTEGER_POLICIES
++                self.assertEqual(coverage, dict(
++                    reached_decisions=reached, valid_problems=reached,
++                    mapping_failures=0, missing_problems=0,
++                    round_trip_failures=0,
++                    attempted_solves=0 if integer_driven else reached,
++                    reused_integer_results=reached if integer_driven else 0,
++                    optimal=reached, time_limits=0, other_failures=0,
++                    comparison_errors=0, records=reached, missing_records=0,
++                    no_valid_problem=0, complete=True))
++                # The integer-driven result is reused, never solved again.
++                self.assertEqual(len(calls), 0 if integer_driven else reached)
++                for r in records:
++                    self.assertTrue(r["round_trip_equal"])
++                    self.assertEqual(r["integer"]["status"], "optimal")
++                    if method == "adapted_vllm":
++                        self.assertIn(r["comparison"]["classification"], (
++                            "identical_actions", "tied_optimum",
++                            "strict_objective_preference",
++                            "contract_difference"))
++                    elif not integer_driven:
++                        self.assertTrue(r["comparison"]["bounds_consistent"])
++                if method == "adapted_vllm":
++                    # One read-only diagnostic problem per decision, none for
++                    # the final ordinary idle step, with reciprocal-square
++                    # coefficients and the case's caps.
++                    problems = trace["reference_diagnostic_problems"]
++                    self.assertEqual(len(problems), reached)
++                    first = problems[0]["result"]
++                    self.assertEqual((first["b_max"], first["c_max"],
++                                      first["s_max"],
++                                      first["admission_watermark"]),
++                                     (128, 128, 8, 1))
++                    self.assertEqual(
++                        [r["decode_utility"] + r["prefill_token_utility"]
++                         * r["prefill_upper_bound"] for r in first["requests"]],
++                        [1 / (1 + k) ** 2 for k in range(6)])
++                    # The capture does not change the reference's decisions.
++                    _, plain, _ = _run("adapted_vllm", 8, ANCHOR)
++                    self.assertEqual(
++                        [_emitted(d) for d in plain["decisions"]],
++                        [d["schedules"][0]["outputs"]
++                         for d in trace["decisions"]])
++
++    def test_missing_or_invalid_problem_records_are_not_silent(self):
++        import compare_coefficient_policies_cpu as batch
++        _, trace = _queue_run("adapted_vllm")
++        dropped = copy.deepcopy(trace)
++        dropped["reference_diagnostic_problems"].pop()
++        _, coverage = batch.decision_comparisons(dropped, "adapted_vllm")
++        self.assertEqual((coverage["missing_problems"], coverage["complete"]),
++                         (1, False))
++        failed = copy.deepcopy(trace)
++        failed["reference_diagnostic_problems"][0] = dict(
++            result_type="MappingFailure", result=dict(reason="injected"))
++        records, coverage = batch.decision_comparisons(failed, "adapted_vllm")
++        self.assertEqual((records[0]["problem_status"],
++                          coverage["mapping_failures"], coverage["complete"]),
++                         ("mapping_failure", 1, True))
++        _, lp_trace = _queue_run(driver.RECIPROCAL_SQUARE_POLICY)
++        corrupt = copy.deepcopy(lp_trace)
++        corrupt["decisions"][1]["lp_events"][0]["result"]["lp_problem"][
++            "b_max"] = 0
++        records, coverage = batch.decision_comparisons(
++            corrupt, driver.RECIPROCAL_SQUARE_POLICY)
++        self.assertIn("comparison_error", records[1])
++        self.assertEqual((coverage["comparison_errors"], coverage["complete"]),
++                         (1, False))
++
++    def test_problem_records_round_trip_through_json(self):
++        _, trace = _queue_run(driver.RECIPROCAL_SQUARE_POLICY)
++        for d in trace["decisions"]:
++            record = d["lp_events"][0]["result"]["lp_problem"]
++            problem = eip.problem_from_record(json.loads(json.dumps(record)))
++            canonical = lrs.validate_problem(problem)
++            self.assertIsInstance(canonical, lrs.LPProblem)
++            self.assertEqual(driver.to_jsonable(canonical), record)
++            # The reloaded problem solves to the recorded LP result.
++            result = lrs.solve_and_extract(canonical)
++            self.assertEqual(driver.to_jsonable(result.plan),
++                             d["lp_events"][1]["result"]["plan"])
++
++    def test_non_optimal_offline_comparison_is_recorded(self):
++        import compare_coefficient_policies_cpu as batch
++        _, trace = _queue_run(driver.RECIPROCAL_SQUARE_POLICY)
++        native, calls = eip.solve_integer_plan, []
++
++        def limit_second(problem):
++            calls.append(problem.problem_id)
++            if len(calls) == 2:
++                return eip.IntegerSolveFailure(
++                    problem.problem_id, eip.STAGE_INTEGER_SOLVER,
++                    "solver_limit", "injected", 1, "time limit reached",
++                    incumbent_vector=(0.0,), incumbent_objective=0.5,
++                    dual_bound=0.75, reported_gap=0.5, node_count=7)
++            return native(problem)
++        with mock.patch.object(eip, "solve_integer_plan", limit_second):
++            records, coverage = batch.decision_comparisons(
++                trace, driver.RECIPROCAL_SQUARE_POLICY)
++        reached = len(trace["decisions"])
++        self.assertEqual((coverage["attempted_solves"], coverage["optimal"],
++                          coverage["time_limits"], coverage["complete"]),
++                         (reached, reached - 1, 1, True))
++        integer = records[1]["integer"]
++        self.assertEqual({k: integer[k] for k in (
++            "status", "category", "raw_status", "incumbent_objective",
++            "dual_bound", "reported_gap", "node_count")}, dict(
++            status="failure", category="solver_limit", raw_status=1,
++            incumbent_objective=0.5, dual_bound=0.75, reported_gap=0.5,
++            node_count=7))
++        self.assertEqual(records[1]["comparison"]["attribution"],
++                         "not_comparable")
++        self.assertNotIn("integer_objective", records[1]["comparison"])
++        self.assertEqual(records[2]["integer"]["status"], "optimal")
++
++    def test_integer_rollout_stops_on_non_optimal_without_fallback(self):
++        import compare_coefficient_policies_cpu as batch
++        native, calls = eip.solve_integer_plan, []
++
++        def limit_second(problem):
++            calls.append(problem.problem_id)
++            if len(calls) == 2:
++                return eip.IntegerSolveFailure(
++                    problem.problem_id, eip.STAGE_INTEGER_SOLVER,
++                    "solver_limit", "injected", 1, "time limit",
++                    incumbent_objective=0.5, dual_bound=0.75)
++            return native(problem)
++        method = driver.RECIPROCAL_SQUARE_INTEGER_POLICY
++        with mock.patch.object(eip, "solve_integer_plan", limit_second), \
++                mock.patch.object(lrs, "solve_and_extract") as lp:
++            summary, trace = _queue_run(method)
++        lp.assert_not_called()
++        self.assertEqual((summary["validation_passed"],
++                          summary["workload_outcome"],
++                          summary["failure"]["category"]),
++                         (False, driver.FAILURE, "solver_limit"))
++        self.assertEqual(len(trace["decisions"]), 2)
++        self.assertEqual(trace["decisions"][1]["central_ops"], [])
++        records, coverage = batch.decision_comparisons(trace, method)
++        self.assertEqual((coverage["reused_integer_results"],
++                          coverage["time_limits"], coverage["attempted_solves"],
++                          coverage["complete"]), (2, 1, 0, True))
++        self.assertEqual(records[1]["integer"]["incumbent_objective"], 0.5)
++
++    def test_command_lines(self):
++        args = driver.parse_args(["--case", driver.CONSTRAINED_QUEUE_CASE,
++                                  "--policy", driver.RECIPROCAL_SQUARE_POLICY,
++                                  "--model-path", "m", "--output-dir", "o"])[1]
++        self.assertEqual((args.case, args.policy, args.resident_limit),
++                         (driver.CONSTRAINED_QUEUE_CASE,
++                          driver.RECIPROCAL_SQUARE_POLICY, None))
++        import compare_coefficient_policies_cpu as batch
++        for parse, argv in (
++                (driver.parse_args, ["--policy",
++                                     driver.RECIPROCAL_SQUARE_INTEGER_POLICY]),
++                (driver.parse_args, ["--policy", "adapted_vllm", "--case",
++                                     ANCHOR]),
++                (batch.parse_args, ["--batch", "unknown"])):
++            with self.subTest(argv=argv), \
++                    contextlib.redirect_stderr(io.StringIO()):
++                with self.assertRaises(SystemExit) as caught:
++                    parse(argv + ["--model-path", "m", "--output-dir", "o"]
++                          if parse is driver.parse_args
++                          else argv + ["--output-dir", "o"])
++                self.assertEqual(caught.exception.code, 2)
++        with tempfile.TemporaryDirectory() as tmp, \
++                contextlib.redirect_stderr(io.StringIO()):
++            for argv in (["--batch", "retained_runs"],
++                         ["--batch", "queue_growth", "--runs", "x"]):
++                with self.assertRaises(SystemExit) as caught:
++                    batch.main(argv + ["--output-dir", str(Path(tmp) / "o")])
++                self.assertEqual(caught.exception.code, 2)
++
++
+ class CpuEntrypointTest(unittest.TestCase):
+     def test_help_loads_no_engine_worker_ray_or_torch(self):
+         code = (
+diff --git a/tests/test_lpserve_state_mapping.py b/tests/test_lpserve_state_mapping.py
+index fdbd88f..e6de3b8 100644
+--- a/tests/test_lpserve_state_mapping.py
++++ b/tests/test_lpserve_state_mapping.py
+@@ -1039,6 +1039,109 @@ class LPServeStateMappingTest(unittest.TestCase):
+                 self.assertIsInstance(result, lsm.MappingFailure)
+                 self.assertIn(f"coordinated utility {field}", result.reason)
+ 
++    # -- reciprocal-square rank utility policy ---------------------------------
++
++    @staticmethod
++    def _reciprocal_square(c_max=C_MAX, b_max=B_MAX):
++        return functools.partial(lsm.reciprocal_square_rank_utility,
++                                 c_max=c_max, b_max=b_max)
++
++    def test_reciprocal_square_values_terms_and_normalization(self):
++        # The coordinated test's state: positions 5->0, 3->1, 9->2, 2->3,
++        # so w = 1, 1/4, 1/9, 1/16 (geometric 1/4 would give 1/16, 1/64).
++        holder, _ = _build_holder()
++        self._resident(holder, 5, 6, 4)
++        self._resident(holder, 3, 4, 4)
++        holder.waiting.append(_make_sequence(0, 4, SNAPSHOT_TIME + 1))
++        holder.waiting.append(_make_sequence(9, 10, 1.0))
++        holder.waiting.append(_make_sequence(2, 4, 1.0))
++        before = _fingerprint(holder)
++        with mock.patch.object(lsm, "_capture", wraps=lsm._capture) as spy:
++            snapshot = _map(holder, self._reciprocal_square())
++        self.assertEqual(spy.call_count, 1)
++        self.assertEqual(_fingerprint(holder), before)
++        self.assertIsInstance(snapshot, lsm.StateSnapshot, snapshot)
++        # q = min(remaining, C_max = 4, B_max = 8); ineligible terms are 0.
++        self.assertEqual(self._triples(snapshot), {
++            5: (0.0, 1.0 / 2, 1.0),
++            3: (0.25, 0.0, 0.25),
++            9: (0.0, (1 / 9) / 4, 0.0),
++            2: (0.0, (1 / 16) / 4, 0.0),
++        })
++        by_id = {r.raw_seq_id: r for r in snapshot.requests}
++        for raw_id, q in ((5, 2), (9, 4), (2, 4)):
++            r = by_id[raw_id]
++            self.assertAlmostEqual(r.utility.prefill_token_utility * q,
++                                   1 / (1 + r.service_rank) ** 2, places=15)
++        self.assertEqual({k: (r.service_rank, r.victim_rank)
++                          for k, r in by_id.items()},
++                         {5: (0, 1), 3: (1, 0), 9: (2, None), 2: (3, None)})
++        self.assertEqual(
++            {r.request_id: (r.decode_utility, r.prefill_token_utility,
++                            r.preemption_penalty)
++             for r in snapshot.lp_problem.requests},
++            {str(k): v for k, v in self._triples(snapshot).items()})
++        captured = lsm.capture_scheduler_state(holder,
++                                               snapshot_time=SNAPSHOT_TIME)
++        tight = lsm.construct_coefficients(captured,
++                                           self._reciprocal_square(b_max=3))
++        self.assertEqual(
++            {r.raw_seq_id: c.prefill_token_utility
++             for r, c in zip(captured.requests, tight)},
++            {5: 1.0 / 2, 3: 0.0, 9: (1 / 9) / 3, 2: (1 / 16) / 3})
++
++    def test_reciprocal_square_later_ranks_and_fixed_capture(self):
++        # One decode-ready resident, then 13 arrived waiting requests whose
++        # raw IDs run backwards: positions 0..13.
++        holder, _ = _build_holder()
++        self._resident(holder, 20, 4, 4)
++        for raw_id in range(13, 0, -1):
++            holder.waiting.append(_make_sequence(raw_id, 8, 1.0))
++        policy = self._reciprocal_square()
++        snapshot = _map(holder, policy)
++        self.assertIsInstance(snapshot, lsm.StateSnapshot, snapshot)
++        by_id = {r.raw_seq_id: r for r in snapshot.requests}
++        self.assertEqual(by_id[20].utility, lsm.RequestUtility(1.0, 0.0, 1.0))
++        for raw_id in range(1, 14):
++            r = by_id[raw_id]
++            position = 14 - raw_id
++            self.assertEqual(r.service_rank, position)
++            self.assertEqual(r.utility, lsm.RequestUtility(
++                0.0, (1.0 / (1 + position) ** 2) / C_MAX, 0.0))
++        # Rank 13: w = 1/196, against the geometric 4^-13 (about 1.5e-8).
++        last = by_id[1].utility.prefill_token_utility * C_MAX
++        self.assertEqual(last, 1 / 196)
++        self.assertGreater(last / 0.25 ** 13, 1e5)
++        # Construction reads only the capture.
++        captured = lsm.capture_scheduler_state(holder,
++                                               snapshot_time=SNAPSHOT_TIME)
++        holder.waiting.clear()
++        holder.running.clear()
++        holder.block_manager = None
++        self.assertEqual(
++            {r.raw_seq_id: c for r, c in zip(
++                captured.requests,
++                lsm.construct_coefficients(captured, policy))},
++            {r.raw_seq_id: r.utility for r in snapshot.requests})
++
++    def test_reciprocal_square_rejects_invalid_parameters(self):
++        for name in ("c_max", "b_max"):
++            for bad in (0, -1, 1.5, True, None, "4"):
++                with self.subTest(field=name, bad=bad):
++                    params = dict(c_max=C_MAX, b_max=B_MAX)
++                    params[name] = bad
++                    holder = _build_three_request_holder()
++                    before = _fingerprint(holder)
++                    result = _map(holder, functools.partial(
++                        lsm.reciprocal_square_rank_utility, **params))
++                    self.assertEqual(_fingerprint(holder), before)
++                    self.assertIsInstance(result, lsm.MappingFailure)
++                    self.assertIn(f"reciprocal-square utility {name}",
++                                  result.reason)
++        with self.assertRaises(TypeError):
++            lsm.reciprocal_square_rank_utility(None, None, rank_base=0.5,
++                                               c_max=C_MAX, b_max=B_MAX)
++
+ 
+ 
+ if __name__ == "__main__":

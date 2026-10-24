@@ -751,3 +751,330 @@ validation; the mixed-pressure diagnostic was never a GPU case.
 (`20261024T182347Z/gpu_{two_request,memory_pressure}_{lp_coordinated,adapted_vllm}_limit{1,4}/console.log`)
 are present and tracked, added by `43aa837`. Their preservation is
 complete.
+
+## Addendum 2026-10-24: reciprocal-square policy as queues grow
+
+**Scope.** One provisional coordinated policy with slower rank decay,
+`reciprocal_square_rank_utility` (LP method `lp_reciprocal_square`), and
+its CPU-only integer-driven method (`ilp_reciprocal_square`), compared with
+the adapted reference on six queue-growth workloads. The six-request anchor
+also runs the uniform, rank-based, and geometric coordinated LPs. Every
+reached decision of the new runs has a same-state integer comparison. The
+two authorized GPU runs of the constrained 48-request case were attempted
+and **failed at native engine initialization**, before any decision,
+because 12 blocks are fewer than one 256-token context needs (see the GPU
+section). GPU confirmation is therefore not established. The geometric
+policy is unchanged and was not run beyond the anchor. The formulation,
+extraction, numerical policy, resource conventions, executor, live
+scheduler, registry, allocator, `EngineArgs`, and dependencies are
+unchanged. Q11, D-01–D-04, κ, and F02 remain OPEN. The exponent two and
+all workload values are demonstration inputs and were not tuned after
+results were seen.
+
+**Evidence:** [`validation_output/scheduler_comparison/20261024T210104Z_queue_growth/`](../../validation_output/scheduler_comparison/20261024T210104Z_queue_growth/)
+(`cpu_checks/` with `run_checks.sh`, step logs 01–13, `working_tree.diff`,
+`git_state.txt`, `environment.txt`, `sha256sums.txt`; `cpu_comparison/` with
+`comparison.txt`, `divergences.json`, `run_record.json`, and
+`rollouts/<case>/<method>/{decision_trace.json.gz,summary.json,comparisons.json,console.log}`;
+`gpu_queue48_burst_pool12_<policy>/` and `gpu_offline_comparison/` (see the
+GPU section); `run_gpu.sh`, `run_gpu_stdout.txt`, `shell_environment.txt`,
+`git_state_gpu.txt`, `sha256sums_gpu.txt`). Tested at HEAD
+`fce4fd1b57527f3d198aecb39dadc807799359d9` plus uncommitted changes to the
+six files below: `git diff HEAD` sha256 `e6dc3fd2…`, the same at the CPU gate
+and the GPU start. Every file hash in `cpu_checks/sha256sums.txt` equals
+`sha256sums_gpu.txt`. There were no untracked source files. Host `gpu051`,
+Slurm job `66024401`, NVIDIA A16
+`GPU-3b4275a6-87bc-8602-343d-c27ed356bfdd`, driver 595.91.07; modules
+`uri/main`, `Python/3.10.8-GCCcore-12.2.0` (plus `CUDA/12.1.1` for GPU);
+`env/bin/python` 3.10.8, numpy 2.2.6, scipy 1.15.3 (HiGHS), torch
+2.3.0+cu121, ray 2.58.0. Same TinyLlama snapshot `fe8a4ea1…`, offline.
+Decision traces are gzip-compressed (`gzip -n` or `mtime=0`); the GPU
+traces' uncompressed sha256 is kept beside them.
+
+### Files
+
+| File | Change |
+|---|---|
+| `lpserve_state_mapping.py` | `reciprocal_square_rank_utility` (new callable for the existing hook). Earlier policies are unchanged |
+| `scripts/compare_scheduler_gpu.py` | `lp_reciprocal_square` (CLI and CPU) and `ilp_reciprocal_square` (CPU only); `QUEUE_GROWTH_CASES` (only `queue48_burst_pool12` on the command line, resident limit 8); `capture_reference_problems`; the pre-request watermark check now expects the native `int(0.01 * pool)` (1 at 128 blocks) instead of 0 |
+| `scripts/exact_integer_plan.py` | `problem_from_record`, `lp_summary`, `integer_summary`, `compare_summaries`; `plan_actions` accepts JSON records. `compare_same_state` keeps its outputs (adds an `integer` summary) |
+| `scripts/compare_coefficient_policies_cpu.py` | `--batch queue_growth` and `--batch retained_runs --runs … [--cpu-batch …]`; the default batch and its CLI are unchanged; `compare_reference` delegates to `classify_reference` with unchanged outputs |
+| `tests/test_compare_scheduler_gpu.py` | 9 new tests; three help-text assertions updated for the added choices |
+| `tests/test_lpserve_state_mapping.py` | 3 new policy tests |
+
+### Policy and comparison inputs (provisional)
+
+With `r` the zero-based position in running order followed by arrived
+waiting order: `w = 1 / (1 + r)^2`. For a prefill-eligible request,
+`q = min(remaining, c_max, b_max)`. Decode reward is `w`, prefill token
+reward `w / q`, and penalty `w`, each for eligible requests only. Capture,
+ranks, and execution are as for the geometric policy.
+
+Workloads: request k has prompt length `[8,16,17,32,64,128][k mod 6]`,
+output limit `[2,4,8][k mod 3]`, and prompt IDs from `1000 + 256k`. Block
+size 16, `max_model_len` 256, resident limit 8, budget/`b_max`/`c_max` 128,
+`s_max` 8, bound `8n` nonempty decisions. Burst arrivals are all at
+virtual time 0; staggered request k arrives at `2k`. Cases:
+`queue6_burst`, `queue12_burst`, `queue24_burst`, `queue48_burst`, and
+`queue48_staggered` use 128 blocks (native watermark 1);
+`queue48_burst_pool12` uses 12 blocks (watermark 0).
+
+Integer comparisons reuse `solve_integer_plan` unchanged: `milp`,
+`mip_rel_gap` 0, presolve, 10 s per solve, conversion tolerance 1e-6,
+comparison tolerance 1e-7. Each LP decision's own mapped problem is solved
+once offline after the rollout. The integer-driven method's own result is
+reused, never solved again. For the reference, the quiescent pre-decision
+state is mapped once, read-only, with reciprocal-square coefficients and the
+case's LP caps (`capture_reference_problems`, which skips idle steps). The
+proposal is then classified against that problem. The comparisons read the
+retained JSON: each problem is rebuilt, validated, and checked to serialize
+back to the identical record. CPU and GPU runs take the same path.
+
+### Critical review (analytical unless marked observed)
+
+1. **The 128-block cases cannot create memory pressure.** At most eight
+   residents of at most 136 tokens (9 blocks) hold 72 blocks. No decode can
+   lack a block, and the LP prerequisite always has H ≥ 1. A voluntary
+   replacement never pays: a waiting request's weight is below every
+   resident's, so its value is less than the penalty. Observed: zero
+   preemptions by every method in all five 128-block cases. Victim
+   positions, discarded progress, and contract differences come only from
+   `queue48_burst_pool12`.
+2. **The staggered case never builds a queue** (observed). With arrivals
+   every two decisions, at most four requests are present (maximum rank 3).
+   All three methods select identically at every decision. The LP's
+   emitted order differs from the reference's at decisions 13, 25, …, 85
+   (its demand-group order), with the same selection. This case does not
+   test long-queue rank effects.
+3. **Prompt and output lengths are paired.** The periods 6 and 3 give only
+   six request types, for example every 128-token prompt has 8 outputs.
+4. **With per-token normalization and slow decay, a binding budget favors
+   short prompts over the waiting order.** One prefill token is worth
+   `w/q`, and adjacent weights differ by only `((r+2)/(r+1))^2` (1.31 at
+   r = 6, 1.04 at r = 46). A later short request therefore outbids an
+   earlier long one per token. Under the geometric policy the factor is 4
+   per rank, so rank order dominates after about two positions. Observed:
+   at decision 0 of every burst case with at least 12 requests, the LP
+   admits R06, R07, and R08 (8, 16, 17 tokens) and gives R04 (64) at most
+   14 tokens or none. The reference admits R00–R04 in order (R04 chunked to
+   55). This is the specified policy, not a defect. It is not a fairness or
+   starvation result.
+5. **Weak rank separation lets block counts decide victim choice** (observed
+   and integer-optimal). At pool-12 LP decision 2, three one-block decodes
+   need 3 blocks with 1 free. Preempting R08 (rank 6, 2 blocks, cost 2/49)
+   beats preempting tail R12 together with R06 (cost about 0.111). At ILP
+   decision 2, a forced victim R04 (4 blocks) also funds two admissions.
+   The reference always evicts the tail.
+6. **The relaxed decode prerequisite causes non-tail victims through
+   extraction** (observed, pool-12 LP decisions 20 and 34). All residents
+   are decode-ready with 0 free blocks. The row `Σy ≤ S_max·H` holds with a
+   small fraction of a 4-block resident (z = 0.121 and 0.4). Extraction
+   orders victims by z, preempts that resident whole, and fills the freed
+   blocks with admissions. The integer optimum preempts the 1-block tail
+   instead. Losses: 0.084 and 0.091. This is the inherited convention
+   (design §8.3) together with the relaxation and extraction, not the
+   coefficients. The convention and extraction are unchanged; changing
+   either needs a separate decision.
+7. **The action cap splits admissions fractionally** (observed, decision 0
+   of `queue24_burst`, `queue48_burst`, and `queue48_burst_pool12`). The
+   eighth action is shared between R04 (I = 0.107, 6.9 tokens) and R12
+   (I = 0.893). Extraction keeps R12, while the integer optimum takes R04's
+   leftover tokens. Losses are 0.0028 and 0.0011. This is a known
+   fractional-structure limitation (design §10.6). Pool-12 decision 13 shows
+   a 6.2e-5 knapsack loss: extraction admits a 2-block request, and the
+   optimum fits two 1-block ones.
+8. **A coefficient above the solver tolerance does not by itself separate
+   priorities.** Observed: the smallest positive coefficient is 3.4e-6 at
+   48 requests (rank 47, q = 128), 34 times HiGHS's default 1e-7 dual
+   feasibility tolerance. Geometric weights would give about 4e-31. But the
+   smallest positive difference between two requests' per-token prefill
+   rewards is 1.9e-7 at 24 requests and 5.0e-8 at 48. Pairs that close are
+   not reliably distinguished by the solver. Exact ties also occur, from
+   coincidences of `w/q`. In the observed runs, every LP/ILP and
+   reference/ILP disagreement had an objective gap of at least 6.2e-5, so
+   none is attributable to such near ties. Nothing was rescaled, floored,
+   or clipped.
+9. **Watermark.** The driver had required watermark 0 before submitting
+   requests. At 128 blocks the native value is 1. The check now expects the
+   shared manager's native `int(0.01 * pool)`, which is unchanged (0) for
+   every earlier case. LP problems carry h = 1, and the reference uses the
+   same manager value.
+
+Review scope: the new policy and its hook; mapper capture and construction;
+`_build_lp`, the extraction loop, and plan validation (read, unchanged);
+the integer helper; the driver checks and capture wrapper; the reference
+proposal path; and the comparison and coverage code. No defect was found
+in the formulation, extraction, or executor paths. Kernels, cache contents,
+and multi-worker paths were not reviewed.
+
+### CPU results (executed; `cpu_comparison/comparison.txt`)
+
+All 21 rollouts passed validation and drained within the bound. Columns:
+decisions; preemptions (after output); discarded prompt tokens (equal to
+replayed tokens here); overgeneration; admission-order and completion-order
+inversions (pairs served out of request order).
+
+| Case | Reference | Reciprocal-square LP | Reciprocal-square ILP |
+|---|---|---|---|
+| queue6_burst | 11; 0; 0; 0; 0 / 3 | 11; 0; 0; 0; 0 / 3 | 11; 0; 0; 0; 0 / 3 |
+| queue12_burst | 15; 0; 0; 0; 0 / 14 | 15; 0; 0; 0; 3 / 17 | 15; 0; 0; 0; 3 / 17 |
+| queue24_burst | 24; 0; 0; 0; 0 / 34 | 23; 0; 0; 0; 32 / 67 | 24; 0; 0; 0; 8 / 44 |
+| queue48_burst | 42; 0; 0; 0; 0 / 80 | 40; 0; 0; 0; 33 / 110 | 40; 0; 0; 0; 9 / 89 |
+| queue48_staggered | 104; 0; 0; 0; 0 / 22 | 104; 0; 0; 0; 0 / 22 | 104; 0; 0; 0; 0 / 22 |
+| queue48_burst_pool12 | 117; 6 (3); 102; 3; 0 / 27 | 118; 5 (3); 226; 3; 208 / 246 | 117; 8 (1); 193; 1; 202 / 224 |
+
+**Resident continuation.** In every run, by every method, each resident
+received an action at every decision: zero resident omissions. All
+requests completed in every run. Generated-token events exceeded the output
+limits only by the overgeneration after restarts (pool 12: 3, 3, and 1 for
+the reference, LP, and ILP; inherited counter reset). In the 128-block
+cases nothing was
+preempted. In the 12-block case, the reciprocal-square LP discarded 226
+prompt tokens against the reference's 102. Its victims were at running
+positions 6/8, 4/5, 2/4, 4/5, and 2/4; the reference's were always the
+tail (3/4). Three LP decisions combined a victim with admissions
+(findings 5 and 6); the reference never did.
+
+**Service order.** In `queue48_burst_pool12`, the mean first-prefill /
+completion decision index of the eight 128-token requests was 77.5 / 85.5
+for the LP, against 57 / 65.5 for the reference. The 8-token requests had
+9.4 / 11.4 against 44.4 / 46.4. These are decision indices, not latency.
+The total drain was 118 against 117 decisions.
+
+**Anchor (six requests).** The geometric and reciprocal-square LPs, the
+rank-based LP, and the ILP make identical selections at every decision.
+They differ from the reference only in emitted order at decision 2 (the LP
+demand-group order). The uniform LP differs (four admission inversions).
+At six requests, the decay rate makes no observed difference.
+
+**Coverage** (`comparison.txt`, "Comparison coverage"). There were 967
+reached decisions in 21 runs, each with exactly one record. All had a valid,
+round-trip-identical problem, with zero mapping failures, missing problems,
+missing records, or comparison errors. 656 offline integer solves were
+attempted (every LP and reference decision), and 311 integer-driven
+results were reused. All 967 were HiGHS-optimal (raw status 0), with
+zero time limits and zero other failures. The maximum integrality
+deviation was 7.1e-14, and the longest offline solve took about 0.01 s.
+
+**Same state, reciprocal-square LP vs integer optimum** (identical
+problems). The actions were identical except in 4 of 23 (`queue24_burst`),
+4 of 40 (`queue48_burst`), and 6 of 118 (`queue48_burst_pool12`) decisions.
+Each exception is an extraction loss (findings 6 and 7). Relaxation gaps
+were present in 6, 13, and 92 decisions of those cases (maximum 0.219),
+without changing the actions elsewhere. The bound LP ≥ integer ≥ LP plan
+held everywhere, and there was no near tie. The anchor's uniform LP had
+two exact ties with different actions; the other anchor LPs matched the
+optimum.
+
+**Same state, reference vs reciprocal-square integer optimum.** Only the
+integer optimum of the same diagnostic problem is compared, never
+objective values across policies. The integer optimum selects the
+reference's actions in 11/11, 13/15, 21/24, 35/42, 104/104, and 64/117
+states. The rest are strict objective preferences (2, 3, 7, and 45; the
+smallest gap is 0.0053). In pool 12 there are also 8 contract differences,
+all `decode_prerequisite` (the reference decodes zero-demand requests at 0
+free blocks). No state showed a tie.
+
+**Closed loop vs same state.** The LP and ILP rollouts first select
+differently at decision 0 in `queue24_burst`, `queue48_burst`, and
+`queue48_burst_pool12`: the extraction loss of finding 7 changes the
+trajectory from the first step. They never diverge in the other three
+cases. Against the reference, both differ at decision 0 in every burst case
+with at least 12 requests (finding 4). In the anchor and staggered cases
+they differ only in emitted order. Later decisions are not corresponding
+states, so only the same-state records attribute gaps.
+
+**Does integer optimization help?** It changes trajectories but not
+uniformly. It reduces admission inversions (8–9 against 32–33 in the
+24/48-request bursts). In pool 12 it preempts more (8 against 5) but after
+output less often (1 against 3), and discards 193 against 226 tokens.
+
+**Checks** (`CUDA_VISIBLE_DEVICES=""`,
+`bash <run>/cpu_checks/run_checks.sh <run>`; every step exited 0):
+
+| Step | Result |
+|---|---|
+| 01 `py_compile` (6 changed files) | pass |
+| 02/03 `--help` for both entrypoints under `-W error` | pass |
+| 04 `tests.test_compare_scheduler_gpu` | 44 passed (35 earlier, three help assertions updated for added choices, plus 9 new) |
+| 05 `tests.test_exact_integer_plan` | 8 passed (unchanged) |
+| 06 `tests.test_lpserve_state_mapping` | 21 passed (3 new) |
+| 07 `tests.test_lp_scheduler`, 08 `tests.test_lpserve_plan_execution` | 24, 16 passed (mapper module changed) |
+| 09/10 earlier coordinated batch regenerated outside the repository | `RESULT: PASS`; its report differs from the retained one only in the `mixed_pressure` line corrected at `fce4fd1` |
+| 11 trailing whitespace, 12 `git diff --check` | pass |
+| 13 `compare_coefficient_policies_cpu.py --batch queue_growth` | `RESULT: PASS` |
+
+The 9 new driver tests cover: the six cases' inputs and the single GPU
+case; hook selection and the native watermark (1 at 128 blocks, 0 at 12);
+detection of geometric coefficients by the reciprocal-square check; one
+complete, round-trip-identical record per decision for the reference, LP,
+and ILP (no integer re-solve for the ILP; the capture does not change the
+reference's decisions and maps nothing at idle); missing problems and
+corrupt records are counted and fail completeness, while a mapping failure
+is an explicit record; problem reload solves to the recorded plan; an
+injected offline time limit keeps status, incumbent, bound, gap, and node
+count, while the other decisions continue; an injected ILP-rollout time
+limit stops the rollout before mutation with no LP fallback, and its record
+is reused; and command-line limits.
+
+Not run: `test_lp_relaxation_scheduler`, `test_check_lp_scheduler_ordering`,
+the adapted-reference and other `check_*` suites, `test_lp_engine_args`,
+and `test_run_lp_inference`. Their code is unchanged and not imported
+differently. Earlier GPU runs were not rerun.
+
+### GPU confirmation (executed; failed before any decision)
+
+`bash <run>/run_gpu.sh <run>` ran two fresh processes sequentially, once
+each, for `--case queue48_burst_pool12` with `--policy lp_reciprocal_square`
+and then `--policy adapted_vllm` (`timeout 600s`, default resident limit
+8). Both printed `CHECK FAILED` and `RESULT: FAIL workload: failure`. The
+timeout/Python exit status was 1 and tee's was 0. Each took about 45 s. The
+console shows profiling, then `# GPU blocks: 12` (the driver's capacity
+selection), then:
+
+```text
+ValueError: Not enough available memory to schedule a request will maximum
+allowed length 256. Need 16, available 12 gpu blocks.
+```
+
+raised by the inherited check in `BaseLLMEngine._init_cache`
+(`sarathi/engine/base_llm_engine.py`, before `init_cache_engine`). That
+check requires at least `ceil(max_model_len / block_size)` = 256/16 = 16
+blocks. No engine was constructed (`cleanup.json`:
+`engine_constructed: false`), no decision ran, and each process shut down
+its own Ray. The only warning was the bfloat16→float16 cast. The retained
+traces are empty, with their uncompressed sha256 kept beside them. The
+offline comparison (`gpu_offline_comparison/`) printed `RESULT: FAIL`: the
+empty runs have zero decisions and do not match the CPU rollouts. It did
+not pass silently. There was no retry.
+
+**Cause (a defect in the approved inputs, found too late).** The CPU
+fixture sets the pool directly and never runs `_init_cache`, so the CPU
+gate accepted a configuration that the native engine rejects. The earlier
+`memory_pressure` case met the rule exactly (4 blocks = 64/16). The
+rule was not checked before the GPU step. The CPU results above remain valid as
+CPU scheduler observations of that state. The state is not reachable
+through native engine initialization with these inputs.
+
+**Pending decision (not made here).** Possible changes:
+
+- set `max_model_len` to 192 for `queue48_burst_pool12` (12 × 16);
+- raise its pool to at least 16 blocks;
+- bypass the native check (not recommended: it weakens an engine
+  validation).
+
+In the scheduling path, `max_model_len` appears only in guards: context
+≤ `max_model_len` in the mapper, LP checks, and executor, and decode needs
+length < `max_model_len` in the reference. Every request has at most 136
+tokens. An in-memory scratch what-if, not retained and not evidence, gave
+identical CPU decision sequences at 192 for the LP and the reference, 118
+and 117 decisions. The smallest change is therefore `max_model_len` 192,
+with the CPU case and its comparisons rerun and the two GPU runs repeated.
+That changes an approved input, so it awaits approval.
+
+**Not established:** GPU execution of any queue-growth decision, cache
+contents, attention correctness, sampler generality, quality,
+physical-ID equality, recovery, starvation, fairness, latency, throughput,
+and eventual completion beyond these bounded CPU runs. Inherited behavior
+(final-prefill sample discarded, counter reset with overgeneration after
+restart) is recorded, not repaired.

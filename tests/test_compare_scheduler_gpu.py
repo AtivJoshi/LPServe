@@ -184,9 +184,10 @@ class DriverImportAndHelpTest(unittest.TestCase):
                                 text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("--policy {adapted_vllm,lp_uniform,lp_rank_based,"
-                      "lp_coordinated}", result.stdout)
-        self.assertIn("--resident-limit {2,1,4}", result.stdout)
-        self.assertIn("--case {two_request,memory_pressure}", result.stdout)
+                      "lp_coordinated,lp_reciprocal_square}", result.stdout)
+        self.assertIn("--resident-limit {2,1,4,8}", result.stdout)
+        self.assertIn("--case {two_request,memory_pressure,"
+                      "queue48_burst_pool12}", result.stdout)
         self.assertEqual(result.stdout.strip().splitlines()[-1], "RESULT 0 []")
 
 
@@ -1026,6 +1027,282 @@ class VirtualArrivalTest(unittest.TestCase):
                          [0, 40, 40, 40, 40, 40])
         # Sequence IDs stay unique after A leaves seq_map.
         self.assertEqual(runtime.next_seq_id, 6)
+
+
+RECIPROCAL = (driver.RECIPROCAL_SQUARE_POLICY,
+              driver.RECIPROCAL_SQUARE_INTEGER_POLICY)
+ANCHOR = "queue6_burst"
+
+
+def _queue_run(method, case=ANCHOR):
+    """One queue-growth rollout through the CPU batch, in its retained JSON
+    form, with its offline comparisons."""
+    import compare_coefficient_policies_cpu as batch
+    with tempfile.TemporaryDirectory() as tmp:
+        summary, trace = batch.run_queue_rollout(
+            sys.modules[__name__], method, case, Path(tmp))
+    return summary, trace
+
+
+class QueueGrowthTest(unittest.TestCase):
+    """The reciprocal-square policy, its integer-driven CPU method, and the
+    per-decision comparison records of the queue-growth batch."""
+
+    def test_queue_growth_inputs(self):
+        sizes = dict(queue6_burst=(6, 128, False), queue12_burst=(12, 128, False),
+                     queue24_burst=(24, 128, False),
+                     queue48_burst=(48, 128, False),
+                     queue48_staggered=(48, 128, True),
+                     queue48_burst_pool12=(48, 12, False))
+        self.assertEqual(driver.QUEUE_GROWTH_CASES, tuple(sizes))
+        for case, (count, pool, staggered) in sizes.items():
+            with self.subTest(case=case):
+                c = driver.case_inputs(case)
+                prompts = list(c["prompts"].values())
+                self.assertEqual([len(p) for p in prompts],
+                                 [[8, 16, 17, 32, 64, 128][k % 6]
+                                  for k in range(count)])
+                self.assertEqual([p[0] for p in prompts],
+                                 [1000 + 256 * k for k in range(count)])
+                self.assertEqual(list(c["max_tokens"].values()),
+                                 [[2, 4, 8][k % 3] for k in range(count)])
+                self.assertEqual(list(c["arrivals"].values()),
+                                 [2 * k if staggered else 0
+                                  for k in range(count)])
+                self.assertEqual(
+                    (c["num_gpu_blocks"], c["max_model_len"],
+                     c["resident_limits"], c["token_budget"], c["b_max"],
+                     c["c_max"], c["s_max"], c["max_decisions"]),
+                    (pool, 256, (8,), 128, 128, 128, 8, 8 * count))
+                flat = [t for p in prompts for t in p]
+                self.assertEqual(len(flat), len(set(flat)))
+                self.assertLess(max(flat), 32000)
+        # Only the constrained 48-request case is a GPU (command-line) case.
+        self.assertEqual([c for c in driver.GPU_CASES
+                          if c in driver.QUEUE_GROWTH_CASES],
+                         [driver.CONSTRAINED_QUEUE_CASE])
+
+    def test_configuration_hook_and_native_watermark(self):
+        for case, watermark in ((ANCHOR, 1), (driver.CONSTRAINED_QUEUE_CASE, 0)):
+            for policy in RECIPROCAL:
+                with self.subTest(case=case, policy=policy):
+                    runtime = CpuRuntime(policy, 8, case)
+                    scheduler = runtime.scheduler
+                    self.assertEqual(scheduler.block_manager.watermark_blocks,
+                                     watermark)
+                    driver.select_coefficient_policy(scheduler, policy, case)
+                    bound = scheduler._coefficient_policy()
+                    self.assertIs(bound.func, lsm.reciprocal_square_rank_utility)
+                    self.assertEqual(bound.keywords, dict(c_max=128, b_max=128))
+                    self.assertEqual("_schedule" in vars(scheduler),
+                                     policy == driver.RECIPROCAL_SQUARE_INTEGER_POLICY)
+                    params = driver.run_parameters(policy, 8, case)
+                    self.assertIn("reciprocal_square_rank_utility",
+                                  params["coefficient_policy"])
+                    self.assertEqual(params["native_watermark_blocks"],
+                                     watermark)
+        self.assertEqual(driver.decision_calls(
+            driver.RECIPROCAL_SQUARE_INTEGER_POLICY), driver.INTEGER_CALLS)
+
+    def test_reciprocal_square_coefficients_are_checked(self):
+        # The policy-specific check rejects the geometric weights.
+        native = driver.expected_coefficients
+
+        def geometric(policy, snap, request, c):
+            return native("lp_coordinated", snap, request, c)
+        with mock.patch.object(driver, "expected_coefficients", geometric):
+            with self.assertRaisesRegex(driver.CheckFailure,
+                                        "decision 0: coefficients of"):
+                _run(driver.RECIPROCAL_SQUARE_POLICY, 8, ANCHOR)
+
+    def test_every_decision_has_a_comparison_record(self):
+        import compare_coefficient_policies_cpu as batch
+        native = eip.solve_integer_plan
+        for method in ("adapted_vllm",) + RECIPROCAL:
+            with self.subTest(method=method):
+                summary, trace = _queue_run(method)
+                self.assertTrue(summary["validation_passed"], summary["failure"])
+                self.assertEqual(summary["workload_outcome"], driver.DRAINED)
+                reached = len(trace["decisions"])
+                calls = []
+                with mock.patch.object(
+                        eip, "solve_integer_plan",
+                        lambda p: calls.append(p) or native(p)):
+                    records, coverage = batch.decision_comparisons(trace, method)
+                self.assertEqual([r["index"] for r in records],
+                                 list(range(reached)))
+                integer_driven = method in driver.INTEGER_POLICIES
+                self.assertEqual(coverage, dict(
+                    reached_decisions=reached, valid_problems=reached,
+                    mapping_failures=0, missing_problems=0,
+                    round_trip_failures=0,
+                    attempted_solves=0 if integer_driven else reached,
+                    reused_integer_results=reached if integer_driven else 0,
+                    optimal=reached, time_limits=0, other_failures=0,
+                    comparison_errors=0, records=reached, missing_records=0,
+                    no_valid_problem=0, complete=True))
+                # The integer-driven result is reused, never solved again.
+                self.assertEqual(len(calls), 0 if integer_driven else reached)
+                for r in records:
+                    self.assertTrue(r["round_trip_equal"])
+                    self.assertEqual(r["integer"]["status"], "optimal")
+                    if method == "adapted_vllm":
+                        self.assertIn(r["comparison"]["classification"], (
+                            "identical_actions", "tied_optimum",
+                            "strict_objective_preference",
+                            "contract_difference"))
+                    elif not integer_driven:
+                        self.assertTrue(r["comparison"]["bounds_consistent"])
+                if method == "adapted_vllm":
+                    # One read-only diagnostic problem per decision, none for
+                    # the final ordinary idle step, with reciprocal-square
+                    # coefficients and the case's caps.
+                    problems = trace["reference_diagnostic_problems"]
+                    self.assertEqual(len(problems), reached)
+                    first = problems[0]["result"]
+                    self.assertEqual((first["b_max"], first["c_max"],
+                                      first["s_max"],
+                                      first["admission_watermark"]),
+                                     (128, 128, 8, 1))
+                    self.assertEqual(
+                        [r["decode_utility"] + r["prefill_token_utility"]
+                         * r["prefill_upper_bound"] for r in first["requests"]],
+                        [1 / (1 + k) ** 2 for k in range(6)])
+                    # The capture does not change the reference's decisions.
+                    _, plain, _ = _run("adapted_vllm", 8, ANCHOR)
+                    self.assertEqual(
+                        [_emitted(d) for d in plain["decisions"]],
+                        [d["schedules"][0]["outputs"]
+                         for d in trace["decisions"]])
+
+    def test_missing_or_invalid_problem_records_are_not_silent(self):
+        import compare_coefficient_policies_cpu as batch
+        _, trace = _queue_run("adapted_vllm")
+        dropped = copy.deepcopy(trace)
+        dropped["reference_diagnostic_problems"].pop()
+        _, coverage = batch.decision_comparisons(dropped, "adapted_vllm")
+        self.assertEqual((coverage["missing_problems"], coverage["complete"]),
+                         (1, False))
+        failed = copy.deepcopy(trace)
+        failed["reference_diagnostic_problems"][0] = dict(
+            result_type="MappingFailure", result=dict(reason="injected"))
+        records, coverage = batch.decision_comparisons(failed, "adapted_vllm")
+        self.assertEqual((records[0]["problem_status"],
+                          coverage["mapping_failures"], coverage["complete"]),
+                         ("mapping_failure", 1, True))
+        _, lp_trace = _queue_run(driver.RECIPROCAL_SQUARE_POLICY)
+        corrupt = copy.deepcopy(lp_trace)
+        corrupt["decisions"][1]["lp_events"][0]["result"]["lp_problem"][
+            "b_max"] = 0
+        records, coverage = batch.decision_comparisons(
+            corrupt, driver.RECIPROCAL_SQUARE_POLICY)
+        self.assertIn("comparison_error", records[1])
+        self.assertEqual((coverage["comparison_errors"], coverage["complete"]),
+                         (1, False))
+
+    def test_problem_records_round_trip_through_json(self):
+        _, trace = _queue_run(driver.RECIPROCAL_SQUARE_POLICY)
+        for d in trace["decisions"]:
+            record = d["lp_events"][0]["result"]["lp_problem"]
+            problem = eip.problem_from_record(json.loads(json.dumps(record)))
+            canonical = lrs.validate_problem(problem)
+            self.assertIsInstance(canonical, lrs.LPProblem)
+            self.assertEqual(driver.to_jsonable(canonical), record)
+            # The reloaded problem solves to the recorded LP result.
+            result = lrs.solve_and_extract(canonical)
+            self.assertEqual(driver.to_jsonable(result.plan),
+                             d["lp_events"][1]["result"]["plan"])
+
+    def test_non_optimal_offline_comparison_is_recorded(self):
+        import compare_coefficient_policies_cpu as batch
+        _, trace = _queue_run(driver.RECIPROCAL_SQUARE_POLICY)
+        native, calls = eip.solve_integer_plan, []
+
+        def limit_second(problem):
+            calls.append(problem.problem_id)
+            if len(calls) == 2:
+                return eip.IntegerSolveFailure(
+                    problem.problem_id, eip.STAGE_INTEGER_SOLVER,
+                    "solver_limit", "injected", 1, "time limit reached",
+                    incumbent_vector=(0.0,), incumbent_objective=0.5,
+                    dual_bound=0.75, reported_gap=0.5, node_count=7)
+            return native(problem)
+        with mock.patch.object(eip, "solve_integer_plan", limit_second):
+            records, coverage = batch.decision_comparisons(
+                trace, driver.RECIPROCAL_SQUARE_POLICY)
+        reached = len(trace["decisions"])
+        self.assertEqual((coverage["attempted_solves"], coverage["optimal"],
+                          coverage["time_limits"], coverage["complete"]),
+                         (reached, reached - 1, 1, True))
+        integer = records[1]["integer"]
+        self.assertEqual({k: integer[k] for k in (
+            "status", "category", "raw_status", "incumbent_objective",
+            "dual_bound", "reported_gap", "node_count")}, dict(
+            status="failure", category="solver_limit", raw_status=1,
+            incumbent_objective=0.5, dual_bound=0.75, reported_gap=0.5,
+            node_count=7))
+        self.assertEqual(records[1]["comparison"]["attribution"],
+                         "not_comparable")
+        self.assertNotIn("integer_objective", records[1]["comparison"])
+        self.assertEqual(records[2]["integer"]["status"], "optimal")
+
+    def test_integer_rollout_stops_on_non_optimal_without_fallback(self):
+        import compare_coefficient_policies_cpu as batch
+        native, calls = eip.solve_integer_plan, []
+
+        def limit_second(problem):
+            calls.append(problem.problem_id)
+            if len(calls) == 2:
+                return eip.IntegerSolveFailure(
+                    problem.problem_id, eip.STAGE_INTEGER_SOLVER,
+                    "solver_limit", "injected", 1, "time limit",
+                    incumbent_objective=0.5, dual_bound=0.75)
+            return native(problem)
+        method = driver.RECIPROCAL_SQUARE_INTEGER_POLICY
+        with mock.patch.object(eip, "solve_integer_plan", limit_second), \
+                mock.patch.object(lrs, "solve_and_extract") as lp:
+            summary, trace = _queue_run(method)
+        lp.assert_not_called()
+        self.assertEqual((summary["validation_passed"],
+                          summary["workload_outcome"],
+                          summary["failure"]["category"]),
+                         (False, driver.FAILURE, "solver_limit"))
+        self.assertEqual(len(trace["decisions"]), 2)
+        self.assertEqual(trace["decisions"][1]["central_ops"], [])
+        records, coverage = batch.decision_comparisons(trace, method)
+        self.assertEqual((coverage["reused_integer_results"],
+                          coverage["time_limits"], coverage["attempted_solves"],
+                          coverage["complete"]), (2, 1, 0, True))
+        self.assertEqual(records[1]["integer"]["incumbent_objective"], 0.5)
+
+    def test_command_lines(self):
+        args = driver.parse_args(["--case", driver.CONSTRAINED_QUEUE_CASE,
+                                  "--policy", driver.RECIPROCAL_SQUARE_POLICY,
+                                  "--model-path", "m", "--output-dir", "o"])[1]
+        self.assertEqual((args.case, args.policy, args.resident_limit),
+                         (driver.CONSTRAINED_QUEUE_CASE,
+                          driver.RECIPROCAL_SQUARE_POLICY, None))
+        import compare_coefficient_policies_cpu as batch
+        for parse, argv in (
+                (driver.parse_args, ["--policy",
+                                     driver.RECIPROCAL_SQUARE_INTEGER_POLICY]),
+                (driver.parse_args, ["--policy", "adapted_vllm", "--case",
+                                     ANCHOR]),
+                (batch.parse_args, ["--batch", "unknown"])):
+            with self.subTest(argv=argv), \
+                    contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as caught:
+                    parse(argv + ["--model-path", "m", "--output-dir", "o"]
+                          if parse is driver.parse_args
+                          else argv + ["--output-dir", "o"])
+                self.assertEqual(caught.exception.code, 2)
+        with tempfile.TemporaryDirectory() as tmp, \
+                contextlib.redirect_stderr(io.StringIO()):
+            for argv in (["--batch", "retained_runs"],
+                         ["--batch", "queue_growth", "--runs", "x"]):
+                with self.assertRaises(SystemExit) as caught:
+                    batch.main(argv + ["--output-dir", str(Path(tmp) / "o")])
+                self.assertEqual(caught.exception.code, 2)
 
 
 class CpuEntrypointTest(unittest.TestCase):

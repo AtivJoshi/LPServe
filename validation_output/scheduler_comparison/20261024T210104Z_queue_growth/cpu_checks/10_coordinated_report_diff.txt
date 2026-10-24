@@ -1,0 +1,7 @@
+$ bash -c diff "$0" "$1"; n=$(diff "$0" "$1" | grep -c "^[<>]"); m=$(diff "$0" "$1" | grep "^[<>]" | grep -vc mixed_pressure); echo "changed_lines=$n other_than_mixed_pressure=$m"; test "$n" = 2 && test "$m" = 0 validation_output/scheduler_comparison/20261024T182347Z/cpu_comparison/comparison.txt /tmp/coordinated_regen.YsedzK/out/comparison.txt
+98c98
+<   mixed_pressure: LP relaxed 1.10417, LP plan {'0': 'prefill:7', '1': 'decode', '2': 'preempt'} = 1.0625, integer {'0': 'prefill:7', '1': 'decode', '2': 'preempt'} = 1.0625 (identical_actions); reference {'0': 'prefill:8'} = 1 (strict_objective_preference, violated [] []); enumeration {'plan_space': 90, 'useful_plan_exists': True, 'best': 1.0625}
+---
+>   mixed_pressure: LP relaxed 1.0625, LP plan {'0': 'prefill:7', '1': 'decode', '2': 'preempt'} = 1.0625, integer {'0': 'prefill:7', '1': 'decode', '2': 'preempt'} = 1.0625 (identical_actions); reference {'0': 'prefill:8'} = 1 (strict_objective_preference, violated [] []); enumeration {'plan_space': 90, 'useful_plan_exists': True, 'best': 1.0625}
+changed_lines=2 other_than_mixed_pressure=0
+exit_status=0

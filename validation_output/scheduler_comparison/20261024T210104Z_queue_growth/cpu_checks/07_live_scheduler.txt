@@ -1,0 +1,32 @@
+$ python -B -m unittest tests.test_lp_scheduler -v
+INFO 10-24 21:02:26 metrics_store.py:72] MetricsStore disabled
+test_decode_preemption_recomputes_expanded_context_to_completion (tests.test_lp_scheduler.LiveDecodePreemptionTest) ... ok
+test_mixed_prompt_first_output_and_unselected_resident (tests.test_lp_scheduler.LivePipelineTest) ... ok
+test_request_lifecycle_through_real_pipeline_and_replay (tests.test_lp_scheduler.LivePipelineTest) ... ok
+test_three_requests_contend_for_two_action_slots_until_completion (tests.test_lp_scheduler.LivePipelineTest) ... ok
+test_solver_selected_preemption_is_recomputed_to_completion (tests.test_lp_scheduler.LivePreemptionTest) ... ok
+test_invalid_scale_is_mapping_failure_before_solve (tests.test_lp_scheduler.LiveRankBasedUtilityTest) ... ok
+test_reversed_ids_keep_first_choice (tests.test_lp_scheduler.LiveRankBasedUtilityTest) ... ok
+test_uniform_and_rank_based_first_choice_and_completion (tests.test_lp_scheduler.LiveRankBasedUtilityTest) ... ok
+test_empty_state_is_ordinary_idle (tests.test_lp_scheduler.OrdinaryIdleTest) ... ok
+test_future_head_does_not_hide_arrived_work (tests.test_lp_scheduler.OrdinaryIdleTest) ... ok
+test_future_only_state_is_ordinary_idle (tests.test_lp_scheduler.OrdinaryIdleTest) ... ok
+test_oversized_arrival_is_mapping_failure_not_idle (tests.test_lp_scheduler.OrdinaryIdleTest) ... ok
+test_mapping_failure_stops_before_solver (tests.test_lp_scheduler.PreMutationFailureTest) ... ok
+test_no_progress_plan_is_not_ordinary_idle (tests.test_lp_scheduler.PreMutationFailureTest) ... ok
+test_physically_infeasible_plan_raises_executor_failure (tests.test_lp_scheduler.PreMutationFailureTest) ... ok
+test_solver_reported_infeasibility_stops_before_executor (tests.test_lp_scheduler.PreMutationFailureTest) ... ok
+test_multi_stage_configuration_is_rejected (tests.test_lp_scheduler.RegistrationAndConfigTest) ... ok
+test_registration_and_explicit_configuration (tests.test_lp_scheduler.RegistrationAndConfigTest) ... ok
+test_current_contention_is_not_permanent_rejection (tests.test_lp_scheduler.SubmissionBoundaryTest) ... ok
+test_lp_rejects_before_any_registration (tests.test_lp_scheduler.SubmissionBoundaryTest) ... ok
+test_other_schedulers_keep_submission_behavior (tests.test_lp_scheduler.SubmissionBoundaryTest) ... ok
+test_changed_stage_count_fails_before_base_scheduling (tests.test_lp_scheduler.UnsupportedEntryAndDestructiveFailureTest) ... ok
+test_nonzero_running_batches_fails_before_base_scheduling (tests.test_lp_scheduler.UnsupportedEntryAndDestructiveFailureTest) ... ok
+test_post_mutation_failure_propagates_without_recovery (tests.test_lp_scheduler.UnsupportedEntryAndDestructiveFailureTest) ... ok
+
+----------------------------------------------------------------------
+Ran 24 tests in 0.131s
+
+OK
+exit_status=0

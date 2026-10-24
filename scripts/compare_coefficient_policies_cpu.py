@@ -26,11 +26,30 @@ Sections written under ``--output-dir``:
 
 Exit status is zero only if every rollout and diagnostic passed its checks;
 workload outcomes are reported separately.
+
+``--batch queue_growth`` instead runs the reciprocal-square queue-growth
+batch (``QUEUE_RUNS``: the six ``compare_scheduler_gpu.QUEUE_GROWTH_CASES``
+at resident limit 8; six methods on the six-request anchor, and the
+reference, ``lp_reciprocal_square``, and ``ilp_reciprocal_square`` on the
+larger cases). Each run writes ``rollouts/<case>/<method>/`` with
+``decision_trace.json.gz``, ``summary.json``, ``comparisons.json``, and
+``console.log``. After each rollout, every reached decision receives a
+same-state integer comparison from the retained JSON trace
+(``decision_comparisons``): an offline solve of each LP decision's own
+problem, the rollout's own integer result for the integer-driven method
+(not solved again), and an offline solve of the reference's read-only
+reciprocal-square diagnostic problem. Coverage counts are part of the pass
+criterion; a missing record fails the batch.
+
+``--batch retained_runs --runs <dir> ...`` performs the same offline
+comparisons for retained runs (for example GPU runs), optionally checking
+their emitted decisions against a queue-growth CPU batch (``--cpu-batch``).
 """
 
 import argparse
 import contextlib
 import functools
+import io
 import itertools
 import json
 import math
@@ -104,19 +123,27 @@ def enumeration_check(problem):
 def compare_reference(problem, proposal, integer_result):
     """Classify the reference proposal against the integer optimum of the
     coordinated problem of the same state."""
+    integer_type = type(integer_result).__name__
+    return classify_reference(problem, proposal, integer_type,
+                              eip.integer_summary(integer_type, integer_result))
+
+
+def classify_reference(problem, proposal, integer_status, integer):
+    """``compare_reference`` on an ``integer_summary`` of the integer
+    result for the same problem."""
     assignment = reference_assignment(proposal)
     evaluation = eip.evaluate_assignment(problem, assignment)
     record = dict(problem_id=problem.problem_id, reference_actions=assignment,
                   reference_evaluation=evaluation,
-                  integer_status=type(integer_result).__name__)
-    if not isinstance(integer_result, eip.IntegerOptimum):
+                  integer_status=integer_status)
+    if integer["status"] != "optimal":
         record["classification"] = "integer_solve_failed"
-        record["integer_failure"] = dict(stage=integer_result.stage,
-                                         category=integer_result.category,
-                                         reason=integer_result.reason)
+        record["integer_failure"] = dict(stage=integer["stage"],
+                                         category=integer["category"],
+                                         reason=integer["reason"])
         return record
-    best = integer_result.plan.objective
-    actions = eip.plan_actions(integer_result.plan)
+    best = integer["objective"]
+    actions = integer["actions"]
     tol = eip.COMPARISON_TOL * max(1.0, abs(best), abs(evaluation["objective"]))
     record.update(integer_objective=best, integer_actions=actions)
     if not evaluation["feasible"]:
@@ -540,9 +567,625 @@ def report(rollouts, same_state, divergences, diagnostics):
     return "\n".join(lines) + "\n"
 
 
+# ---------------------------------------------------------------------------
+# Queue-growth batch: reciprocal-square policy as the queue grows
+# ---------------------------------------------------------------------------
+
+QUEUE_LIMIT = 8
+QUEUE_ANCHOR = "queue6_burst"
+QUEUE_ANCHOR_METHODS = ("adapted_vllm", "lp_uniform", "lp_rank_based",
+                        "lp_coordinated", driver.RECIPROCAL_SQUARE_POLICY,
+                        driver.RECIPROCAL_SQUARE_INTEGER_POLICY)
+QUEUE_METHODS = ("adapted_vllm", driver.RECIPROCAL_SQUARE_POLICY,
+                 driver.RECIPROCAL_SQUARE_INTEGER_POLICY)
+QUEUE_RUNS = tuple((case, method) for case in driver.QUEUE_GROWTH_CASES
+                   for method in (QUEUE_ANCHOR_METHODS if case == QUEUE_ANCHOR
+                                  else QUEUE_METHODS))
+QUEUE_DIVERGENCE_PAIRS = (
+    (driver.RECIPROCAL_SQUARE_POLICY, driver.RECIPROCAL_SQUARE_INTEGER_POLICY),
+    ("adapted_vllm", driver.RECIPROCAL_SQUARE_POLICY),
+    ("adapted_vllm", driver.RECIPROCAL_SQUARE_INTEGER_POLICY),
+    ("lp_coordinated", driver.RECIPROCAL_SQUARE_POLICY))
+
+
+def write_json_gz(path, value):
+    """Deterministic gzip (no timestamp) of a JSON record."""
+    import gzip
+    with open(path, "wb") as raw, gzip.GzipFile(fileobj=raw, mode="wb",
+                                                mtime=0) as f:
+        f.write(json.dumps(value, indent=1).encode())
+
+
+def read_trace(run_dir):
+    import gzip
+    run_dir = Path(run_dir)
+    if (run_dir / "decision_trace.json.gz").exists():
+        with gzip.open(run_dir / "decision_trace.json.gz", "rt") as f:
+            return json.load(f)
+    return json.loads((run_dir / "decision_trace.json").read_text())
+
+
+def scale_record(problem):
+    """Rank range and coefficient magnitudes of one problem: per term kind,
+    the eligible values' smallest and largest positive value, the smallest
+    positive difference between distinct values, and the count of values
+    equal to another request's (exact ties). Diagnostic only."""
+    reqs = problem.requests
+    kinds = dict(
+        decode=[r.decode_utility for r in reqs if r.decode_eligible],
+        prefill_token=[r.prefill_token_utility for r in reqs
+                       if r.prefill_eligible],
+        full_chunk=[r.prefill_token_utility * r.prefill_upper_bound
+                    for r in reqs if r.prefill_eligible],
+        penalty=[r.preemption_penalty for r in reqs if r.preemption_eligible])
+    record = dict(requests=len(reqs), residents=problem.resident_count,
+                  max_service_rank=max((r.service_rank for r in reqs
+                                        if r.service_rank is not None),
+                                       default=None))
+    for kind, values in kinds.items():
+        positive = sorted(v for v in values if v > 0)
+        distinct = sorted(set(positive))
+        gaps = [b - a for a, b in zip(distinct, distinct[1:])]
+        record[kind] = dict(
+            count=len(values), min_positive=positive[0] if positive else None,
+            max=positive[-1] if positive else None,
+            min_gap=min(gaps) if gaps else None,
+            exact_ties=len(positive) - len(distinct))
+    return record
+
+
+def decision_comparisons(trace, method):
+    """One same-state comparison record per reached decision of a retained
+    (JSON) trace, plus coverage counts.
+
+    LP methods: the decision's own mapped problem, reloaded from the record,
+    receives one offline integer solve, compared with the recorded LP result.
+    Integer-driven methods: the rollout's own integer result is reused, not
+    solved again. Reference: the read-only reciprocal-square diagnostic
+    problem of the pre-decision state receives one offline integer solve,
+    and the recorded proposal is classified against it. A decision without a
+    valid problem gets an explicit record; none is invented."""
+    records = []
+    coverage = dict(reached_decisions=len(trace.get("decisions", [])),
+                    valid_problems=0, mapping_failures=0,
+                    missing_problems=0, round_trip_failures=0, attempted_solves=0,
+                    reused_integer_results=0, optimal=0, time_limits=0,
+                    other_failures=0, comparison_errors=0)
+    reference = method == "adapted_vllm"
+    integer_driven = method in driver.INTEGER_POLICIES
+    diagnostic = trace.get("reference_diagnostic_problems") or []
+    for d in trace.get("decisions", []):
+        index = d["index"]
+        record = dict(index=index)
+        records.append(record)
+        try:
+            events = {e["call"]: e for e in d.get("lp_events", [])}
+            if reference:
+                entry = diagnostic[index] if index < len(diagnostic) else None
+                source = "reference_diagnostic_mapping"
+            else:
+                entry = events.get("map_scheduler_state")
+                source = "decision_mapping"
+                if entry is not None:
+                    entry = dict(result_type=entry["result_type"],
+                                 result=entry["result"].get("lp_problem")
+                                 if entry["result_type"] == "StateSnapshot"
+                                 else entry["result"])
+            if entry is None:
+                record.update(problem_status="missing", problem_source=source)
+                coverage["missing_problems"] += 1
+                continue
+            if entry["result_type"] not in ("LPProblem", "StateSnapshot"):
+                record.update(problem_status="mapping_failure",
+                              problem_source=source,
+                              mapping_failure=entry["result"])
+                coverage["mapping_failures"] += 1
+                continue
+            problem = lrs_validate(eip.problem_from_record(entry["result"]))
+            round_trip = driver.to_jsonable(problem) == entry["result"]
+            coverage["round_trip_failures"] += not round_trip
+            coverage["valid_problems"] += 1
+            record.update(problem_status="valid", problem_source=source,
+                          problem_id=problem.problem_id,
+                          round_trip_equal=round_trip,
+                          scale=scale_record(problem))
+            if integer_driven:
+                solved = events.get("solve_integer_plan")
+                if solved is None:
+                    record["integer_source"] = "missing_from_rollout"
+                    coverage["comparison_errors"] += 1
+                    continue
+                integer = eip.integer_summary(solved["result_type"],
+                                              solved["result"])
+                record["integer_source"] = "reused_from_rollout"
+                coverage["reused_integer_results"] += 1
+            else:
+                start = time.perf_counter()
+                result = eip.solve_integer_plan(problem)
+                record["solve_seconds"] = time.perf_counter() - start
+                integer = eip.integer_summary(type(result).__name__, result)
+                record["integer_source"] = "offline_solve"
+                coverage["attempted_solves"] += 1
+            if integer["status"] == "optimal":
+                coverage["optimal"] += 1
+            elif integer["category"] == "solver_limit":
+                coverage["time_limits"] += 1
+            else:
+                coverage["other_failures"] += 1
+            record["integer"] = integer
+            if reference:
+                proposals = d.get("proposals") or []
+                record["comparison"] = (
+                    classify_reference(problem, proposals[0], integer["status"],
+                                       integer)
+                    if proposals else dict(classification="no_proposal"))
+            elif not integer_driven:
+                solved = events.get("solve_and_extract")
+                lp_type = solved["result_type"] if solved else "missing"
+                record["comparison"] = eip.compare_summaries(
+                    problem.problem_id, lp_type,
+                    eip.lp_summary(lp_type, solved["result"]) if solved
+                    else None, integer["status"], integer)
+        except Exception as err:  # recorded and counted, never skipped
+            record["comparison_error"] = dict(type=type(err).__name__,
+                                              message=str(err))
+            coverage["comparison_errors"] += 1
+    coverage["records"] = len(records)
+    coverage["missing_records"] = coverage["reached_decisions"] - len(records)
+    coverage["no_valid_problem"] = (coverage["mapping_failures"]
+                                    + coverage["missing_problems"])
+    # A mapping failure is an explicit record; a missing problem is not.
+    coverage["complete"] = (
+        coverage["missing_records"] == 0 and coverage["comparison_errors"] == 0
+        and coverage["missing_problems"] == 0
+        and coverage["round_trip_failures"] == 0
+        and coverage["valid_problems"] == coverage["attempted_solves"]
+        + coverage["reused_integer_results"])
+    return records, coverage
+
+
+def lrs_validate(problem):
+    import lp_relaxation_scheduler as lrs
+    canonical = lrs.validate_problem(problem)
+    driver.check(not isinstance(canonical, lrs.Failure),
+                 f"retained problem failed validation: {canonical}")
+    return canonical
+
+
+def comparison_consistent(record):
+    """An optimal same-state record agrees with the LP bound order; the
+    reference never beats the integer optimum."""
+    comparison = record.get("comparison") or {}
+    return (comparison.get("bounds_consistent", True)
+            and comparison.get("classification")
+            != "inconsistent_reference_above_optimum")
+
+
+def service_record(trace, case):
+    """Service, omission, preemption, and order observations of one
+    rollout (from the recorded decisions and driver accounting)."""
+    c = driver.case_inputs(case)
+    names = {int(k): v for k, v in c["names"].items()}
+    order = list(c["prompts"])
+    victims, resident_omissions, streak, longest = [], 0, {}, {}
+    for d in trace.get("decisions", []):
+        if not d.get("schedules"):
+            continue
+        emitted = d["schedules"][0]["outputs"]
+        served = {sid for sid, _ in emitted["scheduled"]}
+        preempted = emitted["preempted_seq_ids"]
+        running = d["before"]["running"]
+        admitted = [names[s] for s in served if s in d["before"]["waiting"]]
+        for sid in preempted:
+            seq = d["before"]["seqs"][str(sid)]
+            victims.append(dict(
+                index=d["index"], victim=names[sid],
+                running_position=running.index(sid),
+                running_count=len(running),
+                had_output=bool(seq["output_token_ids"]),
+                prompt_progress=seq["prompt_tokens_processed"],
+                reasons=(d.get("victim_need") or {}).get("reasons"),
+                admitted_same_decision=admitted))
+        for sid in running:
+            name = names[sid]
+            if sid in served or sid in preempted:
+                streak[name] = 0
+                continue
+            resident_omissions += 1
+            streak[name] = streak.get(name, 0) + 1
+            longest[name] = max(longest.get(name, 0), streak[name])
+    acc = (trace.get("final") or {}).get("accounting") or (
+        trace["decisions"][-1].get("accounting") if trace.get("decisions")
+        else {}) or {}
+
+    def inversions(key):
+        seen = [(order.index(n), a[key]) for n, a in acc.items()
+                if a[key] is not None]
+        return sum(1 for i, a in seen for j, b in seen if i < j and b < a)
+
+    by_length = {}
+    for n, a in acc.items():
+        group = by_length.setdefault(str(len(c["prompts"][n])), dict(
+            requests=0, first_prefill=[], completion=[]))
+        group["requests"] += 1
+        for key in ("first_prefill", "completion"):
+            if a[key] is not None:
+                group[key].append(a[key])
+    for group in by_length.values():
+        for key in ("first_prefill", "completion"):
+            values = group.pop(key)
+            group[f"{key}_mean"] = (sum(values) / len(values) if values
+                                    else None)
+            group[f"{key}_max"] = max(values) if values else None
+            group[f"{key}_count"] = len(values)
+    return dict(
+        victims=victims,
+        victim_running_positions=[[v["running_position"], v["running_count"]]
+                                  for v in victims],
+        decisions_with_victims_and_admissions=len(
+            {v["index"] for v in victims if v["admitted_same_decision"]}),
+        resident_omissions=resident_omissions,
+        longest_resident_omission_streak=max(longest.values(), default=0),
+        admission_order_inversions=inversions("first_prefill"),
+        completion_order_inversions=inversions("completion"),
+        by_prompt_length=by_length)
+
+
+def comparison_summary(records, method):
+    """Counts and extremes of one run's same-state records."""
+    out = dict(attributions={}, relaxation_gaps=[], extraction_losses=[],
+               action_differences=[], reference_classes={},
+               reference_violated_rows={}, near_ties=[],
+               strict_preference_gap_min=None, fractional_lp_decisions=0,
+               max_integrality_deviation=None, integer_raw_statuses={},
+               max_service_rank=None, min_positive_coefficient=None,
+               min_gaps={}, exact_ties={}, solve_seconds_max=None)
+    for r in records:
+        integer = r.get("integer") or {}
+        if integer:
+            key = str(integer["raw_status"])
+            out["integer_raw_statuses"][key] = out["integer_raw_statuses"].get(
+                key, 0) + 1
+        if integer.get("max_integrality_deviation") is not None:
+            out["max_integrality_deviation"] = max(
+                out["max_integrality_deviation"] or 0.0,
+                integer["max_integrality_deviation"])
+        scale = r.get("scale")
+        if scale:
+            out["max_service_rank"] = max(out["max_service_rank"] or 0,
+                                          scale["max_service_rank"] or 0)
+            for kind in ("decode", "prefill_token", "full_chunk", "penalty"):
+                k = scale[kind]
+                for value, key, pick in ((k["min_positive"],
+                                          "min_positive_coefficient", min),):
+                    if value is not None and kind != "full_chunk":
+                        out[key] = (value if out[key] is None
+                                    else pick(out[key], value))
+                if k["min_gap"] is not None:
+                    out["min_gaps"][kind] = min(out["min_gaps"].get(
+                        kind, k["min_gap"]), k["min_gap"])
+                out["exact_ties"][kind] = (out["exact_ties"].get(kind, 0)
+                                           + k["exact_ties"])
+        if "solve_seconds" in r:
+            out["solve_seconds_max"] = max(out["solve_seconds_max"] or 0.0,
+                                           r["solve_seconds"])
+        comparison = r.get("comparison") or {}
+        if method == "adapted_vllm":
+            cls = comparison.get("classification", r.get("problem_status"))
+            out["reference_classes"][cls] = out["reference_classes"].get(
+                cls, 0) + 1
+            for row in (comparison.get("reference_evaluation") or {}).get(
+                    "violated_rows", []):
+                out["reference_violated_rows"][row] = out[
+                    "reference_violated_rows"].get(row, 0) + 1
+            if cls in ("tied_optimum", "strict_objective_preference"):
+                gap = (comparison["integer_objective"]
+                       - comparison["reference_evaluation"]["objective"])
+                if cls == "tied_optimum":
+                    out["near_ties"].append([r["index"], gap])
+                else:
+                    out["strict_preference_gap_min"] = min(
+                        out["strict_preference_gap_min"] or gap, gap)
+            continue
+        if not comparison:
+            continue
+        a = comparison["attribution"]
+        out["attributions"][a] = out["attributions"].get(a, 0) + 1
+        out["fractional_lp_decisions"] += bool(
+            comparison.get("fractional_request_count"))
+        if comparison.get("relaxation_gap_present"):
+            out["relaxation_gaps"].append([r["index"],
+                                           comparison["relaxation_gap"]])
+        if a == "extraction_loss":
+            out["extraction_losses"].append([r["index"],
+                                             comparison["extraction_loss"]])
+        if a != "identical_actions" and a != "not_comparable":
+            out["action_differences"].append([r["index"], a])
+        if a == "tied_optimum_different_actions":
+            out["near_ties"].append([r["index"],
+                                     comparison["extraction_loss"]])
+    return out
+
+
+def queue_report(rows, divergences):
+    lines = ["Queue-growth batch (CPU, native central/worker replay; "
+             "resident limit 8)", "",
+             "Rollouts"]
+    head = ("case", "method", "valid", "outcome", "dec", "done", "preempt",
+            "after_out", "adm+victim", "discarded", "replayed", "expanded",
+            "events", "overgen", "res_omit", "max_streak", "adm_inv",
+            "done_inv")
+    lines.append(" | ".join(head))
+    for r in rows:
+        s, v = r["summary"], r["service"]
+        lines.append(" | ".join(_fmt(x) for x in (
+            s["case"], s["method"], s["validation_passed"],
+            s["workload_outcome"], s["decisions"], len(s["finished"]),
+            s["preemptions"], s["preemptions_after_output"],
+            v["decisions_with_victims_and_admissions"],
+            s["discarded_prompt_tokens"], s["prefill_tokens_replayed"],
+            s["prefill_tokens_expanded_context"], s["generated_token_events"],
+            s["overgeneration"], v["resident_omissions"],
+            v["longest_resident_omission_streak"],
+            v["admission_order_inversions"],
+            v["completion_order_inversions"])))
+    lines += ["", "Comparison coverage (every reached decision)"]
+    head = ("case", "method", "reached", "records", "valid", "no_problem",
+            "solved", "reused", "optimal", "time_limit", "other_fail",
+            "errors", "missing", "round_trip_fail", "complete")
+    lines.append(" | ".join(head))
+    for r in rows:
+        k = r["coverage"]
+        lines.append(" | ".join(_fmt(x) for x in (
+            r["summary"]["case"], r["summary"]["method"],
+            k["reached_decisions"], k["records"], k["valid_problems"],
+            k["no_valid_problem"], k["attempted_solves"],
+            k["reused_integer_results"], k["optimal"], k["time_limits"],
+            k["other_failures"], k["comparison_errors"], k["missing_records"],
+            k["round_trip_failures"], k["complete"])))
+    lines += ["", "Same-state results (identical problems only; objectives "
+              "of different policies are not compared)"]
+    for r in rows:
+        m, s = r["comparisons"], r["summary"]
+        tag = f"  {s['case']} {s['method']}:"
+        solver = (f" integer raw statuses {m['integer_raw_statuses']}, max "
+                  f"integrality deviation "
+                  f"{_fmt(m['max_integrality_deviation'])}")
+        if s["method"] == "adapted_vllm":
+            lines.append(f"{tag} reference vs reciprocal-square integer "
+                         f"optimum {m['reference_classes']}; violated LP rows "
+                         f"{m['reference_violated_rows']}; smallest strict "
+                         f"preference {_fmt(m['strict_preference_gap_min'])}; "
+                         f"near ties {m['near_ties']};{solver}")
+        elif s["method"] in driver.INTEGER_POLICIES:
+            lines.append(f"{tag} integer results reused from the rollout;"
+                         f"{solver}")
+        else:
+            gaps = m["relaxation_gaps"]
+            lines.append(
+                f"{tag} {m['attributions']}; fractional relaxations "
+                f"{m['fractional_lp_decisions']}; relaxation gaps {len(gaps)} "
+                f"(max {_fmt(max((g for _, g in gaps), default=0.0))}); "
+                f"extraction losses {m['extraction_losses']}; action "
+                f"differences {m['action_differences']}; near ties "
+                f"{m['near_ties']};{solver}")
+    lines += ["", "Numerical scale (eligible terms over all valid problems)"]
+    for r in rows:
+        m, s = r["comparisons"], r["summary"]
+        lines.append(
+            f"  {s['case']} {s['method']}: max rank {m['max_service_rank']}, "
+            f"min positive coefficient {_fmt(m['min_positive_coefficient'])}, "
+            f"min gaps { {k: float(f'{v:.3g}') for k, v in m['min_gaps'].items()} }, "
+            f"exact ties {m['exact_ties']}, max offline solve "
+            f"{_fmt(m['solve_seconds_max'])} s")
+    lines += ["", "Victims: [decision, victim, running position / count, "
+              "had output, reasons, admitted in the same decision]"]
+    for r in rows:
+        victims = r["service"]["victims"]
+        if victims:
+            lines.append(f"  {r['summary']['case']} {r['summary']['method']}:")
+            for v in victims:
+                lines.append(f"    {v['index']} {v['victim']} "
+                             f"{v['running_position']}/{v['running_count']} "
+                             f"{v['had_output']} {v['reasons']} "
+                             f"{v['admitted_same_decision']}")
+    lines += ["", "Mean first-prefill and completion decision index by "
+              "prompt length (decision indices, not time)"]
+    for r in rows:
+        groups = r["service"]["by_prompt_length"]
+        cells = ", ".join(
+            f"{k}: {_fmt(g['first_prefill_mean'])}/{_fmt(g['completion_mean'])}"
+            f" (max done {g['completion_max']})" for k, g in sorted(
+                groups.items(), key=lambda kv: int(kv[0])))
+        lines.append(f"  {r['summary']['case']} {r['summary']['method']}: "
+                     f"{cells}")
+    lines += ["", "First emitted difference between rollouts (closed loop): "
+              "first index whose emitted output differs, and first index "
+              "whose selected set (victims and served requests) differs"]
+    for key, value in divergences.items():
+        lines.append(f"  {key}: {value}")
+    return "\n".join(lines) + "\n"
+
+
+def first_selection_divergence(a, b):
+    """First decision index whose victims or served requests differ as sets
+    (an emitted-order-only difference is not a selection difference)."""
+    for i, (x, y) in enumerate(zip(a["emitted"], b["emitted"])):
+        if (sorted(x[0]), sorted(map(tuple, x[1]))) != (
+                sorted(y[0]), sorted(map(tuple, y[1]))):
+            return i
+    return None
+
+
+def run_queue_rollout(cpu, method, case, run_dir):
+    runtime = cpu.CpuRuntime(method, QUEUE_LIMIT, case)
+    trace, failure = {}, None
+    if method == "adapted_vllm":
+        trace["reference_diagnostic_problems"] = (
+            driver.capture_reference_problems(runtime, case))
+    log = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(log):
+            outcome = driver.run_comparison(method, QUEUE_LIMIT, runtime, trace,
+                                            case)
+    except BaseException as err:
+        outcome = driver.FAILURE
+        failure = dict(type=type(err).__name__, message=str(err),
+                       traceback=traceback.format_exc())
+        for name in ("stage", "category", "reason"):
+            if hasattr(err, name):
+                failure[name] = getattr(err, name)
+    (run_dir / "console.log").write_text(log.getvalue())
+    # The comparisons read the retained JSON form, as for a GPU run.
+    trace = json.loads(json.dumps(driver.to_jsonable(trace)))
+    write_json_gz(run_dir / "decision_trace.json.gz", trace)
+    summary = rollout_summary(method, case, QUEUE_LIMIT,
+                              driver.case_inputs(case), trace, outcome, failure)
+    return summary, trace
+
+
+def analyse_run(trace, method, case):
+    records, coverage = decision_comparisons(trace, method)
+    return dict(records=records, coverage=coverage,
+                comparisons=comparison_summary(records, method),
+                service=service_record(trace, case),
+                consistent=all(comparison_consistent(r) for r in records))
+
+
+def queue_growth_main(out):
+    import test_compare_scheduler_gpu as cpu
+    cpu.setUpModule()
+    record = dict(argv=sys.argv, batch="queue_growth",
+                  runs=[list(r) for r in QUEUE_RUNS], resident_limit=QUEUE_LIMIT,
+                  cases={case: driver.case_inputs(case)
+                         for case in driver.QUEUE_GROWTH_CASES},
+                  reciprocal_square="w = 1 / (1 + r) ** 2; q = min(remaining, "
+                  "c_max, b_max); decode w, prefill token w / q, penalty w",
+                  coordinated=driver.COORDINATED,
+                  integer_solver=dict(solver=eip.SOLVER,
+                                      options=eip.SOLVER_OPTIONS,
+                                      conversion_tol=eip.CONVERSION_TOL,
+                                      comparison_tol=eip.COMPARISON_TOL),
+                  provenance=driver.provenance_record(),
+                  environment=driver.environment_record())
+    rows, traces = [], {}
+    for case, method in QUEUE_RUNS:
+        print(f"rollout {case} {method}", flush=True)
+        run_dir = out / "rollouts" / case / method
+        run_dir.mkdir(parents=True)
+        summary, trace = run_queue_rollout(cpu, method, case, run_dir)
+        analysis = analyse_run(trace, method, case)
+        (run_dir / "summary.json").write_text(json.dumps(
+            driver.to_jsonable(dict(summary, coverage=analysis["coverage"],
+                                    service=analysis["service"],
+                                    comparisons=analysis["comparisons"])),
+            indent=1))
+        (run_dir / "comparisons.json").write_text(json.dumps(
+            driver.to_jsonable(analysis["records"]), indent=1))
+        rows.append(dict(summary=summary, **analysis))
+        traces[case, method] = trace
+        print(f"  -> valid {summary['validation_passed']} outcome "
+              f"{summary['workload_outcome']} decisions {summary['decisions']} "
+              f"coverage complete {analysis['coverage']['complete']}",
+              flush=True)
+    by_key = {(r["summary"]["case"], r["summary"]["method"]): r["summary"]
+              for r in rows}
+    divergences = {}
+    for case in driver.QUEUE_GROWTH_CASES:
+        for a, b in QUEUE_DIVERGENCE_PAIRS:
+            if (case, a) in by_key and (case, b) in by_key:
+                divergences[f"{case} {a} vs {b}"] = dict(
+                    emitted=first_divergence(by_key[case, a], by_key[case, b],
+                                             traces[case, a], traces[case, b]),
+                    first_selection_difference=first_selection_divergence(
+                        by_key[case, a], by_key[case, b]))
+    (out / "divergences.json").write_text(json.dumps(
+        driver.to_jsonable(divergences), indent=1))
+    text = queue_report(rows, divergences)
+    (out / "comparison.txt").write_text(text)
+    print(text, flush=True)
+    passed = all(r["summary"]["validation_passed"]
+                 and r["coverage"]["complete"] and r["consistent"]
+                 for r in rows)
+    record["all_checks_passed"] = passed
+    (out / "run_record.json").write_text(json.dumps(
+        driver.to_jsonable(record), indent=1))
+    print("RESULT:", "PASS" if passed else "FAIL", flush=True)
+    return 0 if passed else 1
+
+
+def retained_runs_main(out, run_dirs, cpu_batch):
+    """Offline CPU comparisons of retained (GPU) runs: every reached decision
+    of each run, from its retained problems and results. With
+    ``cpu_batch``, each run's emitted decisions are also compared with the
+    CPU rollout of the same case and method."""
+    record = dict(argv=sys.argv, batch="retained_runs",
+                  runs=[str(d) for d in run_dirs], cpu_batch=cpu_batch,
+                  integer_solver=dict(solver=eip.SOLVER,
+                                      options=eip.SOLVER_OPTIONS,
+                                      conversion_tol=eip.CONVERSION_TOL,
+                                      comparison_tol=eip.COMPARISON_TOL),
+                  provenance=driver.provenance_record(),
+                  environment=driver.environment_record())
+    rows, passed = [], True
+    for run_dir in map(Path, run_dirs):
+        summary = json.loads((run_dir / "summary.json").read_text())
+        method, case = summary["run"]["policy"], summary["run"]["case"]
+        trace = read_trace(run_dir)
+        print(f"retained run {run_dir} ({case} {method})", flush=True)
+        analysis = analyse_run(trace, method, case)
+        rollout = rollout_summary(method, case, summary["run"]["resident_limit"],
+                                  driver.case_inputs(case), trace,
+                                  summary["workload_outcome"],
+                                  summary["failure"])
+        rollout["validation_passed"] = summary["validation_passed"]
+        same_as_cpu = None
+        if cpu_batch:
+            cpu_summary = json.loads((Path(cpu_batch) / "rollouts" / case
+                                      / method / "summary.json").read_text())
+            same_as_cpu = cpu_summary["emitted"] == rollout["emitted"]
+        target = out / run_dir.name
+        target.mkdir(parents=True)
+        (target / "comparisons.json").write_text(json.dumps(
+            driver.to_jsonable(analysis["records"]), indent=1))
+        (target / "summary.json").write_text(json.dumps(driver.to_jsonable(
+            dict(rollout, coverage=analysis["coverage"],
+                 service=analysis["service"],
+                 comparisons=analysis["comparisons"],
+                 emitted_equal_to_cpu_rollout=same_as_cpu)), indent=1))
+        rows.append(dict(summary=rollout, **analysis))
+        passed &= (analysis["coverage"]["complete"] and analysis["consistent"]
+                   and same_as_cpu is not False)
+        print(f"  -> coverage {analysis['coverage']}; emitted equal to CPU "
+              f"rollout {same_as_cpu}", flush=True)
+    text = queue_report(rows, {})
+    (out / "comparison.txt").write_text(text)
+    print(text, flush=True)
+    record["all_checks_passed"] = passed
+    (out / "run_record.json").write_text(json.dumps(
+        driver.to_jsonable(record), indent=1))
+    print("RESULT:", "PASS" if passed else "FAIL", flush=True)
+    return 0 if passed else 1
+
+
+BATCHES = ("coordinated_policy", "queue_growth", "retained_runs")
+
+
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--output-dir", required=True)
+    parser.add_argument("--batch", choices=BATCHES, default=BATCHES[0],
+                        help="coordinated_policy (default): the coordinated "
+                        "batch; queue_growth: the reciprocal-square "
+                        "queue-growth batch; retained_runs: offline "
+                        "comparisons of retained runs (--runs)")
+    parser.add_argument("--runs", nargs="+", default=[],
+                        help="retained_runs: run directories holding "
+                        "summary.json and decision_trace.json[.gz]")
+    parser.add_argument("--cpu-batch", default=None,
+                        help="retained_runs: optional queue_growth output "
+                        "directory whose rollouts the runs are checked "
+                        "against")
     return parser, parser.parse_args(argv)
 
 
@@ -551,7 +1194,15 @@ def main(argv=None):
     out = Path(args.output_dir)
     if (out / "run_record.json").exists():
         parser.error(f"{out} already holds run artifacts")
+    if (args.batch == "retained_runs") != bool(args.runs) or (
+            args.cpu_batch and args.batch != "retained_runs"):
+        parser.error("--runs (and --cpu-batch) go with --batch retained_runs "
+                     "only, which requires --runs")
     out.mkdir(parents=True, exist_ok=True)
+    if args.batch == "queue_growth":
+        return queue_growth_main(out)
+    if args.batch == "retained_runs":
+        return retained_runs_main(out, args.runs, args.cpu_batch)
 
     import test_compare_scheduler_gpu as cpu
     cpu.setUpModule()

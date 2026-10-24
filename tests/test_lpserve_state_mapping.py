@@ -1039,6 +1039,109 @@ class LPServeStateMappingTest(unittest.TestCase):
                 self.assertIsInstance(result, lsm.MappingFailure)
                 self.assertIn(f"coordinated utility {field}", result.reason)
 
+    # -- reciprocal-square rank utility policy ---------------------------------
+
+    @staticmethod
+    def _reciprocal_square(c_max=C_MAX, b_max=B_MAX):
+        return functools.partial(lsm.reciprocal_square_rank_utility,
+                                 c_max=c_max, b_max=b_max)
+
+    def test_reciprocal_square_values_terms_and_normalization(self):
+        # The coordinated test's state: positions 5->0, 3->1, 9->2, 2->3,
+        # so w = 1, 1/4, 1/9, 1/16 (geometric 1/4 would give 1/16, 1/64).
+        holder, _ = _build_holder()
+        self._resident(holder, 5, 6, 4)
+        self._resident(holder, 3, 4, 4)
+        holder.waiting.append(_make_sequence(0, 4, SNAPSHOT_TIME + 1))
+        holder.waiting.append(_make_sequence(9, 10, 1.0))
+        holder.waiting.append(_make_sequence(2, 4, 1.0))
+        before = _fingerprint(holder)
+        with mock.patch.object(lsm, "_capture", wraps=lsm._capture) as spy:
+            snapshot = _map(holder, self._reciprocal_square())
+        self.assertEqual(spy.call_count, 1)
+        self.assertEqual(_fingerprint(holder), before)
+        self.assertIsInstance(snapshot, lsm.StateSnapshot, snapshot)
+        # q = min(remaining, C_max = 4, B_max = 8); ineligible terms are 0.
+        self.assertEqual(self._triples(snapshot), {
+            5: (0.0, 1.0 / 2, 1.0),
+            3: (0.25, 0.0, 0.25),
+            9: (0.0, (1 / 9) / 4, 0.0),
+            2: (0.0, (1 / 16) / 4, 0.0),
+        })
+        by_id = {r.raw_seq_id: r for r in snapshot.requests}
+        for raw_id, q in ((5, 2), (9, 4), (2, 4)):
+            r = by_id[raw_id]
+            self.assertAlmostEqual(r.utility.prefill_token_utility * q,
+                                   1 / (1 + r.service_rank) ** 2, places=15)
+        self.assertEqual({k: (r.service_rank, r.victim_rank)
+                          for k, r in by_id.items()},
+                         {5: (0, 1), 3: (1, 0), 9: (2, None), 2: (3, None)})
+        self.assertEqual(
+            {r.request_id: (r.decode_utility, r.prefill_token_utility,
+                            r.preemption_penalty)
+             for r in snapshot.lp_problem.requests},
+            {str(k): v for k, v in self._triples(snapshot).items()})
+        captured = lsm.capture_scheduler_state(holder,
+                                               snapshot_time=SNAPSHOT_TIME)
+        tight = lsm.construct_coefficients(captured,
+                                           self._reciprocal_square(b_max=3))
+        self.assertEqual(
+            {r.raw_seq_id: c.prefill_token_utility
+             for r, c in zip(captured.requests, tight)},
+            {5: 1.0 / 2, 3: 0.0, 9: (1 / 9) / 3, 2: (1 / 16) / 3})
+
+    def test_reciprocal_square_later_ranks_and_fixed_capture(self):
+        # One decode-ready resident, then 13 arrived waiting requests whose
+        # raw IDs run backwards: positions 0..13.
+        holder, _ = _build_holder()
+        self._resident(holder, 20, 4, 4)
+        for raw_id in range(13, 0, -1):
+            holder.waiting.append(_make_sequence(raw_id, 8, 1.0))
+        policy = self._reciprocal_square()
+        snapshot = _map(holder, policy)
+        self.assertIsInstance(snapshot, lsm.StateSnapshot, snapshot)
+        by_id = {r.raw_seq_id: r for r in snapshot.requests}
+        self.assertEqual(by_id[20].utility, lsm.RequestUtility(1.0, 0.0, 1.0))
+        for raw_id in range(1, 14):
+            r = by_id[raw_id]
+            position = 14 - raw_id
+            self.assertEqual(r.service_rank, position)
+            self.assertEqual(r.utility, lsm.RequestUtility(
+                0.0, (1.0 / (1 + position) ** 2) / C_MAX, 0.0))
+        # Rank 13: w = 1/196, against the geometric 4^-13 (about 1.5e-8).
+        last = by_id[1].utility.prefill_token_utility * C_MAX
+        self.assertEqual(last, 1 / 196)
+        self.assertGreater(last / 0.25 ** 13, 1e5)
+        # Construction reads only the capture.
+        captured = lsm.capture_scheduler_state(holder,
+                                               snapshot_time=SNAPSHOT_TIME)
+        holder.waiting.clear()
+        holder.running.clear()
+        holder.block_manager = None
+        self.assertEqual(
+            {r.raw_seq_id: c for r, c in zip(
+                captured.requests,
+                lsm.construct_coefficients(captured, policy))},
+            {r.raw_seq_id: r.utility for r in snapshot.requests})
+
+    def test_reciprocal_square_rejects_invalid_parameters(self):
+        for name in ("c_max", "b_max"):
+            for bad in (0, -1, 1.5, True, None, "4"):
+                with self.subTest(field=name, bad=bad):
+                    params = dict(c_max=C_MAX, b_max=B_MAX)
+                    params[name] = bad
+                    holder = _build_three_request_holder()
+                    before = _fingerprint(holder)
+                    result = _map(holder, functools.partial(
+                        lsm.reciprocal_square_rank_utility, **params))
+                    self.assertEqual(_fingerprint(holder), before)
+                    self.assertIsInstance(result, lsm.MappingFailure)
+                    self.assertIn(f"reciprocal-square utility {name}",
+                                  result.reason)
+        with self.assertRaises(TypeError):
+            lsm.reciprocal_square_rank_utility(None, None, rank_base=0.5,
+                                               c_max=C_MAX, b_max=B_MAX)
+
 
 
 if __name__ == "__main__":

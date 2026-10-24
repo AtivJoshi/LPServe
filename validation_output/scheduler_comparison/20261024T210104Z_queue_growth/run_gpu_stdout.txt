@@ -1,0 +1,16 @@
+=== queue48_burst_pool12 lp_reciprocal_square start 21:04:19Z
+=== queue48_burst_pool12 lp_reciprocal_square end 21:05:04Z
+decisions_logged=0
+CHECK FAILED: ValueError Not enough available memory to schedule a request will maximum allowed length 256. Need 16, available 12 gpu blocks. Try decreasing `max_batch_size`, `max_model_len`.
+RESULT: FAIL workload: failure
+timeout_python_exit_status=1 tee_exit_status=0
+=== queue48_burst_pool12 adapted_vllm start 21:05:04Z
+=== queue48_burst_pool12 adapted_vllm end 21:05:48Z
+decisions_logged=0
+CHECK FAILED: ValueError Not enough available memory to schedule a request will maximum allowed length 256. Need 16, available 12 gpu blocks. Try decreasing `max_batch_size`, `max_model_len`.
+RESULT: FAIL workload: failure
+timeout_python_exit_status=1 tee_exit_status=0
+=== offline CPU integer comparisons start 21:05:48Z
+offline_comparison_exit_status=1
+RESULT: FAIL
+run_gpu_sh_exit=0
