@@ -1267,6 +1267,74 @@ Alternatively, the objective function can replace the expectation with the \text
 By incorporating these probabilistic bounds, the slow-path planner calculates strictly conservative primal constraints ($X, Y$) for the fast-path executor, ensuring that thermal throttling, memory fragmentation, and SLO violations are avoided even if the arrival traffic or generation lengths follow extreme Pareto tail distributions.
 
 \clearpage
+
+\paragraph{Old LP formulation}
+\begin{subequations}
+\label{eq:myopic_ilp_old}
+\begin{align}
+    \max_{\mathbf{x}(t),\mathbf{y}(t),\mathbf{z}(t),\mathbf{I}^P(t)}
+    \quad
+    &\sum_{i \in U_t}
+    \left(
+        \alpha_i(t)y_i(t)
+        +
+        \beta_i(t)x_i(t)
+    \right)
+    -
+    \sum_{i \in \mathcal{Z}_t}
+    \gamma_i(t)z_i(t)
+    \label{eq:myopic_ilp_obj_old}\\
+    \text{s.t.}\quad
+    &\sum_{i \in U_t}
+    \left(
+        x_i(t)+y_i(t)
+    \right)
+    \le B_{\max}
+    \label{eq:p_compute_old}\\
+    &\sum_{i \in U_t}
+    \left(
+        I_i^P(t)+y_i(t)
+    \right)
+    \le S_{\max}
+    \label{eq:p_concurrency_old}\\
+    &\sum_{i \in U_t}
+    \left(
+        a_i^P(t)I_i^P(t)
+        +
+        c_i^D(t)y_i(t)
+    \right)
+    -
+    \sum_{i \in \mathcal{Z}_t}
+    c_i^Z(t)z_i(t)
+    \le
+    M_t^{\mathrm{free}}-W_t
+    \label{eq:p_memory_old}\\
+    &I_i^P(t)
+    \le
+    x_i(t)
+    \le
+    U_i(t)I_i^P(t)
+    \qquad
+    \forall i \in U_t
+    \label{eq:p_chunked_old}\\
+    &y_i(t)
+    \le
+    \mathbf{1}
+    \left\{
+        P_i^{\mathrm{rem}}(t)=0
+    \right\}
+    \qquad
+    \forall i \in U_t
+    \label{eq:p_causality_old}\\
+    &I_i^P(t)+y_i(t)+z_i(t)
+    \le 1
+    \qquad
+    \forall i \in U_t.
+    \label{eq:p_mutex_old}
+\end{align}
+\end{subequations}
+
+\clearpage
 \bibliographystyle{unsrtnat}
 \bibliography{references}
 

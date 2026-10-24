@@ -450,6 +450,14 @@ Slurm job `66022154` (partition `gpu-preempt`), NVIDIA A16
 3.10.8, numpy 2.2.6, scipy 1.15.3 (HiGHS through `milp`/`linprog`), torch
 2.3.0+cu121, ray 2.58.0. Same TinyLlama snapshot `fe8a4ea1…`, offline.
 
+**Evidence review 2026-10-24.** At the review of `9b03a78`, the recorded
+CPU and GPU source-file hashes matched the committed files, but the four
+GPU `console.log` files were absent from the checkout. Commit `43aa837`
+subsequently preserved them. Review of all four logs confirmed one
+`RESULT: PASS` per run and only the bfloat16-to-float16 cast warning. The
+retained exit-status files also record zero Python/timeout and `tee` exit
+statuses. Console-log preservation is complete; no GPU rerun was needed.
+
 ### Files
 
 | File | Change |
@@ -565,6 +573,13 @@ enumeration ran.
 | `mixed_pressure` as run (+ 0 free, later C legal victim; B had **demand 0**, not the intended 1: C's eviction funded only the LP decode prerequisite; corrected 2026-10-24, see below) | 1.1042 | A:7 + B decode, preempt C, 1.0625 | same | A:8, 1.0: strict objective preference |
 | `zero_free_decodes` (4 decode-ready, 0 free, demand 0) | 1.3031 | decode A,B,C, preempt tail D, 1.296875 | same (unique by enumeration) | decode all four: contract difference (`decode_prerequisite`) |
 | `fractional_admission` (charges 16, 1; pool 16; cap 1) | 1.1875 (A 15/16, B 1) | B:1, 0.25 | A:1, 1.0 | A:2: contract difference (chunk cap) |
+
+**Initial diagnostic review 2026-10-24 at `9b03a78`.** Source and retained
+state showed that the original `mixed_pressure` fixture had B demand 0,
+although its description said 1. The original artifacts and utilities remain
+unchanged. The subsequent fixture correction, explicit demand assertion, and
+fresh CPU evidence are recorded in the correction section below; the other
+workload results and scheduler contracts are unaffected.
 
 In the last row, the relaxation gap is 0.1875 and the extraction loss is
 0.75. Extraction tries B first because its e = 1 is larger than A's 0.9375,
