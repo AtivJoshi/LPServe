@@ -307,9 +307,10 @@ DIAGNOSTIC_STATES = dict(
         residents=[(16, 8, 0), (8, 8, 0)], waiting=[], pool=8,
         max_model_len=32, limit=2, b_max=8, c_max=8, s_max=2, budget=8),
     mixed_pressure=dict(
-        note="as mixed_ample with zero free blocks: B's decode needs one "
-        "block; later decode-ready resident C (demand 0) is a legal victim",
-        residents=[(16, 8, 0), (16, 16, 0), (8, 8, 0)], waiting=[], pool=3,
+        note="as mixed_ample with zero free blocks: B (one generated token "
+        "after its 16-token prompt) needs one new block to decode; later "
+        "decode-ready resident C (demand 0) is a legal victim",
+        residents=[(16, 8, 0), (16, 16, 1), (8, 8, 0)], waiting=[], pool=3,
         max_model_len=32, limit=3, b_max=8, c_max=8, s_max=3, budget=8),
     zero_free_decodes=dict(
         note="four equal-memory decode-ready residents, zero free blocks, "
@@ -390,13 +391,21 @@ def run_diagnostic(name, spec):
     record = dict(name=name, spec=spec,
                   label="constructed with native allocation and progress "
                   "methods (shape reachable under the LP; see note)")
+    def block_counts(scheduler):
+        manager = scheduler.block_manager
+        return dict(free=manager.get_num_free_gpu_blocks(), physical={
+            str(seq.seq_id): len(manager.get_block_table(seq))
+            for seq in scheduler.running})
+
     lp_sched = build_state(spec, "lp")
+    lp_blocks = dict(before=block_counts(lp_sched))
     lp_snap = mapped(lp_sched)
     problem = lp_snap.lp_problem
     lp_result = lrs.solve_and_extract(problem)
     lp_outputs = (lpe.execute_plan(lp_sched, lp_snap, lp_result)
                   if isinstance(lp_result, lrs.SchedulingSuccess) else None)
     ilp_sched = build_state(spec, "lp")
+    ilp_blocks = dict(before=block_counts(ilp_sched))
     ilp_snap = mapped(ilp_sched)
     driver.check(ilp_snap.lp_problem == problem,
                  f"{name}: separate builds map to different problems")
@@ -404,6 +413,8 @@ def run_diagnostic(name, spec):
     ilp_outputs = (lpe.execute_plan(ilp_sched, ilp_snap, lrs.SchedulingSuccess(
         integer.problem_id, integer.plan, None, None))
         if isinstance(integer, eip.IntegerOptimum) else None)
+    lp_blocks["after"] = block_counts(lp_sched)
+    ilp_blocks["after"] = block_counts(ilp_sched)
     for label, outputs in (("lp", lp_outputs), ("integer", ilp_outputs)):
         # Format the type only: the inherited SchedulerOutputs.__repr__
         # names a missing attribute.
@@ -420,6 +431,14 @@ def run_diagnostic(name, spec):
                  f"{name}: enumeration {enumeration} disagrees with the "
                  f"integer optimum {integer.plan.objective}")
     record.update(
+        mapped_requests={r.request_id: dict(
+            prompt_tokens_remaining=r.prompt_tokens_remaining,
+            output_len=r.output_len, logical_blocks=r.logical_block_count,
+            physical_blocks=r.physical_block_count,
+            decode_demand=r.decode_demand,
+            prefill_fixed_charge=r.prefill_fixed_charge)
+            for r in lp_snap.requests},
+        block_counts=dict(lp=lp_blocks, integer=ilp_blocks),
         coefficients={r.request_id: dict(
             decode=r.decode_utility, prefill_token=r.prefill_token_utility,
             penalty=r.preemption_penalty, service_rank=r.service_rank,

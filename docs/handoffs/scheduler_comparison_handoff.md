@@ -562,7 +562,7 @@ enumeration ran.
 | State | LP relaxed | LP plan | Integer optimum (= enumeration) | Reference (LP-contract evaluation) |
 |---|---|---|---|---|
 | `mixed_ample` (A 8 left, B decode-ready, budget 8, s 2) | 1.125 | A:7 + B decode, 1.125 | same | A:8, 1.0: strict objective preference |
-| `mixed_pressure` (+ 0 free, B demand 1, later C legal victim) | 1.1042 | A:7 + B decode, preempt C, 1.0625 | same | A:8, 1.0: strict objective preference |
+| `mixed_pressure` as run (+ 0 free, later C legal victim; B had **demand 0**, not the intended 1: C's eviction funded only the LP decode prerequisite; corrected 2026-10-24, see below) | 1.1042 | A:7 + B decode, preempt C, 1.0625 | same | A:8, 1.0: strict objective preference |
 | `zero_free_decodes` (4 decode-ready, 0 free, demand 0) | 1.3031 | decode A,B,C, preempt tail D, 1.296875 | same (unique by enumeration) | decode all four: contract difference (`decode_prerequisite`) |
 | `fractional_admission` (charges 16, 1; pool 16; cap 1) | 1.1875 (A 15/16, B 1) | B:1, 0.25 | A:1, 1.0 | A:2: contract difference (chunk cap) |
 
@@ -675,3 +675,79 @@ latency, throughput, and eventual completion. Inherited behavior (final-
 prefill sample discarded, counter reset with overgeneration after restart:
 reference +2 and coordinated +4 in memory_pressure) is recorded, not
 repaired.
+
+## Correction 2026-10-24: mixed-pressure diagnostic with one-block decode demand
+
+**What was wrong (source and retained evidence).** In the 2026-10-24 batch,
+`DIAGNOSTIC_STATES["mixed_pressure"]` built B as `(16, 16, 0)`: a complete
+16-token prompt with no generated token. At block size 16, B's logical and
+physical tables then both hold one block, so its decode demand is 0, while
+the fixture note claimed one block. The retained plan confirms this
+(`decode_demand` 0, `H` 1 in
+`20261024T182347Z/cpu_comparison/diagnostic_states.json`). C's eviction
+therefore funded only the LP decode prerequisite (at least one free block
+before any decode), not an actual allocation. The relaxed value 1.1042
+follows from that. Without an actual-memory charge for B, the relaxation can
+satisfy `y_B + y_C ≤ 3H` with `z_C = 1/3`: 7/8 + 1/4 − 1/48 = 1.1042. The
+old run's numbers stay as recorded for what was actually tested. The fixture
+description in that run directory is not rewritten.
+
+**Correction.** Only B's tuple changed, to `(16, 16, 1)`: one generated
+token appended after allocation, through native sequence methods. All other
+inputs are unchanged: A `(16, 8, 0)`, C `(8, 8, 0)`, pool 3 blocks with 0
+free, resident limit 3, context 32, budget/`b_max`/`c_max` 8, `s_max` 3, and
+the same coordinated coefficients and numerical policy. The diagnostic
+record now also keeps the mapped decode demands and every resident's
+physical block count before and after each execution.
+
+**Analytical expectation.** B now carries actual-memory demand 1, so
+`y_B ≤ H = z_C`. Each unit of B's decode then requires a full unit of C's
+eviction, and the relaxation can no longer fund the decode with a fraction
+of C. The LP optimum should equal the integer optimum: A:7 + B decode,
+preempt C, 7/8 + 1/4 − 1/16 = 1.0625. A fractional decode of C cannot help,
+since its 1/16 per token is below A's 1/8.
+
+**Executed (CPU only)** —
+[`validation_output/scheduler_comparison/20261024T193028Z_mixed_pressure_one_block_demand/`](../../validation_output/scheduler_comparison/20261024T193028Z_mixed_pressure_one_block_demand/)
+(`run_checks.sh`, step logs 01–07, `mixed_pressure_diagnostic.json`,
+`working_tree.diff`, `sha256sums.txt`, `environment.txt`, `git_state.txt`).
+Base `43aa8378bb466a80ee0a09ac55772fb5747964ba` plus uncommitted changes to
+`scripts/compare_coefficient_policies_cpu.py` and
+`tests/test_compare_scheduler_gpu.py`. Host `gpu049`, Slurm job `66023208`,
+`CUDA_VISIBLE_DEVICES=""`, `env/bin/python` 3.10.8, numpy 2.2.6, scipy
+1.15.3.
+
+- Mapped state: B has output length 1, 2 logical blocks, 1 physical block,
+  and decode demand 1. C has demand 0. A has 8 tokens left and charge 0.
+  Free blocks: 0.
+- LP: relaxed optimum 1.0625 (the old fixture gave 1.1042), plan A:7 + B
+  decode + preempt C = 1.0625. The integer optimum gives the same actions and
+  1.0625. Relaxation gap and extraction loss are both 0. Bounded enumeration
+  (90 plans) gives a best of 1.0625.
+- Native execution (separate equivalent builds for LP and integer; the
+  executor validated each complete plan before mutation): emitted
+  `[[0, 7], [1, 0]]`, victims `[2]`. Physical blocks went from A 1, B 1, C 1
+  (free 0) to A 1, B 2 (free 0). C's block was released and taken by B's
+  decode.
+- The reference proposes A:8 with no victim (1.0), which is LP-feasible: a
+  strict objective preference for the integer optimum.
+
+| Step | Command | Result |
+|---|---|---|
+| 01 | `python -B -m py_compile` (2 changed files) | exit 0 |
+| 02 | import both modules under `-W error` | exit 0 |
+| 03 | `python -B -m unittest tests.test_compare_scheduler_gpu.CoordinatedPolicyTest.test_mixed_pressure_uses_one_block_decode_demand -v` | 1 passed |
+| 04 | `python -B -m unittest tests.test_compare_scheduler_gpu -v` | 35 passed (the 34 earlier expectations unchanged, plus the new test) |
+| 05 | standalone `run_diagnostic("mixed_pressure", …)` → JSON | exit 0 |
+| 06 | bounded enumeration vs integer optimum | agrees |
+| 07 | `git diff --check` on the changed files and this handoff | exit 0 |
+
+Not rerun: the 35-workload CPU batch, the other diagnostics, the other
+suites, and all GPU runs. Their recorded results remain evidence for the
+code and inputs they tested. This correction does not rerun or extend GPU
+validation; the mixed-pressure diagnostic was never a GPU case.
+
+**GPU console logs.** The four original logs
+(`20261024T182347Z/gpu_{two_request,memory_pressure}_{lp_coordinated,adapted_vllm}_limit{1,4}/console.log`)
+are present and tracked, added by `43aa837`. Their preservation is
+complete.

@@ -1,0 +1,10 @@
+branch=main
+head=43aa8378bb466a80ee0a09ac55772fb5747964ba
+base_reviewed=43aa8378bb466a80ee0a09ac55772fb5747964ba
+--- git status --short --untracked-files=all
+ M scripts/compare_coefficient_policies_cpu.py
+ M tests/test_compare_scheduler_gpu.py
+?? validation_output/scheduler_comparison/20261024T193028Z_mixed_pressure_one_block_demand/environment.txt
+?? validation_output/scheduler_comparison/20261024T193028Z_mixed_pressure_one_block_demand/git_state.txt
+?? validation_output/scheduler_comparison/20261024T193028Z_mixed_pressure_one_block_demand/run_checks.sh
+git_diff_head_sha256=f46b7d2273c5faa8946aa935fe73167c51922c5844b55ea5b6972ce42440b564  -

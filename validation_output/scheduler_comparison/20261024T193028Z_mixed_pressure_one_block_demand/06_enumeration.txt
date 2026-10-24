@@ -1,0 +1,11 @@
+$ env PYTHONPATH=/home/atjoshi_umass_edu/LPServe python -B -c 
+import json
+r = json.load(open('validation_output/scheduler_comparison/20261024T193028Z_mixed_pressure_one_block_demand/mixed_pressure_diagnostic.json'))
+e, best = r['enumeration'], r['lp_vs_integer']['integer_objective']
+print(e, 'integer optimum', best)
+assert e['useful_plan_exists'] and abs(e['best'] - best) <= 1e-7, 'enumeration disagrees'
+print('enumeration agrees with the integer optimum')
+
+{'plan_space': 90, 'useful_plan_exists': True, 'best': 1.0625} integer optimum 1.0625
+enumeration agrees with the integer optimum
+exit_status=0

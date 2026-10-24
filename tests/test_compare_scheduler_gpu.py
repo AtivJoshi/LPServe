@@ -870,6 +870,58 @@ class CoordinatedPolicyTest(unittest.TestCase):
                 self.assertEqual(_emitted(d1)["scheduled"],
                                  [[0, 0], [1, 0], [2, 0]])
 
+    def test_mixed_pressure_uses_one_block_decode_demand(self):
+        # The batch diagnostic: native construction, one mapping per method
+        # on separately built states (checked equal), the LP and the direct
+        # integer plan each executed by the native executor (which validates
+        # the complete plan before mutation), the reference proposal, and
+        # bounded enumeration.
+        import compare_coefficient_policies_cpu as batch
+        record = batch.run_diagnostic(
+            "mixed_pressure", batch.DIAGNOSTIC_STATES["mixed_pressure"])
+        mapped = record["mapped_requests"]
+        self.assertEqual(
+            {k: mapped["1"][k] for k in ("output_len", "logical_blocks",
+                                          "physical_blocks", "decode_demand")},
+            dict(output_len=1, logical_blocks=2, physical_blocks=1,
+                 decode_demand=1))
+        self.assertEqual(mapped["2"]["decode_demand"], 0)
+        self.assertEqual((mapped["0"]["prompt_tokens_remaining"],
+                          mapped["0"]["prefill_fixed_charge"]), (8, 0))
+        self.assertEqual(record["free_blocks"], 0)
+
+        want = {"0": "prefill:7", "1": "decode", "2": "preempt"}
+        comparison = record["lp_vs_integer"]
+        self.assertEqual((comparison["lp_actions"],
+                          comparison["integer_actions"]), (want, want))
+        for key in ("lp_plan_objective", "integer_objective",
+                    "lp_relaxed_objective"):
+            self.assertAlmostEqual(comparison[key], 7 / 8 + 1 / 4 - 1 / 16,
+                                   msg=key)
+        self.assertEqual(record["enumeration"]["best"], 1.0625)
+        for method, plan in (("lp", record["lp"]["plan"]),
+                             ("integer", record["integer"]["plan"])):
+            with self.subTest(method=method):
+                self.assertEqual((plan["decode_demand"],
+                                  plan["free_blocks_before_decodes"]), (1, 1))
+                self.assertEqual(record["executed"][method]["scheduled"],
+                                 [[0, 7], [1, 0]])
+                self.assertEqual(
+                    record["executed"][method]["preempted_seq_ids"], [2])
+                blocks = record["block_counts"][method]
+                self.assertEqual(blocks["before"], dict(
+                    free=0, physical={"0": 1, "1": 1, "2": 1}))
+                # B grows by one block; C's block is released and reused.
+                self.assertEqual(blocks["after"], dict(
+                    free=0, physical={"0": 1, "1": 2}))
+        reference = record["reference_proposal"]
+        self.assertEqual(([(a["seq_id"], a["kind"], a["num_tokens"])
+                           for a in reference["actions"]],
+                          reference["victims"]),
+                         ([(0, driver.PREFILL, 8)], []))
+        self.assertEqual(record["reference_vs_integer"]["classification"],
+                         "strict_objective_preference")
+
     def test_integer_failure_stops_the_rollout_without_fallback(self):
         native = eip.solve_integer_plan
         calls = []

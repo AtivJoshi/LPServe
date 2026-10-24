@@ -1,0 +1,27 @@
+$ env PYTHONPATH=/home/atjoshi_umass_edu/LPServe python -B -c 
+import json, sys
+sys.path[:0] = ['scripts', 'tests']
+import test_compare_scheduler_gpu as cpu
+cpu.setUpModule()
+import compare_coefficient_policies_cpu as batch
+record = batch.driver.to_jsonable(batch.run_diagnostic(
+    'mixed_pressure', batch.DIAGNOSTIC_STATES['mixed_pressure']))
+open('validation_output/scheduler_comparison/20261024T193028Z_mixed_pressure_one_block_demand/mixed_pressure_diagnostic.json', 'w').write(json.dumps(record, indent=1))
+c = record['lp_vs_integer']
+print('mapped', json.dumps(record['mapped_requests']))
+print('lp relaxed', c['lp_relaxed_objective'], 'lp plan', c['lp_actions'], c['lp_plan_objective'])
+print('integer', c['integer_actions'], c['integer_objective'], c['attribution'])
+print('executed', json.dumps(record['executed']))
+print('blocks', json.dumps(record['block_counts']))
+print('reference', record['reference_vs_integer']['reference_actions'], record['reference_vs_integer']['classification'])
+print('enumeration', record['enumeration'])
+
+INFO 10-24 19:31:23 metrics_store.py:72] MetricsStore disabled
+mapped {"0": {"prompt_tokens_remaining": 8, "output_len": 0, "logical_blocks": 1, "physical_blocks": 1, "decode_demand": 0, "prefill_fixed_charge": 0}, "1": {"prompt_tokens_remaining": 0, "output_len": 1, "logical_blocks": 2, "physical_blocks": 1, "decode_demand": 1, "prefill_fixed_charge": 0}, "2": {"prompt_tokens_remaining": 0, "output_len": 0, "logical_blocks": 1, "physical_blocks": 1, "decode_demand": 0, "prefill_fixed_charge": 0}}
+lp relaxed 1.0625 lp plan {'0': 'prefill:7', '1': 'decode', '2': 'preempt'} 1.0625
+integer {'0': 'prefill:7', '1': 'decode', '2': 'preempt'} 1.0625 identical_actions
+executed {"lp": {"id": -1, "scheduled": [[0, 7], [1, 0]], "ignored_seq_ids": [], "preempted_seq_ids": [2]}, "integer": {"id": -1, "scheduled": [[0, 7], [1, 0]], "ignored_seq_ids": [], "preempted_seq_ids": [2]}}
+blocks {"lp": {"before": {"free": 0, "physical": {"0": 1, "1": 1, "2": 1}}, "after": {"free": 0, "physical": {"0": 1, "1": 2}}}, "integer": {"before": {"free": 0, "physical": {"0": 1, "1": 1, "2": 1}}, "after": {"free": 0, "physical": {"0": 1, "1": 2}}}}
+reference {'0': 'prefill:8'} strict_objective_preference
+enumeration {'plan_space': 90, 'useful_plan_exists': True, 'best': 1.0625}
+exit_status=0
