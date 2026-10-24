@@ -80,6 +80,16 @@ Supported execution includes waiting admission, resident prefill, and decode wit
 
 **Qualification (2026-10-12).** The statement above that runtime preemption remains unsupported is outdated. Native runtime preemption is implemented in the inspected Mac source (`lpserve_plan_execution.py` at `69e2180`) and described in the design's revision-specific records (§13, native preemption execution, 2026-10-10). The corrected extraction, resource, and ordering contracts remain unimplemented and unvalidated.
 
+**Future TP/PP extension approved (2026-10-18; not implemented).** Read
+[design §19](docs/lp_scheduler_design.md#19-approved-future-tp-and-pp-extension)
+and research-context §22.2 before extending parallel execution. They record
+fixed TP, overlapping PP, and combined support for LP and the adapted
+reference; protected capture, planning without a lock, protected commit;
+native in-flight preemption compatibility; completed-victim handling;
+dispatch/wait/failure rules; required mathematical alignment; and bounded
+CPU/GPU validation. This approval changes no running code, proves no new
+parallelism support, and does not repin the historical architecture audit.
+
 The key separation is:
 
 ```text

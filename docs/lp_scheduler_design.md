@@ -8,6 +8,8 @@
 
 **Corrected-framework amendment:** 2026-10-12; requirements awaiting implementation (§2.1)
 
+**Future parallelism extension approved:** 2026-10-18; design recorded in §19, implementation and validation pending. The existing single-stage contract remains in force until that extension is implemented and checked.
+
 ## Table of contents
 
 1. [Purpose, authority, and scope](#1-purpose-authority-and-scope)
@@ -28,6 +30,7 @@
 16. [Known inherited framework limitations in MVP compatibility mode](#16-known-inherited-framework-limitations-in-mvp-compatibility-mode)
 17. [Decision register](#17-decision-register)
 18. [Traceability and change control](#18-traceability-and-change-control)
+19. [Approved future TP and PP extension](#19-approved-future-tp-and-pp-extension)
 
 ## 1. Purpose, authority, and scope
 
@@ -73,11 +76,12 @@ The following are not part of this design:
 - production-grade solver optimization before correctness is established;
 - an unproved approximation ratio;
 - equivalence claims between LPServe policies and current upstream serving systems;
-- pipeline-parallel support before the blockers in Section 16 are resolved.
+- pipeline-parallel execution before the approved extension in §19 is implemented and its validation gates pass.
 
-Only decisions recorded as resolved in Section 17 are selected. Utility
-functions, pipeline support, and every remaining OPEN item have no implicit
-default. The admission watermark is read from the shared block manager (§8.1).
+Only decisions recorded as resolved in Section 17 are selected. The future
+parallelism design is selected in §19; it does not establish implemented or
+tested support. Utility functions and every remaining OPEN item have no
+implicit default. The admission watermark is read from the shared block manager (§8.1).
 Phase F metadata ordering is resolved for the supported
 single-stage scope by D-21. The
 selected pre-mutation failure response is the scoped fail-stop rule in Section
@@ -539,9 +543,10 @@ watermark 0.01, so $h=0$ when $T<100$). The mapper reads it once; it is not an
 LP configuration value.
 
 The native admission check requires the free blocks minus the admitted request's
-full demand to be at least $h$. The native append check requires at least one
-free block before each decode, even at zero gap, and applies no watermark. The LP
-represents these two checks separately: the admission watermark
+full demand to be at least $h$. The inherited schedulers' `can_append_slot()`
+convention requires at least one free block before each decode, even at zero
+gap, and applies no watermark (§8.3). The LP represents these two checks
+separately: the admission watermark
 ($H\ge hI_i^P$) and the decode prerequisite ($\sum_iy_i\le S_{\max}H$). The
 independent planning reserve $W_t$ is removed (D-10). No final-state reserve is
 imposed, and neither check may be silently replaced by a reserve.
@@ -592,10 +597,27 @@ normally zero or one.
 *(amended 2026-10-12; implementation pending)* D-09 is decided: $c_i^D$ is this exact demand and MUST be zero or one for
 a decode-eligible resident. A gap outside $\{0,1\}$ is an unsupported-state
 mapping error, never a clamped demand. The conservative one-block charge
-(`conservative_one_block_v1`) is retired for the corrected path. The native
-append gate's free-block requirement is represented by the decode prerequisite
+(`conservative_one_block_v1`) is retired for the corrected path. The inherited
+schedulers' free-block convention is represented by the decode prerequisite
 (§§7.1, 8.1), not by charging every decode a block. Selected decodes with
 $c_i^D=0$ execute before those with $c_i^D=1$ (§13).
+
+**Clarification 2026-10-19 (source review at `2c61d3e`; no contract change).**
+The LP follows the one-free-block-before-decode convention enforced by the
+inherited [vLLM-style](../sarathi/core/scheduler/vllm_scheduler.py),
+[Sarathi](../sarathi/core/scheduler/sarathi_scheduler.py),
+[SLAI](../sarathi/core/scheduler/slai_scheduler.py), and
+[SimpleChunking](../sarathi/core/scheduler/simple_chunking_scheduler.py)
+schedulers through `can_append_slot()`. References here to the native append
+gate mean this scheduler convention, not a physical allocator requirement:
+[`append_slot()`](../sarathi/core/block_space_manager/base_block_space_manager.py)
+allocates only for an actual block gap, and worker replay ignores the query's
+return value. Zero-demand decodes can execute with no free blocks, as observed
+in the [bounded comparison](handoffs/scheduler_comparison_handoff.md#addendum-2026-10-18-memory-pressure-case).
+The adapted vLLM reference uses actual additional demand and does not enforce
+this convention. Both implementations remain unchanged. Whether to remove the
+convention from LP or add it to the adapted reference is deferred; either
+requires an explicit later decision and corresponding contract updates.
 
 ### 8.4 Preemption recovery
 
@@ -1230,6 +1252,10 @@ manager, not configured (amended 2026-10-12). One value may bind several only
 under explicit approved policy with separate names and validation.
 
 ### 12.6 State stability and precommit validation
+
+**Scope note (2026-10-18):** This remains the existing single-stage contract.
+The approved future extension replaces whole-decision state stability with
+protected capture, unprotected planning, and protected commit (§19.3).
 
 For the single-stage MVP, state stability comes from the supported execution
 contract rather than a new lock or version subsystem. The same engine instance
@@ -2018,6 +2044,13 @@ failure.
 
 ### 16.6 Pipeline-parallel support — deferred from the initial MVP
 
+**Approved future amendment (2026-10-18):** §19 selects the extension
+contract and supersedes the former unresolved design requirements below
+for that future scope. In particular, it inherits native in-flight
+preemption rather than requiring a new proof of physical cache release.
+The historical framework observations remain limitations, and current
+single-stage code is not made pipeline-capable by this record.
+
 Pipeline execution permits multiple microbatches in flight. The audited framework anticipates preemption of a request while an older batch is executing, but exposes no safe physical-release predicate, per-batch KV version, or exact completion association sufficient for this design.
 
 Existing schedulers rely on the running-batch counter, lifecycle status, replay
@@ -2031,12 +2064,13 @@ The LP scheduler adds a multi-field snapshot and a solve interval during which
 pipeline completion could change ownership, progress, or blocks. The former
 formulation could also legitimately produce a preempt-only plan (historical
 rationale; the amended formulation requires useful execution, but the inherited
-control-only defect of §16.3 remains). Supporting pipeline mode later
-requires a coherent snapshot/commit mechanism, an explicit per-request
-in-flight and safe-release predicate, plan-to-completion association,
-control-only handling, and focused central/worker replay tests.
+control-only defect of §16.3 remains). The approved replacement contract in §19 requires coherent capture and
+commit, explicit native readiness and victim sets, inherited dispatch and
+completion association, continued rejection/reporting of unsupported
+control-only outputs, and focused replay tests. It does not require a new
+cache-version or physical-release subsystem.
 
-This specification therefore does not authorize pipeline-parallel LP execution. In particular, it does not define:
+The existing single-stage specification and code do not enable pipeline-parallel LP execution. The questions formerly deferred here, now addressed by §19, were:
 
 - which in-flight requests belong to $\mathcal Z_t$;
 - which actions must be frozen across outstanding batches;
@@ -2044,7 +2078,10 @@ This specification therefore does not authorize pipeline-parallel LP execution. 
 - how a plan is associated with a later completion callback;
 - how failure affects `num_running_batches` and worker queues.
 
-Initial correctness validation is limited to a single pipeline stage. Supporting more stages requires a separate design amendment and new architecture tests; changing only `num_pipeline_stages` is insufficient.
+Earlier correctness evidence is limited to its recorded single-stage scope.
+§19 is the approved design amendment; its implementation, mathematical
+alignment, and new architecture/GPU checks remain prerequisites to a
+parallelism support claim. Changing only `num_pipeline_stages` is insufficient.
 
 ### 16.7 Incremental text conversion can include the prompt's final token
 
@@ -2092,7 +2129,7 @@ generation quality and changes no mathematical, execution, or failure contract.
 
 | ID | Status and selected rule | Canonical requirements |
 |---|---|---|
-| D-08 | **RESOLVED for the single-stage MVP** — the LP scheduler inherits `BaseScheduler` directly. Inherited `waiting` exclusively owns unallocated unfinished requests; inherited `running` exclusively owns all allocated resident unfinished requests, including residents not selected for the next forward pass. Auxiliary structures are non-owning indexes only. Mapping occurs at the quiescent pre-mutation boundary with no batch in flight. This avoids SLAI-specific ownership and preserves base unfinished-request and completion behavior while making ownership and allocation cross-checkable. | §§4.1–4.4, 6.4, 12.2–12.5; focused test §15.3; D-24 remains OPEN |
+| D-08 | **RESOLVED for the single-stage MVP** — the LP scheduler inherits `BaseScheduler` directly. Inherited `waiting` exclusively owns unallocated unfinished requests; inherited `running` exclusively owns all allocated resident unfinished requests, including residents not selected for the next forward pass. Auxiliary structures are non-owning indexes only. Mapping occurs at the quiescent pre-mutation boundary with no batch in flight. This avoids SLAI-specific ownership and preserves base unfinished-request and completion behavior while making ownership and allocation cross-checkable. | §§4.1–4.4, 6.4, 12.2–12.5; focused test §15.3; D-24 and §19 govern the future extension |
 | D-11 | **RESOLVED** — `scipy.optimize.linprog`/HiGHS behind a project-owned adapter; SciPy must become an explicit reproducible dependency before Phase D execution, and its exact version is not selected here. | §9.3; tests §15.1; diagnostics §14.5 |
 | D-09 | **RESOLVED 2026-10-12 (R07); implementation pending** — $c_i^D$ is the exact logical/physical gap in $\{0,1\}$; another gap is an unsupported-state mapping error. The free-block-before-decode gate is the decode prerequisite row, and zero-demand decodes execute before one-block decodes. *Formerly OPEN* between the exact gap and the conservative one-block charge (`conservative_one_block_v1`, retired for the corrected path). | §§7.1, 8.3, 12.3, 13; §15.7 |
 | D-10 | **RESOLVED 2026-10-12 (R10, R12); implementation pending** — the independent planning reserve $W_t$ is removed. Its intended protection is replaced by the admission-watermark rows $H\ge hI_i^P$ ($i\in\mathcal Q_t$), with $h$ read from the shared block manager and the rows omitted when $h=0$. No final-state reserve is imposed. *Formerly OPEN.* | §§5.3, 7.1, 8.1, 12.3; D-30 |
@@ -2103,8 +2140,8 @@ generation quality and changes no mathematical, execution, or failure contract.
 | D-16 | **AMENDED 2026-10-12 (R06, R16); implementation pending** — `order_key` remains the stable identity, canonical variable order, and final tie-break. Policy preference uses immutable per-decision service and victim ranks (smaller first): execution candidates by descending LP execution value, service rank, identity; victims by descending LP preemption value, victim rank, identity; emitted victims by victim rank, identity; execution groups by service rank, identity. Initial vLLM-oriented profile: service = current running order then arrived waiting order; victim = reverse running order. *Formerly:* ascending immutable lexicographic `order_key` with exact extraction ties. The current engine's unique non-negative integer `Sequence.seq_id` is its verified monotone admission identity; Phase E uses `order_key=(raw_seq_id,)` and the accepted decimal-string request ID. Unsupported live ID shapes fail mapping. Revisit this rule if ID generation changes or one scheduling universe spans independent generators. | §§9–10, 12.3; tests §§15.2–15.3 |
 | D-17 | **RESOLVED for the MVP** — every mapping, solver, relaxed-validation, extraction, integer-plan-validation, or fresh-prevalidation failure detected before mutation is fail-stop. The layer returns its immutable structured failure without a plan; the live LP scheduler raises a dedicated exception carrying its immutable diagnostics, produces no `SchedulerOutputs`, and ends the run. It performs no automatic retry or re-planning, empty/all-zero substitution, alternate-policy fallback, patching, or execution. D-18 governs a valid empty plan; D-20 governs failures after mutation begins. Implemented by `LPSchedulingError` (§13, live scheduler integration). | §§13, 14.1–14.3; focused tests §15.4 |
 | D-18 | **RESOLVED for the single-stage MVP** — ordinary future-only or completely empty scheduling is handled by the live `LPScheduler` before mapper invocation: when `running` is empty and `waiting` is empty or its head has `arrival_time > now`, the scheduler returns an ordinary empty `SchedulerOutputs` without mapping, LP construction, solving, extraction, precommit validation, or execution. This inherits the audited schedulers' waiting-order and future-request-validity assumptions and adds no separate validation subsystem. It also inherits `BaseScheduler.schedule()` bookkeeping: `_iteration_id` advances and supplies the output ID, while waiting/running ownership, sequence status and progress, block state, and `num_running_batches` remain unchanged. The mapper accepts only a nonempty arrived universe; an empty arrived universe reaching direct mapping is a `MappingFailure`. Future requests may still be filtered from a mixed nonempty snapshot. *Amended 2026-10-12 (R14):* idle is classified by the absence of any arrived unfinished request, not by the waiting head; useful execution is an LP row (D-26), and `no_progress` is a defensive guard. If the arrived universe is nonempty and a successfully validated plan contains no positive prefill or decode action, including an all-zero or preempt-only plan, precommit validation returns `no_progress` before execution mutation and the top-level scheduler applies D-17. No retry, forced action, alternate policy, or mathematical-layer change is added. | §§12.1, 13, 14.2, 15.4; D-20 covers failures after execution mutation |
-| D-19 | **RESOLVED for the single-stage MVP; simplification approved 2026-10-04** — the same engine receives no overlapping state-changing public calls; mapping begins with one pipeline stage and zero running batches; and mapping through execution is synchronous within one scheduler decision call. This contract supplies state stability. The snapshot ID (the scheduler iteration number, §9.2) associates the problem and plan but is not a lock or proof of unchanged state. Phase F checks problem/plan identity and fully validates the complete plan against current state immediately before mutation, including combined native memory feasibility in execution order. It does not separately compare live fields with the earlier snapshot or rebuild the mapper for comparison. Identity mismatch or failed prevalidation is a zero-mutation precommit failure followed by the D-17 fail-stop response. The separate comparison's detection of unexpected contract-violating state changes is relinquished. No new lock, version, reservation, or layer-local retry subsystem is required. Pipeline mode and concurrent public calls remain unsupported. | §§12.2, 12.6, 13, 14.2–14.3; focused tests §§15.3–15.4; D-24 remains OPEN |
-| D-20 | **RESOLVED for the single-stage MVP** — Phase F fully prevalidates before mutation and then uses native LPServe operations. Any exception after the first mutation propagates and terminates the run; potentially divergent scheduler, engine, sequence-manager, and worker state is not reused. The MVP adds no rollback, retry, alternate-policy fallback, partial output, recovery, or transaction mechanism. Known control-only output shapes, including preempt-only plans, are rejected before mutation under D-17 rather than sent through this destructive path. | §§13, 14.4, 16.3, 16.5; focused tests §15.4; D-24 remains OPEN |
+| D-19 | **RESOLVED for the single-stage MVP; simplification approved 2026-10-04** — the same engine receives no overlapping state-changing public calls; mapping begins with one pipeline stage and zero running batches; and mapping through execution is synchronous within one scheduler decision call. This contract supplies state stability. The snapshot ID (the scheduler iteration number, §9.2) associates the problem and plan but is not a lock or proof of unchanged state. Phase F checks problem/plan identity and fully validates the complete plan against current state immediately before mutation, including combined native memory feasibility in execution order. It does not separately compare live fields with the earlier snapshot or rebuild the mapper for comparison. Identity mismatch or failed prevalidation is a zero-mutation precommit failure followed by the D-17 fail-stop response. The separate comparison's detection of unexpected contract-violating state changes is relinquished. No new lock, version, reservation, or layer-local retry subsystem is required. Pipeline mode and concurrent public calls remain unsupported. | §§12.2, 12.6, 13, 14.2–14.3; focused tests §§15.3–15.4; D-24 and §19 govern the future extension |
+| D-20 | **RESOLVED for the single-stage MVP** — Phase F fully prevalidates before mutation and then uses native LPServe operations. Any exception after the first mutation propagates and terminates the run; potentially divergent scheduler, engine, sequence-manager, and worker state is not reused. The MVP adds no rollback, retry, alternate-policy fallback, partial output, recovery, or transaction mechanism. Known control-only output shapes, including preempt-only plans, are rejected before mutation under D-17 rather than sent through this destructive path. | §§13, 14.4, 16.3, 16.5; focused tests §15.4; D-24 and §19 govern the future extension |
 | D-21 | **RESOLVED for the single-stage MVP (approved 2026-10-05)** — execute and emit all selected prefills first, then all selected decodes, each ascending by existing `order_key`; central native operations and emitted metadata share this order. Built as a separate ordered action list; the accepted plan, its selected actions, and chunk sizes are unchanged. Rationale: matches prompt-first physical input packing and gives a deterministic within-group order. Inherited mixed-batch/sampler limitations remain under §16.4 and D-25. *Extended 2026-10-10:* all selected victims are preempted before any scheduled action, ascending by `order_key`, and `preempted_seq_ids` uses that order; native front insertion leaves them in `waiting` in reverse call order (§13, native preemption execution). *Amended 2026-10-12 (R07, R16); implementation pending:* victims by victim rank, then identity; then prefills, zero-demand decodes, and one-block decodes, each by service rank, then identity; admissions appended in that order; retained residents keep their relative positions (§13, amended execution order). | §13; focused test `tests/test_lpserve_plan_execution.py` (`test_mixed_output_is_prompt_first_in_native_execution_order`) |
 | D-26 | **RESOLVED 2026-10-12 (R01, R14); implementation pending** — the LP includes $\sum_i(I_i^P+y_i)\ge1$ for every validated nonempty arrived universe; preemption alone does not count; a state without a legal useful integer plan is reported, not given an invented action. Admission validity does not guarantee completion. | §§7.1, 10, 14.2 |
 | D-27 | **RESOLVED 2026-10-12 (R08); implementation pending** — resident capacity is an LP row counting all retained residents, including omitted ones; the precommit resident check remains. | §§6.4, 7.1, 13 |
@@ -2113,6 +2150,15 @@ generation quality and changes no mathematical, execution, or failure contract.
 | D-30 | **RESOLVED 2026-10-12 (P10 step 8); implementation pending** — remove reserve and decode-policy configuration fields and their `lp_*` `EngineArgs` counterparts; reject obsolete supplied arguments, including an explicit zero reserve, with a migration error; no compatibility translation. | §13 |
 | D-31 | **RESOLVED 2026-10-12 (user decision, R21); implementation pending** — SciPy/HiGHS status 2 is solver-reported LP infeasibility with raw status and diagnostics retained; it is not an exact certificate and is distinct from exhaustive no-useful-work; no certificate checker or extra solve. | §§9.3, 10.5, 14.1 |
 | D-25 | **RESOLVED** — MVP compatibility mode reuses existing LPServe/SLAI behavior, including native recomputation preemption, without repairing inherited framework defects. Material inherited limitations are documented; only issues that block the selected MVP path require action. | §§2.4, 4.4, 13, 16 |
+
+| D-24 | **DESIGN RESOLVED 2026-10-18; implementation and validation pending** — fixed TP, overlapping PP, and combined TP+PP for LP and the adapted-vLLM reference; the inherited execution and preemption mechanisms remain the compatibility basis. No blanket ban on in-flight victims and no stronger LP-only preemption guarantees. Formerly OPEN; source-sensitive mechanics must be checked during implementation. | §19; especially §§19.1–19.4, 19.9 |
+| D-32 | **APPROVED for the future extension** — brief shared controller protection for coherent capture and validation/commit; planning on immutable inputs outside that protection. One scheduling decision in progress per engine. No GPU drain, solver-duration lock, or independent competing allocation decision. | §19.3 |
+| D-33 | **APPROVED for the future extension** — keep all residents, including outstanding requests, in ownership and resource accounting; execution candidates must be ready at capture; victim eligibility follows the inherited contract and can include in-flight residents. | §§19.4–19.5 |
+| D-34 | **APPROVED for the future extension** — tolerate completion and registration during planning, accept older feasible plans, and omit only confirmed completed-and-released victims during fresh commit validation. Preserve the original mathematical proposal separately from actual execution. | §19.6 |
+| D-35 | **APPROVED for the future extension** — distinguish dispatch, temporary wait, ordinary idle, and failure. Do not hide solver/numerical errors, fabricate useful work, or add automatic retries or fallback. | §19.7 |
+| D-36 | **APPROVED for the future extension** — use per-microbatch token/action budgets, all-resident capacity, and the existing common profiled block pool; no automatic scaling by TP/PP degree and no double charge for outstanding allocations. | §19.5 |
+| D-37 | **APPROVED for the future extension** — extend LP and the adapted reference on the same runtime conditions while preserving their distinct policy rules; no upstream whole-engine equivalence claim. | §§19.1, 19.8 |
+| D-38 | **APPROVED for the future extension** — bounded CPU and GPU validation of TP-only, genuinely overlapping PP, and combined TP+PP for any combined claim; retain decision-to-completion traces and exact provenance. Performance and recovery evaluation remain separate. | §19.9 |
 
 D-13 provides no basic/extreme-point or fractional-count guarantee, and the
 amended LP has none in general (§7.3); its performance, control, and basis
@@ -2137,10 +2183,11 @@ candidate is a hidden default.
 | D-13 | Remaining solver performance, control, and basis policy | Finite live/performance limits; possible `highs`/`highs-ipm`; edge-weight and other tuning; IPM/crossover; basis certification; warm starts/basis reuse; threading/parallelism/random seed; cross-version degenerate-optimum behavior; any solver-output-to-fractional-bound assertion | Does not block initial Phase D; before the relevant performance, control, or structural claim |
 | D-22 | Recomputation output contract | Original prompt/generated suffix versus expanded-context representation | Before claiming corrected or public recomputation-output semantics; MVP compatibility mode may use native preemption with the documented inherited limitation |
 | D-23 | Approximation guarantee | None for the corrected constructor: the manuscript's utility-limit family has ratio tending to zero; a guarantee would need a different method | Before any theoretical quality claim |
-| D-24 | Pipeline-parallel policy | Deferred; safe eligibility and completion association unknown | Before any pipeline support claim |
 | Q11 | Adapted-policy recovery and overhead evaluation (OPEN, deferred 2026-10-12) | Primary record: `docs/LP Scheduler Research Context.md` §21 | Before any quantified recovery, fidelity, or overhead claim |
 
 D-09 and D-10 moved to the register above as RESOLVED on 2026-10-12.
+D-24 moved there as design-resolved on 2026-10-18. Neither that move nor
+D-32–D-38 establishes implementation, runtime correctness, or measured overhead.
 
 The decision record for an item MUST include the selected rule, rationale, affected interfaces, tests, and experiment metadata field where relevant.
 
@@ -2171,3 +2218,345 @@ execution mode. These cannot be incidental implementation choices.
 ---
 
 This specification is intentionally incomplete only where the source material leaves a genuine research choice or framework blocker. Such incompleteness is represented by explicit OPEN decisions and BLOCKER gates; it must not be replaced by undocumented defaults.
+
+
+## 19. Approved future TP and PP extension
+
+### 19.1 Approval, purpose, and boundary
+
+**Approved with the user on 2026-10-18; documentation only.** This section is
+the canonical implementation-facing record of the parallelism discussion.
+The local source reviewed was clean `main` at
+`2c61d3e68b96fdab2947b6be4d197ec7bb36215a`. No new CPU test, GPU run, or
+performance measurement was performed for this record.
+
+Extend both `LPScheduler` and `AdaptedVLLMScheduler` to fixed tensor
+parallelism (TP), overlapping pipeline parallelism (PP), and combined TP+PP.
+Fixed means that the worker group and model partitioning do not change
+during a run. Each scheduler selects the next microbatch; the engine handles
+its passage through all pipeline stages. This does not select dynamic
+parallelism, replica routing/data parallelism, expert parallelism,
+prefill/decode disaggregation, or GPU placement optimization. Select exact
+model, degrees, topology, and workload for each implementation/validation task;
+do not imply that every model, degree, or multi-node arrangement is covered.
+
+The research purpose remains observing coefficient policies and comparing
+decision methods in the same serving framework. Keep the path from captured
+inputs to LP relaxation, integer extraction, and native execution visible.
+Do not construct a reference schedule first and encode its answer in weights.
+No new coefficient formula, solver tuning, performance target, recovery
+criterion, or approximation guarantee is selected. Q11 remains OPEN.
+
+This is the approved future replacement for the single-stage assumptions in
+D-08, D-17–D-19, D-24, and D-26 where explicitly stated below. Existing
+single-stage behavior is not changed by this documentation task. Implementation
+and validation of the replacement are required before removing support guards.
+The mathematical source remains authoritative; §19.4 identifies the required
+alignment before enabling the extension. The historical Phase C audit and
+earlier test evidence are not repinned or extended.
+
+### 19.2 Existing mechanisms to reuse and limitations to inherit
+
+Reuse `ParallelConfig`, worker creation and model partitioning,
+`PipelineParallelLLMEngine`, `PipelineParallelWorker`, native cache managers,
+`SchedulerOutputs`, dispatch queues, completion processing, and native
+reset-and-recompute preemption. LP already executes victims through
+`BaseScheduler._preempt`; do not build another cache-release path.
+
+At the reviewed revision, the inherited vLLM-style/Sarathi victim loops can
+select a `RUNNING` resident; `_preempt` accepts native executing statuses
+`RUNNING` and `PAUSED`. SLAI prefers its paused-prefill victims. These policy
+preferences differ from physical execution guarantees. The new adapted
+reference currently rejects TP>1 and PP>1 and requires paused residents.
+Its extension requires explicit readiness/ownership changes, not just removal
+of guards. Relevant sources are `sarathi/core/scheduler/{base_scheduler,
+vllm_scheduler,sarathi_scheduler,slai_scheduler,adapted_vllm_scheduler}.py`,
+`sarathi/engine/{arg_utils,pipeline_parallel_llm_engine}.py`, and
+`sarathi/core/sequence_manager/{base_sequence_manager,
+worker_sequence_manager}.py`.
+
+Do not restrict victims to non-in-flight requests. Use scheduler ownership,
+allocation, and the selected inherited native-status contract to construct
+the victim set. Preserve execution/preemption exclusion within the new plan.
+Eligibility is supplied to the LP; relaxed values do not establish it.
+
+The extension must not require LP-only block reservations, cache versions,
+GPU-completion checks for every victim, transactions, or rollback. Inherit and
+document native recomputation/output, sampling, replay, and completion
+limitations (§16), addressing a defect only if it prevents the selected path
+from running. Existing worker ordering may protect reuse on each GPU even
+while an old batch continues elsewhere in the pipeline. Discarding an old
+token alone does not prove all old writes and bookkeeping harmless; this is
+an inherited execution assumption, not a newly proved guarantee. Reusing the
+same mechanisms does not guarantee identical exposure to defects when LP
+chooses different action combinations.
+
+### 19.3 Protected capture, unprotected planning, protected commit
+
+Use brief shared controller protection around capture and around fresh
+validation/commit. A common controller lock is the selected straightforward
+mechanism; choose its exact placement and lock order during implementation.
+All relevant writers must honor the same boundary: scheduling ownership and
+allocation, engine-side scheduling replay, completion updates, outstanding
+batch accounting, and registration. An LP-local lock that completion ignores
+is insufficient. Apply the common controller rule to the adapted reference
+as well; do not require it to use LP data types or copy the LP policy.
+
+1. Wait for dispatch capacity when the outstanding-batch limit is reached.
+   Do not predict an unfinished final-stage result to build a speculative
+   ready set. A first-stage wake-up is not final completion.
+2. Under capture protection, copy only the controller fields required for
+   ownership, eligibility, progress, allocation, free blocks, limits, ranks,
+   and coefficients into immutable records. Capture the decision time and
+   problem identity. Do not read or copy GPU KV tensors or drain workers.
+3. Release protection. Construct coefficients/ranks, solve, and extract from
+   the private captured inputs. Do not reread live state for those steps.
+   Completions may be applied and new waiting requests registered meanwhile.
+4. Under commit protection, validate the original proposal and its permitted
+   completion adjustments (§19.6), check fresh combined native feasibility,
+   apply native actions, mark selected requests as executing through engine
+   replay, and update/publish batch accounting in dispatch order. No completion
+   may interleave between the relevant checks and controller mutations.
+5. Release protection without waiting for GPU/model results. Use the existing
+   dispatch and completion mechanisms; preserve their required ordering.
+
+Keep one planning decision/pending plan per engine. No other scheduling
+decision may allocate or dispatch a competing plan during its solve. This
+does not limit already-dispatched microbatches to one. Registration may add
+waiting requests but must not allocate their cache. Other state-changing
+operations that would invalidate these assumptions are outside this initial
+contract; do not add speculative cancellation or recovery support.
+
+Protection pauses conflicting CPU record updates, not GPU execution. Fields
+need not be copied at the same nanosecond; excluding writers during the copy
+provides one coherent controller state. Arbitrarily mixed observations are
+not allowed: recording A's four allocated blocks, then reading free blocks
+after A completes, and also crediting A's preemption would count its memory
+twice. Older coherent inputs are acceptable; inconsistent inputs are not.
+
+Hold no controller protection during coefficient calculation, optimization,
+integer extraction, or blocking worker/result calls. Preserve a consistent
+lock order with existing sequence-manager locks. This is not cross-layer
+atomic execution: post-mutation exceptions still terminate the run and the
+affected state is not reused (D-20). Capture and commit may cost time growing
+with requests/actions; measure their duration and contention rather than
+claiming zero overhead or guaranteed speedup.
+
+### 19.4 Request sets and mathematical alignment
+
+Treat step t as one microbatch-selection opportunity, with earlier batches
+possibly outstanding. Keep the existing objective, variables x, y, I^P, z,
+and fixed-charge allocation model. No per-stage optimization variables are
+required merely because execution is distributed.
+
+| Set | Future mapping contract |
+|---|---|
+| U_t | Every arrived, unfinished, scheduler-owned request at capture |
+| R_t | All allocated residents, including requests with outstanding actions |
+| Q_t | Arrived waiting requests with no allocated cache |
+| P_t | Requests native-ready for a positive prefill/recompute chunk at capture |
+| D_t | Allocated, prompt-complete requests native-ready for one decode at capture |
+| Z_t | Owned, allocated, unfinished residents accepted by the inherited preemption contract; may include in-flight residents |
+
+Available execution candidates are P_t union D_t. An outstanding current
+execution prevents selecting another execution action for that request. Its
+residency and memory do not disappear, and it need not be excluded from Z_t.
+Waiting requests may be recomputation returns; abandoned older attempts are
+handled through inherited replay/completion semantics. Do not claim that
+native status acceptance proves physical GPU cache-release safety.
+
+Implement these meanings in mapping and executor checks, including the current
+blanket `PAUSED` resident checks, not only in the scheduler entry guard. Keep
+rank and utility policy inputs explicit and fixed for the captured decision.
+Do not add newly ready or newly arrived execution candidates during commit.
+
+**Required mathematical alignment before enabling PP:** amend
+`docs/math/main-llm-serving.tex` (`subsec:myopic_ilp` and
+`subsec:lp_relaxation`) to state this decision boundary, eligibility binding,
+runtime waiting boundary, and distinction between original proposal and
+effective execution after completed victims are omitted. Review the legality
+and useful-progress arguments under these assumptions. In particular,
+snapshot ILP infeasibility is not a claim that the whole pipeline cannot make
+progress, and dropping a completed victim does not make the modified vector
+feasible against the original F and R_t automatically. Keep mathematical
+claims conditional on the stated bookkeeping/native model; do not extend
+them into a proof of physical pipeline safety. This documentation record
+selects the intended alignment but does not itself edit the TeX or extend its
+existing proofs. Do not silently override that mathematical source.
+
+### 19.5 Capacity and cache accounting
+
+B_max counts prompt/decode tokens in the new microbatch; S_max counts its
+execution actions. N_max (`max_num_seqs`) counts all retained residents across
+outstanding batches. C_max remains the per-request prefill cap. Keep these
+limits separate. The outstanding-batch cap comes from the native engine;
+PP does not automatically divide the configured token budget, split one
+scheduler output into PP outputs, or multiply capacity limits by TP/PP degree.
+
+Reuse `BaseLLMEngine._init_cache`: profile local cache-block capacity on every
+worker and use their minimum as the common block count. Local bytes per
+block reflect that worker's layers/KV heads (`CacheEngine.get_cache_block_size`).
+Each PP stage retains its own layers' cache for resident requests, not just
+its current microbatch. Aggregate GPU bytes are not a freely pooled allocator.
+Do not sum worker block counts as available logical context blocks.
+
+Free blocks at capture already exclude centrally committed allocations for
+outstanding work. Do not subtract that work again. Preserve full-context
+admission, watermark, actual zero-or-one decode demand, native append gates,
+and the selected execution order. No additional reserve is introduced.
+
+### 19.6 Completion during planning and effective execution
+
+Allow completion and registration between capture and commit. With one
+allocator decision in progress, registration without allocation, and no
+independent dispatch, ordinary completion does not consume new physical cache
+blocks: it retains or frees allocations. Appending an output can add a logical
+block; physical growth for the next action is charged at scheduling. Previously
+ready execution candidates are not advanced by another current action during
+this interval. Later-ready requests may be omitted, accepting lower utility
+or utilization rather than recomputing merely for freshness.
+
+At commit, first validate the original integer proposal against its original
+captured problem. Build a separate effective execution description; do not
+mutate the accepted mathematical result. Omit a selected victim only on
+positive native completion evidence that the same request finished and its
+central allocation was released. A missing ID/table alone is not that evidence.
+Reuse completion results and retain only the information needed by the pending
+decision; do not add an unbounded lifecycle journal or a cache-version system.
+
+For example, F=2 plus a planned recovery of four blocks provides six blocks.
+If that victim finishes, live free memory becomes six and the victim action is
+omitted; it must not be credited again to produce ten. Account similarly for
+resident places. Completed non-victims can only provide additional room under
+the supported update contract. A victim that completes a nonfinal step may
+still be preempted through the inherited current-state path.
+
+Freshly validate effective execution against current ownership, readiness,
+progress, resident capacity, free blocks, recovery, watermark, append gates,
+and native mutation order, all together. Do not validate a victim-dropped
+vector against unchanged original resource parameters and pretend it is the
+same plan. No execution action or chunk is opportunistically added, enlarged,
+or substituted. Do not replan merely because resources or candidates increased.
+Any other genuine invalidity remains a visible pre-mutation failure under
+§19.7, rather than an automatic retry. Unexpected interference must not be
+hidden by repeated solves.
+
+### 19.7 Dispatch, wait, idle, and failure
+
+| Outcome | Rule for the future engine/scheduler integration |
+|---|---|
+| Dispatch | A successful original proposal yields a freshly validated useful effective execution; commit it |
+| Wait | Pipeline capacity is full, or no execution candidate is ready while work is outstanding; commit nothing and process completion before a fresh decision |
+| Wait after no useful plan | Solver-reported LP infeasibility or a validated `NoUsefulWork` outcome with outstanding work may describe a temporary state; retain that outcome and diagnostics, execute no partial plan, and reconsider after completion |
+| Ordinary idle | No arrived unfinished work and no outstanding batch requiring completion; keep the existing idle meaning |
+| Failure | Malformed state, other solver/numerical failure, invalid relaxed/integer result, failed fresh validation outside the permitted completion adjustment, or no useful feasible work when nothing outstanding can change the state |
+
+Waiting after completion is a new normal scheduling opportunity, not retrying
+a solver error. Preserve D-12/D-31: solver status 2 is reported infeasibility,
+not an exact certificate. Do not classify every unsuccessful solve as wait.
+Outstanding work must be processed even if current request ownership became
+empty after preemption; do not return final idle and abandon pending results.
+
+Keep the useful-execution row for dispatchable LP plans. A valid all-zero or
+preempt-only output is not substituted for useful execution. Wait makes no
+queue/block/preemption mutation and need not enter the LP when its reason is
+already known. Preserve native iteration/output identity conventions and count
+only actual dispatched batches, with one corresponding completion decrement.
+
+Retain rejection/reporting of unsupported control-only outputs (§16.3),
+including the adapted reference's typed unexecuted preempt-only proposal.
+Do not force an unrelated action or silently repair its policy to get a model
+result. Unexpected pre-mutation failure remains fail-stop; after mutation
+begins, propagate the failure and discard the run's state. No automatic
+retry, fallback, rollback, or general recovery subsystem is selected.
+
+### 19.8 Reference comparison and records
+
+Extend the adapted reference's supported runtime while preserving its FCFS
+service order, tail-victim preference, waiting-admission rule, resource model,
+and policy-specific proposal/execution layout from research-context §16.1.
+Apply native readiness before selecting new execution actions; busy residents
+still count and remain possible victims under the agreed contract. Do not
+import LP-only chunk/action caps, progress constraints, coefficient logic, or
+decode-demand ordering into that policy. Reinspect the pinned upstream sources
+where needed to describe differences; label this a parallel LPServe adaptation,
+not upstream PP equivalence. Inherited policies can supply additional comparisons.
+
+Run both schedulers under the same common controller coordination, model,
+worker topology, workload, and declared comparable resource settings. Identical
+coordination does not imply identical cost: LP may spend longer planning and
+make different allocation/preemption choices. Do not attribute runtime effects
+automatically to coefficients or require identical physical block IDs.
+
+Extend existing traces only as needed: captured request sets/progress/resource
+counts and policy inputs, problem/proposal identity, original selected victims
+and execution, completion-confirmed omissions, actual emitted output, wait or
+failure reason, and dispatch/completion association. Keep planned snapshot
+utility separate from effective executed utility; if the latter is reported,
+use the stated captured coefficients and actual actions, not an undocumented
+refresh or a claim of current optimality. Record TP/PP degrees, topology,
+limits, pool/watermark, and the shared coordination rule. Separate capture,
+planning, commit, and controller-wait timing where measured. Instrumentation
+does not select a Q11 performance/recovery criterion.
+
+### 19.9 Implementation sequence and acceptance boundary
+
+Use responsibility-based implementation names and preserve the D/E/F
+separation. The affected source boundaries to inspect are:
+
+| Responsibility | Existing files/interfaces |
+|---|---|
+| Shared controller coordination and dispatch/completion accounting | `sarathi/engine/base_llm_engine.py`, `sarathi/engine/pipeline_parallel_llm_engine.py`, `sarathi/core/scheduler/base_scheduler.py` |
+| Immutable capture, readiness, victim sets, ranks, and coefficients | `lpserve_state_mapping.py`; live coordination in `sarathi/core/scheduler/lp_scheduler.py` |
+| Original-plan validation, completed-victim adjustment, fresh native checks, and mutation | `lpserve_plan_execution.py`; retain the framework-light boundary of `lp_relaxation_scheduler.py` |
+| Adapted reference proposal, readiness, and native execution | `sarathi/core/scheduler/adapted_vllm_scheduler.py`; preserve research-context §16.1 policy |
+| Supported configuration and real engine entry | `sarathi/config.py`, `sarathi/engine/arg_utils.py`, active inference/comparison scripts |
+| Focused checks | Existing planner, mapper, executor, live-scheduler, adapted-reference, EngineArgs, and relevant driver tests under `tests/` |
+
+1. Recheck branch, revision, working tree, affected current source, and the
+   pinned audit. Read this section, research-context §16.1/§22.2, and the
+   mathematical source. Complete §19.4's mathematical alignment and proof
+   review before implementing the amended contract. Preserve unrelated work.
+2. Implement the shared capture/commit boundary, completion evidence, native
+   readiness/victim mapping, effective execution checks, waiting behavior,
+   and corresponding adapted-reference extension. Remove support guards only
+   when their replacement checks exist. Exact lock placement, compact record
+   shapes, and test configuration are routine implementation choices; they
+   must preserve this contract and require no speculative abstractions.
+3. Run focused CPU checks before GPU execution: existing LP/reference
+   regressions; resource/set mapping with busy residents; no duplicate current
+   execution; completion during planning; coherent capture (including the
+   double-count example); unchanged selected actions; completed-victim omission
+   without double recovery; unknown missing-victim rejection; protected commit
+   and accurate batch counts; wait/idle/failure distinctions; and solver errors
+   that are never hidden by waiting. Use controlled interleavings, not only
+   timing-sensitive stress tests. No claim of general inherited repair follows.
+4. On an already allocated Unity GPU node, run directly in the existing
+   repository Python environment. Do not invoke `srun`, obtain another
+   allocation, submit jobs, SSH elsewhere, or rebuild the environment unless
+   explicitly requested. Report the exact environment failure if blocked.
+5. Start with bounded TP>1/PP=1, TP=1/PP>1 with actual overlap, then TP>1/PP>1
+   for a combined claim. Use a compatible model and available hardware; record
+   exact degrees rather than invent a universal supported matrix. Use dummy
+   weights for a scoped lifecycle milestone where appropriate; they do not
+   establish generation quality. Check LP and the adapted reference.
+6. Inspect admission, resident partial prefill, decode/block growth, omission
+   and later selection, preemption/recomputation (including inherited in-flight
+   eligibility), completion, final release, and final idle. Observe overlap in
+   outstanding batches/dispatch and completion records; PP configuration alone
+   is not overlap evidence. Check per-worker allocation counts/conservation and
+   completion association without demanding identical physical block IDs.
+7. Retain tested revision or base plus exact changes/hashes, host/allocation,
+   interpreter/environment, model assets, commands, outputs, and trace findings.
+   State which cases passed, failed, or were unexecuted. Earlier single-worker
+   tests do not validate later parallel changes. Bounded success is scoped
+   support, not all-workload correctness, fairness, performance, Q11 recovery,
+   or upstream equivalence.
+
+The completion boundary separates mathematical alignment, shared-engine and
+executor implementation, live integration of both schedulers, and observed
+GPU validation. None substitutes for the others. This record authorizes no
+implementation run, commit, push, or new experiment by itself. Exact test
+degrees/environment, measured coordination overhead, and behavior outside the
+selected native paths remain to be established in the future task. Unrelated
+OPEN research choices and inherited limitations stay explicit.

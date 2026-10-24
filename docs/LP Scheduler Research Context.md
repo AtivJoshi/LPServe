@@ -237,7 +237,7 @@ i \text{ is resident and legally preemptible at the beginning of step }t
 \right\}
 $$
 
-denote the preemptible subset of $U_t$. Waiting, already-preempted, finished, and otherwise non-preemptible requests do not belong to $\mathcal{Z}_t$. Requests whose physical KV state cannot safely be released at the current decision boundary, including relevant pipeline-in-flight requests, must also be excluded.
+denote the preemptible subset of $U_t$. Waiting, already-preempted, finished, and otherwise non-preemptible requests do not belong to $\mathcal{Z}_t$. The existing single-stage mathematical contract excludes requests whose physical KV state cannot safely be released. For the approved future TP/PP compatibility extension (2026-10-18), native preemption eligibility may include in-flight residents; it is not a proof of physical release safety. The required mathematical alignment and implementation boundary are in design §19.4 and §22.2 below. Do not silently broaden the current mathematical source.
 
 The precise mappings of $U_t$ and $\mathcal{Z}_t$ to `LPServe`/SLAI `Sequence` objects must be derived from the current implementation and validated before scheduler state is mutated.
 
@@ -990,6 +990,12 @@ policy. How recovery and overhead are measured is OPEN under Q11 (§21).
 
 ## 16.1 Adapted vLLM reference specification
 
+**Future scope approved 2026-10-18:** extend this reference and the LP
+scheduler together to fixed TP, overlapping PP, and combined TP+PP under
+design §19. The implementation/evidence below retains its original
+single-worker boundary; removing its guards alone does not implement the
+extension or establish upstream PP equivalence. See §22.2.
+
 *(implemented 2026-10-18 at base `40652511bf4c7687eebaa4276f1751dc13820c6f`;
 user-approved specification)* The adapted reference is
 `AdaptedVLLMScheduler` in
@@ -1038,6 +1044,13 @@ Adaptations and boundaries:
   watermark is 0.0 and applies only when `running` is non-empty
   ([kv_cache_manager.py L505–513](https://github.com/vllm-project/vllm/blob/db9527a46873454610df6dbedf79a36d6bf1a7f6/vllm/v1/core/kv_cache_manager.py#L505-L513));
   the shared LPServe rule is used deliberately (R05).
+- **Decode convention (clarified 2026-10-19):** the LP follows the free-block
+  check enforced by the inherited vLLM-style, Sarathi, SLAI, and SimpleChunking
+  schedulers. It is not a physical allocator requirement; this adapted
+  reference uses actual additional demand and permits zero-demand decode at
+  zero free blocks. Both implementations stay unchanged. Removing the
+  convention from LP or adding it to the reference is deferred pending an
+  explicit later decision; see [design §8.3](lp_scheduler_design.md#83-decode-demand).
 - **Arrival input:** future-dated waiting entries registered by benchmarks are
   skipped without reordering the arrived ones. An arrived request with an
   empty prompt is a visible pre-mutation unsupported state (no empty-prompt
@@ -1475,6 +1488,36 @@ remain pending. Historical CPU and GPU evidence applies only to its original
 code and workloads. A GPU regression requires separate authorization after the
 CPU checks pass. Recovery and performance experiments remain deferred under
 Q11.
+
+---
+
+## 22.2 Approved future parallelism extension (2026-10-18)
+
+The user approved recording the TP/PP design for a future implementation task.
+The canonical detailed contract and decision register are in
+[design §19](lp_scheduler_design.md#19-approved-future-tp-and-pp-extension)
+(D-24 and D-32–D-38). This is a design decision, not implementation acceptance
+or executed validation. No new coefficient policy or Q11 criterion is selected.
+
+Extend LP and the adapted reference together on the existing serving stack.
+Accept older feasible decisions: use brief shared protection for coherent CPU
+state capture and fresh commit, allow completion/registration during planning,
+and hold no protection across solving or GPU-result waits. GPUs continue
+executing. Execution candidates must be ready at capture; all residents remain
+accounted for, and native preemption candidates may include in-flight requests.
+Confirmed completed victims can be omitted without double-crediting released
+memory. Dispatch, wait, idle, and failure remain distinct. No stronger LP-only
+preemption subsystem, general retries, or inherited-defect repair is required.
+
+Fixed TP/PP degrees and one microbatch-selection problem remain the scope;
+stage assignment and dynamic topology optimization are not added. The
+mathematical source needs the alignment specified in design §19.4 before the
+extension is enabled. The current formulation, current support guards, pinned
+audit, and historical evidence remain unchanged by this planning record.
+Future work must separately establish CPU correctness, live integration of
+both schedulers, and bounded TP-only, overlapping PP, and combined GPU support
+for the configurations claimed. Record execution provenance and distinguish
+planning, extraction, effective execution, and runtime effects.
 
 ---
 

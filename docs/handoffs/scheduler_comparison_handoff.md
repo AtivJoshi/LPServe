@@ -279,32 +279,41 @@ helpers could not take a case. Helper scripts are unchanged.
 
 Analytical unless marked observed.
 
-1. **The LP decode prerequisite is a modeling contract, not a physical
-   requirement in LPServe.** `append_slot` allocates only when the logical
-   table is longer than the physical one
-   (`base_block_space_manager.py:101–110`). `can_append_slot` (free > 0) is a
-   separate query. The inherited schedulers call it in their loops; the
-   worker calls it and ignores the result (`worker_sequence_manager.py:47`).
-   So the executor comment "The native append gate requires a free block even
-   for gap 0" (`lpserve_plan_execution.py:413`) and design §8.3 ("native
-   append gate's free-block requirement") describe that query, not a
-   constraint of `append_slot`. The adapted reference does not call it, and
-   its zero-demand decodes at 0 free blocks ran on GPU (observed, here and in
-   the earlier reference run); cache-content correctness was not checked.
-   Consequence (observed, decision 1): with 4 residents at demand 0 and 0
-   free blocks, no LP plan without a victim is useful, so the LP must preempt
-   finished prefill work to decode. The contract is approved (D-09/R07) and
-   was kept. The smallest alternative would require a free block only for
-   one-block decodes, which actual memory already covers, by dropping the
-   prerequisite row. That would change §§7.1, 8.3, 11.3 and the math source,
-   so it needs a decision.
-2. **The prerequisite row `Σy ≤ S_max·H` relaxes weakly.** A fractional
-   victim buys up to `S_max` decodes. At decision 1 (uniform) the relaxed
-   optimum is y = (0.2, 1, 1, 1), z_A = 0.8, objective 2.4. The integer
-   optimum is 2. Extraction found the integer optimum, so the gap is the
-   relaxation's (observed). Rank-based decisions 3, 4, 6, … show extraction
-   losses (4.19 → 3.42, 9.06 → 8.17) from fractional self-funding
-   (y_i + z_i = 1 with small z_i).
+**Clarified/corrected 2026-10-19 after source and recorded-input review at
+`2c61d3e`.** These interpretation updates leave the tested revision and retained
+run evidence unchanged. Best integer utilities below are analytical review
+results, not outputs of an executed exact-ILP solver.
+
+1. **The LP decode prerequisite follows an inherited scheduler convention.**
+   The vLLM-style, Sarathi, SLAI, and SimpleChunking schedulers enforce
+   `can_append_slot()` (free > 0); the LP preserves that convention. It is not
+   a physical allocator requirement: `append_slot()` allocates only for an
+   actual block gap, and worker replay ignores the query's return value.
+   The adapted vLLM reference uses actual additional demand and permits
+   zero-demand decodes with no free blocks (observed on GPU). At decision 1,
+   all four residents have demand 0 and no free blocks: the LP convention
+   forces a victim, while the reference decodes all four. See
+   [design §8.3](../lp_scheduler_design.md#83-decode-demand) for source links.
+   Both implementations remain unchanged. Removing the convention from LP
+   or adding it to the reference is deferred; either requires an explicit
+   later decision. Cache-content correctness remains unverified.
+2. **Separate relaxation gaps from extraction loss.** The prerequisite row
+   `Σy ≤ S_max·H` can be funded fractionally; a lower returned utility than
+   the LP optimum alone does not establish extraction loss.
+
+   | Policy / decision (zero-based) | LP optimum | Best integer utility | Returned utility | Attribution |
+   |---|---|---|---|---|
+   | Uniform / 1 | 2.4 | 2 | 2 | Relaxation gap |
+   | Rank-based / 3 | ≈4.1944 | ≈3.4167 | ≈3.4167 | Relaxation gap |
+   | Uniform / 4 | 16 | 16 | 15 | Extraction loss |
+
+   For uniform decision 4, the constructor evicts A and C (one block each),
+   then prefills B's 17 tokens: utility 17 − 2 = 15. Evicting D alone releases
+   two blocks for the same prefill: utility 17 − 1 = 16. This is an accepted
+   constructor limitation. The earlier attribution of rank-based decisions
+   3, 4, 6, … to extraction loss was incorrect: their returned plans attain
+   the best integer utility in the recorded states; their gaps are due to
+   the relaxation.
 3. **Both LP policies cycle with period 2 from decision 4/5 (observed to the
    bound).** A readmitted request finishes its prompt with no output (the
    inherited final-prefill sample is discarded), decode demand 0, and 0 free
