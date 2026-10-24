@@ -329,6 +329,62 @@ def rank_based_utility(captured, request, *, decode_scale, prefill_scale,
     )
 
 
+def coordinated_rank_utility(captured, request, *, rank_base, c_max, b_max):
+    """Coordinated rank coefficient policy for ``construct_coefficients``.
+
+    Bind ``rank_base`` and the decision's configured ``c_max`` and ``b_max``
+    (for example with ``functools.partial``) to obtain a
+    ``policy(captured, request)``. With ``r`` the zero-based position of
+    ``request`` in ``running_order`` followed by ``arrived_waiting_order``::
+
+        w = rank_base ** r
+        q = min(prompt_tokens_remaining, c_max, b_max)   (prefill-eligible)
+
+        decode_utility        = w for a decode-eligible request, otherwise 0
+        prefill_token_utility = w / q for a prefill-eligible request,
+                                otherwise 0
+        preemption_penalty    = w for an eligible resident victim,
+                                otherwise 0
+
+    A complete available chunk of ``q`` prefill tokens and one decode
+    therefore earn the same request-specific value ``w``. The weight uses the
+    service position for every term; the rank profile's separate victim rank
+    is not read. ``rank_base`` must be a finite real in (0, 1]; ``c_max`` and
+    ``b_max`` must be positive integers. Reads only the immutable captured
+    data. This is one provisional candidate (D-01 to D-04 remain OPEN), not a
+    selected policy.
+    """
+    _require(
+        _is_real(rank_base) and 0 < rank_base <= 1,
+        f"coordinated utility rank_base must be a finite real in (0, 1], "
+        f"got {rank_base!r}",
+    )
+    for name, value in (("c_max", c_max), ("b_max", b_max)):
+        _require(
+            _is_int(value) and value > 0,
+            f"coordinated utility {name} must be a positive integer, got "
+            f"{value!r}",
+        )
+    raw_id = request.raw_seq_id
+    weight = rank_base ** (
+        captured.running_order + captured.arrived_waiting_order
+    ).index(raw_id)
+    prefill = 0.0
+    if request.prefill_eligible:
+        chunk = min(request.prompt_tokens_remaining, c_max, b_max)
+        _require(
+            chunk >= 1,
+            f"raw_seq_id {raw_id}: coordinated utility needs a positive "
+            f"available chunk, got {chunk}",
+        )
+        prefill = weight / chunk
+    return RequestUtility(
+        decode_utility=weight if request.decode_eligible else 0.0,
+        prefill_token_utility=prefill,
+        preemption_penalty=weight if request.preemption_eligible else 0.0,
+    )
+
+
 def construct_coefficients(captured, policy):
     """Pure coefficient construction for one decision.
 

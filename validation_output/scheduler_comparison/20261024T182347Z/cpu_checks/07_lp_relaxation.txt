@@ -1,0 +1,47 @@
+$ python -B -m unittest tests.test_lp_relaxation_scheduler -v
+test_avoidable_negative_first_selection (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_bounded_enumeration_against_constructor (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... 
+[enumeration counts] {'success': 129, 'solver_reported_lp_infeasibility': 20, 'no_legal_useful_work': 1, 'guided_success': 129, 'guided_none': 21, 'plans_enumerated': 10348}
+ok
+test_chunk_floor_and_minimum_one (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_declared_orders_and_totals (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_enumeration_on_named_fixtures (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_exact_lp_comparison_precedes_rank (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_extension_in_service_rank_order (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_failed_trial_cleanup_and_preservation (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_final_plan_rejection_is_not_impossibility (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_fixed_admission_charge_despite_short_chunk (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_free_blocks_versus_one_block_decodes (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_independent_oracle_rejects_malformed_decisions (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_input_validation (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_integral_idle_victim_and_zero_support_candidate (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_lp_feasible_integer_infeasible_abstract_fixture (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_lp_matrix_matches_independent_residuals (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_lp_values_primary_over_ranks_then_identity (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_main_smoke (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_malformed_vectors (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_mixed_decode_demand_groups (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_necessary_negative_utility_first_work (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_nine_waiting_watermark_construction (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_nonfinite_aggregate_arithmetic (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_obsolete_fields_removed_without_compatibility (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_omitted_resident_counts_and_zero_recovery_replacement (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_one_free_block_demand_one_then_zero (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_oversized_vector_entry_is_structured_failure (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_positive_coefficient_mass_preemption_accepted_limitation (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_relaxed_bounds_projection_and_raw_versus_normalized (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_relaxed_validation_rejects_each_row (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_self_victim_exclusion (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_single_solver_invocation_on_success (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_solver_outcome_distinctions_with_fake_results (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_solver_reported_infeasibility_real_status_2 (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_strict_improvement_threshold (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_watermark_zero_positive_and_shared (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_zero_coefficient_mass_preemption_rejected (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+test_zero_free_blocks_zero_demand_decode (tests.test_lp_relaxation_scheduler.LPRelaxationSchedulerTest) ... ok
+
+----------------------------------------------------------------------
+Ran 38 tests in 0.564s
+
+OK
+exit_status=0

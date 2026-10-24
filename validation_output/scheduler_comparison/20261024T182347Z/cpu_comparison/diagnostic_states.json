@@ -1,0 +1,1739 @@
+[
+ {
+  "name": "mixed_ample",
+  "spec": {
+   "note": "resident A has 8 prefill tokens left; later resident B is decode-ready with zero additional demand; ample memory",
+   "residents": [
+    [
+     16,
+     8,
+     0
+    ],
+    [
+     8,
+     8,
+     0
+    ]
+   ],
+   "waiting": [],
+   "pool": 8,
+   "max_model_len": 32,
+   "limit": 2,
+   "b_max": 8,
+   "c_max": 8,
+   "s_max": 2,
+   "budget": 8
+  },
+  "label": "constructed with native allocation and progress methods (shape reachable under the LP; see note)",
+  "coefficients": {
+   "0": {
+    "decode": 0.0,
+    "prefill_token": 0.125,
+    "penalty": 1.0,
+    "service_rank": 0,
+    "victim_rank": 1,
+    "upper_bound": 8
+   },
+   "1": {
+    "decode": 0.25,
+    "prefill_token": 0.0,
+    "penalty": 0.25,
+    "service_rank": 1,
+    "victim_rank": 0,
+    "upper_bound": 0
+   }
+  },
+  "free_blocks": 6,
+  "watermark": 0,
+  "lp": {
+   "problem_id": "-1",
+   "plan": {
+    "problem_id": "-1",
+    "decisions": [
+     {
+      "request_id": "0",
+      "order_key": [
+       0
+      ],
+      "prefill_tokens": 7,
+      "decode": 0,
+      "preempt": 0,
+      "prefill_indicator": 1
+     },
+     {
+      "request_id": "1",
+      "order_key": [
+       1
+      ],
+      "prefill_tokens": 0,
+      "decode": 1,
+      "preempt": 0,
+      "prefill_indicator": 0
+     }
+    ],
+    "victim_order": [],
+    "execution_order": [
+     "0",
+     "1"
+    ],
+    "token_use": 8,
+    "action_count": 2,
+    "resident_count_after": 2,
+    "free_blocks_before_decodes": 6,
+    "decode_demand": 0,
+    "numerical_policy": {
+     "policy_id": "lp_relaxation_mvp_v1",
+     "feasibility_tol": 1e-07,
+     "integrality_tol": 1e-06,
+     "objective_abs_tol": 1e-09,
+     "objective_rel_tol": 1e-09
+    },
+    "objective": 1.125,
+    "extraction": {
+     "candidate_order": [
+      "1",
+      "0"
+     ],
+     "victim_candidate_order": [
+      "1",
+      "0"
+     ],
+     "accepted_order": [
+      "1",
+      "0"
+     ],
+     "trial_count": 2,
+     "failed_trial_count": 0,
+     "declined_optional_trial_count": 0,
+     "skipped_candidate_count": 0,
+     "fractional_request_count": 1
+    }
+   },
+   "relaxed": {
+    "decisions": [
+     {
+      "request_id": "0",
+      "x": 7.0,
+      "y": 0.0,
+      "prefill_indicator": 0.875,
+      "z": 0.0
+     },
+     {
+      "request_id": "1",
+      "x": 0.0,
+      "y": 1.0,
+      "prefill_indicator": 0.0,
+      "z": 0.0
+     }
+    ],
+    "raw_vector": [
+     7.0,
+     0.0,
+     0.0,
+     1.0,
+     0.875,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "projection_count": 0,
+    "worst_raw_violation": 0.0,
+    "worst_normalized_violation": 0.0,
+    "normalized_objective": 1.125
+   },
+   "solver": {
+    "category": "optimal_candidate",
+    "reason": "optimal candidate",
+    "diagnostics": {
+     "solver": "scipy.optimize.linprog",
+     "scipy_version": "1.15.3",
+     "method": "highs-ds",
+     "options": [
+      [
+       "presolve",
+       true
+      ]
+     ],
+     "raw_status": 0,
+     "raw_success": true,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "iterations": 2,
+     "vector_present": true,
+     "vector_length": 8,
+     "expected_vector_length": 8
+    },
+    "raw_vector": [
+     7.0,
+     0.0,
+     0.0,
+     1.0,
+     0.875,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "reported_objective_min": -1.125,
+    "recomputed_objective_min": -1.125
+   }
+  },
+  "lp_relaxed_values": {
+   "0": [
+    7.0,
+    0.0,
+    0.875,
+    0.0
+   ],
+   "1": [
+    0.0,
+    1.0,
+    0.0,
+    0.0
+   ]
+  },
+  "integer": {
+   "problem_id": "-1",
+   "plan": {
+    "problem_id": "-1",
+    "decisions": [
+     {
+      "request_id": "0",
+      "order_key": [
+       0
+      ],
+      "prefill_tokens": 7,
+      "decode": 0,
+      "preempt": 0,
+      "prefill_indicator": 1
+     },
+     {
+      "request_id": "1",
+      "order_key": [
+       1
+      ],
+      "prefill_tokens": 0,
+      "decode": 1,
+      "preempt": 0,
+      "prefill_indicator": 0
+     }
+    ],
+    "victim_order": [],
+    "execution_order": [
+     "0",
+     "1"
+    ],
+    "token_use": 8,
+    "action_count": 2,
+    "resident_count_after": 2,
+    "free_blocks_before_decodes": 6,
+    "decode_demand": 0,
+    "numerical_policy": {
+     "policy_id": "lp_relaxation_mvp_v1",
+     "feasibility_tol": 1e-07,
+     "integrality_tol": 1e-06,
+     "objective_abs_tol": 1e-09,
+     "objective_rel_tol": 1e-09
+    },
+    "objective": 1.125,
+    "extraction": {
+     "solver": "scipy.optimize.milp (HiGHS)",
+     "scipy_version": "1.15.3",
+     "options": [
+      [
+       "mip_rel_gap",
+       0.0
+      ],
+      [
+       "presolve",
+       true
+      ],
+      [
+       "time_limit",
+       10.0
+      ]
+     ],
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "objective": 1.125,
+     "dual_bound": 1.125,
+     "reported_gap": 0.0,
+     "node_count": 1,
+     "max_integrality_deviation": 0.0,
+     "conversion_tol": 1e-06
+    }
+   },
+   "raw_vector": [
+    7.0,
+    0.0,
+    0.0,
+    1.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "lp_vs_integer": {
+   "problem_id": "-1",
+   "comparison_tol": 1e-07,
+   "lp_status": "SchedulingSuccess",
+   "integer_status": "IntegerOptimum",
+   "integer_objective": 1.125,
+   "integer_dual_bound": 1.125,
+   "integer_reported_gap": 0.0,
+   "integer_node_count": 1,
+   "integer_actions": {
+    "0": "prefill:7",
+    "1": "decode"
+   },
+   "lp_relaxed_objective": 1.125,
+   "lp_plan_objective": 1.125,
+   "lp_actions": {
+    "0": "prefill:7",
+    "1": "decode"
+   },
+   "fractional_request_count": 1,
+   "relaxation_gap": 0.0,
+   "extraction_loss": 0.0,
+   "same_actions": true,
+   "bounds_consistent": true,
+   "attribution": "identical_actions",
+   "relaxation_gap_present": false
+  },
+  "executed": {
+   "lp": {
+    "id": -1,
+    "scheduled": [
+     [
+      0,
+      7
+     ],
+     [
+      1,
+      0
+     ]
+    ],
+    "ignored_seq_ids": [],
+    "preempted_seq_ids": []
+   },
+   "integer": {
+    "id": -1,
+    "scheduled": [
+     [
+      0,
+      7
+     ],
+     [
+      1,
+      0
+     ]
+    ],
+    "ignored_seq_ids": [],
+    "preempted_seq_ids": []
+   }
+  },
+  "reference_proposal": {
+   "decision_time": 1457542.575136712,
+   "running_order": [
+    0,
+    1
+   ],
+   "arrived_waiting_order": [],
+   "free_blocks": 6,
+   "watermark_blocks": 0,
+   "token_budget": 8,
+   "victims": [],
+   "actions": [
+    {
+     "seq_id": 0,
+     "kind": "resident_prefill",
+     "num_tokens": 8,
+     "block_demand": 0
+    }
+   ],
+   "running_stop_reason": "token_budget_exhausted",
+   "waiting_stop_reason": "arrived_waiting_exhausted"
+  },
+  "reference_vs_integer": {
+   "problem_id": "-1",
+   "reference_actions": {
+    "0": "prefill:8"
+   },
+   "reference_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 1.0
+   },
+   "integer_status": "IntegerOptimum",
+   "integer_objective": 1.125,
+   "integer_actions": {
+    "0": "prefill:7",
+    "1": "decode"
+   },
+   "classification": "strict_objective_preference"
+  },
+  "enumeration": {
+   "plan_space": 30,
+   "useful_plan_exists": true,
+   "best": 1.125
+  }
+ },
+ {
+  "name": "mixed_pressure",
+  "spec": {
+   "note": "as mixed_ample with zero free blocks: B's decode needs one block; later decode-ready resident C (demand 0) is a legal victim",
+   "residents": [
+    [
+     16,
+     8,
+     0
+    ],
+    [
+     16,
+     16,
+     0
+    ],
+    [
+     8,
+     8,
+     0
+    ]
+   ],
+   "waiting": [],
+   "pool": 3,
+   "max_model_len": 32,
+   "limit": 3,
+   "b_max": 8,
+   "c_max": 8,
+   "s_max": 3,
+   "budget": 8
+  },
+  "label": "constructed with native allocation and progress methods (shape reachable under the LP; see note)",
+  "coefficients": {
+   "0": {
+    "decode": 0.0,
+    "prefill_token": 0.125,
+    "penalty": 1.0,
+    "service_rank": 0,
+    "victim_rank": 2,
+    "upper_bound": 8
+   },
+   "1": {
+    "decode": 0.25,
+    "prefill_token": 0.0,
+    "penalty": 0.25,
+    "service_rank": 1,
+    "victim_rank": 1,
+    "upper_bound": 0
+   },
+   "2": {
+    "decode": 0.0625,
+    "prefill_token": 0.0,
+    "penalty": 0.0625,
+    "service_rank": 2,
+    "victim_rank": 0,
+    "upper_bound": 0
+   }
+  },
+  "free_blocks": 0,
+  "watermark": 0,
+  "lp": {
+   "problem_id": "-1",
+   "plan": {
+    "problem_id": "-1",
+    "decisions": [
+     {
+      "request_id": "0",
+      "order_key": [
+       0
+      ],
+      "prefill_tokens": 7,
+      "decode": 0,
+      "preempt": 0,
+      "prefill_indicator": 1
+     },
+     {
+      "request_id": "1",
+      "order_key": [
+       1
+      ],
+      "prefill_tokens": 0,
+      "decode": 1,
+      "preempt": 0,
+      "prefill_indicator": 0
+     },
+     {
+      "request_id": "2",
+      "order_key": [
+       2
+      ],
+      "prefill_tokens": 0,
+      "decode": 0,
+      "preempt": 1,
+      "prefill_indicator": 0
+     }
+    ],
+    "victim_order": [
+     "2"
+    ],
+    "execution_order": [
+     "0",
+     "1"
+    ],
+    "token_use": 8,
+    "action_count": 2,
+    "resident_count_after": 2,
+    "free_blocks_before_decodes": 1,
+    "decode_demand": 0,
+    "numerical_policy": {
+     "policy_id": "lp_relaxation_mvp_v1",
+     "feasibility_tol": 1e-07,
+     "integrality_tol": 1e-06,
+     "objective_abs_tol": 1e-09,
+     "objective_rel_tol": 1e-09
+    },
+    "objective": 1.0625,
+    "extraction": {
+     "candidate_order": [
+      "1",
+      "0",
+      "2"
+     ],
+     "victim_candidate_order": [
+      "2",
+      "1",
+      "0"
+     ],
+     "accepted_order": [
+      "1",
+      "0"
+     ],
+     "trial_count": 2,
+     "failed_trial_count": 0,
+     "declined_optional_trial_count": 0,
+     "skipped_candidate_count": 1,
+     "fractional_request_count": 2
+    }
+   },
+   "relaxed": {
+    "decisions": [
+     {
+      "request_id": "0",
+      "x": 7.0,
+      "y": 0.0,
+      "prefill_indicator": 0.875,
+      "z": 0.0
+     },
+     {
+      "request_id": "1",
+      "x": 0.0,
+      "y": 1.0,
+      "prefill_indicator": 0.0,
+      "z": 0.0
+     },
+     {
+      "request_id": "2",
+      "x": 0.0,
+      "y": 0.0,
+      "prefill_indicator": 0.0,
+      "z": 0.3333333333333333
+     }
+    ],
+    "raw_vector": [
+     7.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.875,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.3333333333333333
+    ],
+    "projection_count": 0,
+    "worst_raw_violation": 0.0,
+    "worst_normalized_violation": 0.0,
+    "normalized_objective": 1.1041666666666667
+   },
+   "solver": {
+    "category": "optimal_candidate",
+    "reason": "optimal candidate",
+    "diagnostics": {
+     "solver": "scipy.optimize.linprog",
+     "scipy_version": "1.15.3",
+     "method": "highs-ds",
+     "options": [
+      [
+       "presolve",
+       true
+      ]
+     ],
+     "raw_status": 0,
+     "raw_success": true,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "iterations": 3,
+     "vector_present": true,
+     "vector_length": 12,
+     "expected_vector_length": 12
+    },
+    "raw_vector": [
+     7.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.875,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.3333333333333333
+    ],
+    "reported_objective_min": -1.1041666666666665,
+    "recomputed_objective_min": -1.1041666666666667
+   }
+  },
+  "lp_relaxed_values": {
+   "0": [
+    7.0,
+    0.0,
+    0.875,
+    0.0
+   ],
+   "1": [
+    0.0,
+    1.0,
+    0.0,
+    0.0
+   ],
+   "2": [
+    0.0,
+    0.0,
+    0.0,
+    0.3333333333333333
+   ]
+  },
+  "integer": {
+   "problem_id": "-1",
+   "plan": {
+    "problem_id": "-1",
+    "decisions": [
+     {
+      "request_id": "0",
+      "order_key": [
+       0
+      ],
+      "prefill_tokens": 7,
+      "decode": 0,
+      "preempt": 0,
+      "prefill_indicator": 1
+     },
+     {
+      "request_id": "1",
+      "order_key": [
+       1
+      ],
+      "prefill_tokens": 0,
+      "decode": 1,
+      "preempt": 0,
+      "prefill_indicator": 0
+     },
+     {
+      "request_id": "2",
+      "order_key": [
+       2
+      ],
+      "prefill_tokens": 0,
+      "decode": 0,
+      "preempt": 1,
+      "prefill_indicator": 0
+     }
+    ],
+    "victim_order": [
+     "2"
+    ],
+    "execution_order": [
+     "0",
+     "1"
+    ],
+    "token_use": 8,
+    "action_count": 2,
+    "resident_count_after": 2,
+    "free_blocks_before_decodes": 1,
+    "decode_demand": 0,
+    "numerical_policy": {
+     "policy_id": "lp_relaxation_mvp_v1",
+     "feasibility_tol": 1e-07,
+     "integrality_tol": 1e-06,
+     "objective_abs_tol": 1e-09,
+     "objective_rel_tol": 1e-09
+    },
+    "objective": 1.0625,
+    "extraction": {
+     "solver": "scipy.optimize.milp (HiGHS)",
+     "scipy_version": "1.15.3",
+     "options": [
+      [
+       "mip_rel_gap",
+       0.0
+      ],
+      [
+       "presolve",
+       true
+      ],
+      [
+       "time_limit",
+       10.0
+      ]
+     ],
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "objective": 1.0625,
+     "dual_bound": 1.0625,
+     "reported_gap": 0.0,
+     "node_count": 1,
+     "max_integrality_deviation": 0.0,
+     "conversion_tol": 1e-06
+    }
+   },
+   "raw_vector": [
+    7.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ]
+  },
+  "lp_vs_integer": {
+   "problem_id": "-1",
+   "comparison_tol": 1e-07,
+   "lp_status": "SchedulingSuccess",
+   "integer_status": "IntegerOptimum",
+   "integer_objective": 1.0625,
+   "integer_dual_bound": 1.0625,
+   "integer_reported_gap": 0.0,
+   "integer_node_count": 1,
+   "integer_actions": {
+    "0": "prefill:7",
+    "1": "decode",
+    "2": "preempt"
+   },
+   "lp_relaxed_objective": 1.1041666666666667,
+   "lp_plan_objective": 1.0625,
+   "lp_actions": {
+    "0": "prefill:7",
+    "1": "decode",
+    "2": "preempt"
+   },
+   "fractional_request_count": 2,
+   "relaxation_gap": 0.04166666666666674,
+   "extraction_loss": 0.0,
+   "same_actions": true,
+   "bounds_consistent": true,
+   "attribution": "identical_actions",
+   "relaxation_gap_present": true
+  },
+  "executed": {
+   "lp": {
+    "id": -1,
+    "scheduled": [
+     [
+      0,
+      7
+     ],
+     [
+      1,
+      0
+     ]
+    ],
+    "ignored_seq_ids": [],
+    "preempted_seq_ids": [
+     2
+    ]
+   },
+   "integer": {
+    "id": -1,
+    "scheduled": [
+     [
+      0,
+      7
+     ],
+     [
+      1,
+      0
+     ]
+    ],
+    "ignored_seq_ids": [],
+    "preempted_seq_ids": [
+     2
+    ]
+   }
+  },
+  "reference_proposal": {
+   "decision_time": 1457542.579072413,
+   "running_order": [
+    0,
+    1,
+    2
+   ],
+   "arrived_waiting_order": [],
+   "free_blocks": 0,
+   "watermark_blocks": 0,
+   "token_budget": 8,
+   "victims": [],
+   "actions": [
+    {
+     "seq_id": 0,
+     "kind": "resident_prefill",
+     "num_tokens": 8,
+     "block_demand": 0
+    }
+   ],
+   "running_stop_reason": "token_budget_exhausted",
+   "waiting_stop_reason": "arrived_waiting_exhausted"
+  },
+  "reference_vs_integer": {
+   "problem_id": "-1",
+   "reference_actions": {
+    "0": "prefill:8"
+   },
+   "reference_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 1.0
+   },
+   "integer_status": "IntegerOptimum",
+   "integer_objective": 1.0625,
+   "integer_actions": {
+    "0": "prefill:7",
+    "1": "decode",
+    "2": "preempt"
+   },
+   "classification": "strict_objective_preference"
+  },
+  "enumeration": {
+   "plan_space": 90,
+   "useful_plan_exists": true,
+   "best": 1.0625
+  }
+ },
+ {
+  "name": "zero_free_decodes",
+  "spec": {
+   "note": "four equal-memory decode-ready residents, zero free blocks, zero additional demand (memory_pressure decision 1 shape)",
+   "residents": [
+    [
+     16,
+     16,
+     0
+    ],
+    [
+     16,
+     16,
+     0
+    ],
+    [
+     16,
+     16,
+     0
+    ],
+    [
+     16,
+     16,
+     0
+    ]
+   ],
+   "waiting": [],
+   "pool": 4,
+   "max_model_len": 64,
+   "limit": 4,
+   "b_max": 64,
+   "c_max": 64,
+   "s_max": 4,
+   "budget": 64
+  },
+  "label": "constructed with native allocation and progress methods (shape reachable under the LP; see note)",
+  "coefficients": {
+   "0": {
+    "decode": 1.0,
+    "prefill_token": 0.0,
+    "penalty": 1.0,
+    "service_rank": 0,
+    "victim_rank": 3,
+    "upper_bound": 0
+   },
+   "1": {
+    "decode": 0.25,
+    "prefill_token": 0.0,
+    "penalty": 0.25,
+    "service_rank": 1,
+    "victim_rank": 2,
+    "upper_bound": 0
+   },
+   "2": {
+    "decode": 0.0625,
+    "prefill_token": 0.0,
+    "penalty": 0.0625,
+    "service_rank": 2,
+    "victim_rank": 1,
+    "upper_bound": 0
+   },
+   "3": {
+    "decode": 0.015625,
+    "prefill_token": 0.0,
+    "penalty": 0.015625,
+    "service_rank": 3,
+    "victim_rank": 0,
+    "upper_bound": 0
+   }
+  },
+  "free_blocks": 0,
+  "watermark": 0,
+  "lp": {
+   "problem_id": "-1",
+   "plan": {
+    "problem_id": "-1",
+    "decisions": [
+     {
+      "request_id": "0",
+      "order_key": [
+       0
+      ],
+      "prefill_tokens": 0,
+      "decode": 1,
+      "preempt": 0,
+      "prefill_indicator": 0
+     },
+     {
+      "request_id": "1",
+      "order_key": [
+       1
+      ],
+      "prefill_tokens": 0,
+      "decode": 1,
+      "preempt": 0,
+      "prefill_indicator": 0
+     },
+     {
+      "request_id": "2",
+      "order_key": [
+       2
+      ],
+      "prefill_tokens": 0,
+      "decode": 1,
+      "preempt": 0,
+      "prefill_indicator": 0
+     },
+     {
+      "request_id": "3",
+      "order_key": [
+       3
+      ],
+      "prefill_tokens": 0,
+      "decode": 0,
+      "preempt": 1,
+      "prefill_indicator": 0
+     }
+    ],
+    "victim_order": [
+     "3"
+    ],
+    "execution_order": [
+     "0",
+     "1",
+     "2"
+    ],
+    "token_use": 3,
+    "action_count": 3,
+    "resident_count_after": 3,
+    "free_blocks_before_decodes": 1,
+    "decode_demand": 0,
+    "numerical_policy": {
+     "policy_id": "lp_relaxation_mvp_v1",
+     "feasibility_tol": 1e-07,
+     "integrality_tol": 1e-06,
+     "objective_abs_tol": 1e-09,
+     "objective_rel_tol": 1e-09
+    },
+    "objective": 1.296875,
+    "extraction": {
+     "candidate_order": [
+      "0",
+      "1",
+      "2",
+      "3"
+     ],
+     "victim_candidate_order": [
+      "3",
+      "2",
+      "1",
+      "0"
+     ],
+     "accepted_order": [
+      "0",
+      "1",
+      "2"
+     ],
+     "trial_count": 3,
+     "failed_trial_count": 0,
+     "declined_optional_trial_count": 0,
+     "skipped_candidate_count": 1,
+     "fractional_request_count": 1
+    }
+   },
+   "relaxed": {
+    "decisions": [
+     {
+      "request_id": "0",
+      "x": 0.0,
+      "y": 1.0,
+      "prefill_indicator": 0.0,
+      "z": 0.0
+     },
+     {
+      "request_id": "1",
+      "x": 0.0,
+      "y": 1.0,
+      "prefill_indicator": 0.0,
+      "z": 0.0
+     },
+     {
+      "request_id": "2",
+      "x": 0.0,
+      "y": 1.0,
+      "prefill_indicator": 0.0,
+      "z": 0.0
+     },
+     {
+      "request_id": "3",
+      "x": 0.0,
+      "y": 0.2,
+      "prefill_indicator": 0.0,
+      "z": 0.8
+     }
+    ],
+    "raw_vector": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     1.0,
+     1.0,
+     0.2,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.8
+    ],
+    "projection_count": 0,
+    "worst_raw_violation": 5.551115123125783e-17,
+    "worst_normalized_violation": 5.551115123125783e-17,
+    "normalized_objective": 1.303125
+   },
+   "solver": {
+    "category": "optimal_candidate",
+    "reason": "optimal candidate",
+    "diagnostics": {
+     "solver": "scipy.optimize.linprog",
+     "scipy_version": "1.15.3",
+     "method": "highs-ds",
+     "options": [
+      [
+       "presolve",
+       true
+      ]
+     ],
+     "raw_status": 0,
+     "raw_success": true,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "iterations": 2,
+     "vector_present": true,
+     "vector_length": 16,
+     "expected_vector_length": 16
+    },
+    "raw_vector": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     1.0,
+     1.0,
+     0.2,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.8
+    ],
+    "reported_objective_min": -1.303125,
+    "recomputed_objective_min": -1.303125
+   }
+  },
+  "lp_relaxed_values": {
+   "0": [
+    0.0,
+    1.0,
+    0.0,
+    0.0
+   ],
+   "1": [
+    0.0,
+    1.0,
+    0.0,
+    0.0
+   ],
+   "2": [
+    0.0,
+    1.0,
+    0.0,
+    0.0
+   ],
+   "3": [
+    0.0,
+    0.2,
+    0.0,
+    0.8
+   ]
+  },
+  "integer": {
+   "problem_id": "-1",
+   "plan": {
+    "problem_id": "-1",
+    "decisions": [
+     {
+      "request_id": "0",
+      "order_key": [
+       0
+      ],
+      "prefill_tokens": 0,
+      "decode": 1,
+      "preempt": 0,
+      "prefill_indicator": 0
+     },
+     {
+      "request_id": "1",
+      "order_key": [
+       1
+      ],
+      "prefill_tokens": 0,
+      "decode": 1,
+      "preempt": 0,
+      "prefill_indicator": 0
+     },
+     {
+      "request_id": "2",
+      "order_key": [
+       2
+      ],
+      "prefill_tokens": 0,
+      "decode": 1,
+      "preempt": 0,
+      "prefill_indicator": 0
+     },
+     {
+      "request_id": "3",
+      "order_key": [
+       3
+      ],
+      "prefill_tokens": 0,
+      "decode": 0,
+      "preempt": 1,
+      "prefill_indicator": 0
+     }
+    ],
+    "victim_order": [
+     "3"
+    ],
+    "execution_order": [
+     "0",
+     "1",
+     "2"
+    ],
+    "token_use": 3,
+    "action_count": 3,
+    "resident_count_after": 3,
+    "free_blocks_before_decodes": 1,
+    "decode_demand": 0,
+    "numerical_policy": {
+     "policy_id": "lp_relaxation_mvp_v1",
+     "feasibility_tol": 1e-07,
+     "integrality_tol": 1e-06,
+     "objective_abs_tol": 1e-09,
+     "objective_rel_tol": 1e-09
+    },
+    "objective": 1.296875,
+    "extraction": {
+     "solver": "scipy.optimize.milp (HiGHS)",
+     "scipy_version": "1.15.3",
+     "options": [
+      [
+       "mip_rel_gap",
+       0.0
+      ],
+      [
+       "presolve",
+       true
+      ],
+      [
+       "time_limit",
+       10.0
+      ]
+     ],
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "objective": 1.296875,
+     "dual_bound": 1.296875,
+     "reported_gap": 0.0,
+     "node_count": 1,
+     "max_integrality_deviation": 0.0,
+     "conversion_tol": 1e-06
+    }
+   },
+   "raw_vector": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    1.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ]
+  },
+  "lp_vs_integer": {
+   "problem_id": "-1",
+   "comparison_tol": 1e-07,
+   "lp_status": "SchedulingSuccess",
+   "integer_status": "IntegerOptimum",
+   "integer_objective": 1.296875,
+   "integer_dual_bound": 1.296875,
+   "integer_reported_gap": 0.0,
+   "integer_node_count": 1,
+   "integer_actions": {
+    "0": "decode",
+    "1": "decode",
+    "2": "decode",
+    "3": "preempt"
+   },
+   "lp_relaxed_objective": 1.303125,
+   "lp_plan_objective": 1.296875,
+   "lp_actions": {
+    "0": "decode",
+    "1": "decode",
+    "2": "decode",
+    "3": "preempt"
+   },
+   "fractional_request_count": 1,
+   "relaxation_gap": 0.006250000000000089,
+   "extraction_loss": 0.0,
+   "same_actions": true,
+   "bounds_consistent": true,
+   "attribution": "identical_actions",
+   "relaxation_gap_present": true
+  },
+  "executed": {
+   "lp": {
+    "id": -1,
+    "scheduled": [
+     [
+      0,
+      0
+     ],
+     [
+      1,
+      0
+     ],
+     [
+      2,
+      0
+     ]
+    ],
+    "ignored_seq_ids": [],
+    "preempted_seq_ids": [
+     3
+    ]
+   },
+   "integer": {
+    "id": -1,
+    "scheduled": [
+     [
+      0,
+      0
+     ],
+     [
+      1,
+      0
+     ],
+     [
+      2,
+      0
+     ]
+    ],
+    "ignored_seq_ids": [],
+    "preempted_seq_ids": [
+     3
+    ]
+   }
+  },
+  "reference_proposal": {
+   "decision_time": 1457542.583410563,
+   "running_order": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "arrived_waiting_order": [],
+   "free_blocks": 0,
+   "watermark_blocks": 0,
+   "token_budget": 64,
+   "victims": [],
+   "actions": [
+    {
+     "seq_id": 0,
+     "kind": "decode",
+     "num_tokens": 1,
+     "block_demand": 0
+    },
+    {
+     "seq_id": 1,
+     "kind": "decode",
+     "num_tokens": 1,
+     "block_demand": 0
+    },
+    {
+     "seq_id": 2,
+     "kind": "decode",
+     "num_tokens": 1,
+     "block_demand": 0
+    },
+    {
+     "seq_id": 3,
+     "kind": "decode",
+     "num_tokens": 1,
+     "block_demand": 0
+    }
+   ],
+   "running_stop_reason": "running_exhausted",
+   "waiting_stop_reason": "arrived_waiting_exhausted"
+  },
+  "reference_vs_integer": {
+   "problem_id": "-1",
+   "reference_actions": {
+    "0": "decode",
+    "1": "decode",
+    "2": "decode",
+    "3": "decode"
+   },
+   "reference_evaluation": {
+    "feasible": false,
+    "domain_violations": [],
+    "violated_rows": [
+     "decode_prerequisite"
+    ],
+    "objective": 1.328125
+   },
+   "integer_status": "IntegerOptimum",
+   "integer_objective": 1.296875,
+   "integer_actions": {
+    "0": "decode",
+    "1": "decode",
+    "2": "decode",
+    "3": "preempt"
+   },
+   "classification": "contract_difference"
+  },
+  "enumeration": {
+   "plan_space": 81,
+   "useful_plan_exists": true,
+   "best": 1.296875
+  }
+ },
+ {
+  "name": "fractional_admission",
+  "spec": {
+   "note": "waiting A then B; free pool 16, watermark 0; admission charges 16 and 1; chunk cap 1; token, action, and resident limits 2. Single-state diagnostic, not a completion workload",
+   "residents": [],
+   "waiting": [
+    256,
+    1
+   ],
+   "pool": 16,
+   "max_model_len": 256,
+   "limit": 2,
+   "b_max": 2,
+   "c_max": 1,
+   "s_max": 2,
+   "budget": 2
+  },
+  "label": "constructed with native allocation and progress methods (shape reachable under the LP; see note)",
+  "coefficients": {
+   "0": {
+    "decode": 0.0,
+    "prefill_token": 1.0,
+    "penalty": 0.0,
+    "service_rank": 0,
+    "victim_rank": null,
+    "upper_bound": 1
+   },
+   "1": {
+    "decode": 0.0,
+    "prefill_token": 0.25,
+    "penalty": 0.0,
+    "service_rank": 1,
+    "victim_rank": null,
+    "upper_bound": 1
+   }
+  },
+  "free_blocks": 16,
+  "watermark": 0,
+  "lp": {
+   "problem_id": "-1",
+   "plan": {
+    "problem_id": "-1",
+    "decisions": [
+     {
+      "request_id": "0",
+      "order_key": [
+       0
+      ],
+      "prefill_tokens": 0,
+      "decode": 0,
+      "preempt": 0,
+      "prefill_indicator": 0
+     },
+     {
+      "request_id": "1",
+      "order_key": [
+       1
+      ],
+      "prefill_tokens": 1,
+      "decode": 0,
+      "preempt": 0,
+      "prefill_indicator": 1
+     }
+    ],
+    "victim_order": [],
+    "execution_order": [
+     "1"
+    ],
+    "token_use": 1,
+    "action_count": 1,
+    "resident_count_after": 1,
+    "free_blocks_before_decodes": 15,
+    "decode_demand": 0,
+    "numerical_policy": {
+     "policy_id": "lp_relaxation_mvp_v1",
+     "feasibility_tol": 1e-07,
+     "integrality_tol": 1e-06,
+     "objective_abs_tol": 1e-09,
+     "objective_rel_tol": 1e-09
+    },
+    "objective": 0.25,
+    "extraction": {
+     "candidate_order": [
+      "1",
+      "0"
+     ],
+     "victim_candidate_order": [],
+     "accepted_order": [
+      "1"
+     ],
+     "trial_count": 2,
+     "failed_trial_count": 1,
+     "declined_optional_trial_count": 0,
+     "skipped_candidate_count": 0,
+     "fractional_request_count": 1
+    }
+   },
+   "relaxed": {
+    "decisions": [
+     {
+      "request_id": "0",
+      "x": 0.9375,
+      "y": 0.0,
+      "prefill_indicator": 0.9375,
+      "z": 0.0
+     },
+     {
+      "request_id": "1",
+      "x": 1.0,
+      "y": 0.0,
+      "prefill_indicator": 1.0,
+      "z": 0.0
+     }
+    ],
+    "raw_vector": [
+     0.9375,
+     1.0,
+     0.0,
+     0.0,
+     0.9375,
+     1.0,
+     0.0,
+     0.0
+    ],
+    "projection_count": 0,
+    "worst_raw_violation": 0.0,
+    "worst_normalized_violation": 0.0,
+    "normalized_objective": 1.1875
+   },
+   "solver": {
+    "category": "optimal_candidate",
+    "reason": "optimal candidate",
+    "diagnostics": {
+     "solver": "scipy.optimize.linprog",
+     "scipy_version": "1.15.3",
+     "method": "highs-ds",
+     "options": [
+      [
+       "presolve",
+       true
+      ]
+     ],
+     "raw_status": 0,
+     "raw_success": true,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "iterations": 1,
+     "vector_present": true,
+     "vector_length": 8,
+     "expected_vector_length": 8
+    },
+    "raw_vector": [
+     0.9375,
+     1.0,
+     0.0,
+     0.0,
+     0.9375,
+     1.0,
+     0.0,
+     0.0
+    ],
+    "reported_objective_min": -1.1875,
+    "recomputed_objective_min": -1.1875
+   }
+  },
+  "lp_relaxed_values": {
+   "0": [
+    0.9375,
+    0.0,
+    0.9375,
+    0.0
+   ],
+   "1": [
+    1.0,
+    0.0,
+    1.0,
+    0.0
+   ]
+  },
+  "integer": {
+   "problem_id": "-1",
+   "plan": {
+    "problem_id": "-1",
+    "decisions": [
+     {
+      "request_id": "0",
+      "order_key": [
+       0
+      ],
+      "prefill_tokens": 1,
+      "decode": 0,
+      "preempt": 0,
+      "prefill_indicator": 1
+     },
+     {
+      "request_id": "1",
+      "order_key": [
+       1
+      ],
+      "prefill_tokens": 0,
+      "decode": 0,
+      "preempt": 0,
+      "prefill_indicator": 0
+     }
+    ],
+    "victim_order": [],
+    "execution_order": [
+     "0"
+    ],
+    "token_use": 1,
+    "action_count": 1,
+    "resident_count_after": 1,
+    "free_blocks_before_decodes": 0,
+    "decode_demand": 0,
+    "numerical_policy": {
+     "policy_id": "lp_relaxation_mvp_v1",
+     "feasibility_tol": 1e-07,
+     "integrality_tol": 1e-06,
+     "objective_abs_tol": 1e-09,
+     "objective_rel_tol": 1e-09
+    },
+    "objective": 1.0,
+    "extraction": {
+     "solver": "scipy.optimize.milp (HiGHS)",
+     "scipy_version": "1.15.3",
+     "options": [
+      [
+       "mip_rel_gap",
+       0.0
+      ],
+      [
+       "presolve",
+       true
+      ],
+      [
+       "time_limit",
+       10.0
+      ]
+     ],
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "objective": 1.0,
+     "dual_bound": 1.0,
+     "reported_gap": 0.0,
+     "node_count": 0,
+     "max_integrality_deviation": 0.0,
+     "conversion_tol": 1e-06
+    }
+   },
+   "raw_vector": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "lp_vs_integer": {
+   "problem_id": "-1",
+   "comparison_tol": 1e-07,
+   "lp_status": "SchedulingSuccess",
+   "integer_status": "IntegerOptimum",
+   "integer_objective": 1.0,
+   "integer_dual_bound": 1.0,
+   "integer_reported_gap": 0.0,
+   "integer_node_count": 0,
+   "integer_actions": {
+    "0": "prefill:1"
+   },
+   "lp_relaxed_objective": 1.1875,
+   "lp_plan_objective": 0.25,
+   "lp_actions": {
+    "1": "prefill:1"
+   },
+   "fractional_request_count": 1,
+   "relaxation_gap": 0.1875,
+   "extraction_loss": 0.75,
+   "same_actions": false,
+   "bounds_consistent": true,
+   "attribution": "extraction_loss",
+   "relaxation_gap_present": true
+  },
+  "executed": {
+   "lp": {
+    "id": -1,
+    "scheduled": [
+     [
+      1,
+      1
+     ]
+    ],
+    "ignored_seq_ids": [],
+    "preempted_seq_ids": []
+   },
+   "integer": {
+    "id": -1,
+    "scheduled": [
+     [
+      0,
+      1
+     ]
+    ],
+    "ignored_seq_ids": [],
+    "preempted_seq_ids": []
+   }
+  },
+  "reference_proposal": {
+   "decision_time": 1457542.587195126,
+   "running_order": [],
+   "arrived_waiting_order": [
+    0,
+    1
+   ],
+   "free_blocks": 16,
+   "watermark_blocks": 0,
+   "token_budget": 2,
+   "victims": [],
+   "actions": [
+    {
+     "seq_id": 0,
+     "kind": "admission",
+     "num_tokens": 2,
+     "block_demand": 16
+    }
+   ],
+   "running_stop_reason": "running_exhausted",
+   "waiting_stop_reason": "token_budget_exhausted"
+  },
+  "reference_vs_integer": {
+   "problem_id": "-1",
+   "reference_actions": {
+    "0": "prefill:2"
+   },
+   "reference_evaluation": {
+    "feasible": false,
+    "domain_violations": [
+     "0: prefill 2 outside [1, 1]"
+    ],
+    "violated_rows": [
+     "prefill_linkage_upper[0]"
+    ],
+    "objective": 2.0
+   },
+   "integer_status": "IntegerOptimum",
+   "integer_objective": 1.0,
+   "integer_actions": {
+    "0": "prefill:1"
+   },
+   "classification": "contract_difference"
+  },
+  "enumeration": {
+   "plan_space": 4,
+   "useful_plan_exists": true,
+   "best": 1.0
+  }
+ }
+]

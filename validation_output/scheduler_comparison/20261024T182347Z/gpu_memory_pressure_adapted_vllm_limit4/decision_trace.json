@@ -1,0 +1,7267 @@
+{
+ "case": "memory_pressure",
+ "policy": "adapted_vllm",
+ "resident_limit": 4,
+ "prompts": {
+  "A": [
+   1000,
+   1001,
+   1002,
+   1003,
+   1004,
+   1005,
+   1006,
+   1007,
+   1008,
+   1009,
+   1010,
+   1011,
+   1012,
+   1013,
+   1014,
+   1015
+  ],
+  "B": [
+   2000,
+   2001,
+   2002,
+   2003,
+   2004,
+   2005,
+   2006,
+   2007,
+   2008,
+   2009,
+   2010,
+   2011,
+   2012,
+   2013,
+   2014,
+   2015
+  ],
+  "C": [
+   3000,
+   3001,
+   3002,
+   3003,
+   3004,
+   3005,
+   3006,
+   3007,
+   3008,
+   3009,
+   3010,
+   3011,
+   3012,
+   3013,
+   3014,
+   3015
+  ],
+  "D": [
+   4000,
+   4001,
+   4002,
+   4003,
+   4004,
+   4005,
+   4006,
+   4007,
+   4008,
+   4009,
+   4010,
+   4011,
+   4012,
+   4013,
+   4014,
+   4015
+  ]
+ },
+ "arrival_times": {
+  "A": 1457914.277770152,
+  "B": 1457914.279332869,
+  "C": 1457914.280054562,
+  "D": 1457914.280993725
+ },
+ "virtual_arrivals": {
+  "A": 0,
+  "B": 0,
+  "C": 0,
+  "D": 0
+ },
+ "submitted_at_virtual_time": {
+  "A": 0,
+  "B": 0,
+  "C": 0,
+  "D": 0
+ },
+ "idle_intervals": [],
+ "decisions": [
+  {
+   "index": 0,
+   "before": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 4,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "block_tables": {},
+    "seqs": {
+     "0": {
+      "status": "WAITING",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004,
+       1005,
+       1006,
+       1007,
+       1008,
+       1009,
+       1010,
+       1011,
+       1012,
+       1013,
+       1014,
+       1015
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "WAITING",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007,
+       2008,
+       2009,
+       2010,
+       2011,
+       2012,
+       2013,
+       2014,
+       2015
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "2": {
+      "status": "WAITING",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "3": {
+      "status": "WAITING",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "iteration_id": -1,
+    "num_running_batches": 0,
+    "waiting": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "running": [],
+    "arrival_times": {
+     "0": 1457914.277770152,
+     "1": 1457914.279332869,
+     "2": 1457914.280054562,
+     "3": 1457914.280993725
+    }
+   },
+   "worker_before": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 4,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "block_tables": {},
+    "seqs": {
+     "0": {
+      "status": "WAITING",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004,
+       1005,
+       1006,
+       1007,
+       1008,
+       1009,
+       1010,
+       1011,
+       1012,
+       1013,
+       1014,
+       1015
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "WAITING",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007,
+       2008,
+       2009,
+       2010,
+       2011,
+       2012,
+       2013,
+       2014,
+       2015
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "2": {
+      "status": "WAITING",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "3": {
+      "status": "WAITING",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "block_ops": [],
+    "cache_config_num_gpu_blocks": 4,
+    "cache_engine_num_gpu_blocks": 4,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     4
+    ],
+    "cache_tensor_shapes": [
+     [
+      4,
+      16,
+      4,
+      64
+     ]
+    ],
+    "allocator_num_blocks": 4
+   },
+   "proposals": [
+    {
+     "decision_time": 1457914.283147917,
+     "running_order": [],
+     "arrived_waiting_order": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "free_blocks": 4,
+     "watermark_blocks": 0,
+     "token_budget": 64,
+     "victims": [],
+     "actions": [
+      {
+       "seq_id": 0,
+       "kind": "admission",
+       "num_tokens": 16,
+       "block_demand": 1
+      },
+      {
+       "seq_id": 1,
+       "kind": "admission",
+       "num_tokens": 16,
+       "block_demand": 1
+      },
+      {
+       "seq_id": 2,
+       "kind": "admission",
+       "num_tokens": 16,
+       "block_demand": 1
+      },
+      {
+       "seq_id": 3,
+       "kind": "admission",
+       "num_tokens": 16,
+       "block_demand": 1
+      }
+     ],
+     "running_stop_reason": "running_exhausted",
+     "waiting_stop_reason": "arrived_waiting_exhausted"
+    }
+   ],
+   "lp_events": [],
+   "schedules": [
+    {
+     "outputs": {
+      "id": 0,
+      "scheduled": [
+       [
+        0,
+        16
+       ],
+       [
+        1,
+        16
+       ],
+       [
+        2,
+        16
+       ],
+       [
+        3,
+        16
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "num_ops": 4,
+     "state": {
+      "total_blocks": 4,
+      "watermark_blocks": 0,
+      "free_blocks": 0,
+      "free_block_ids": [],
+      "block_tables": {
+       "0": [
+        3
+       ],
+       "1": [
+        2
+       ],
+       "2": [
+        1
+       ],
+       "3": [
+        0
+       ]
+      },
+      "seqs": {
+       "0": {
+        "status": "WAITING",
+        "prompt_len": 16,
+        "prompt_token_ids": [
+         1000,
+         1001,
+         1002,
+         1003,
+         1004,
+         1005,
+         1006,
+         1007,
+         1008,
+         1009,
+         1010,
+         1011,
+         1012,
+         1013,
+         1014,
+         1015
+        ],
+        "prompt_tokens_processed": 0,
+        "prompt_processing_finished": false,
+        "output_token_ids": [],
+        "logical_blocks": 1
+       },
+       "1": {
+        "status": "WAITING",
+        "prompt_len": 16,
+        "prompt_token_ids": [
+         2000,
+         2001,
+         2002,
+         2003,
+         2004,
+         2005,
+         2006,
+         2007,
+         2008,
+         2009,
+         2010,
+         2011,
+         2012,
+         2013,
+         2014,
+         2015
+        ],
+        "prompt_tokens_processed": 0,
+        "prompt_processing_finished": false,
+        "output_token_ids": [],
+        "logical_blocks": 1
+       },
+       "2": {
+        "status": "WAITING",
+        "prompt_len": 16,
+        "prompt_token_ids": [
+         3000,
+         3001,
+         3002,
+         3003,
+         3004,
+         3005,
+         3006,
+         3007,
+         3008,
+         3009,
+         3010,
+         3011,
+         3012,
+         3013,
+         3014,
+         3015
+        ],
+        "prompt_tokens_processed": 0,
+        "prompt_processing_finished": false,
+        "output_token_ids": [],
+        "logical_blocks": 1
+       },
+       "3": {
+        "status": "WAITING",
+        "prompt_len": 16,
+        "prompt_token_ids": [
+         4000,
+         4001,
+         4002,
+         4003,
+         4004,
+         4005,
+         4006,
+         4007,
+         4008,
+         4009,
+         4010,
+         4011,
+         4012,
+         4013,
+         4014,
+         4015
+        ],
+        "prompt_tokens_processed": 0,
+        "prompt_processing_finished": false,
+        "output_token_ids": [],
+        "logical_blocks": 1
+       }
+      },
+      "iteration_id": 0,
+      "num_running_batches": 1,
+      "waiting": [],
+      "running": [
+       0,
+       1,
+       2,
+       3
+      ]
+     }
+    }
+   ],
+   "central_ops": [
+    [
+     "allocate",
+     0,
+     [],
+     [
+      3
+     ]
+    ],
+    [
+     "allocate",
+     1,
+     [],
+     [
+      2
+     ]
+    ],
+    [
+     "allocate",
+     2,
+     [],
+     [
+      1
+     ]
+    ],
+    [
+     "allocate",
+     3,
+     [],
+     [
+      0
+     ]
+    ]
+   ],
+   "after": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 0,
+    "free_block_ids": [],
+    "block_tables": {
+     "0": [
+      3
+     ],
+     "1": [
+      2
+     ],
+     "2": [
+      1
+     ],
+     "3": [
+      0
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004,
+       1005,
+       1006,
+       1007,
+       1008,
+       1009,
+       1010,
+       1011,
+       1012,
+       1013,
+       1014,
+       1015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007,
+       2008,
+       2009,
+       2010,
+       2011,
+       2012,
+       2013,
+       2014,
+       2015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "2": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "3": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "iteration_id": 0,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   "worker_after": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 0,
+    "free_block_ids": [],
+    "block_tables": {
+     "0": [
+      3
+     ],
+     "1": [
+      2
+     ],
+     "2": [
+      1
+     ],
+     "3": [
+      0
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004,
+       1005,
+       1006,
+       1007,
+       1008,
+       1009,
+       1010,
+       1011,
+       1012,
+       1013,
+       1014,
+       1015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007,
+       2008,
+       2009,
+       2010,
+       2011,
+       2012,
+       2013,
+       2014,
+       2015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "2": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "3": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "block_ops": [
+     [
+      "allocate",
+      0,
+      [],
+      [
+       3
+      ]
+     ],
+     [
+      "allocate",
+      1,
+      [],
+      [
+       2
+      ]
+     ],
+     [
+      "allocate",
+      2,
+      [],
+      [
+       1
+      ]
+     ],
+     [
+      "allocate",
+      3,
+      [],
+      [
+       0
+      ]
+     ]
+    ],
+    "cache_config_num_gpu_blocks": 4,
+    "cache_engine_num_gpu_blocks": 4,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     4
+    ],
+    "cache_tensor_shapes": [
+     [
+      4,
+      16,
+      4,
+      64
+     ]
+    ],
+    "allocator_num_blocks": 4
+   },
+   "sampler_outputs": [
+    [
+     0,
+     10935
+    ],
+    [
+     1,
+     3591
+    ],
+    [
+     2,
+     10123
+    ],
+    [
+     3,
+     14666
+    ]
+   ],
+   "request_outputs": [
+    {
+     "seq_id": 0,
+     "prompt_token_ids": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004,
+      1005,
+      1006,
+      1007,
+      1008,
+      1009,
+      1010,
+      1011,
+      1012,
+      1013,
+      1014,
+      1015
+     ],
+     "token_ids": [],
+     "text": "",
+     "finished": false,
+     "finish_reason": null
+    },
+    {
+     "seq_id": 1,
+     "prompt_token_ids": [
+      2000,
+      2001,
+      2002,
+      2003,
+      2004,
+      2005,
+      2006,
+      2007,
+      2008,
+      2009,
+      2010,
+      2011,
+      2012,
+      2013,
+      2014,
+      2015
+     ],
+     "token_ids": [],
+     "text": "",
+     "finished": false,
+     "finish_reason": null
+    },
+    {
+     "seq_id": 2,
+     "prompt_token_ids": [
+      3000,
+      3001,
+      3002,
+      3003,
+      3004,
+      3005,
+      3006,
+      3007,
+      3008,
+      3009,
+      3010,
+      3011,
+      3012,
+      3013,
+      3014,
+      3015
+     ],
+     "token_ids": [],
+     "text": "",
+     "finished": false,
+     "finish_reason": null
+    },
+    {
+     "seq_id": 3,
+     "prompt_token_ids": [
+      4000,
+      4001,
+      4002,
+      4003,
+      4004,
+      4005,
+      4006,
+      4007,
+      4008,
+      4009,
+      4010,
+      4011,
+      4012,
+      4013,
+      4014,
+      4015
+     ],
+     "token_ids": [],
+     "text": "",
+     "finished": false,
+     "finish_reason": null
+    }
+   ],
+   "decision_time": 1457914.283147917,
+   "victim_need": {
+    "free_blocks": 4,
+    "victims": [],
+    "recovered_blocks": 0,
+    "selected_admission_charges": 4,
+    "selected_decode_demands": 0,
+    "selected_decodes": 0,
+    "decode_demands": {},
+    "victim_blocks_needed_for_decodes": 0,
+    "victim_blocks_needed_physical": 0,
+    "victim_blocks_needed_with_lp_prerequisite": null,
+    "victims_needed_for_resident_limit": 0,
+    "reasons": [],
+    "non_preemptive_actions": [
+     [
+      0,
+      "admission"
+     ],
+     [
+      1,
+      "admission"
+     ],
+     [
+      2,
+      "admission"
+     ],
+     [
+      3,
+      "admission"
+     ]
+    ],
+    "preemption_free_alternative": true,
+    "extraction_changed_relaxed": null
+   },
+   "physical_block_ids_equal": true,
+   "accounting": {
+    "A": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": null,
+     "completion": null,
+     "generated_token_events": 0,
+     "native_output_count": 0,
+     "overgeneration": null,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 16,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 16,
+     "omitted_decisions": []
+    },
+    "B": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": null,
+     "completion": null,
+     "generated_token_events": 0,
+     "native_output_count": 0,
+     "overgeneration": null,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 16,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 16,
+     "omitted_decisions": []
+    },
+    "C": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": null,
+     "completion": null,
+     "generated_token_events": 0,
+     "native_output_count": 0,
+     "overgeneration": null,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 16,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 16,
+     "omitted_decisions": []
+    },
+    "D": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": null,
+     "completion": null,
+     "generated_token_events": 0,
+     "native_output_count": 0,
+     "overgeneration": null,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 16,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 16,
+     "omitted_decisions": []
+    }
+   },
+   "virtual_time": 0
+  },
+  {
+   "index": 1,
+   "before": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 0,
+    "free_block_ids": [],
+    "block_tables": {
+     "0": [
+      3
+     ],
+     "1": [
+      2
+     ],
+     "2": [
+      1
+     ],
+     "3": [
+      0
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004,
+       1005,
+       1006,
+       1007,
+       1008,
+       1009,
+       1010,
+       1011,
+       1012,
+       1013,
+       1014,
+       1015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007,
+       2008,
+       2009,
+       2010,
+       2011,
+       2012,
+       2013,
+       2014,
+       2015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "2": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "3": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "iteration_id": 0,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "arrival_times": {
+     "0": 1457914.277770152,
+     "1": 1457914.279332869,
+     "2": 1457914.280054562,
+     "3": 1457914.280993725
+    }
+   },
+   "worker_before": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 0,
+    "free_block_ids": [],
+    "block_tables": {
+     "0": [
+      3
+     ],
+     "1": [
+      2
+     ],
+     "2": [
+      1
+     ],
+     "3": [
+      0
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004,
+       1005,
+       1006,
+       1007,
+       1008,
+       1009,
+       1010,
+       1011,
+       1012,
+       1013,
+       1014,
+       1015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007,
+       2008,
+       2009,
+       2010,
+       2011,
+       2012,
+       2013,
+       2014,
+       2015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "2": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "3": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "block_ops": [],
+    "cache_config_num_gpu_blocks": 4,
+    "cache_engine_num_gpu_blocks": 4,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     4
+    ],
+    "cache_tensor_shapes": [
+     [
+      4,
+      16,
+      4,
+      64
+     ]
+    ],
+    "allocator_num_blocks": 4
+   },
+   "proposals": [
+    {
+     "decision_time": 1457914.336296887,
+     "running_order": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "arrived_waiting_order": [],
+     "free_blocks": 0,
+     "watermark_blocks": 0,
+     "token_budget": 64,
+     "victims": [],
+     "actions": [
+      {
+       "seq_id": 0,
+       "kind": "decode",
+       "num_tokens": 1,
+       "block_demand": 0
+      },
+      {
+       "seq_id": 1,
+       "kind": "decode",
+       "num_tokens": 1,
+       "block_demand": 0
+      },
+      {
+       "seq_id": 2,
+       "kind": "decode",
+       "num_tokens": 1,
+       "block_demand": 0
+      },
+      {
+       "seq_id": 3,
+       "kind": "decode",
+       "num_tokens": 1,
+       "block_demand": 0
+      }
+     ],
+     "running_stop_reason": "running_exhausted",
+     "waiting_stop_reason": "arrived_waiting_exhausted"
+    }
+   ],
+   "lp_events": [],
+   "schedules": [
+    {
+     "outputs": {
+      "id": 1,
+      "scheduled": [
+       [
+        0,
+        0
+       ],
+       [
+        1,
+        0
+       ],
+       [
+        2,
+        0
+       ],
+       [
+        3,
+        0
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "num_ops": 4,
+     "state": {
+      "total_blocks": 4,
+      "watermark_blocks": 0,
+      "free_blocks": 0,
+      "free_block_ids": [],
+      "block_tables": {
+       "0": [
+        3
+       ],
+       "1": [
+        2
+       ],
+       "2": [
+        1
+       ],
+       "3": [
+        0
+       ]
+      },
+      "seqs": {
+       "0": {
+        "status": "PAUSED",
+        "prompt_len": 16,
+        "prompt_token_ids": [
+         1000,
+         1001,
+         1002,
+         1003,
+         1004,
+         1005,
+         1006,
+         1007,
+         1008,
+         1009,
+         1010,
+         1011,
+         1012,
+         1013,
+         1014,
+         1015
+        ],
+        "prompt_tokens_processed": 16,
+        "prompt_processing_finished": true,
+        "output_token_ids": [],
+        "logical_blocks": 1
+       },
+       "1": {
+        "status": "PAUSED",
+        "prompt_len": 16,
+        "prompt_token_ids": [
+         2000,
+         2001,
+         2002,
+         2003,
+         2004,
+         2005,
+         2006,
+         2007,
+         2008,
+         2009,
+         2010,
+         2011,
+         2012,
+         2013,
+         2014,
+         2015
+        ],
+        "prompt_tokens_processed": 16,
+        "prompt_processing_finished": true,
+        "output_token_ids": [],
+        "logical_blocks": 1
+       },
+       "2": {
+        "status": "PAUSED",
+        "prompt_len": 16,
+        "prompt_token_ids": [
+         3000,
+         3001,
+         3002,
+         3003,
+         3004,
+         3005,
+         3006,
+         3007,
+         3008,
+         3009,
+         3010,
+         3011,
+         3012,
+         3013,
+         3014,
+         3015
+        ],
+        "prompt_tokens_processed": 16,
+        "prompt_processing_finished": true,
+        "output_token_ids": [],
+        "logical_blocks": 1
+       },
+       "3": {
+        "status": "PAUSED",
+        "prompt_len": 16,
+        "prompt_token_ids": [
+         4000,
+         4001,
+         4002,
+         4003,
+         4004,
+         4005,
+         4006,
+         4007,
+         4008,
+         4009,
+         4010,
+         4011,
+         4012,
+         4013,
+         4014,
+         4015
+        ],
+        "prompt_tokens_processed": 16,
+        "prompt_processing_finished": true,
+        "output_token_ids": [],
+        "logical_blocks": 1
+       }
+      },
+      "iteration_id": 1,
+      "num_running_batches": 1,
+      "waiting": [],
+      "running": [
+       0,
+       1,
+       2,
+       3
+      ]
+     }
+    }
+   ],
+   "central_ops": [
+    [
+     "append",
+     0,
+     [
+      3
+     ],
+     [
+      3
+     ]
+    ],
+    [
+     "append",
+     1,
+     [
+      2
+     ],
+     [
+      2
+     ]
+    ],
+    [
+     "append",
+     2,
+     [
+      1
+     ],
+     [
+      1
+     ]
+    ],
+    [
+     "append",
+     3,
+     [
+      0
+     ],
+     [
+      0
+     ]
+    ]
+   ],
+   "after": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 0,
+    "free_block_ids": [],
+    "block_tables": {
+     "0": [
+      3
+     ],
+     "1": [
+      2
+     ],
+     "2": [
+      1
+     ],
+     "3": [
+      0
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004,
+       1005,
+       1006,
+       1007,
+       1008,
+       1009,
+       1010,
+       1011,
+       1012,
+       1013,
+       1014,
+       1015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       10935
+      ],
+      "logical_blocks": 2
+     },
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007,
+       2008,
+       2009,
+       2010,
+       2011,
+       2012,
+       2013,
+       2014,
+       2015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       3591
+      ],
+      "logical_blocks": 2
+     },
+     "2": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       10123
+      ],
+      "logical_blocks": 2
+     },
+     "3": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       14666
+      ],
+      "logical_blocks": 2
+     }
+    },
+    "iteration_id": 1,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [
+     0,
+     1,
+     2,
+     3
+    ]
+   },
+   "worker_after": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 0,
+    "free_block_ids": [],
+    "block_tables": {
+     "0": [
+      3
+     ],
+     "1": [
+      2
+     ],
+     "2": [
+      1
+     ],
+     "3": [
+      0
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004,
+       1005,
+       1006,
+       1007,
+       1008,
+       1009,
+       1010,
+       1011,
+       1012,
+       1013,
+       1014,
+       1015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       10935
+      ],
+      "logical_blocks": 2
+     },
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007,
+       2008,
+       2009,
+       2010,
+       2011,
+       2012,
+       2013,
+       2014,
+       2015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       3591
+      ],
+      "logical_blocks": 2
+     },
+     "2": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       10123
+      ],
+      "logical_blocks": 2
+     },
+     "3": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       14666
+      ],
+      "logical_blocks": 2
+     }
+    },
+    "block_ops": [
+     [
+      "append",
+      0,
+      [
+       3
+      ],
+      [
+       3
+      ]
+     ],
+     [
+      "append",
+      1,
+      [
+       2
+      ],
+      [
+       2
+      ]
+     ],
+     [
+      "append",
+      2,
+      [
+       1
+      ],
+      [
+       1
+      ]
+     ],
+     [
+      "append",
+      3,
+      [
+       0
+      ],
+      [
+       0
+      ]
+     ]
+    ],
+    "cache_config_num_gpu_blocks": 4,
+    "cache_engine_num_gpu_blocks": 4,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     4
+    ],
+    "cache_tensor_shapes": [
+     [
+      4,
+      16,
+      4,
+      64
+     ]
+    ],
+    "allocator_num_blocks": 4
+   },
+   "sampler_outputs": [
+    [
+     0,
+     10935
+    ],
+    [
+     1,
+     3591
+    ],
+    [
+     2,
+     10123
+    ],
+    [
+     3,
+     14666
+    ]
+   ],
+   "request_outputs": [
+    {
+     "seq_id": 0,
+     "prompt_token_ids": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004,
+      1005,
+      1006,
+      1007,
+      1008,
+      1009,
+      1010,
+      1011,
+      1012,
+      1013,
+      1014,
+      1015
+     ],
+     "token_ids": [
+      10935
+     ],
+     "text": "osten",
+     "finished": false,
+     "finish_reason": null
+    },
+    {
+     "seq_id": 1,
+     "prompt_token_ids": [
+      2000,
+      2001,
+      2002,
+      2003,
+      2004,
+      2005,
+      2006,
+      2007,
+      2008,
+      2009,
+      2010,
+      2011,
+      2012,
+      2013,
+      2014,
+      2015
+     ],
+     "token_ids": [
+      3591
+     ],
+     "text": "Result",
+     "finished": false,
+     "finish_reason": null
+    },
+    {
+     "seq_id": 2,
+     "prompt_token_ids": [
+      3000,
+      3001,
+      3002,
+      3003,
+      3004,
+      3005,
+      3006,
+      3007,
+      3008,
+      3009,
+      3010,
+      3011,
+      3012,
+      3013,
+      3014,
+      3015
+     ],
+     "token_ids": [
+      10123
+     ],
+     "text": "lica",
+     "finished": false,
+     "finish_reason": null
+    },
+    {
+     "seq_id": 3,
+     "prompt_token_ids": [
+      4000,
+      4001,
+      4002,
+      4003,
+      4004,
+      4005,
+      4006,
+      4007,
+      4008,
+      4009,
+      4010,
+      4011,
+      4012,
+      4013,
+      4014,
+      4015
+     ],
+     "token_ids": [
+      14666
+     ],
+     "text": " presidente",
+     "finished": false,
+     "finish_reason": null
+    }
+   ],
+   "victim_need": {
+    "free_blocks": 0,
+    "victims": [],
+    "recovered_blocks": 0,
+    "selected_admission_charges": 0,
+    "selected_decode_demands": 0,
+    "selected_decodes": 4,
+    "decode_demands": {
+     "0": 0,
+     "1": 0,
+     "2": 0,
+     "3": 0
+    },
+    "victim_blocks_needed_for_decodes": 0,
+    "victim_blocks_needed_physical": 0,
+    "victim_blocks_needed_with_lp_prerequisite": null,
+    "victims_needed_for_resident_limit": 0,
+    "reasons": [],
+    "non_preemptive_actions": [
+     [
+      0,
+      "decode"
+     ],
+     [
+      1,
+      "decode"
+     ],
+     [
+      2,
+      "decode"
+     ],
+     [
+      3,
+      "decode"
+     ]
+    ],
+    "preemption_free_alternative": true,
+    "extraction_changed_relaxed": null
+   },
+   "physical_block_ids_equal": true,
+   "accounting": {
+    "A": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": null,
+     "generated_token_events": 1,
+     "native_output_count": 1,
+     "overgeneration": null,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 16,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 16,
+     "omitted_decisions": []
+    },
+    "B": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": null,
+     "generated_token_events": 1,
+     "native_output_count": 1,
+     "overgeneration": null,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 16,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 16,
+     "omitted_decisions": []
+    },
+    "C": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": null,
+     "generated_token_events": 1,
+     "native_output_count": 1,
+     "overgeneration": null,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 16,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 16,
+     "omitted_decisions": []
+    },
+    "D": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": null,
+     "generated_token_events": 1,
+     "native_output_count": 1,
+     "overgeneration": null,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 16,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 16,
+     "omitted_decisions": []
+    }
+   },
+   "virtual_time": 1
+  },
+  {
+   "index": 2,
+   "before": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 0,
+    "free_block_ids": [],
+    "block_tables": {
+     "0": [
+      3
+     ],
+     "1": [
+      2
+     ],
+     "2": [
+      1
+     ],
+     "3": [
+      0
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004,
+       1005,
+       1006,
+       1007,
+       1008,
+       1009,
+       1010,
+       1011,
+       1012,
+       1013,
+       1014,
+       1015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       10935
+      ],
+      "logical_blocks": 2
+     },
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007,
+       2008,
+       2009,
+       2010,
+       2011,
+       2012,
+       2013,
+       2014,
+       2015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       3591
+      ],
+      "logical_blocks": 2
+     },
+     "2": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       10123
+      ],
+      "logical_blocks": 2
+     },
+     "3": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       14666
+      ],
+      "logical_blocks": 2
+     }
+    },
+    "iteration_id": 1,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "arrival_times": {
+     "0": 1457914.277770152,
+     "1": 1457914.279332869,
+     "2": 1457914.280054562,
+     "3": 1457914.280993725
+    }
+   },
+   "worker_before": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 0,
+    "free_block_ids": [],
+    "block_tables": {
+     "0": [
+      3
+     ],
+     "1": [
+      2
+     ],
+     "2": [
+      1
+     ],
+     "3": [
+      0
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004,
+       1005,
+       1006,
+       1007,
+       1008,
+       1009,
+       1010,
+       1011,
+       1012,
+       1013,
+       1014,
+       1015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       10935
+      ],
+      "logical_blocks": 2
+     },
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007,
+       2008,
+       2009,
+       2010,
+       2011,
+       2012,
+       2013,
+       2014,
+       2015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       3591
+      ],
+      "logical_blocks": 2
+     },
+     "2": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       10123
+      ],
+      "logical_blocks": 2
+     },
+     "3": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       14666
+      ],
+      "logical_blocks": 2
+     }
+    },
+    "block_ops": [],
+    "cache_config_num_gpu_blocks": 4,
+    "cache_engine_num_gpu_blocks": 4,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     4
+    ],
+    "cache_tensor_shapes": [
+     [
+      4,
+      16,
+      4,
+      64
+     ]
+    ],
+    "allocator_num_blocks": 4
+   },
+   "proposals": [
+    {
+     "decision_time": 1457914.355407482,
+     "running_order": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "arrived_waiting_order": [],
+     "free_blocks": 0,
+     "watermark_blocks": 0,
+     "token_budget": 64,
+     "victims": [
+      3,
+      2
+     ],
+     "actions": [
+      {
+       "seq_id": 0,
+       "kind": "decode",
+       "num_tokens": 1,
+       "block_demand": 1
+      },
+      {
+       "seq_id": 1,
+       "kind": "decode",
+       "num_tokens": 1,
+       "block_demand": 1
+      }
+     ],
+     "running_stop_reason": "running_exhausted",
+     "waiting_stop_reason": "skipped_after_preemption"
+    }
+   ],
+   "lp_events": [],
+   "schedules": [
+    {
+     "outputs": {
+      "id": 2,
+      "scheduled": [
+       [
+        0,
+        0
+       ],
+       [
+        1,
+        0
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": [
+       3,
+       2
+      ]
+     },
+     "num_ops": 4,
+     "state": {
+      "total_blocks": 4,
+      "watermark_blocks": 0,
+      "free_blocks": 0,
+      "free_block_ids": [],
+      "block_tables": {
+       "0": [
+        3,
+        1
+       ],
+       "1": [
+        2,
+        0
+       ]
+      },
+      "seqs": {
+       "0": {
+        "status": "PAUSED",
+        "prompt_len": 16,
+        "prompt_token_ids": [
+         1000,
+         1001,
+         1002,
+         1003,
+         1004,
+         1005,
+         1006,
+         1007,
+         1008,
+         1009,
+         1010,
+         1011,
+         1012,
+         1013,
+         1014,
+         1015
+        ],
+        "prompt_tokens_processed": 16,
+        "prompt_processing_finished": true,
+        "output_token_ids": [
+         10935
+        ],
+        "logical_blocks": 2
+       },
+       "1": {
+        "status": "PAUSED",
+        "prompt_len": 16,
+        "prompt_token_ids": [
+         2000,
+         2001,
+         2002,
+         2003,
+         2004,
+         2005,
+         2006,
+         2007,
+         2008,
+         2009,
+         2010,
+         2011,
+         2012,
+         2013,
+         2014,
+         2015
+        ],
+        "prompt_tokens_processed": 16,
+        "prompt_processing_finished": true,
+        "output_token_ids": [
+         3591
+        ],
+        "logical_blocks": 2
+       },
+       "2": {
+        "status": "PAUSED",
+        "prompt_len": 16,
+        "prompt_token_ids": [
+         3000,
+         3001,
+         3002,
+         3003,
+         3004,
+         3005,
+         3006,
+         3007,
+         3008,
+         3009,
+         3010,
+         3011,
+         3012,
+         3013,
+         3014,
+         3015
+        ],
+        "prompt_tokens_processed": 16,
+        "prompt_processing_finished": true,
+        "output_token_ids": [
+         10123
+        ],
+        "logical_blocks": 2
+       },
+       "3": {
+        "status": "PAUSED",
+        "prompt_len": 16,
+        "prompt_token_ids": [
+         4000,
+         4001,
+         4002,
+         4003,
+         4004,
+         4005,
+         4006,
+         4007,
+         4008,
+         4009,
+         4010,
+         4011,
+         4012,
+         4013,
+         4014,
+         4015
+        ],
+        "prompt_tokens_processed": 16,
+        "prompt_processing_finished": true,
+        "output_token_ids": [
+         14666
+        ],
+        "logical_blocks": 2
+       }
+      },
+      "iteration_id": 2,
+      "num_running_batches": 1,
+      "waiting": [
+       2,
+       3
+      ],
+      "running": [
+       0,
+       1
+      ]
+     }
+    }
+   ],
+   "central_ops": [
+    [
+     "free",
+     3,
+     [
+      0
+     ],
+     []
+    ],
+    [
+     "free",
+     2,
+     [
+      1
+     ],
+     []
+    ],
+    [
+     "append",
+     0,
+     [
+      3
+     ],
+     [
+      3,
+      1
+     ]
+    ],
+    [
+     "append",
+     1,
+     [
+      2
+     ],
+     [
+      2,
+      0
+     ]
+    ]
+   ],
+   "after": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 0,
+    "free_block_ids": [],
+    "block_tables": {
+     "0": [
+      3,
+      1
+     ],
+     "1": [
+      2,
+      0
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004,
+       1005,
+       1006,
+       1007,
+       1008,
+       1009,
+       1010,
+       1011,
+       1012,
+       1013,
+       1014,
+       1015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       10935,
+       15928
+      ],
+      "logical_blocks": 2
+     },
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007,
+       2008,
+       2009,
+       2010,
+       2011,
+       2012,
+       2013,
+       2014,
+       2015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       3591,
+       7027
+      ],
+      "logical_blocks": 2
+     },
+     "2": {
+      "status": "WAITING",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015,
+       10123
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     },
+     "3": {
+      "status": "WAITING",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015,
+       14666
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     }
+    },
+    "iteration_id": 2,
+    "num_running_batches": 0,
+    "waiting": [
+     2,
+     3
+    ],
+    "running": [
+     0,
+     1
+    ]
+   },
+   "worker_after": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 0,
+    "free_block_ids": [],
+    "block_tables": {
+     "0": [
+      3,
+      1
+     ],
+     "1": [
+      2,
+      0
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004,
+       1005,
+       1006,
+       1007,
+       1008,
+       1009,
+       1010,
+       1011,
+       1012,
+       1013,
+       1014,
+       1015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       10935,
+       15928
+      ],
+      "logical_blocks": 2
+     },
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007,
+       2008,
+       2009,
+       2010,
+       2011,
+       2012,
+       2013,
+       2014,
+       2015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       3591,
+       7027
+      ],
+      "logical_blocks": 2
+     },
+     "2": {
+      "status": "WAITING",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015,
+       10123
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     },
+     "3": {
+      "status": "WAITING",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015,
+       14666
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     }
+    },
+    "block_ops": [
+     [
+      "free",
+      3,
+      [
+       0
+      ],
+      []
+     ],
+     [
+      "free",
+      2,
+      [
+       1
+      ],
+      []
+     ],
+     [
+      "append",
+      0,
+      [
+       3
+      ],
+      [
+       3,
+       1
+      ]
+     ],
+     [
+      "append",
+      1,
+      [
+       2
+      ],
+      [
+       2,
+       0
+      ]
+     ]
+    ],
+    "cache_config_num_gpu_blocks": 4,
+    "cache_engine_num_gpu_blocks": 4,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     4
+    ],
+    "cache_tensor_shapes": [
+     [
+      4,
+      16,
+      4,
+      64
+     ]
+    ],
+    "allocator_num_blocks": 4
+   },
+   "sampler_outputs": [
+    [
+     0,
+     15928
+    ],
+    [
+     1,
+     7027
+    ]
+   ],
+   "request_outputs": [
+    {
+     "seq_id": 0,
+     "prompt_token_ids": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004,
+      1005,
+      1006,
+      1007,
+      1008,
+      1009,
+      1010,
+      1011,
+      1012,
+      1013,
+      1014,
+      1015
+     ],
+     "token_ids": [
+      10935,
+      15928
+     ],
+     "text": "osten invoke",
+     "finished": false,
+     "finish_reason": null
+    },
+    {
+     "seq_id": 1,
+     "prompt_token_ids": [
+      2000,
+      2001,
+      2002,
+      2003,
+      2004,
+      2005,
+      2006,
+      2007,
+      2008,
+      2009,
+      2010,
+      2011,
+      2012,
+      2013,
+      2014,
+      2015
+     ],
+     "token_ids": [
+      3591,
+      7027
+     ],
+     "text": "Result Great",
+     "finished": false,
+     "finish_reason": null
+    }
+   ],
+   "victim_need": {
+    "free_blocks": 0,
+    "victims": [
+     3,
+     2
+    ],
+    "recovered_blocks": 2,
+    "selected_admission_charges": 0,
+    "selected_decode_demands": 2,
+    "selected_decodes": 2,
+    "decode_demands": {
+     "0": 1,
+     "1": 1,
+     "2": 1,
+     "3": 1
+    },
+    "victim_blocks_needed_for_decodes": 2,
+    "victim_blocks_needed_physical": 2,
+    "victim_blocks_needed_with_lp_prerequisite": null,
+    "victims_needed_for_resident_limit": 0,
+    "reasons": [
+     "decode_block_demand"
+    ],
+    "non_preemptive_actions": [],
+    "preemption_free_alternative": false,
+    "extraction_changed_relaxed": null
+   },
+   "physical_block_ids_equal": true,
+   "accounting": {
+    "A": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": null,
+     "generated_token_events": 2,
+     "native_output_count": 2,
+     "overgeneration": null,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 16,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 16,
+     "omitted_decisions": []
+    },
+    "B": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": null,
+     "generated_token_events": 2,
+     "native_output_count": 2,
+     "overgeneration": null,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 16,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 16,
+     "omitted_decisions": []
+    },
+    "C": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": null,
+     "generated_token_events": 1,
+     "native_output_count": 0,
+     "overgeneration": null,
+     "preemptions": 1,
+     "preemptions_after_output": 1,
+     "discarded_prompt_tokens": 16,
+     "generated_tokens_moved_to_context": 1,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 16,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 16,
+     "omitted_decisions": []
+    },
+    "D": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": null,
+     "generated_token_events": 1,
+     "native_output_count": 0,
+     "overgeneration": null,
+     "preemptions": 1,
+     "preemptions_after_output": 1,
+     "discarded_prompt_tokens": 16,
+     "generated_tokens_moved_to_context": 1,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 16,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 16,
+     "omitted_decisions": []
+    }
+   },
+   "virtual_time": 2
+  },
+  {
+   "index": 3,
+   "before": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 0,
+    "free_block_ids": [],
+    "block_tables": {
+     "0": [
+      3,
+      1
+     ],
+     "1": [
+      2,
+      0
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004,
+       1005,
+       1006,
+       1007,
+       1008,
+       1009,
+       1010,
+       1011,
+       1012,
+       1013,
+       1014,
+       1015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       10935,
+       15928
+      ],
+      "logical_blocks": 2
+     },
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007,
+       2008,
+       2009,
+       2010,
+       2011,
+       2012,
+       2013,
+       2014,
+       2015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       3591,
+       7027
+      ],
+      "logical_blocks": 2
+     },
+     "2": {
+      "status": "WAITING",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015,
+       10123
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     },
+     "3": {
+      "status": "WAITING",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015,
+       14666
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     }
+    },
+    "iteration_id": 2,
+    "num_running_batches": 0,
+    "waiting": [
+     2,
+     3
+    ],
+    "running": [
+     0,
+     1
+    ],
+    "arrival_times": {
+     "0": 1457914.277770152,
+     "1": 1457914.279332869,
+     "2": 1457914.280054562,
+     "3": 1457914.280993725
+    }
+   },
+   "worker_before": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 0,
+    "free_block_ids": [],
+    "block_tables": {
+     "0": [
+      3,
+      1
+     ],
+     "1": [
+      2,
+      0
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004,
+       1005,
+       1006,
+       1007,
+       1008,
+       1009,
+       1010,
+       1011,
+       1012,
+       1013,
+       1014,
+       1015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       10935,
+       15928
+      ],
+      "logical_blocks": 2
+     },
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 16,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007,
+       2008,
+       2009,
+       2010,
+       2011,
+       2012,
+       2013,
+       2014,
+       2015
+      ],
+      "prompt_tokens_processed": 16,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       3591,
+       7027
+      ],
+      "logical_blocks": 2
+     },
+     "2": {
+      "status": "WAITING",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015,
+       10123
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     },
+     "3": {
+      "status": "WAITING",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015,
+       14666
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     }
+    },
+    "block_ops": [],
+    "cache_config_num_gpu_blocks": 4,
+    "cache_engine_num_gpu_blocks": 4,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     4
+    ],
+    "cache_tensor_shapes": [
+     [
+      4,
+      16,
+      4,
+      64
+     ]
+    ],
+    "allocator_num_blocks": 4
+   },
+   "proposals": [
+    {
+     "decision_time": 1457914.373797836,
+     "running_order": [
+      0,
+      1
+     ],
+     "arrived_waiting_order": [
+      2,
+      3
+     ],
+     "free_blocks": 0,
+     "watermark_blocks": 0,
+     "token_budget": 64,
+     "victims": [],
+     "actions": [
+      {
+       "seq_id": 0,
+       "kind": "decode",
+       "num_tokens": 1,
+       "block_demand": 0
+      },
+      {
+       "seq_id": 1,
+       "kind": "decode",
+       "num_tokens": 1,
+       "block_demand": 0
+      }
+     ],
+     "running_stop_reason": "running_exhausted",
+     "waiting_stop_reason": "admission_memory"
+    }
+   ],
+   "lp_events": [],
+   "schedules": [
+    {
+     "outputs": {
+      "id": 3,
+      "scheduled": [
+       [
+        0,
+        0
+       ],
+       [
+        1,
+        0
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "num_ops": 2,
+     "state": {
+      "total_blocks": 4,
+      "watermark_blocks": 0,
+      "free_blocks": 0,
+      "free_block_ids": [],
+      "block_tables": {
+       "0": [
+        3,
+        1
+       ],
+       "1": [
+        2,
+        0
+       ]
+      },
+      "seqs": {
+       "0": {
+        "status": "PAUSED",
+        "prompt_len": 16,
+        "prompt_token_ids": [
+         1000,
+         1001,
+         1002,
+         1003,
+         1004,
+         1005,
+         1006,
+         1007,
+         1008,
+         1009,
+         1010,
+         1011,
+         1012,
+         1013,
+         1014,
+         1015
+        ],
+        "prompt_tokens_processed": 16,
+        "prompt_processing_finished": true,
+        "output_token_ids": [
+         10935,
+         15928
+        ],
+        "logical_blocks": 2
+       },
+       "1": {
+        "status": "PAUSED",
+        "prompt_len": 16,
+        "prompt_token_ids": [
+         2000,
+         2001,
+         2002,
+         2003,
+         2004,
+         2005,
+         2006,
+         2007,
+         2008,
+         2009,
+         2010,
+         2011,
+         2012,
+         2013,
+         2014,
+         2015
+        ],
+        "prompt_tokens_processed": 16,
+        "prompt_processing_finished": true,
+        "output_token_ids": [
+         3591,
+         7027
+        ],
+        "logical_blocks": 2
+       },
+       "2": {
+        "status": "WAITING",
+        "prompt_len": 17,
+        "prompt_token_ids": [
+         3000,
+         3001,
+         3002,
+         3003,
+         3004,
+         3005,
+         3006,
+         3007,
+         3008,
+         3009,
+         3010,
+         3011,
+         3012,
+         3013,
+         3014,
+         3015,
+         10123
+        ],
+        "prompt_tokens_processed": 0,
+        "prompt_processing_finished": false,
+        "output_token_ids": [],
+        "logical_blocks": 2
+       },
+       "3": {
+        "status": "WAITING",
+        "prompt_len": 17,
+        "prompt_token_ids": [
+         4000,
+         4001,
+         4002,
+         4003,
+         4004,
+         4005,
+         4006,
+         4007,
+         4008,
+         4009,
+         4010,
+         4011,
+         4012,
+         4013,
+         4014,
+         4015,
+         14666
+        ],
+        "prompt_tokens_processed": 0,
+        "prompt_processing_finished": false,
+        "output_token_ids": [],
+        "logical_blocks": 2
+       }
+      },
+      "iteration_id": 3,
+      "num_running_batches": 1,
+      "waiting": [
+       2,
+       3
+      ],
+      "running": [
+       0,
+       1
+      ]
+     }
+    }
+   ],
+   "central_ops": [
+    [
+     "append",
+     0,
+     [
+      3,
+      1
+     ],
+     [
+      3,
+      1
+     ]
+    ],
+    [
+     "append",
+     1,
+     [
+      2,
+      0
+     ],
+     [
+      2,
+      0
+     ]
+    ],
+    [
+     "free",
+     0,
+     [
+      3,
+      1
+     ],
+     []
+    ],
+    [
+     "free",
+     1,
+     [
+      2,
+      0
+     ],
+     []
+    ]
+   ],
+   "after": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 4,
+    "free_block_ids": [
+     3,
+     1,
+     2,
+     0
+    ],
+    "block_tables": {},
+    "seqs": {
+     "2": {
+      "status": "WAITING",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015,
+       10123
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     },
+     "3": {
+      "status": "WAITING",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015,
+       14666
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     }
+    },
+    "iteration_id": 3,
+    "num_running_batches": 0,
+    "waiting": [
+     2,
+     3
+    ],
+    "running": []
+   },
+   "worker_after": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 4,
+    "free_block_ids": [
+     1,
+     3,
+     0,
+     2
+    ],
+    "block_tables": {},
+    "seqs": {
+     "2": {
+      "status": "WAITING",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015,
+       10123
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     },
+     "3": {
+      "status": "WAITING",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015,
+       14666
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     }
+    },
+    "block_ops": [
+     [
+      "append",
+      0,
+      [
+       3,
+       1
+      ],
+      [
+       3,
+       1
+      ]
+     ],
+     [
+      "append",
+      1,
+      [
+       2,
+       0
+      ],
+      [
+       2,
+       0
+      ]
+     ],
+     [
+      "free",
+      0,
+      [
+       3,
+       1
+      ],
+      []
+     ],
+     [
+      "free",
+      1,
+      [
+       2,
+       0
+      ],
+      []
+     ]
+    ],
+    "cache_config_num_gpu_blocks": 4,
+    "cache_engine_num_gpu_blocks": 4,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     4
+    ],
+    "cache_tensor_shapes": [
+     [
+      4,
+      16,
+      4,
+      64
+     ]
+    ],
+    "allocator_num_blocks": 4
+   },
+   "sampler_outputs": [
+    [
+     0,
+     554
+    ],
+    [
+     1,
+     30481
+    ]
+   ],
+   "request_outputs": [
+    {
+     "seq_id": 0,
+     "prompt_token_ids": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004,
+      1005,
+      1006,
+      1007,
+      1008,
+      1009,
+      1010,
+      1011,
+      1012,
+      1013,
+      1014,
+      1015
+     ],
+     "token_ids": [
+      10935,
+      15928,
+      554
+     ],
+     "text": "osten invokeok",
+     "finished": true,
+     "finish_reason": "length"
+    },
+    {
+     "seq_id": 1,
+     "prompt_token_ids": [
+      2000,
+      2001,
+      2002,
+      2003,
+      2004,
+      2005,
+      2006,
+      2007,
+      2008,
+      2009,
+      2010,
+      2011,
+      2012,
+      2013,
+      2014,
+      2015
+     ],
+     "token_ids": [
+      3591,
+      7027,
+      30481
+     ],
+     "text": "Result Great\u300c",
+     "finished": true,
+     "finish_reason": "length"
+    }
+   ],
+   "victim_need": {
+    "free_blocks": 0,
+    "victims": [],
+    "recovered_blocks": 0,
+    "selected_admission_charges": 0,
+    "selected_decode_demands": 0,
+    "selected_decodes": 2,
+    "decode_demands": {
+     "0": 0,
+     "1": 0
+    },
+    "victim_blocks_needed_for_decodes": 0,
+    "victim_blocks_needed_physical": 0,
+    "victim_blocks_needed_with_lp_prerequisite": null,
+    "victims_needed_for_resident_limit": 0,
+    "reasons": [],
+    "non_preemptive_actions": [
+     [
+      0,
+      "decode"
+     ],
+     [
+      1,
+      "decode"
+     ]
+    ],
+    "preemption_free_alternative": true,
+    "extraction_changed_relaxed": null
+   },
+   "physical_block_ids_equal": true,
+   "accounting": {
+    "A": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": 3,
+     "generated_token_events": 3,
+     "native_output_count": 3,
+     "overgeneration": 0,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 16,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 16,
+     "omitted_decisions": []
+    },
+    "B": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": 3,
+     "generated_token_events": 3,
+     "native_output_count": 3,
+     "overgeneration": 0,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 16,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 16,
+     "omitted_decisions": []
+    },
+    "C": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": null,
+     "generated_token_events": 1,
+     "native_output_count": 0,
+     "overgeneration": null,
+     "preemptions": 1,
+     "preemptions_after_output": 1,
+     "discarded_prompt_tokens": 16,
+     "generated_tokens_moved_to_context": 1,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 16,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 16,
+     "omitted_decisions": [
+      3
+     ]
+    },
+    "D": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": null,
+     "generated_token_events": 1,
+     "native_output_count": 0,
+     "overgeneration": null,
+     "preemptions": 1,
+     "preemptions_after_output": 1,
+     "discarded_prompt_tokens": 16,
+     "generated_tokens_moved_to_context": 1,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 16,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 16,
+     "omitted_decisions": [
+      3
+     ]
+    }
+   },
+   "virtual_time": 3
+  },
+  {
+   "index": 4,
+   "before": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 4,
+    "free_block_ids": [
+     3,
+     1,
+     2,
+     0
+    ],
+    "block_tables": {},
+    "seqs": {
+     "2": {
+      "status": "WAITING",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015,
+       10123
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     },
+     "3": {
+      "status": "WAITING",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015,
+       14666
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     }
+    },
+    "iteration_id": 3,
+    "num_running_batches": 0,
+    "waiting": [
+     2,
+     3
+    ],
+    "running": [],
+    "arrival_times": {
+     "2": 1457914.280054562,
+     "3": 1457914.280993725
+    }
+   },
+   "worker_before": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 4,
+    "free_block_ids": [
+     1,
+     3,
+     0,
+     2
+    ],
+    "block_tables": {},
+    "seqs": {
+     "2": {
+      "status": "WAITING",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015,
+       10123
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     },
+     "3": {
+      "status": "WAITING",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015,
+       14666
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     }
+    },
+    "block_ops": [],
+    "cache_config_num_gpu_blocks": 4,
+    "cache_engine_num_gpu_blocks": 4,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     4
+    ],
+    "cache_tensor_shapes": [
+     [
+      4,
+      16,
+      4,
+      64
+     ]
+    ],
+    "allocator_num_blocks": 4
+   },
+   "proposals": [
+    {
+     "decision_time": 1457914.392233839,
+     "running_order": [],
+     "arrived_waiting_order": [
+      2,
+      3
+     ],
+     "free_blocks": 4,
+     "watermark_blocks": 0,
+     "token_budget": 64,
+     "victims": [],
+     "actions": [
+      {
+       "seq_id": 2,
+       "kind": "admission",
+       "num_tokens": 17,
+       "block_demand": 2
+      },
+      {
+       "seq_id": 3,
+       "kind": "admission",
+       "num_tokens": 17,
+       "block_demand": 2
+      }
+     ],
+     "running_stop_reason": "running_exhausted",
+     "waiting_stop_reason": "arrived_waiting_exhausted"
+    }
+   ],
+   "lp_events": [],
+   "schedules": [
+    {
+     "outputs": {
+      "id": 4,
+      "scheduled": [
+       [
+        2,
+        17
+       ],
+       [
+        3,
+        17
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "num_ops": 2,
+     "state": {
+      "total_blocks": 4,
+      "watermark_blocks": 0,
+      "free_blocks": 0,
+      "free_block_ids": [],
+      "block_tables": {
+       "2": [
+        0,
+        2
+       ],
+       "3": [
+        1,
+        3
+       ]
+      },
+      "seqs": {
+       "2": {
+        "status": "WAITING",
+        "prompt_len": 17,
+        "prompt_token_ids": [
+         3000,
+         3001,
+         3002,
+         3003,
+         3004,
+         3005,
+         3006,
+         3007,
+         3008,
+         3009,
+         3010,
+         3011,
+         3012,
+         3013,
+         3014,
+         3015,
+         10123
+        ],
+        "prompt_tokens_processed": 0,
+        "prompt_processing_finished": false,
+        "output_token_ids": [],
+        "logical_blocks": 2
+       },
+       "3": {
+        "status": "WAITING",
+        "prompt_len": 17,
+        "prompt_token_ids": [
+         4000,
+         4001,
+         4002,
+         4003,
+         4004,
+         4005,
+         4006,
+         4007,
+         4008,
+         4009,
+         4010,
+         4011,
+         4012,
+         4013,
+         4014,
+         4015,
+         14666
+        ],
+        "prompt_tokens_processed": 0,
+        "prompt_processing_finished": false,
+        "output_token_ids": [],
+        "logical_blocks": 2
+       }
+      },
+      "iteration_id": 4,
+      "num_running_batches": 1,
+      "waiting": [],
+      "running": [
+       2,
+       3
+      ]
+     }
+    }
+   ],
+   "central_ops": [
+    [
+     "allocate",
+     2,
+     [],
+     [
+      0,
+      2
+     ]
+    ],
+    [
+     "allocate",
+     3,
+     [],
+     [
+      1,
+      3
+     ]
+    ]
+   ],
+   "after": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 0,
+    "free_block_ids": [],
+    "block_tables": {
+     "2": [
+      0,
+      2
+     ],
+     "3": [
+      1,
+      3
+     ]
+    },
+    "seqs": {
+     "2": {
+      "status": "PAUSED",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015,
+       10123
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     },
+     "3": {
+      "status": "PAUSED",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015,
+       14666
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     }
+    },
+    "iteration_id": 4,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [
+     2,
+     3
+    ]
+   },
+   "worker_after": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 0,
+    "free_block_ids": [],
+    "block_tables": {
+     "2": [
+      2,
+      0
+     ],
+     "3": [
+      3,
+      1
+     ]
+    },
+    "seqs": {
+     "2": {
+      "status": "PAUSED",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015,
+       10123
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     },
+     "3": {
+      "status": "PAUSED",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015,
+       14666
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     }
+    },
+    "block_ops": [
+     [
+      "allocate",
+      2,
+      [],
+      [
+       2,
+       0
+      ]
+     ],
+     [
+      "allocate",
+      3,
+      [],
+      [
+       3,
+       1
+      ]
+     ]
+    ],
+    "cache_config_num_gpu_blocks": 4,
+    "cache_engine_num_gpu_blocks": 4,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     4
+    ],
+    "cache_tensor_shapes": [
+     [
+      4,
+      16,
+      4,
+      64
+     ]
+    ],
+    "allocator_num_blocks": 4
+   },
+   "sampler_outputs": [
+    [
+     2,
+     30925
+    ],
+    [
+     3,
+     11030
+    ]
+   ],
+   "request_outputs": [
+    {
+     "seq_id": 2,
+     "prompt_token_ids": [
+      3000,
+      3001,
+      3002,
+      3003,
+      3004,
+      3005,
+      3006,
+      3007,
+      3008,
+      3009,
+      3010,
+      3011,
+      3012,
+      3013,
+      3014,
+      3015,
+      10123
+     ],
+     "token_ids": [],
+     "text": "lica",
+     "finished": false,
+     "finish_reason": null
+    },
+    {
+     "seq_id": 3,
+     "prompt_token_ids": [
+      4000,
+      4001,
+      4002,
+      4003,
+      4004,
+      4005,
+      4006,
+      4007,
+      4008,
+      4009,
+      4010,
+      4011,
+      4012,
+      4013,
+      4014,
+      4015,
+      14666
+     ],
+     "token_ids": [],
+     "text": " presidente",
+     "finished": false,
+     "finish_reason": null
+    }
+   ],
+   "victim_need": {
+    "free_blocks": 4,
+    "victims": [],
+    "recovered_blocks": 0,
+    "selected_admission_charges": 4,
+    "selected_decode_demands": 0,
+    "selected_decodes": 0,
+    "decode_demands": {},
+    "victim_blocks_needed_for_decodes": 0,
+    "victim_blocks_needed_physical": 0,
+    "victim_blocks_needed_with_lp_prerequisite": null,
+    "victims_needed_for_resident_limit": 0,
+    "reasons": [],
+    "non_preemptive_actions": [
+     [
+      2,
+      "admission"
+     ],
+     [
+      3,
+      "admission"
+     ]
+    ],
+    "preemption_free_alternative": true,
+    "extraction_changed_relaxed": null
+   },
+   "physical_block_ids_equal": false,
+   "accounting": {
+    "A": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": 3,
+     "generated_token_events": 3,
+     "native_output_count": 3,
+     "overgeneration": 0,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 16,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 16,
+     "omitted_decisions": []
+    },
+    "B": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": 3,
+     "generated_token_events": 3,
+     "native_output_count": 3,
+     "overgeneration": 0,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 16,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 16,
+     "omitted_decisions": []
+    },
+    "C": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": null,
+     "generated_token_events": 1,
+     "native_output_count": 0,
+     "overgeneration": null,
+     "preemptions": 1,
+     "preemptions_after_output": 1,
+     "discarded_prompt_tokens": 16,
+     "generated_tokens_moved_to_context": 1,
+     "prefill_actions": 2,
+     "prefill_tokens_executed": 33,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 16,
+     "prefill_tokens_expanded_context": 1,
+     "prefilled_position_high_water": 17,
+     "omitted_decisions": [
+      3
+     ]
+    },
+    "D": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": null,
+     "generated_token_events": 1,
+     "native_output_count": 0,
+     "overgeneration": null,
+     "preemptions": 1,
+     "preemptions_after_output": 1,
+     "discarded_prompt_tokens": 16,
+     "generated_tokens_moved_to_context": 1,
+     "prefill_actions": 2,
+     "prefill_tokens_executed": 33,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 16,
+     "prefill_tokens_expanded_context": 1,
+     "prefilled_position_high_water": 17,
+     "omitted_decisions": [
+      3
+     ]
+    }
+   },
+   "virtual_time": 4
+  },
+  {
+   "index": 5,
+   "before": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 0,
+    "free_block_ids": [],
+    "block_tables": {
+     "2": [
+      0,
+      2
+     ],
+     "3": [
+      1,
+      3
+     ]
+    },
+    "seqs": {
+     "2": {
+      "status": "PAUSED",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015,
+       10123
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     },
+     "3": {
+      "status": "PAUSED",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015,
+       14666
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     }
+    },
+    "iteration_id": 4,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [
+     2,
+     3
+    ],
+    "arrival_times": {
+     "2": 1457914.280054562,
+     "3": 1457914.280993725
+    }
+   },
+   "worker_before": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 0,
+    "free_block_ids": [],
+    "block_tables": {
+     "2": [
+      2,
+      0
+     ],
+     "3": [
+      3,
+      1
+     ]
+    },
+    "seqs": {
+     "2": {
+      "status": "PAUSED",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015,
+       10123
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     },
+     "3": {
+      "status": "PAUSED",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015,
+       14666
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 2
+     }
+    },
+    "block_ops": [],
+    "cache_config_num_gpu_blocks": 4,
+    "cache_engine_num_gpu_blocks": 4,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     4
+    ],
+    "cache_tensor_shapes": [
+     [
+      4,
+      16,
+      4,
+      64
+     ]
+    ],
+    "allocator_num_blocks": 4
+   },
+   "proposals": [
+    {
+     "decision_time": 1457914.415298463,
+     "running_order": [
+      2,
+      3
+     ],
+     "arrived_waiting_order": [],
+     "free_blocks": 0,
+     "watermark_blocks": 0,
+     "token_budget": 64,
+     "victims": [],
+     "actions": [
+      {
+       "seq_id": 2,
+       "kind": "decode",
+       "num_tokens": 1,
+       "block_demand": 0
+      },
+      {
+       "seq_id": 3,
+       "kind": "decode",
+       "num_tokens": 1,
+       "block_demand": 0
+      }
+     ],
+     "running_stop_reason": "running_exhausted",
+     "waiting_stop_reason": "arrived_waiting_exhausted"
+    }
+   ],
+   "lp_events": [],
+   "schedules": [
+    {
+     "outputs": {
+      "id": 5,
+      "scheduled": [
+       [
+        2,
+        0
+       ],
+       [
+        3,
+        0
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "num_ops": 2,
+     "state": {
+      "total_blocks": 4,
+      "watermark_blocks": 0,
+      "free_blocks": 0,
+      "free_block_ids": [],
+      "block_tables": {
+       "2": [
+        0,
+        2
+       ],
+       "3": [
+        1,
+        3
+       ]
+      },
+      "seqs": {
+       "2": {
+        "status": "PAUSED",
+        "prompt_len": 17,
+        "prompt_token_ids": [
+         3000,
+         3001,
+         3002,
+         3003,
+         3004,
+         3005,
+         3006,
+         3007,
+         3008,
+         3009,
+         3010,
+         3011,
+         3012,
+         3013,
+         3014,
+         3015,
+         10123
+        ],
+        "prompt_tokens_processed": 17,
+        "prompt_processing_finished": true,
+        "output_token_ids": [],
+        "logical_blocks": 2
+       },
+       "3": {
+        "status": "PAUSED",
+        "prompt_len": 17,
+        "prompt_token_ids": [
+         4000,
+         4001,
+         4002,
+         4003,
+         4004,
+         4005,
+         4006,
+         4007,
+         4008,
+         4009,
+         4010,
+         4011,
+         4012,
+         4013,
+         4014,
+         4015,
+         14666
+        ],
+        "prompt_tokens_processed": 17,
+        "prompt_processing_finished": true,
+        "output_token_ids": [],
+        "logical_blocks": 2
+       }
+      },
+      "iteration_id": 5,
+      "num_running_batches": 1,
+      "waiting": [],
+      "running": [
+       2,
+       3
+      ]
+     }
+    }
+   ],
+   "central_ops": [
+    [
+     "append",
+     2,
+     [
+      0,
+      2
+     ],
+     [
+      0,
+      2
+     ]
+    ],
+    [
+     "append",
+     3,
+     [
+      1,
+      3
+     ],
+     [
+      1,
+      3
+     ]
+    ]
+   ],
+   "after": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 0,
+    "free_block_ids": [],
+    "block_tables": {
+     "2": [
+      0,
+      2
+     ],
+     "3": [
+      1,
+      3
+     ]
+    },
+    "seqs": {
+     "2": {
+      "status": "PAUSED",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015,
+       10123
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       30925
+      ],
+      "logical_blocks": 2
+     },
+     "3": {
+      "status": "PAUSED",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015,
+       14666
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       11030
+      ],
+      "logical_blocks": 2
+     }
+    },
+    "iteration_id": 5,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [
+     2,
+     3
+    ]
+   },
+   "worker_after": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 0,
+    "free_block_ids": [],
+    "block_tables": {
+     "2": [
+      2,
+      0
+     ],
+     "3": [
+      3,
+      1
+     ]
+    },
+    "seqs": {
+     "2": {
+      "status": "PAUSED",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015,
+       10123
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       30925
+      ],
+      "logical_blocks": 2
+     },
+     "3": {
+      "status": "PAUSED",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015,
+       14666
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       11030
+      ],
+      "logical_blocks": 2
+     }
+    },
+    "block_ops": [
+     [
+      "append",
+      2,
+      [
+       2,
+       0
+      ],
+      [
+       2,
+       0
+      ]
+     ],
+     [
+      "append",
+      3,
+      [
+       3,
+       1
+      ],
+      [
+       3,
+       1
+      ]
+     ]
+    ],
+    "cache_config_num_gpu_blocks": 4,
+    "cache_engine_num_gpu_blocks": 4,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     4
+    ],
+    "cache_tensor_shapes": [
+     [
+      4,
+      16,
+      4,
+      64
+     ]
+    ],
+    "allocator_num_blocks": 4
+   },
+   "sampler_outputs": [
+    [
+     2,
+     30925
+    ],
+    [
+     3,
+     11030
+    ]
+   ],
+   "request_outputs": [
+    {
+     "seq_id": 2,
+     "prompt_token_ids": [
+      3000,
+      3001,
+      3002,
+      3003,
+      3004,
+      3005,
+      3006,
+      3007,
+      3008,
+      3009,
+      3010,
+      3011,
+      3012,
+      3013,
+      3014,
+      3015,
+      10123
+     ],
+     "token_ids": [
+      30925
+     ],
+     "text": "lica\u049a",
+     "finished": false,
+     "finish_reason": null
+    },
+    {
+     "seq_id": 3,
+     "prompt_token_ids": [
+      4000,
+      4001,
+      4002,
+      4003,
+      4004,
+      4005,
+      4006,
+      4007,
+      4008,
+      4009,
+      4010,
+      4011,
+      4012,
+      4013,
+      4014,
+      4015,
+      14666
+     ],
+     "token_ids": [
+      11030
+     ],
+     "text": " presidenteprops",
+     "finished": false,
+     "finish_reason": null
+    }
+   ],
+   "victim_need": {
+    "free_blocks": 0,
+    "victims": [],
+    "recovered_blocks": 0,
+    "selected_admission_charges": 0,
+    "selected_decode_demands": 0,
+    "selected_decodes": 2,
+    "decode_demands": {
+     "2": 0,
+     "3": 0
+    },
+    "victim_blocks_needed_for_decodes": 0,
+    "victim_blocks_needed_physical": 0,
+    "victim_blocks_needed_with_lp_prerequisite": null,
+    "victims_needed_for_resident_limit": 0,
+    "reasons": [],
+    "non_preemptive_actions": [
+     [
+      2,
+      "decode"
+     ],
+     [
+      3,
+      "decode"
+     ]
+    ],
+    "preemption_free_alternative": true,
+    "extraction_changed_relaxed": null
+   },
+   "physical_block_ids_equal": false,
+   "accounting": {
+    "A": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": 3,
+     "generated_token_events": 3,
+     "native_output_count": 3,
+     "overgeneration": 0,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 16,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 16,
+     "omitted_decisions": []
+    },
+    "B": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": 3,
+     "generated_token_events": 3,
+     "native_output_count": 3,
+     "overgeneration": 0,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 16,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 16,
+     "omitted_decisions": []
+    },
+    "C": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": null,
+     "generated_token_events": 2,
+     "native_output_count": 1,
+     "overgeneration": null,
+     "preemptions": 1,
+     "preemptions_after_output": 1,
+     "discarded_prompt_tokens": 16,
+     "generated_tokens_moved_to_context": 1,
+     "prefill_actions": 2,
+     "prefill_tokens_executed": 33,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 16,
+     "prefill_tokens_expanded_context": 1,
+     "prefilled_position_high_water": 17,
+     "omitted_decisions": [
+      3
+     ]
+    },
+    "D": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": null,
+     "generated_token_events": 2,
+     "native_output_count": 1,
+     "overgeneration": null,
+     "preemptions": 1,
+     "preemptions_after_output": 1,
+     "discarded_prompt_tokens": 16,
+     "generated_tokens_moved_to_context": 1,
+     "prefill_actions": 2,
+     "prefill_tokens_executed": 33,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 16,
+     "prefill_tokens_expanded_context": 1,
+     "prefilled_position_high_water": 17,
+     "omitted_decisions": [
+      3
+     ]
+    }
+   },
+   "virtual_time": 5
+  },
+  {
+   "index": 6,
+   "before": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 0,
+    "free_block_ids": [],
+    "block_tables": {
+     "2": [
+      0,
+      2
+     ],
+     "3": [
+      1,
+      3
+     ]
+    },
+    "seqs": {
+     "2": {
+      "status": "PAUSED",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015,
+       10123
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       30925
+      ],
+      "logical_blocks": 2
+     },
+     "3": {
+      "status": "PAUSED",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015,
+       14666
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       11030
+      ],
+      "logical_blocks": 2
+     }
+    },
+    "iteration_id": 5,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [
+     2,
+     3
+    ],
+    "arrival_times": {
+     "2": 1457914.280054562,
+     "3": 1457914.280993725
+    }
+   },
+   "worker_before": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 0,
+    "free_block_ids": [],
+    "block_tables": {
+     "2": [
+      2,
+      0
+     ],
+     "3": [
+      3,
+      1
+     ]
+    },
+    "seqs": {
+     "2": {
+      "status": "PAUSED",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015,
+       10123
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       30925
+      ],
+      "logical_blocks": 2
+     },
+     "3": {
+      "status": "PAUSED",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015,
+       14666
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       11030
+      ],
+      "logical_blocks": 2
+     }
+    },
+    "block_ops": [],
+    "cache_config_num_gpu_blocks": 4,
+    "cache_engine_num_gpu_blocks": 4,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     4
+    ],
+    "cache_tensor_shapes": [
+     [
+      4,
+      16,
+      4,
+      64
+     ]
+    ],
+    "allocator_num_blocks": 4
+   },
+   "proposals": [
+    {
+     "decision_time": 1457914.433480222,
+     "running_order": [
+      2,
+      3
+     ],
+     "arrived_waiting_order": [],
+     "free_blocks": 0,
+     "watermark_blocks": 0,
+     "token_budget": 64,
+     "victims": [],
+     "actions": [
+      {
+       "seq_id": 2,
+       "kind": "decode",
+       "num_tokens": 1,
+       "block_demand": 0
+      },
+      {
+       "seq_id": 3,
+       "kind": "decode",
+       "num_tokens": 1,
+       "block_demand": 0
+      }
+     ],
+     "running_stop_reason": "running_exhausted",
+     "waiting_stop_reason": "arrived_waiting_exhausted"
+    }
+   ],
+   "lp_events": [],
+   "schedules": [
+    {
+     "outputs": {
+      "id": 6,
+      "scheduled": [
+       [
+        2,
+        0
+       ],
+       [
+        3,
+        0
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "num_ops": 2,
+     "state": {
+      "total_blocks": 4,
+      "watermark_blocks": 0,
+      "free_blocks": 0,
+      "free_block_ids": [],
+      "block_tables": {
+       "2": [
+        0,
+        2
+       ],
+       "3": [
+        1,
+        3
+       ]
+      },
+      "seqs": {
+       "2": {
+        "status": "PAUSED",
+        "prompt_len": 17,
+        "prompt_token_ids": [
+         3000,
+         3001,
+         3002,
+         3003,
+         3004,
+         3005,
+         3006,
+         3007,
+         3008,
+         3009,
+         3010,
+         3011,
+         3012,
+         3013,
+         3014,
+         3015,
+         10123
+        ],
+        "prompt_tokens_processed": 17,
+        "prompt_processing_finished": true,
+        "output_token_ids": [
+         30925
+        ],
+        "logical_blocks": 2
+       },
+       "3": {
+        "status": "PAUSED",
+        "prompt_len": 17,
+        "prompt_token_ids": [
+         4000,
+         4001,
+         4002,
+         4003,
+         4004,
+         4005,
+         4006,
+         4007,
+         4008,
+         4009,
+         4010,
+         4011,
+         4012,
+         4013,
+         4014,
+         4015,
+         14666
+        ],
+        "prompt_tokens_processed": 17,
+        "prompt_processing_finished": true,
+        "output_token_ids": [
+         11030
+        ],
+        "logical_blocks": 2
+       }
+      },
+      "iteration_id": 6,
+      "num_running_batches": 1,
+      "waiting": [],
+      "running": [
+       2,
+       3
+      ]
+     }
+    }
+   ],
+   "central_ops": [
+    [
+     "append",
+     2,
+     [
+      0,
+      2
+     ],
+     [
+      0,
+      2
+     ]
+    ],
+    [
+     "append",
+     3,
+     [
+      1,
+      3
+     ],
+     [
+      1,
+      3
+     ]
+    ]
+   ],
+   "after": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 0,
+    "free_block_ids": [],
+    "block_tables": {
+     "2": [
+      0,
+      2
+     ],
+     "3": [
+      1,
+      3
+     ]
+    },
+    "seqs": {
+     "2": {
+      "status": "PAUSED",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015,
+       10123
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       30925,
+       4974
+      ],
+      "logical_blocks": 2
+     },
+     "3": {
+      "status": "PAUSED",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015,
+       14666
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       11030,
+       30978
+      ],
+      "logical_blocks": 2
+     }
+    },
+    "iteration_id": 6,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [
+     2,
+     3
+    ]
+   },
+   "worker_after": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 0,
+    "free_block_ids": [],
+    "block_tables": {
+     "2": [
+      2,
+      0
+     ],
+     "3": [
+      3,
+      1
+     ]
+    },
+    "seqs": {
+     "2": {
+      "status": "PAUSED",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015,
+       10123
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       30925,
+       4974
+      ],
+      "logical_blocks": 2
+     },
+     "3": {
+      "status": "PAUSED",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015,
+       14666
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       11030,
+       30978
+      ],
+      "logical_blocks": 2
+     }
+    },
+    "block_ops": [
+     [
+      "append",
+      2,
+      [
+       2,
+       0
+      ],
+      [
+       2,
+       0
+      ]
+     ],
+     [
+      "append",
+      3,
+      [
+       3,
+       1
+      ],
+      [
+       3,
+       1
+      ]
+     ]
+    ],
+    "cache_config_num_gpu_blocks": 4,
+    "cache_engine_num_gpu_blocks": 4,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     4
+    ],
+    "cache_tensor_shapes": [
+     [
+      4,
+      16,
+      4,
+      64
+     ]
+    ],
+    "allocator_num_blocks": 4
+   },
+   "sampler_outputs": [
+    [
+     2,
+     4974
+    ],
+    [
+     3,
+     30978
+    ]
+   ],
+   "request_outputs": [
+    {
+     "seq_id": 2,
+     "prompt_token_ids": [
+      3000,
+      3001,
+      3002,
+      3003,
+      3004,
+      3005,
+      3006,
+      3007,
+      3008,
+      3009,
+      3010,
+      3011,
+      3012,
+      3013,
+      3014,
+      3015,
+      10123
+     ],
+     "token_ids": [
+      30925,
+      4974
+     ],
+     "text": "lica\u049a assert",
+     "finished": false,
+     "finish_reason": null
+    },
+    {
+     "seq_id": 3,
+     "prompt_token_ids": [
+      4000,
+      4001,
+      4002,
+      4003,
+      4004,
+      4005,
+      4006,
+      4007,
+      4008,
+      4009,
+      4010,
+      4011,
+      4012,
+      4013,
+      4014,
+      4015,
+      14666
+     ],
+     "token_ids": [
+      11030,
+      30978
+     ],
+     "text": " presidenteprops\u30b1",
+     "finished": false,
+     "finish_reason": null
+    }
+   ],
+   "victim_need": {
+    "free_blocks": 0,
+    "victims": [],
+    "recovered_blocks": 0,
+    "selected_admission_charges": 0,
+    "selected_decode_demands": 0,
+    "selected_decodes": 2,
+    "decode_demands": {
+     "2": 0,
+     "3": 0
+    },
+    "victim_blocks_needed_for_decodes": 0,
+    "victim_blocks_needed_physical": 0,
+    "victim_blocks_needed_with_lp_prerequisite": null,
+    "victims_needed_for_resident_limit": 0,
+    "reasons": [],
+    "non_preemptive_actions": [
+     [
+      2,
+      "decode"
+     ],
+     [
+      3,
+      "decode"
+     ]
+    ],
+    "preemption_free_alternative": true,
+    "extraction_changed_relaxed": null
+   },
+   "physical_block_ids_equal": false,
+   "accounting": {
+    "A": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": 3,
+     "generated_token_events": 3,
+     "native_output_count": 3,
+     "overgeneration": 0,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 16,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 16,
+     "omitted_decisions": []
+    },
+    "B": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": 3,
+     "generated_token_events": 3,
+     "native_output_count": 3,
+     "overgeneration": 0,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 16,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 16,
+     "omitted_decisions": []
+    },
+    "C": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": null,
+     "generated_token_events": 3,
+     "native_output_count": 2,
+     "overgeneration": null,
+     "preemptions": 1,
+     "preemptions_after_output": 1,
+     "discarded_prompt_tokens": 16,
+     "generated_tokens_moved_to_context": 1,
+     "prefill_actions": 2,
+     "prefill_tokens_executed": 33,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 16,
+     "prefill_tokens_expanded_context": 1,
+     "prefilled_position_high_water": 17,
+     "omitted_decisions": [
+      3
+     ]
+    },
+    "D": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": null,
+     "generated_token_events": 3,
+     "native_output_count": 2,
+     "overgeneration": null,
+     "preemptions": 1,
+     "preemptions_after_output": 1,
+     "discarded_prompt_tokens": 16,
+     "generated_tokens_moved_to_context": 1,
+     "prefill_actions": 2,
+     "prefill_tokens_executed": 33,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 16,
+     "prefill_tokens_expanded_context": 1,
+     "prefilled_position_high_water": 17,
+     "omitted_decisions": [
+      3
+     ]
+    }
+   },
+   "virtual_time": 6
+  },
+  {
+   "index": 7,
+   "before": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 0,
+    "free_block_ids": [],
+    "block_tables": {
+     "2": [
+      0,
+      2
+     ],
+     "3": [
+      1,
+      3
+     ]
+    },
+    "seqs": {
+     "2": {
+      "status": "PAUSED",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015,
+       10123
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       30925,
+       4974
+      ],
+      "logical_blocks": 2
+     },
+     "3": {
+      "status": "PAUSED",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015,
+       14666
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       11030,
+       30978
+      ],
+      "logical_blocks": 2
+     }
+    },
+    "iteration_id": 6,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [
+     2,
+     3
+    ],
+    "arrival_times": {
+     "2": 1457914.280054562,
+     "3": 1457914.280993725
+    }
+   },
+   "worker_before": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 0,
+    "free_block_ids": [],
+    "block_tables": {
+     "2": [
+      2,
+      0
+     ],
+     "3": [
+      3,
+      1
+     ]
+    },
+    "seqs": {
+     "2": {
+      "status": "PAUSED",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       3000,
+       3001,
+       3002,
+       3003,
+       3004,
+       3005,
+       3006,
+       3007,
+       3008,
+       3009,
+       3010,
+       3011,
+       3012,
+       3013,
+       3014,
+       3015,
+       10123
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       30925,
+       4974
+      ],
+      "logical_blocks": 2
+     },
+     "3": {
+      "status": "PAUSED",
+      "prompt_len": 17,
+      "prompt_token_ids": [
+       4000,
+       4001,
+       4002,
+       4003,
+       4004,
+       4005,
+       4006,
+       4007,
+       4008,
+       4009,
+       4010,
+       4011,
+       4012,
+       4013,
+       4014,
+       4015,
+       14666
+      ],
+      "prompt_tokens_processed": 17,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       11030,
+       30978
+      ],
+      "logical_blocks": 2
+     }
+    },
+    "block_ops": [],
+    "cache_config_num_gpu_blocks": 4,
+    "cache_engine_num_gpu_blocks": 4,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     4
+    ],
+    "cache_tensor_shapes": [
+     [
+      4,
+      16,
+      4,
+      64
+     ]
+    ],
+    "allocator_num_blocks": 4
+   },
+   "proposals": [
+    {
+     "decision_time": 1457914.451644233,
+     "running_order": [
+      2,
+      3
+     ],
+     "arrived_waiting_order": [],
+     "free_blocks": 0,
+     "watermark_blocks": 0,
+     "token_budget": 64,
+     "victims": [],
+     "actions": [
+      {
+       "seq_id": 2,
+       "kind": "decode",
+       "num_tokens": 1,
+       "block_demand": 0
+      },
+      {
+       "seq_id": 3,
+       "kind": "decode",
+       "num_tokens": 1,
+       "block_demand": 0
+      }
+     ],
+     "running_stop_reason": "running_exhausted",
+     "waiting_stop_reason": "arrived_waiting_exhausted"
+    }
+   ],
+   "lp_events": [],
+   "schedules": [
+    {
+     "outputs": {
+      "id": 7,
+      "scheduled": [
+       [
+        2,
+        0
+       ],
+       [
+        3,
+        0
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "num_ops": 2,
+     "state": {
+      "total_blocks": 4,
+      "watermark_blocks": 0,
+      "free_blocks": 0,
+      "free_block_ids": [],
+      "block_tables": {
+       "2": [
+        0,
+        2
+       ],
+       "3": [
+        1,
+        3
+       ]
+      },
+      "seqs": {
+       "2": {
+        "status": "PAUSED",
+        "prompt_len": 17,
+        "prompt_token_ids": [
+         3000,
+         3001,
+         3002,
+         3003,
+         3004,
+         3005,
+         3006,
+         3007,
+         3008,
+         3009,
+         3010,
+         3011,
+         3012,
+         3013,
+         3014,
+         3015,
+         10123
+        ],
+        "prompt_tokens_processed": 17,
+        "prompt_processing_finished": true,
+        "output_token_ids": [
+         30925,
+         4974
+        ],
+        "logical_blocks": 2
+       },
+       "3": {
+        "status": "PAUSED",
+        "prompt_len": 17,
+        "prompt_token_ids": [
+         4000,
+         4001,
+         4002,
+         4003,
+         4004,
+         4005,
+         4006,
+         4007,
+         4008,
+         4009,
+         4010,
+         4011,
+         4012,
+         4013,
+         4014,
+         4015,
+         14666
+        ],
+        "prompt_tokens_processed": 17,
+        "prompt_processing_finished": true,
+        "output_token_ids": [
+         11030,
+         30978
+        ],
+        "logical_blocks": 2
+       }
+      },
+      "iteration_id": 7,
+      "num_running_batches": 1,
+      "waiting": [],
+      "running": [
+       2,
+       3
+      ]
+     }
+    }
+   ],
+   "central_ops": [
+    [
+     "append",
+     2,
+     [
+      0,
+      2
+     ],
+     [
+      0,
+      2
+     ]
+    ],
+    [
+     "append",
+     3,
+     [
+      1,
+      3
+     ],
+     [
+      1,
+      3
+     ]
+    ],
+    [
+     "free",
+     2,
+     [
+      0,
+      2
+     ],
+     []
+    ],
+    [
+     "free",
+     3,
+     [
+      1,
+      3
+     ],
+     []
+    ]
+   ],
+   "after": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 4,
+    "free_block_ids": [
+     2,
+     0,
+     3,
+     1
+    ],
+    "block_tables": {},
+    "seqs": {},
+    "iteration_id": 7,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": []
+   },
+   "worker_after": {
+    "total_blocks": 4,
+    "watermark_blocks": 0,
+    "free_blocks": 4,
+    "free_block_ids": [
+     0,
+     2,
+     1,
+     3
+    ],
+    "block_tables": {},
+    "seqs": {},
+    "block_ops": [
+     [
+      "append",
+      2,
+      [
+       2,
+       0
+      ],
+      [
+       2,
+       0
+      ]
+     ],
+     [
+      "append",
+      3,
+      [
+       3,
+       1
+      ],
+      [
+       3,
+       1
+      ]
+     ],
+     [
+      "free",
+      2,
+      [
+       2,
+       0
+      ],
+      []
+     ],
+     [
+      "free",
+      3,
+      [
+       3,
+       1
+      ],
+      []
+     ]
+    ],
+    "cache_config_num_gpu_blocks": 4,
+    "cache_engine_num_gpu_blocks": 4,
+    "cache_layers": 22,
+    "cache_tensor_block_dims": [
+     4
+    ],
+    "cache_tensor_shapes": [
+     [
+      4,
+      16,
+      4,
+      64
+     ]
+    ],
+    "allocator_num_blocks": 4
+   },
+   "sampler_outputs": [
+    [
+     2,
+     20646
+    ],
+    [
+     3,
+     4792
+    ]
+   ],
+   "request_outputs": [
+    {
+     "seq_id": 2,
+     "prompt_token_ids": [
+      3000,
+      3001,
+      3002,
+      3003,
+      3004,
+      3005,
+      3006,
+      3007,
+      3008,
+      3009,
+      3010,
+      3011,
+      3012,
+      3013,
+      3014,
+      3015,
+      10123
+     ],
+     "token_ids": [
+      30925,
+      4974,
+      20646
+     ],
+     "text": "lica\u049a assert \u043f\u0440\u043e\u0434\u043e\u043b",
+     "finished": true,
+     "finish_reason": "length"
+    },
+    {
+     "seq_id": 3,
+     "prompt_token_ids": [
+      4000,
+      4001,
+      4002,
+      4003,
+      4004,
+      4005,
+      4006,
+      4007,
+      4008,
+      4009,
+      4010,
+      4011,
+      4012,
+      4013,
+      4014,
+      4015,
+      14666
+     ],
+     "token_ids": [
+      11030,
+      30978,
+      4792
+     ],
+     "text": " presidenteprops\u30b1 Dim",
+     "finished": true,
+     "finish_reason": "length"
+    }
+   ],
+   "victim_need": {
+    "free_blocks": 0,
+    "victims": [],
+    "recovered_blocks": 0,
+    "selected_admission_charges": 0,
+    "selected_decode_demands": 0,
+    "selected_decodes": 2,
+    "decode_demands": {
+     "2": 0,
+     "3": 0
+    },
+    "victim_blocks_needed_for_decodes": 0,
+    "victim_blocks_needed_physical": 0,
+    "victim_blocks_needed_with_lp_prerequisite": null,
+    "victims_needed_for_resident_limit": 0,
+    "reasons": [],
+    "non_preemptive_actions": [
+     [
+      2,
+      "decode"
+     ],
+     [
+      3,
+      "decode"
+     ]
+    ],
+    "preemption_free_alternative": true,
+    "extraction_changed_relaxed": null
+   },
+   "physical_block_ids_equal": true,
+   "accounting": {
+    "A": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": 3,
+     "generated_token_events": 3,
+     "native_output_count": 3,
+     "overgeneration": 0,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 16,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 16,
+     "omitted_decisions": []
+    },
+    "B": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": 3,
+     "generated_token_events": 3,
+     "native_output_count": 3,
+     "overgeneration": 0,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 16,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 16,
+     "omitted_decisions": []
+    },
+    "C": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": 7,
+     "generated_token_events": 4,
+     "native_output_count": 3,
+     "overgeneration": 1,
+     "preemptions": 1,
+     "preemptions_after_output": 1,
+     "discarded_prompt_tokens": 16,
+     "generated_tokens_moved_to_context": 1,
+     "prefill_actions": 2,
+     "prefill_tokens_executed": 33,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 16,
+     "prefill_tokens_expanded_context": 1,
+     "prefilled_position_high_water": 17,
+     "omitted_decisions": [
+      3
+     ]
+    },
+    "D": {
+     "original_prompt_len": 16,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": 7,
+     "generated_token_events": 4,
+     "native_output_count": 3,
+     "overgeneration": 1,
+     "preemptions": 1,
+     "preemptions_after_output": 1,
+     "discarded_prompt_tokens": 16,
+     "generated_tokens_moved_to_context": 1,
+     "prefill_actions": 2,
+     "prefill_tokens_executed": 33,
+     "prefill_tokens_first_time": 16,
+     "prefill_tokens_replayed": 16,
+     "prefill_tokens_expanded_context": 1,
+     "prefilled_position_high_water": 17,
+     "omitted_decisions": [
+      3
+     ]
+    }
+   },
+   "virtual_time": 7
+  }
+ ],
+ "final": {
+  "central": {
+   "total_blocks": 4,
+   "watermark_blocks": 0,
+   "free_blocks": 4,
+   "free_block_ids": [
+    2,
+    0,
+    3,
+    1
+   ],
+   "block_tables": {},
+   "seqs": {},
+   "iteration_id": 7,
+   "num_running_batches": 0,
+   "waiting": [],
+   "running": []
+  },
+  "worker": {
+   "total_blocks": 4,
+   "watermark_blocks": 0,
+   "free_blocks": 4,
+   "free_block_ids": [
+    0,
+    2,
+    1,
+    3
+   ],
+   "block_tables": {},
+   "seqs": {},
+   "block_ops": [],
+   "cache_config_num_gpu_blocks": 4,
+   "cache_engine_num_gpu_blocks": 4,
+   "cache_layers": 22,
+   "cache_tensor_block_dims": [
+    4
+   ],
+   "cache_tensor_shapes": [
+    [
+     4,
+     16,
+     4,
+     64
+    ]
+   ],
+   "allocator_num_blocks": 4
+  },
+  "unfinished": [],
+  "residual_allocations": {},
+  "accounting": {
+   "A": {
+    "original_prompt_len": 16,
+    "first_prefill": 0,
+    "first_decode": 1,
+    "completion": 3,
+    "generated_token_events": 3,
+    "native_output_count": 3,
+    "overgeneration": 0,
+    "preemptions": 0,
+    "preemptions_after_output": 0,
+    "discarded_prompt_tokens": 0,
+    "generated_tokens_moved_to_context": 0,
+    "prefill_actions": 1,
+    "prefill_tokens_executed": 16,
+    "prefill_tokens_first_time": 16,
+    "prefill_tokens_replayed": 0,
+    "prefill_tokens_expanded_context": 0,
+    "prefilled_position_high_water": 16,
+    "omitted_decisions": []
+   },
+   "B": {
+    "original_prompt_len": 16,
+    "first_prefill": 0,
+    "first_decode": 1,
+    "completion": 3,
+    "generated_token_events": 3,
+    "native_output_count": 3,
+    "overgeneration": 0,
+    "preemptions": 0,
+    "preemptions_after_output": 0,
+    "discarded_prompt_tokens": 0,
+    "generated_tokens_moved_to_context": 0,
+    "prefill_actions": 1,
+    "prefill_tokens_executed": 16,
+    "prefill_tokens_first_time": 16,
+    "prefill_tokens_replayed": 0,
+    "prefill_tokens_expanded_context": 0,
+    "prefilled_position_high_water": 16,
+    "omitted_decisions": []
+   },
+   "C": {
+    "original_prompt_len": 16,
+    "first_prefill": 0,
+    "first_decode": 1,
+    "completion": 7,
+    "generated_token_events": 4,
+    "native_output_count": 3,
+    "overgeneration": 1,
+    "preemptions": 1,
+    "preemptions_after_output": 1,
+    "discarded_prompt_tokens": 16,
+    "generated_tokens_moved_to_context": 1,
+    "prefill_actions": 2,
+    "prefill_tokens_executed": 33,
+    "prefill_tokens_first_time": 16,
+    "prefill_tokens_replayed": 16,
+    "prefill_tokens_expanded_context": 1,
+    "prefilled_position_high_water": 17,
+    "omitted_decisions": [
+     3
+    ]
+   },
+   "D": {
+    "original_prompt_len": 16,
+    "first_prefill": 0,
+    "first_decode": 1,
+    "completion": 7,
+    "generated_token_events": 4,
+    "native_output_count": 3,
+    "overgeneration": 1,
+    "preemptions": 1,
+    "preemptions_after_output": 1,
+    "discarded_prompt_tokens": 16,
+    "generated_tokens_moved_to_context": 1,
+    "prefill_actions": 2,
+    "prefill_tokens_executed": 33,
+    "prefill_tokens_first_time": 16,
+    "prefill_tokens_replayed": 16,
+    "prefill_tokens_expanded_context": 1,
+    "prefilled_position_high_water": 17,
+    "omitted_decisions": [
+     3
+    ]
+   }
+  },
+  "unsubmitted": []
+ },
+ "idle": {
+  "before": {
+   "total_blocks": 4,
+   "watermark_blocks": 0,
+   "free_blocks": 4,
+   "free_block_ids": [
+    2,
+    0,
+    3,
+    1
+   ],
+   "block_tables": {},
+   "seqs": {},
+   "iteration_id": 7,
+   "num_running_batches": 0,
+   "waiting": [],
+   "running": []
+  },
+  "after": {
+   "total_blocks": 4,
+   "watermark_blocks": 0,
+   "free_blocks": 4,
+   "free_block_ids": [
+    2,
+    0,
+    3,
+    1
+   ],
+   "block_tables": {},
+   "seqs": {},
+   "iteration_id": 8,
+   "num_running_batches": 0,
+   "waiting": [],
+   "running": []
+  },
+  "worker_after": {
+   "total_blocks": 4,
+   "watermark_blocks": 0,
+   "free_blocks": 4,
+   "free_block_ids": [
+    0,
+    2,
+    1,
+    3
+   ],
+   "block_tables": {},
+   "seqs": {},
+   "block_ops": [],
+   "cache_config_num_gpu_blocks": 4,
+   "cache_engine_num_gpu_blocks": 4,
+   "cache_layers": 22,
+   "cache_tensor_block_dims": [
+    4
+   ],
+   "cache_tensor_shapes": [
+    [
+     4,
+     16,
+     4,
+     64
+    ]
+   ],
+   "allocator_num_blocks": 4
+  },
+  "proposals": [
+   {
+    "decision_time": 1457914.470316144,
+    "running_order": [],
+    "arrived_waiting_order": [],
+    "free_blocks": 4,
+    "watermark_blocks": 0,
+    "token_budget": 64,
+    "victims": [],
+    "actions": [],
+    "running_stop_reason": "running_exhausted",
+    "waiting_stop_reason": "arrived_waiting_exhausted"
+   }
+  ],
+  "lp_events": [],
+  "schedules": [
+   {
+    "outputs": {
+     "id": 8,
+     "scheduled": [],
+     "ignored_seq_ids": [],
+     "preempted_seq_ids": []
+    },
+    "num_ops": 0,
+    "state": {
+     "total_blocks": 4,
+     "watermark_blocks": 0,
+     "free_blocks": 4,
+     "free_block_ids": [
+      2,
+      0,
+      3,
+      1
+     ],
+     "block_tables": {},
+     "seqs": {},
+     "iteration_id": 8,
+     "num_running_batches": 0,
+     "waiting": [],
+     "running": []
+    }
+   }
+  ],
+  "central_ops": []
+ }
+}

@@ -1,0 +1,270 @@
+[
+ {
+  "problem_id": "-1",
+  "reference_actions": {
+   "0": "prefill:5",
+   "1": "prefill:8",
+   "2": "prefill:16",
+   "3": "prefill:3"
+  },
+  "reference_evaluation": {
+   "feasible": true,
+   "domain_violations": [],
+   "violated_rows": [],
+   "objective": 1.3152573529411764
+  },
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.3152573529411764,
+  "integer_actions": {
+   "0": "prefill:5",
+   "1": "prefill:8",
+   "2": "prefill:16",
+   "3": "prefill:3"
+  },
+  "classification": "identical_actions",
+  "index": 0,
+  "enumeration": {
+   "skipped": "plan space 17449344 exceeds 50000"
+  }
+ },
+ {
+  "problem_id": "0",
+  "reference_actions": {
+   "0": "decode",
+   "1": "decode",
+   "2": "decode",
+   "3": "prefill:14"
+  },
+  "reference_evaluation": {
+   "feasible": true,
+   "domain_violations": [],
+   "violated_rows": [],
+   "objective": 1.328125
+  },
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.328125,
+  "integer_actions": {
+   "0": "decode",
+   "1": "decode",
+   "2": "decode",
+   "3": "prefill:14"
+  },
+  "classification": "identical_actions",
+  "index": 1,
+  "enumeration": {
+   "skipped": "plan space 456192 exceeds 50000"
+  }
+ },
+ {
+  "problem_id": "1",
+  "reference_actions": {
+   "0": "decode",
+   "1": "decode",
+   "2": "decode",
+   "3": "decode"
+  },
+  "reference_evaluation": {
+   "feasible": true,
+   "domain_violations": [],
+   "violated_rows": [],
+   "objective": 1.328125
+  },
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.328125,
+  "integer_actions": {
+   "0": "decode",
+   "1": "decode",
+   "2": "decode",
+   "3": "decode"
+  },
+  "classification": "identical_actions",
+  "index": 2,
+  "enumeration": {
+   "skipped": "plan space 85536 exceeds 50000"
+  }
+ },
+ {
+  "problem_id": "2",
+  "reference_actions": {
+   "1": "decode",
+   "3": "decode",
+   "4": "prefill:30"
+  },
+  "reference_evaluation": {
+   "feasible": true,
+   "domain_violations": [],
+   "violated_rows": [],
+   "objective": 1.310483870967742
+  },
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.310483870967742,
+  "integer_actions": {
+   "1": "decode",
+   "3": "decode",
+   "4": "prefill:30"
+  },
+  "classification": "identical_actions",
+  "index": 3,
+  "enumeration": {
+   "plan_space": 9504,
+   "useful_plan_exists": true,
+   "best": 1.310483870967742
+  }
+ },
+ {
+  "problem_id": "3",
+  "reference_actions": {
+   "3": "decode",
+   "4": "prefill:1",
+   "5": "prefill:30"
+  },
+  "reference_evaluation": {
+   "feasible": true,
+   "domain_violations": [],
+   "violated_rows": [],
+   "objective": 1.30859375
+  },
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.30859375,
+  "integer_actions": {
+   "3": "decode",
+   "4": "prefill:1",
+   "5": "prefill:30"
+  },
+  "classification": "identical_actions",
+  "index": 4,
+  "enumeration": {
+   "plan_space": 297,
+   "useful_plan_exists": true,
+   "best": 1.30859375
+  }
+ },
+ {
+  "problem_id": "4",
+  "reference_actions": {
+   "3": "decode",
+   "4": "decode",
+   "5": "prefill:2"
+  },
+  "reference_evaluation": {
+   "feasible": true,
+   "domain_violations": [],
+   "violated_rows": [],
+   "objective": 1.3125
+  },
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.3125,
+  "integer_actions": {
+   "3": "decode",
+   "4": "decode",
+   "5": "prefill:2"
+  },
+  "classification": "identical_actions",
+  "index": 5,
+  "enumeration": {
+   "plan_space": 36,
+   "useful_plan_exists": true,
+   "best": 1.3125
+  }
+ },
+ {
+  "problem_id": "5",
+  "reference_actions": {
+   "4": "decode",
+   "5": "decode"
+  },
+  "reference_evaluation": {
+   "feasible": true,
+   "domain_violations": [],
+   "violated_rows": [],
+   "objective": 1.25
+  },
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.25,
+  "integer_actions": {
+   "4": "decode",
+   "5": "decode"
+  },
+  "classification": "identical_actions",
+  "index": 6,
+  "enumeration": {
+   "plan_space": 9,
+   "useful_plan_exists": true,
+   "best": 1.25
+  }
+ },
+ {
+  "problem_id": "6",
+  "reference_actions": {
+   "4": "decode",
+   "5": "decode"
+  },
+  "reference_evaluation": {
+   "feasible": true,
+   "domain_violations": [],
+   "violated_rows": [],
+   "objective": 1.25
+  },
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.25,
+  "integer_actions": {
+   "4": "decode",
+   "5": "decode"
+  },
+  "classification": "identical_actions",
+  "index": 7,
+  "enumeration": {
+   "plan_space": 9,
+   "useful_plan_exists": true,
+   "best": 1.25
+  }
+ },
+ {
+  "problem_id": "7",
+  "reference_actions": {
+   "5": "decode"
+  },
+  "reference_evaluation": {
+   "feasible": true,
+   "domain_violations": [],
+   "violated_rows": [],
+   "objective": 1.0
+  },
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.0,
+  "integer_actions": {
+   "5": "decode"
+  },
+  "classification": "identical_actions",
+  "index": 8,
+  "enumeration": {
+   "plan_space": 3,
+   "useful_plan_exists": true,
+   "best": 1.0
+  }
+ },
+ {
+  "problem_id": "8",
+  "reference_actions": {
+   "5": "decode"
+  },
+  "reference_evaluation": {
+   "feasible": true,
+   "domain_violations": [],
+   "violated_rows": [],
+   "objective": 1.0
+  },
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.0,
+  "integer_actions": {
+   "5": "decode"
+  },
+  "classification": "identical_actions",
+  "index": 9,
+  "enumeration": {
+   "plan_space": 3,
+   "useful_plan_exists": true,
+   "best": 1.0
+  }
+ }
+]

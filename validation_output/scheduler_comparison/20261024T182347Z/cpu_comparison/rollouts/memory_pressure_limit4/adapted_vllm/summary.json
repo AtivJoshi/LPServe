@@ -1,0 +1,266 @@
+{
+ "method": "adapted_vllm",
+ "case": "memory_pressure",
+ "resident_limit": 4,
+ "validation_passed": true,
+ "workload_outcome": "drained",
+ "failure": null,
+ "decisions": 8,
+ "idle_intervals": [],
+ "finished": [
+  "A",
+  "B",
+  "C",
+  "D"
+ ],
+ "unfinished": [],
+ "unsubmitted": [],
+ "completion": {
+  "A": 3,
+  "B": 3,
+  "C": 7,
+  "D": 7
+ },
+ "preemptions": 2,
+ "preemptions_after_output": 2,
+ "decisions_with_admission_and_victims": 0,
+ "victim_reason_counts": {
+  "decode_block_demand": 1
+ },
+ "discarded_prompt_tokens": 32,
+ "prefill_tokens_executed": 98,
+ "prefill_tokens_replayed": 32,
+ "prefill_tokens_expanded_context": 2,
+ "generated_token_events": 14,
+ "overgeneration": 2,
+ "omitted_decisions": 2,
+ "emitted": [
+  [
+   [],
+   [
+    [
+     0,
+     16
+    ],
+    [
+     1,
+     16
+    ],
+    [
+     2,
+     16
+    ],
+    [
+     3,
+     16
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     0,
+     0
+    ],
+    [
+     1,
+     0
+    ],
+    [
+     2,
+     0
+    ],
+    [
+     3,
+     0
+    ]
+   ]
+  ],
+  [
+   [
+    3,
+    2
+   ],
+   [
+    [
+     0,
+     0
+    ],
+    [
+     1,
+     0
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     0,
+     0
+    ],
+    [
+     1,
+     0
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     2,
+     17
+    ],
+    [
+     3,
+     17
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     2,
+     0
+    ],
+    [
+     3,
+     0
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     2,
+     0
+    ],
+    [
+     3,
+     0
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     2,
+     0
+    ],
+    [
+     3,
+     0
+    ]
+   ]
+  ]
+ ],
+ "parameters": {
+  "case": "memory_pressure",
+  "policy": "adapted_vllm",
+  "resident_limit": 4,
+  "block_size": 16,
+  "num_gpu_blocks": 4,
+  "max_model_len": 64,
+  "native_watermark_blocks": 0,
+  "prompts": {
+   "A": [
+    1000,
+    1001,
+    1002,
+    1003,
+    1004,
+    1005,
+    1006,
+    1007,
+    1008,
+    1009,
+    1010,
+    1011,
+    1012,
+    1013,
+    1014,
+    1015
+   ],
+   "B": [
+    2000,
+    2001,
+    2002,
+    2003,
+    2004,
+    2005,
+    2006,
+    2007,
+    2008,
+    2009,
+    2010,
+    2011,
+    2012,
+    2013,
+    2014,
+    2015
+   ],
+   "C": [
+    3000,
+    3001,
+    3002,
+    3003,
+    3004,
+    3005,
+    3006,
+    3007,
+    3008,
+    3009,
+    3010,
+    3011,
+    3012,
+    3013,
+    3014,
+    3015
+   ],
+   "D": [
+    4000,
+    4001,
+    4002,
+    4003,
+    4004,
+    4005,
+    4006,
+    4007,
+    4008,
+    4009,
+    4010,
+    4011,
+    4012,
+    4013,
+    4014,
+    4015
+   ]
+  },
+  "max_tokens": 3,
+  "virtual_arrivals": {
+   "A": 0,
+   "B": 0,
+   "C": 0,
+   "D": 0
+  },
+  "token_budget": 64,
+  "max_decisions": 16,
+  "scheduler_type": "adapted_vllm",
+  "max_num_batched_tokens": 64,
+  "chunk_cap": null,
+  "action_cap": null
+ },
+ "coefficient_magnitudes": {
+  "min_positive": 0.0009191176470588235,
+  "max": 1.0,
+  "feasibility_tol": 1e-07,
+  "objective_abs_tol": 1e-09,
+  "highs_default_dual_feasibility_tol": 1e-07,
+  "min_over_dual_tol": 9191.176470588236
+ }
+}

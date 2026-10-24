@@ -189,6 +189,30 @@ class ExtractionDiagnostics:
 
 
 @dataclass(frozen=True)
+class DirectIntegerSolution:
+    """Provenance of a plan converted directly from an integer solver's
+    reported optimum, with no relaxation-guided construction.
+
+    Produced only by CPU comparison experiments; ``solve_and_extract`` never
+    returns it. ``objective`` and ``dual_bound`` are in maximization form.
+    ``max_integrality_deviation`` is the largest distance of a solver value
+    from its integer, accepted only within ``conversion_tol``.
+    """
+
+    solver: str
+    scipy_version: str
+    options: tuple
+    raw_status: int
+    message: str
+    objective: float
+    dual_bound: Optional[float]
+    reported_gap: Optional[float]
+    node_count: Optional[int]
+    max_integrality_deviation: float
+    conversion_tol: float
+
+
+@dataclass(frozen=True)
 class IntegerDecision:
     request_id: str
     order_key: tuple
@@ -206,6 +230,9 @@ class IntegerPlan:
     ``execution_order`` lists prefills, then zero-demand decodes, then
     one-block-demand decodes, each by (service rank, order_key). The totals
     are final local totals: ``free_blocks_before_decodes`` is H.
+    ``extraction`` is the constructor's ``ExtractionDiagnostics``, or a
+    ``DirectIntegerSolution`` for a plan taken directly from an integer
+    optimum.
     """
 
     problem_id: str
@@ -235,6 +262,10 @@ class Failure:
 
 @dataclass(frozen=True)
 class SchedulingSuccess:
+    """A validated plan. ``relaxed`` and ``solver`` are ``None`` only for a
+    plan taken directly from an integer optimum (no relaxation was solved);
+    its provenance is then ``plan.extraction``."""
+
     problem_id: str
     plan: IntegerPlan
     relaxed: RelaxedSolution
@@ -1206,7 +1237,8 @@ def validate_integer_plan(problem, plan):
         return bad("snapshot_mismatch", "plan problem_id differs from problem")
     if plan.numerical_policy != problem.numerical_policy:
         return bad("policy_mismatch", "plan numerical policy differs")
-    if not isinstance(plan.extraction, ExtractionDiagnostics):
+    if not isinstance(plan.extraction,
+                      (ExtractionDiagnostics, DirectIntegerSolution)):
         return bad("malformed_plan", "plan extraction diagnostics missing")
     if not isinstance(plan.decisions, tuple) or len(plan.decisions) != len(
         reqs

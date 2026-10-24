@@ -1,0 +1,21 @@
+$ env PYTHONPATH=/home/atjoshi_umass_edu/LPServe python -B -W error scripts/compare_scheduler_gpu.py --help
+usage: compare_scheduler_gpu.py [-h] [--case {two_request,memory_pressure}]
+                                --policy
+                                {adapted_vllm,lp_uniform,lp_rank_based,lp_coordinated}
+                                [--resident-limit {2,1,4}] --model-path
+                                MODEL_PATH --output-dir OUTPUT_DIR
+
+Bounded dummy-weight GPU comparison of the adapted vLLM reference and
+
+options:
+  -h, --help            show this help message and exit
+  --case {two_request,memory_pressure}
+  --policy {adapted_vllm,lp_uniform,lp_rank_based,lp_coordinated}
+  --resident-limit {2,1,4}
+                        two_request: 2 or 1 (required); memory_pressure: 4
+                        (default)
+  --model-path MODEL_PATH
+                        existing local directory with the TinyLlama config and
+                        tokenizer
+  --output-dir OUTPUT_DIR
+exit_status=0

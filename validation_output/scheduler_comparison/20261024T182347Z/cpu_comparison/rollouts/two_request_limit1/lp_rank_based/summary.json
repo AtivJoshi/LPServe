@@ -1,0 +1,181 @@
+{
+ "method": "lp_rank_based",
+ "case": "two_request",
+ "resident_limit": 1,
+ "validation_passed": true,
+ "workload_outcome": "bounded_unfinished",
+ "failure": null,
+ "decisions": 8,
+ "idle_intervals": [],
+ "finished": [],
+ "unfinished": [
+  "A",
+  "B"
+ ],
+ "unsubmitted": [],
+ "completion": {
+  "A": null,
+  "B": null
+ },
+ "preemptions": 7,
+ "preemptions_after_output": 0,
+ "decisions_with_admission_and_victims": 7,
+ "victim_reason_counts": {
+  "resident_capacity": 7
+ },
+ "discarded_prompt_tokens": 44,
+ "prefill_tokens_executed": 52,
+ "prefill_tokens_replayed": 39,
+ "prefill_tokens_expanded_context": 0,
+ "generated_token_events": 0,
+ "overgeneration": 0,
+ "omitted_decisions": 1,
+ "emitted": [
+  [
+   [],
+   [
+    [
+     0,
+     5
+    ]
+   ]
+  ],
+  [
+   [
+    0
+   ],
+   [
+    [
+     1,
+     8
+    ]
+   ]
+  ],
+  [
+   [
+    1
+   ],
+   [
+    [
+     0,
+     5
+    ]
+   ]
+  ],
+  [
+   [
+    0
+   ],
+   [
+    [
+     1,
+     8
+    ]
+   ]
+  ],
+  [
+   [
+    1
+   ],
+   [
+    [
+     0,
+     5
+    ]
+   ]
+  ],
+  [
+   [
+    0
+   ],
+   [
+    [
+     1,
+     8
+    ]
+   ]
+  ],
+  [
+   [
+    1
+   ],
+   [
+    [
+     0,
+     5
+    ]
+   ]
+  ],
+  [
+   [
+    0
+   ],
+   [
+    [
+     1,
+     8
+    ]
+   ]
+  ]
+ ],
+ "parameters": {
+  "case": "two_request",
+  "policy": "lp_rank_based",
+  "resident_limit": 1,
+  "block_size": 16,
+  "num_gpu_blocks": 8,
+  "max_model_len": 32,
+  "native_watermark_blocks": 0,
+  "prompts": {
+   "A": [
+    1000,
+    1001,
+    1002,
+    1003,
+    1004
+   ],
+   "B": [
+    2000,
+    2001,
+    2002,
+    2003,
+    2004,
+    2005,
+    2006,
+    2007
+   ]
+  },
+  "max_tokens": 2,
+  "virtual_arrivals": {
+   "A": 0,
+   "B": 0
+  },
+  "token_budget": 8,
+  "max_decisions": 8,
+  "scheduler_type": "lp",
+  "b_max": 8,
+  "c_max": 8,
+  "s_max": 1,
+  "numerical_policy": {
+   "policy_id": "lp_relaxation_mvp_v1",
+   "feasibility_tol": 1e-07,
+   "integrality_tol": 1e-06,
+   "objective_abs_tol": 1e-09,
+   "objective_rel_tol": 1e-09
+  },
+  "configured_triple": {
+   "decode_utility": 1.0,
+   "prefill_token_utility": 1.0,
+   "preemption_penalty": 1.0
+  },
+  "coefficient_policy": {
+   "rank_based_utility": {
+    "decode_scale": 1.0,
+    "prefill_scale": 1.0,
+    "penalty_scale": 1.0
+   },
+   "note": "configured triple unused"
+  }
+ },
+ "coefficient_magnitudes": null
+}

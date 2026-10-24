@@ -1,0 +1,4333 @@
+{
+ "case": "two_request",
+ "policy": "lp_coordinated",
+ "resident_limit": 1,
+ "prompts": {
+  "A": [
+   1000,
+   1001,
+   1002,
+   1003,
+   1004
+  ],
+  "B": [
+   2000,
+   2001,
+   2002,
+   2003,
+   2004,
+   2005,
+   2006,
+   2007
+  ]
+ },
+ "arrival_times": {
+  "A": 1457537.567448743,
+  "B": 1457537.567587402
+ },
+ "virtual_arrivals": {
+  "A": 0,
+  "B": 0
+ },
+ "submitted_at_virtual_time": {
+  "A": 0,
+  "B": 0
+ },
+ "idle_intervals": [],
+ "decisions": [
+  {
+   "index": 0,
+   "before": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 8,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7
+    ],
+    "block_tables": {},
+    "seqs": {
+     "0": {
+      "status": "WAITING",
+      "prompt_len": 5,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "WAITING",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "iteration_id": -1,
+    "num_running_batches": 0,
+    "waiting": [
+     0,
+     1
+    ],
+    "running": [],
+    "arrival_times": {
+     "0": 1457537.567448743,
+     "1": 1457537.567587402
+    }
+   },
+   "worker_before": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 8,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7
+    ],
+    "block_tables": {},
+    "seqs": {
+     "0": {
+      "status": "WAITING",
+      "prompt_len": 5,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "WAITING",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "block_ops": []
+   },
+   "proposals": [],
+   "lp_events": [
+    {
+     "call": "map_scheduler_state",
+     "result_type": "StateSnapshot",
+     "result": {
+      "snapshot_id": "0",
+      "snapshot_time": 1457537.567751,
+      "scheduler_iteration_id": 0,
+      "num_pipeline_stages": 1,
+      "num_running_batches": 0,
+      "resident_count": 0,
+      "resident_limit": 1,
+      "max_model_len": 32,
+      "block_size": 16,
+      "total_blocks": 8,
+      "free_physical_blocks": 8,
+      "watermark_blocks": 0,
+      "requests": [
+       {
+        "raw_seq_id": 0,
+        "request_id": "0",
+        "order_key": [
+         0
+        ],
+        "ownership": "waiting",
+        "queue_position": 0,
+        "status": "WAITING",
+        "arrival_time": 1457537.567448743,
+        "prompt_len": 5,
+        "prompt_tokens_processed": 0,
+        "prompt_tokens_remaining": 5,
+        "prompt_processing_finished": false,
+        "output_len": 0,
+        "context_len": 5,
+        "logical_block_count": 1,
+        "physical_block_count": 0,
+        "prefill_eligible": true,
+        "decode_eligible": false,
+        "preemption_eligible": false,
+        "prefill_fixed_charge": 1,
+        "decode_demand": 0,
+        "preemption_recovery": 0,
+        "service_rank": 0,
+        "victim_rank": null,
+        "utility": {
+         "decode_utility": 0.0,
+         "prefill_token_utility": 0.2,
+         "preemption_penalty": 0.0
+        }
+       },
+       {
+        "raw_seq_id": 1,
+        "request_id": "1",
+        "order_key": [
+         1
+        ],
+        "ownership": "waiting",
+        "queue_position": 1,
+        "status": "WAITING",
+        "arrival_time": 1457537.567587402,
+        "prompt_len": 8,
+        "prompt_tokens_processed": 0,
+        "prompt_tokens_remaining": 8,
+        "prompt_processing_finished": false,
+        "output_len": 0,
+        "context_len": 8,
+        "logical_block_count": 1,
+        "physical_block_count": 0,
+        "prefill_eligible": true,
+        "decode_eligible": false,
+        "preemption_eligible": false,
+        "prefill_fixed_charge": 1,
+        "decode_demand": 0,
+        "preemption_recovery": 0,
+        "service_rank": 1,
+        "victim_rank": null,
+        "utility": {
+         "decode_utility": 0.0,
+         "prefill_token_utility": 0.03125,
+         "preemption_penalty": 0.0
+        }
+       }
+      ],
+      "running_order": [],
+      "arrived_waiting_order": [
+       0,
+       1
+      ],
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      },
+      "lp_problem": {
+       "requests": [
+        {
+         "request_id": "0",
+         "order_key": [
+          0
+         ],
+         "resident": false,
+         "prompt_tokens_remaining": 5,
+         "prefill_upper_bound": 5,
+         "prefill_eligible": true,
+         "decode_eligible": false,
+         "preemption_eligible": false,
+         "prefill_fixed_charge": 1,
+         "decode_demand": 0,
+         "preemption_recovery": 0,
+         "decode_utility": 0.0,
+         "prefill_token_utility": 0.2,
+         "preemption_penalty": 0.0,
+         "service_rank": 0,
+         "victim_rank": null
+        },
+        {
+         "request_id": "1",
+         "order_key": [
+          1
+         ],
+         "resident": false,
+         "prompt_tokens_remaining": 8,
+         "prefill_upper_bound": 8,
+         "prefill_eligible": true,
+         "decode_eligible": false,
+         "preemption_eligible": false,
+         "prefill_fixed_charge": 1,
+         "decode_demand": 0,
+         "preemption_recovery": 0,
+         "decode_utility": 0.0,
+         "prefill_token_utility": 0.03125,
+         "preemption_penalty": 0.0,
+         "service_rank": 1,
+         "victim_rank": null
+        }
+       ],
+       "legal_preemption_ids": [],
+       "b_max": 8,
+       "c_max": 8,
+       "s_max": 1,
+       "resident_limit": 1,
+       "resident_count": 0,
+       "m_free": 8,
+       "admission_watermark": 0,
+       "problem_id": "0",
+       "numerical_policy": {
+        "policy_id": "lp_relaxation_mvp_v1",
+        "feasibility_tol": 1e-07,
+        "integrality_tol": 1e-06,
+        "objective_abs_tol": 1e-09,
+        "objective_rel_tol": 1e-09
+       }
+      }
+     }
+    },
+    {
+     "call": "solve_and_extract",
+     "result_type": "SchedulingSuccess",
+     "result": {
+      "problem_id": "0",
+      "plan": {
+       "problem_id": "0",
+       "decisions": [
+        {
+         "request_id": "0",
+         "order_key": [
+          0
+         ],
+         "prefill_tokens": 5,
+         "decode": 0,
+         "preempt": 0,
+         "prefill_indicator": 1
+        },
+        {
+         "request_id": "1",
+         "order_key": [
+          1
+         ],
+         "prefill_tokens": 0,
+         "decode": 0,
+         "preempt": 0,
+         "prefill_indicator": 0
+        }
+       ],
+       "victim_order": [],
+       "execution_order": [
+        "0"
+       ],
+       "token_use": 5,
+       "action_count": 1,
+       "resident_count_after": 1,
+       "free_blocks_before_decodes": 7,
+       "decode_demand": 0,
+       "numerical_policy": {
+        "policy_id": "lp_relaxation_mvp_v1",
+        "feasibility_tol": 1e-07,
+        "integrality_tol": 1e-06,
+        "objective_abs_tol": 1e-09,
+        "objective_rel_tol": 1e-09
+       },
+       "objective": 1.0,
+       "extraction": {
+        "candidate_order": [
+         "0",
+         "1"
+        ],
+        "victim_candidate_order": [],
+        "accepted_order": [
+         "0"
+        ],
+        "trial_count": 1,
+        "failed_trial_count": 0,
+        "declined_optional_trial_count": 0,
+        "skipped_candidate_count": 1,
+        "fractional_request_count": 0
+       }
+      },
+      "relaxed": {
+       "decisions": [
+        {
+         "request_id": "0",
+         "x": 5.0,
+         "y": 0.0,
+         "prefill_indicator": 1.0,
+         "z": 0.0
+        },
+        {
+         "request_id": "1",
+         "x": -0.0,
+         "y": 0.0,
+         "prefill_indicator": 0.0,
+         "z": 0.0
+        }
+       ],
+       "raw_vector": [
+        5.0,
+        -0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+       ],
+       "projection_count": 0,
+       "worst_raw_violation": 0.0,
+       "worst_normalized_violation": 0.0,
+       "normalized_objective": 1.0
+      },
+      "solver": {
+       "category": "optimal_candidate",
+       "reason": "optimal candidate",
+       "diagnostics": {
+        "solver": "scipy.optimize.linprog",
+        "scipy_version": "1.15.3",
+        "method": "highs-ds",
+        "options": [
+         [
+          "presolve",
+          true
+         ]
+        ],
+        "raw_status": 0,
+        "raw_success": true,
+        "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+        "iterations": 4,
+        "vector_present": true,
+        "vector_length": 8,
+        "expected_vector_length": 8
+       },
+       "raw_vector": [
+        5.0,
+        -0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+       ],
+       "reported_objective_min": -1.0,
+       "recomputed_objective_min": -1.0
+      }
+     }
+    },
+    {
+     "call": "execute_plan",
+     "result_type": "SchedulerOutputs",
+     "result": {
+      "id": 0,
+      "scheduled": [
+       [
+        0,
+        5
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     }
+    }
+   ],
+   "schedules": [
+    {
+     "outputs": {
+      "id": 0,
+      "scheduled": [
+       [
+        0,
+        5
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "num_ops": 1,
+     "state": {
+      "total_blocks": 8,
+      "watermark_blocks": 0,
+      "free_blocks": 7,
+      "free_block_ids": [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ],
+      "block_tables": {
+       "0": [
+        7
+       ]
+      },
+      "seqs": {
+       "0": {
+        "status": "WAITING",
+        "prompt_len": 5,
+        "prompt_token_ids": [
+         1000,
+         1001,
+         1002,
+         1003,
+         1004
+        ],
+        "prompt_tokens_processed": 0,
+        "prompt_processing_finished": false,
+        "output_token_ids": [],
+        "logical_blocks": 1
+       },
+       "1": {
+        "status": "WAITING",
+        "prompt_len": 8,
+        "prompt_token_ids": [
+         2000,
+         2001,
+         2002,
+         2003,
+         2004,
+         2005,
+         2006,
+         2007
+        ],
+        "prompt_tokens_processed": 0,
+        "prompt_processing_finished": false,
+        "output_token_ids": [],
+        "logical_blocks": 1
+       }
+      },
+      "iteration_id": 0,
+      "num_running_batches": 1,
+      "waiting": [
+       1
+      ],
+      "running": [
+       0
+      ]
+     }
+    }
+   ],
+   "central_ops": [
+    [
+     "allocate",
+     0,
+     [],
+     [
+      7
+     ]
+    ]
+   ],
+   "after": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 7,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "block_tables": {
+     "0": [
+      7
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 5,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004
+      ],
+      "prompt_tokens_processed": 5,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "WAITING",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "iteration_id": 0,
+    "num_running_batches": 0,
+    "waiting": [
+     1
+    ],
+    "running": [
+     0
+    ]
+   },
+   "worker_after": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 7,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "block_tables": {
+     "0": [
+      7
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 5,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004
+      ],
+      "prompt_tokens_processed": 5,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "WAITING",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "block_ops": [
+     [
+      "allocate",
+      0,
+      [],
+      [
+       7
+      ]
+     ]
+    ]
+   },
+   "sampler_outputs": [
+    [
+     0,
+     100
+    ]
+   ],
+   "request_outputs": [
+    {
+     "seq_id": 0,
+     "prompt_token_ids": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004
+     ],
+     "token_ids": [],
+     "text": "",
+     "finished": false,
+     "finish_reason": null
+    }
+   ],
+   "decision_time": 1457537.567751,
+   "lp_comparison": {
+    "relaxed_objective": 1.0,
+    "integer_objective": 1.0,
+    "fractional_request_count": 0,
+    "extraction_changed_relaxed": false,
+    "relaxed": {
+     "0": [
+      5.0,
+      0.0,
+      1.0,
+      0.0
+     ],
+     "1": [
+      -0.0,
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    "integer": {
+     "0": [
+      5,
+      0,
+      1,
+      0
+     ],
+     "1": [
+      0,
+      0,
+      0,
+      0
+     ]
+    }
+   },
+   "victim_need": {
+    "free_blocks": 8,
+    "victims": [],
+    "recovered_blocks": 0,
+    "selected_admission_charges": 1,
+    "selected_decode_demands": 0,
+    "selected_decodes": 0,
+    "decode_demands": {},
+    "victim_blocks_needed_for_decodes": 0,
+    "victim_blocks_needed_physical": 0,
+    "victim_blocks_needed_with_lp_prerequisite": 0,
+    "victims_needed_for_resident_limit": 0,
+    "reasons": [],
+    "non_preemptive_actions": [
+     [
+      0,
+      "admission"
+     ],
+     [
+      1,
+      "admission"
+     ]
+    ],
+    "preemption_free_alternative": true,
+    "extraction_changed_relaxed": false
+   },
+   "physical_block_ids_equal": true,
+   "accounting": {
+    "A": {
+     "original_prompt_len": 5,
+     "first_prefill": 0,
+     "first_decode": null,
+     "completion": null,
+     "generated_token_events": 0,
+     "native_output_count": 0,
+     "overgeneration": null,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 5,
+     "prefill_tokens_first_time": 5,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 5,
+     "omitted_decisions": []
+    },
+    "B": {
+     "original_prompt_len": 8,
+     "first_prefill": null,
+     "first_decode": null,
+     "completion": null,
+     "generated_token_events": 0,
+     "native_output_count": 0,
+     "overgeneration": null,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 0,
+     "prefill_tokens_executed": 0,
+     "prefill_tokens_first_time": 0,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 0,
+     "omitted_decisions": [
+      0
+     ]
+    }
+   },
+   "virtual_time": 0
+  },
+  {
+   "index": 1,
+   "before": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 7,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "block_tables": {
+     "0": [
+      7
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 5,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004
+      ],
+      "prompt_tokens_processed": 5,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "WAITING",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "iteration_id": 0,
+    "num_running_batches": 0,
+    "waiting": [
+     1
+    ],
+    "running": [
+     0
+    ],
+    "arrival_times": {
+     "0": 1457537.567448743,
+     "1": 1457537.567587402
+    }
+   },
+   "worker_before": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 7,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "block_tables": {
+     "0": [
+      7
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 5,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004
+      ],
+      "prompt_tokens_processed": 5,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "WAITING",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "block_ops": []
+   },
+   "proposals": [],
+   "lp_events": [
+    {
+     "call": "map_scheduler_state",
+     "result_type": "StateSnapshot",
+     "result": {
+      "snapshot_id": "1",
+      "snapshot_time": 1457537.570385471,
+      "scheduler_iteration_id": 1,
+      "num_pipeline_stages": 1,
+      "num_running_batches": 0,
+      "resident_count": 1,
+      "resident_limit": 1,
+      "max_model_len": 32,
+      "block_size": 16,
+      "total_blocks": 8,
+      "free_physical_blocks": 7,
+      "watermark_blocks": 0,
+      "requests": [
+       {
+        "raw_seq_id": 0,
+        "request_id": "0",
+        "order_key": [
+         0
+        ],
+        "ownership": "running",
+        "queue_position": 0,
+        "status": "PAUSED",
+        "arrival_time": 1457537.567448743,
+        "prompt_len": 5,
+        "prompt_tokens_processed": 5,
+        "prompt_tokens_remaining": 0,
+        "prompt_processing_finished": true,
+        "output_len": 0,
+        "context_len": 5,
+        "logical_block_count": 1,
+        "physical_block_count": 1,
+        "prefill_eligible": false,
+        "decode_eligible": true,
+        "preemption_eligible": true,
+        "prefill_fixed_charge": 0,
+        "decode_demand": 0,
+        "preemption_recovery": 1,
+        "service_rank": 0,
+        "victim_rank": 0,
+        "utility": {
+         "decode_utility": 1.0,
+         "prefill_token_utility": 0.0,
+         "preemption_penalty": 1.0
+        }
+       },
+       {
+        "raw_seq_id": 1,
+        "request_id": "1",
+        "order_key": [
+         1
+        ],
+        "ownership": "waiting",
+        "queue_position": 0,
+        "status": "WAITING",
+        "arrival_time": 1457537.567587402,
+        "prompt_len": 8,
+        "prompt_tokens_processed": 0,
+        "prompt_tokens_remaining": 8,
+        "prompt_processing_finished": false,
+        "output_len": 0,
+        "context_len": 8,
+        "logical_block_count": 1,
+        "physical_block_count": 0,
+        "prefill_eligible": true,
+        "decode_eligible": false,
+        "preemption_eligible": false,
+        "prefill_fixed_charge": 1,
+        "decode_demand": 0,
+        "preemption_recovery": 0,
+        "service_rank": 1,
+        "victim_rank": null,
+        "utility": {
+         "decode_utility": 0.0,
+         "prefill_token_utility": 0.03125,
+         "preemption_penalty": 0.0
+        }
+       }
+      ],
+      "running_order": [
+       0
+      ],
+      "arrived_waiting_order": [
+       1
+      ],
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      },
+      "lp_problem": {
+       "requests": [
+        {
+         "request_id": "0",
+         "order_key": [
+          0
+         ],
+         "resident": true,
+         "prompt_tokens_remaining": 0,
+         "prefill_upper_bound": 0,
+         "prefill_eligible": false,
+         "decode_eligible": true,
+         "preemption_eligible": true,
+         "prefill_fixed_charge": 0,
+         "decode_demand": 0,
+         "preemption_recovery": 1,
+         "decode_utility": 1.0,
+         "prefill_token_utility": 0.0,
+         "preemption_penalty": 1.0,
+         "service_rank": 0,
+         "victim_rank": 0
+        },
+        {
+         "request_id": "1",
+         "order_key": [
+          1
+         ],
+         "resident": false,
+         "prompt_tokens_remaining": 8,
+         "prefill_upper_bound": 8,
+         "prefill_eligible": true,
+         "decode_eligible": false,
+         "preemption_eligible": false,
+         "prefill_fixed_charge": 1,
+         "decode_demand": 0,
+         "preemption_recovery": 0,
+         "decode_utility": 0.0,
+         "prefill_token_utility": 0.03125,
+         "preemption_penalty": 0.0,
+         "service_rank": 1,
+         "victim_rank": null
+        }
+       ],
+       "legal_preemption_ids": [
+        "0"
+       ],
+       "b_max": 8,
+       "c_max": 8,
+       "s_max": 1,
+       "resident_limit": 1,
+       "resident_count": 1,
+       "m_free": 7,
+       "admission_watermark": 0,
+       "problem_id": "1",
+       "numerical_policy": {
+        "policy_id": "lp_relaxation_mvp_v1",
+        "feasibility_tol": 1e-07,
+        "integrality_tol": 1e-06,
+        "objective_abs_tol": 1e-09,
+        "objective_rel_tol": 1e-09
+       }
+      }
+     }
+    },
+    {
+     "call": "solve_and_extract",
+     "result_type": "SchedulingSuccess",
+     "result": {
+      "problem_id": "1",
+      "plan": {
+       "problem_id": "1",
+       "decisions": [
+        {
+         "request_id": "0",
+         "order_key": [
+          0
+         ],
+         "prefill_tokens": 0,
+         "decode": 1,
+         "preempt": 0,
+         "prefill_indicator": 0
+        },
+        {
+         "request_id": "1",
+         "order_key": [
+          1
+         ],
+         "prefill_tokens": 0,
+         "decode": 0,
+         "preempt": 0,
+         "prefill_indicator": 0
+        }
+       ],
+       "victim_order": [],
+       "execution_order": [
+        "0"
+       ],
+       "token_use": 1,
+       "action_count": 1,
+       "resident_count_after": 1,
+       "free_blocks_before_decodes": 7,
+       "decode_demand": 0,
+       "numerical_policy": {
+        "policy_id": "lp_relaxation_mvp_v1",
+        "feasibility_tol": 1e-07,
+        "integrality_tol": 1e-06,
+        "objective_abs_tol": 1e-09,
+        "objective_rel_tol": 1e-09
+       },
+       "objective": 1.0,
+       "extraction": {
+        "candidate_order": [
+         "0",
+         "1"
+        ],
+        "victim_candidate_order": [
+         "0"
+        ],
+        "accepted_order": [
+         "0"
+        ],
+        "trial_count": 1,
+        "failed_trial_count": 0,
+        "declined_optional_trial_count": 0,
+        "skipped_candidate_count": 1,
+        "fractional_request_count": 0
+       }
+      },
+      "relaxed": {
+       "decisions": [
+        {
+         "request_id": "0",
+         "x": 0.0,
+         "y": 1.0,
+         "prefill_indicator": 0.0,
+         "z": -0.0
+        },
+        {
+         "request_id": "1",
+         "x": -0.0,
+         "y": 0.0,
+         "prefill_indicator": 0.0,
+         "z": 0.0
+        }
+       ],
+       "raw_vector": [
+        0.0,
+        -0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.0,
+        0.0
+       ],
+       "projection_count": 0,
+       "worst_raw_violation": 0.0,
+       "worst_normalized_violation": 0.0,
+       "normalized_objective": 1.0
+      },
+      "solver": {
+       "category": "optimal_candidate",
+       "reason": "optimal candidate",
+       "diagnostics": {
+        "solver": "scipy.optimize.linprog",
+        "scipy_version": "1.15.3",
+        "method": "highs-ds",
+        "options": [
+         [
+          "presolve",
+          true
+         ]
+        ],
+        "raw_status": 0,
+        "raw_success": true,
+        "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+        "iterations": 2,
+        "vector_present": true,
+        "vector_length": 8,
+        "expected_vector_length": 8
+       },
+       "raw_vector": [
+        0.0,
+        -0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.0,
+        0.0
+       ],
+       "reported_objective_min": -1.0,
+       "recomputed_objective_min": -1.0
+      }
+     }
+    },
+    {
+     "call": "execute_plan",
+     "result_type": "SchedulerOutputs",
+     "result": {
+      "id": 1,
+      "scheduled": [
+       [
+        0,
+        0
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     }
+    }
+   ],
+   "schedules": [
+    {
+     "outputs": {
+      "id": 1,
+      "scheduled": [
+       [
+        0,
+        0
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "num_ops": 1,
+     "state": {
+      "total_blocks": 8,
+      "watermark_blocks": 0,
+      "free_blocks": 7,
+      "free_block_ids": [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ],
+      "block_tables": {
+       "0": [
+        7
+       ]
+      },
+      "seqs": {
+       "0": {
+        "status": "PAUSED",
+        "prompt_len": 5,
+        "prompt_token_ids": [
+         1000,
+         1001,
+         1002,
+         1003,
+         1004
+        ],
+        "prompt_tokens_processed": 5,
+        "prompt_processing_finished": true,
+        "output_token_ids": [],
+        "logical_blocks": 1
+       },
+       "1": {
+        "status": "WAITING",
+        "prompt_len": 8,
+        "prompt_token_ids": [
+         2000,
+         2001,
+         2002,
+         2003,
+         2004,
+         2005,
+         2006,
+         2007
+        ],
+        "prompt_tokens_processed": 0,
+        "prompt_processing_finished": false,
+        "output_token_ids": [],
+        "logical_blocks": 1
+       }
+      },
+      "iteration_id": 1,
+      "num_running_batches": 1,
+      "waiting": [
+       1
+      ],
+      "running": [
+       0
+      ]
+     }
+    }
+   ],
+   "central_ops": [
+    [
+     "append",
+     0,
+     [
+      7
+     ],
+     [
+      7
+     ]
+    ]
+   ],
+   "after": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 7,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "block_tables": {
+     "0": [
+      7
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 5,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004
+      ],
+      "prompt_tokens_processed": 5,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       200
+      ],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "WAITING",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "iteration_id": 1,
+    "num_running_batches": 0,
+    "waiting": [
+     1
+    ],
+    "running": [
+     0
+    ]
+   },
+   "worker_after": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 7,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "block_tables": {
+     "0": [
+      7
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 5,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004
+      ],
+      "prompt_tokens_processed": 5,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       200
+      ],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "WAITING",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "block_ops": [
+     [
+      "append",
+      0,
+      [
+       7
+      ],
+      [
+       7
+      ]
+     ]
+    ]
+   },
+   "sampler_outputs": [
+    [
+     0,
+     200
+    ]
+   ],
+   "request_outputs": [
+    {
+     "seq_id": 0,
+     "prompt_token_ids": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004
+     ],
+     "token_ids": [
+      200
+     ],
+     "text": "",
+     "finished": false,
+     "finish_reason": null
+    }
+   ],
+   "lp_comparison": {
+    "relaxed_objective": 1.0,
+    "integer_objective": 1.0,
+    "fractional_request_count": 0,
+    "extraction_changed_relaxed": false,
+    "relaxed": {
+     "0": [
+      0.0,
+      1.0,
+      0.0,
+      -0.0
+     ],
+     "1": [
+      -0.0,
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    "integer": {
+     "0": [
+      0,
+      1,
+      0,
+      0
+     ],
+     "1": [
+      0,
+      0,
+      0,
+      0
+     ]
+    }
+   },
+   "victim_need": {
+    "free_blocks": 7,
+    "victims": [],
+    "recovered_blocks": 0,
+    "selected_admission_charges": 0,
+    "selected_decode_demands": 0,
+    "selected_decodes": 1,
+    "decode_demands": {
+     "0": 0
+    },
+    "victim_blocks_needed_for_decodes": 0,
+    "victim_blocks_needed_physical": 0,
+    "victim_blocks_needed_with_lp_prerequisite": 0,
+    "victims_needed_for_resident_limit": 0,
+    "reasons": [],
+    "non_preemptive_actions": [
+     [
+      0,
+      "decode"
+     ]
+    ],
+    "preemption_free_alternative": true,
+    "extraction_changed_relaxed": false
+   },
+   "physical_block_ids_equal": true,
+   "accounting": {
+    "A": {
+     "original_prompt_len": 5,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": null,
+     "generated_token_events": 1,
+     "native_output_count": 1,
+     "overgeneration": null,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 5,
+     "prefill_tokens_first_time": 5,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 5,
+     "omitted_decisions": []
+    },
+    "B": {
+     "original_prompt_len": 8,
+     "first_prefill": null,
+     "first_decode": null,
+     "completion": null,
+     "generated_token_events": 0,
+     "native_output_count": 0,
+     "overgeneration": null,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 0,
+     "prefill_tokens_executed": 0,
+     "prefill_tokens_first_time": 0,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 0,
+     "omitted_decisions": [
+      0,
+      1
+     ]
+    }
+   },
+   "virtual_time": 1
+  },
+  {
+   "index": 2,
+   "before": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 7,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "block_tables": {
+     "0": [
+      7
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 5,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004
+      ],
+      "prompt_tokens_processed": 5,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       200
+      ],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "WAITING",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "iteration_id": 1,
+    "num_running_batches": 0,
+    "waiting": [
+     1
+    ],
+    "running": [
+     0
+    ],
+    "arrival_times": {
+     "0": 1457537.567448743,
+     "1": 1457537.567587402
+    }
+   },
+   "worker_before": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 7,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "block_tables": {
+     "0": [
+      7
+     ]
+    },
+    "seqs": {
+     "0": {
+      "status": "PAUSED",
+      "prompt_len": 5,
+      "prompt_token_ids": [
+       1000,
+       1001,
+       1002,
+       1003,
+       1004
+      ],
+      "prompt_tokens_processed": 5,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       200
+      ],
+      "logical_blocks": 1
+     },
+     "1": {
+      "status": "WAITING",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "block_ops": []
+   },
+   "proposals": [],
+   "lp_events": [
+    {
+     "call": "map_scheduler_state",
+     "result_type": "StateSnapshot",
+     "result": {
+      "snapshot_id": "2",
+      "snapshot_time": 1457537.572460684,
+      "scheduler_iteration_id": 2,
+      "num_pipeline_stages": 1,
+      "num_running_batches": 0,
+      "resident_count": 1,
+      "resident_limit": 1,
+      "max_model_len": 32,
+      "block_size": 16,
+      "total_blocks": 8,
+      "free_physical_blocks": 7,
+      "watermark_blocks": 0,
+      "requests": [
+       {
+        "raw_seq_id": 0,
+        "request_id": "0",
+        "order_key": [
+         0
+        ],
+        "ownership": "running",
+        "queue_position": 0,
+        "status": "PAUSED",
+        "arrival_time": 1457537.567448743,
+        "prompt_len": 5,
+        "prompt_tokens_processed": 5,
+        "prompt_tokens_remaining": 0,
+        "prompt_processing_finished": true,
+        "output_len": 1,
+        "context_len": 6,
+        "logical_block_count": 1,
+        "physical_block_count": 1,
+        "prefill_eligible": false,
+        "decode_eligible": true,
+        "preemption_eligible": true,
+        "prefill_fixed_charge": 0,
+        "decode_demand": 0,
+        "preemption_recovery": 1,
+        "service_rank": 0,
+        "victim_rank": 0,
+        "utility": {
+         "decode_utility": 1.0,
+         "prefill_token_utility": 0.0,
+         "preemption_penalty": 1.0
+        }
+       },
+       {
+        "raw_seq_id": 1,
+        "request_id": "1",
+        "order_key": [
+         1
+        ],
+        "ownership": "waiting",
+        "queue_position": 0,
+        "status": "WAITING",
+        "arrival_time": 1457537.567587402,
+        "prompt_len": 8,
+        "prompt_tokens_processed": 0,
+        "prompt_tokens_remaining": 8,
+        "prompt_processing_finished": false,
+        "output_len": 0,
+        "context_len": 8,
+        "logical_block_count": 1,
+        "physical_block_count": 0,
+        "prefill_eligible": true,
+        "decode_eligible": false,
+        "preemption_eligible": false,
+        "prefill_fixed_charge": 1,
+        "decode_demand": 0,
+        "preemption_recovery": 0,
+        "service_rank": 1,
+        "victim_rank": null,
+        "utility": {
+         "decode_utility": 0.0,
+         "prefill_token_utility": 0.03125,
+         "preemption_penalty": 0.0
+        }
+       }
+      ],
+      "running_order": [
+       0
+      ],
+      "arrived_waiting_order": [
+       1
+      ],
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      },
+      "lp_problem": {
+       "requests": [
+        {
+         "request_id": "0",
+         "order_key": [
+          0
+         ],
+         "resident": true,
+         "prompt_tokens_remaining": 0,
+         "prefill_upper_bound": 0,
+         "prefill_eligible": false,
+         "decode_eligible": true,
+         "preemption_eligible": true,
+         "prefill_fixed_charge": 0,
+         "decode_demand": 0,
+         "preemption_recovery": 1,
+         "decode_utility": 1.0,
+         "prefill_token_utility": 0.0,
+         "preemption_penalty": 1.0,
+         "service_rank": 0,
+         "victim_rank": 0
+        },
+        {
+         "request_id": "1",
+         "order_key": [
+          1
+         ],
+         "resident": false,
+         "prompt_tokens_remaining": 8,
+         "prefill_upper_bound": 8,
+         "prefill_eligible": true,
+         "decode_eligible": false,
+         "preemption_eligible": false,
+         "prefill_fixed_charge": 1,
+         "decode_demand": 0,
+         "preemption_recovery": 0,
+         "decode_utility": 0.0,
+         "prefill_token_utility": 0.03125,
+         "preemption_penalty": 0.0,
+         "service_rank": 1,
+         "victim_rank": null
+        }
+       ],
+       "legal_preemption_ids": [
+        "0"
+       ],
+       "b_max": 8,
+       "c_max": 8,
+       "s_max": 1,
+       "resident_limit": 1,
+       "resident_count": 1,
+       "m_free": 7,
+       "admission_watermark": 0,
+       "problem_id": "2",
+       "numerical_policy": {
+        "policy_id": "lp_relaxation_mvp_v1",
+        "feasibility_tol": 1e-07,
+        "integrality_tol": 1e-06,
+        "objective_abs_tol": 1e-09,
+        "objective_rel_tol": 1e-09
+       }
+      }
+     }
+    },
+    {
+     "call": "solve_and_extract",
+     "result_type": "SchedulingSuccess",
+     "result": {
+      "problem_id": "2",
+      "plan": {
+       "problem_id": "2",
+       "decisions": [
+        {
+         "request_id": "0",
+         "order_key": [
+          0
+         ],
+         "prefill_tokens": 0,
+         "decode": 1,
+         "preempt": 0,
+         "prefill_indicator": 0
+        },
+        {
+         "request_id": "1",
+         "order_key": [
+          1
+         ],
+         "prefill_tokens": 0,
+         "decode": 0,
+         "preempt": 0,
+         "prefill_indicator": 0
+        }
+       ],
+       "victim_order": [],
+       "execution_order": [
+        "0"
+       ],
+       "token_use": 1,
+       "action_count": 1,
+       "resident_count_after": 1,
+       "free_blocks_before_decodes": 7,
+       "decode_demand": 0,
+       "numerical_policy": {
+        "policy_id": "lp_relaxation_mvp_v1",
+        "feasibility_tol": 1e-07,
+        "integrality_tol": 1e-06,
+        "objective_abs_tol": 1e-09,
+        "objective_rel_tol": 1e-09
+       },
+       "objective": 1.0,
+       "extraction": {
+        "candidate_order": [
+         "0",
+         "1"
+        ],
+        "victim_candidate_order": [
+         "0"
+        ],
+        "accepted_order": [
+         "0"
+        ],
+        "trial_count": 1,
+        "failed_trial_count": 0,
+        "declined_optional_trial_count": 0,
+        "skipped_candidate_count": 1,
+        "fractional_request_count": 0
+       }
+      },
+      "relaxed": {
+       "decisions": [
+        {
+         "request_id": "0",
+         "x": 0.0,
+         "y": 1.0,
+         "prefill_indicator": 0.0,
+         "z": -0.0
+        },
+        {
+         "request_id": "1",
+         "x": -0.0,
+         "y": 0.0,
+         "prefill_indicator": 0.0,
+         "z": 0.0
+        }
+       ],
+       "raw_vector": [
+        0.0,
+        -0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.0,
+        0.0
+       ],
+       "projection_count": 0,
+       "worst_raw_violation": 0.0,
+       "worst_normalized_violation": 0.0,
+       "normalized_objective": 1.0
+      },
+      "solver": {
+       "category": "optimal_candidate",
+       "reason": "optimal candidate",
+       "diagnostics": {
+        "solver": "scipy.optimize.linprog",
+        "scipy_version": "1.15.3",
+        "method": "highs-ds",
+        "options": [
+         [
+          "presolve",
+          true
+         ]
+        ],
+        "raw_status": 0,
+        "raw_success": true,
+        "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+        "iterations": 2,
+        "vector_present": true,
+        "vector_length": 8,
+        "expected_vector_length": 8
+       },
+       "raw_vector": [
+        0.0,
+        -0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.0,
+        0.0
+       ],
+       "reported_objective_min": -1.0,
+       "recomputed_objective_min": -1.0
+      }
+     }
+    },
+    {
+     "call": "execute_plan",
+     "result_type": "SchedulerOutputs",
+     "result": {
+      "id": 2,
+      "scheduled": [
+       [
+        0,
+        0
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     }
+    }
+   ],
+   "schedules": [
+    {
+     "outputs": {
+      "id": 2,
+      "scheduled": [
+       [
+        0,
+        0
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "num_ops": 1,
+     "state": {
+      "total_blocks": 8,
+      "watermark_blocks": 0,
+      "free_blocks": 7,
+      "free_block_ids": [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ],
+      "block_tables": {
+       "0": [
+        7
+       ]
+      },
+      "seqs": {
+       "0": {
+        "status": "PAUSED",
+        "prompt_len": 5,
+        "prompt_token_ids": [
+         1000,
+         1001,
+         1002,
+         1003,
+         1004
+        ],
+        "prompt_tokens_processed": 5,
+        "prompt_processing_finished": true,
+        "output_token_ids": [
+         200
+        ],
+        "logical_blocks": 1
+       },
+       "1": {
+        "status": "WAITING",
+        "prompt_len": 8,
+        "prompt_token_ids": [
+         2000,
+         2001,
+         2002,
+         2003,
+         2004,
+         2005,
+         2006,
+         2007
+        ],
+        "prompt_tokens_processed": 0,
+        "prompt_processing_finished": false,
+        "output_token_ids": [],
+        "logical_blocks": 1
+       }
+      },
+      "iteration_id": 2,
+      "num_running_batches": 1,
+      "waiting": [
+       1
+      ],
+      "running": [
+       0
+      ]
+     }
+    }
+   ],
+   "central_ops": [
+    [
+     "append",
+     0,
+     [
+      7
+     ],
+     [
+      7
+     ]
+    ],
+    [
+     "free",
+     0,
+     [
+      7
+     ],
+     []
+    ]
+   ],
+   "after": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 8,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7
+    ],
+    "block_tables": {},
+    "seqs": {
+     "1": {
+      "status": "WAITING",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "iteration_id": 2,
+    "num_running_batches": 0,
+    "waiting": [
+     1
+    ],
+    "running": []
+   },
+   "worker_after": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 8,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7
+    ],
+    "block_tables": {},
+    "seqs": {
+     "1": {
+      "status": "WAITING",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "block_ops": [
+     [
+      "append",
+      0,
+      [
+       7
+      ],
+      [
+       7
+      ]
+     ],
+     [
+      "free",
+      0,
+      [
+       7
+      ],
+      []
+     ]
+    ]
+   },
+   "sampler_outputs": [
+    [
+     0,
+     300
+    ]
+   ],
+   "request_outputs": [
+    {
+     "seq_id": 0,
+     "prompt_token_ids": [
+      1000,
+      1001,
+      1002,
+      1003,
+      1004
+     ],
+     "token_ids": [
+      200,
+      300
+     ],
+     "text": "",
+     "finished": true,
+     "finish_reason": "length"
+    }
+   ],
+   "lp_comparison": {
+    "relaxed_objective": 1.0,
+    "integer_objective": 1.0,
+    "fractional_request_count": 0,
+    "extraction_changed_relaxed": false,
+    "relaxed": {
+     "0": [
+      0.0,
+      1.0,
+      0.0,
+      -0.0
+     ],
+     "1": [
+      -0.0,
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    "integer": {
+     "0": [
+      0,
+      1,
+      0,
+      0
+     ],
+     "1": [
+      0,
+      0,
+      0,
+      0
+     ]
+    }
+   },
+   "victim_need": {
+    "free_blocks": 7,
+    "victims": [],
+    "recovered_blocks": 0,
+    "selected_admission_charges": 0,
+    "selected_decode_demands": 0,
+    "selected_decodes": 1,
+    "decode_demands": {
+     "0": 0
+    },
+    "victim_blocks_needed_for_decodes": 0,
+    "victim_blocks_needed_physical": 0,
+    "victim_blocks_needed_with_lp_prerequisite": 0,
+    "victims_needed_for_resident_limit": 0,
+    "reasons": [],
+    "non_preemptive_actions": [
+     [
+      0,
+      "decode"
+     ]
+    ],
+    "preemption_free_alternative": true,
+    "extraction_changed_relaxed": false
+   },
+   "physical_block_ids_equal": true,
+   "accounting": {
+    "A": {
+     "original_prompt_len": 5,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": 2,
+     "generated_token_events": 2,
+     "native_output_count": 2,
+     "overgeneration": 0,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 5,
+     "prefill_tokens_first_time": 5,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 5,
+     "omitted_decisions": []
+    },
+    "B": {
+     "original_prompt_len": 8,
+     "first_prefill": null,
+     "first_decode": null,
+     "completion": null,
+     "generated_token_events": 0,
+     "native_output_count": 0,
+     "overgeneration": null,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 0,
+     "prefill_tokens_executed": 0,
+     "prefill_tokens_first_time": 0,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 0,
+     "omitted_decisions": [
+      0,
+      1,
+      2
+     ]
+    }
+   },
+   "virtual_time": 2
+  },
+  {
+   "index": 3,
+   "before": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 8,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7
+    ],
+    "block_tables": {},
+    "seqs": {
+     "1": {
+      "status": "WAITING",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "iteration_id": 2,
+    "num_running_batches": 0,
+    "waiting": [
+     1
+    ],
+    "running": [],
+    "arrival_times": {
+     "1": 1457537.567587402
+    }
+   },
+   "worker_before": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 8,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7
+    ],
+    "block_tables": {},
+    "seqs": {
+     "1": {
+      "status": "WAITING",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 0,
+      "prompt_processing_finished": false,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "block_ops": []
+   },
+   "proposals": [],
+   "lp_events": [
+    {
+     "call": "map_scheduler_state",
+     "result_type": "StateSnapshot",
+     "result": {
+      "snapshot_id": "3",
+      "snapshot_time": 1457537.574447683,
+      "scheduler_iteration_id": 3,
+      "num_pipeline_stages": 1,
+      "num_running_batches": 0,
+      "resident_count": 0,
+      "resident_limit": 1,
+      "max_model_len": 32,
+      "block_size": 16,
+      "total_blocks": 8,
+      "free_physical_blocks": 8,
+      "watermark_blocks": 0,
+      "requests": [
+       {
+        "raw_seq_id": 1,
+        "request_id": "1",
+        "order_key": [
+         1
+        ],
+        "ownership": "waiting",
+        "queue_position": 0,
+        "status": "WAITING",
+        "arrival_time": 1457537.567587402,
+        "prompt_len": 8,
+        "prompt_tokens_processed": 0,
+        "prompt_tokens_remaining": 8,
+        "prompt_processing_finished": false,
+        "output_len": 0,
+        "context_len": 8,
+        "logical_block_count": 1,
+        "physical_block_count": 0,
+        "prefill_eligible": true,
+        "decode_eligible": false,
+        "preemption_eligible": false,
+        "prefill_fixed_charge": 1,
+        "decode_demand": 0,
+        "preemption_recovery": 0,
+        "service_rank": 0,
+        "victim_rank": null,
+        "utility": {
+         "decode_utility": 0.0,
+         "prefill_token_utility": 0.125,
+         "preemption_penalty": 0.0
+        }
+       }
+      ],
+      "running_order": [],
+      "arrived_waiting_order": [
+       1
+      ],
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      },
+      "lp_problem": {
+       "requests": [
+        {
+         "request_id": "1",
+         "order_key": [
+          1
+         ],
+         "resident": false,
+         "prompt_tokens_remaining": 8,
+         "prefill_upper_bound": 8,
+         "prefill_eligible": true,
+         "decode_eligible": false,
+         "preemption_eligible": false,
+         "prefill_fixed_charge": 1,
+         "decode_demand": 0,
+         "preemption_recovery": 0,
+         "decode_utility": 0.0,
+         "prefill_token_utility": 0.125,
+         "preemption_penalty": 0.0,
+         "service_rank": 0,
+         "victim_rank": null
+        }
+       ],
+       "legal_preemption_ids": [],
+       "b_max": 8,
+       "c_max": 8,
+       "s_max": 1,
+       "resident_limit": 1,
+       "resident_count": 0,
+       "m_free": 8,
+       "admission_watermark": 0,
+       "problem_id": "3",
+       "numerical_policy": {
+        "policy_id": "lp_relaxation_mvp_v1",
+        "feasibility_tol": 1e-07,
+        "integrality_tol": 1e-06,
+        "objective_abs_tol": 1e-09,
+        "objective_rel_tol": 1e-09
+       }
+      }
+     }
+    },
+    {
+     "call": "solve_and_extract",
+     "result_type": "SchedulingSuccess",
+     "result": {
+      "problem_id": "3",
+      "plan": {
+       "problem_id": "3",
+       "decisions": [
+        {
+         "request_id": "1",
+         "order_key": [
+          1
+         ],
+         "prefill_tokens": 8,
+         "decode": 0,
+         "preempt": 0,
+         "prefill_indicator": 1
+        }
+       ],
+       "victim_order": [],
+       "execution_order": [
+        "1"
+       ],
+       "token_use": 8,
+       "action_count": 1,
+       "resident_count_after": 1,
+       "free_blocks_before_decodes": 7,
+       "decode_demand": 0,
+       "numerical_policy": {
+        "policy_id": "lp_relaxation_mvp_v1",
+        "feasibility_tol": 1e-07,
+        "integrality_tol": 1e-06,
+        "objective_abs_tol": 1e-09,
+        "objective_rel_tol": 1e-09
+       },
+       "objective": 1.0,
+       "extraction": {
+        "candidate_order": [
+         "1"
+        ],
+        "victim_candidate_order": [],
+        "accepted_order": [
+         "1"
+        ],
+        "trial_count": 1,
+        "failed_trial_count": 0,
+        "declined_optional_trial_count": 0,
+        "skipped_candidate_count": 0,
+        "fractional_request_count": 0
+       }
+      },
+      "relaxed": {
+       "decisions": [
+        {
+         "request_id": "1",
+         "x": 8.0,
+         "y": 0.0,
+         "prefill_indicator": 1.0,
+         "z": 0.0
+        }
+       ],
+       "raw_vector": [
+        8.0,
+        -0.0,
+        1.0,
+        0.0
+       ],
+       "projection_count": 0,
+       "worst_raw_violation": 0.0,
+       "worst_normalized_violation": 0.0,
+       "normalized_objective": 1.0
+      },
+      "solver": {
+       "category": "optimal_candidate",
+       "reason": "optimal candidate",
+       "diagnostics": {
+        "solver": "scipy.optimize.linprog",
+        "scipy_version": "1.15.3",
+        "method": "highs-ds",
+        "options": [
+         [
+          "presolve",
+          true
+         ]
+        ],
+        "raw_status": 0,
+        "raw_success": true,
+        "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+        "iterations": 0,
+        "vector_present": true,
+        "vector_length": 4,
+        "expected_vector_length": 4
+       },
+       "raw_vector": [
+        8.0,
+        -0.0,
+        1.0,
+        0.0
+       ],
+       "reported_objective_min": -1.0,
+       "recomputed_objective_min": -1.0
+      }
+     }
+    },
+    {
+     "call": "execute_plan",
+     "result_type": "SchedulerOutputs",
+     "result": {
+      "id": 3,
+      "scheduled": [
+       [
+        1,
+        8
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     }
+    }
+   ],
+   "schedules": [
+    {
+     "outputs": {
+      "id": 3,
+      "scheduled": [
+       [
+        1,
+        8
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "num_ops": 1,
+     "state": {
+      "total_blocks": 8,
+      "watermark_blocks": 0,
+      "free_blocks": 7,
+      "free_block_ids": [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ],
+      "block_tables": {
+       "1": [
+        7
+       ]
+      },
+      "seqs": {
+       "1": {
+        "status": "WAITING",
+        "prompt_len": 8,
+        "prompt_token_ids": [
+         2000,
+         2001,
+         2002,
+         2003,
+         2004,
+         2005,
+         2006,
+         2007
+        ],
+        "prompt_tokens_processed": 0,
+        "prompt_processing_finished": false,
+        "output_token_ids": [],
+        "logical_blocks": 1
+       }
+      },
+      "iteration_id": 3,
+      "num_running_batches": 1,
+      "waiting": [],
+      "running": [
+       1
+      ]
+     }
+    }
+   ],
+   "central_ops": [
+    [
+     "allocate",
+     1,
+     [],
+     [
+      7
+     ]
+    ]
+   ],
+   "after": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 7,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "block_tables": {
+     "1": [
+      7
+     ]
+    },
+    "seqs": {
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 8,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "iteration_id": 3,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [
+     1
+    ]
+   },
+   "worker_after": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 7,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "block_tables": {
+     "1": [
+      7
+     ]
+    },
+    "seqs": {
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 8,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "block_ops": [
+     [
+      "allocate",
+      1,
+      [],
+      [
+       7
+      ]
+     ]
+    ]
+   },
+   "sampler_outputs": [
+    [
+     1,
+     401
+    ]
+   ],
+   "request_outputs": [
+    {
+     "seq_id": 1,
+     "prompt_token_ids": [
+      2000,
+      2001,
+      2002,
+      2003,
+      2004,
+      2005,
+      2006,
+      2007
+     ],
+     "token_ids": [],
+     "text": "",
+     "finished": false,
+     "finish_reason": null
+    }
+   ],
+   "lp_comparison": {
+    "relaxed_objective": 1.0,
+    "integer_objective": 1.0,
+    "fractional_request_count": 0,
+    "extraction_changed_relaxed": false,
+    "relaxed": {
+     "1": [
+      8.0,
+      0.0,
+      1.0,
+      0.0
+     ]
+    },
+    "integer": {
+     "1": [
+      8,
+      0,
+      1,
+      0
+     ]
+    }
+   },
+   "victim_need": {
+    "free_blocks": 8,
+    "victims": [],
+    "recovered_blocks": 0,
+    "selected_admission_charges": 1,
+    "selected_decode_demands": 0,
+    "selected_decodes": 0,
+    "decode_demands": {},
+    "victim_blocks_needed_for_decodes": 0,
+    "victim_blocks_needed_physical": 0,
+    "victim_blocks_needed_with_lp_prerequisite": 0,
+    "victims_needed_for_resident_limit": 0,
+    "reasons": [],
+    "non_preemptive_actions": [
+     [
+      1,
+      "admission"
+     ]
+    ],
+    "preemption_free_alternative": true,
+    "extraction_changed_relaxed": false
+   },
+   "physical_block_ids_equal": true,
+   "accounting": {
+    "A": {
+     "original_prompt_len": 5,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": 2,
+     "generated_token_events": 2,
+     "native_output_count": 2,
+     "overgeneration": 0,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 5,
+     "prefill_tokens_first_time": 5,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 5,
+     "omitted_decisions": []
+    },
+    "B": {
+     "original_prompt_len": 8,
+     "first_prefill": 3,
+     "first_decode": null,
+     "completion": null,
+     "generated_token_events": 0,
+     "native_output_count": 0,
+     "overgeneration": null,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 8,
+     "prefill_tokens_first_time": 8,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 8,
+     "omitted_decisions": [
+      0,
+      1,
+      2
+     ]
+    }
+   },
+   "virtual_time": 3
+  },
+  {
+   "index": 4,
+   "before": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 7,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "block_tables": {
+     "1": [
+      7
+     ]
+    },
+    "seqs": {
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 8,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "iteration_id": 3,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [
+     1
+    ],
+    "arrival_times": {
+     "1": 1457537.567587402
+    }
+   },
+   "worker_before": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 7,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "block_tables": {
+     "1": [
+      7
+     ]
+    },
+    "seqs": {
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 8,
+      "prompt_processing_finished": true,
+      "output_token_ids": [],
+      "logical_blocks": 1
+     }
+    },
+    "block_ops": []
+   },
+   "proposals": [],
+   "lp_events": [
+    {
+     "call": "map_scheduler_state",
+     "result_type": "StateSnapshot",
+     "result": {
+      "snapshot_id": "4",
+      "snapshot_time": 1457537.576194008,
+      "scheduler_iteration_id": 4,
+      "num_pipeline_stages": 1,
+      "num_running_batches": 0,
+      "resident_count": 1,
+      "resident_limit": 1,
+      "max_model_len": 32,
+      "block_size": 16,
+      "total_blocks": 8,
+      "free_physical_blocks": 7,
+      "watermark_blocks": 0,
+      "requests": [
+       {
+        "raw_seq_id": 1,
+        "request_id": "1",
+        "order_key": [
+         1
+        ],
+        "ownership": "running",
+        "queue_position": 0,
+        "status": "PAUSED",
+        "arrival_time": 1457537.567587402,
+        "prompt_len": 8,
+        "prompt_tokens_processed": 8,
+        "prompt_tokens_remaining": 0,
+        "prompt_processing_finished": true,
+        "output_len": 0,
+        "context_len": 8,
+        "logical_block_count": 1,
+        "physical_block_count": 1,
+        "prefill_eligible": false,
+        "decode_eligible": true,
+        "preemption_eligible": true,
+        "prefill_fixed_charge": 0,
+        "decode_demand": 0,
+        "preemption_recovery": 1,
+        "service_rank": 0,
+        "victim_rank": 0,
+        "utility": {
+         "decode_utility": 1.0,
+         "prefill_token_utility": 0.0,
+         "preemption_penalty": 1.0
+        }
+       }
+      ],
+      "running_order": [
+       1
+      ],
+      "arrived_waiting_order": [],
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      },
+      "lp_problem": {
+       "requests": [
+        {
+         "request_id": "1",
+         "order_key": [
+          1
+         ],
+         "resident": true,
+         "prompt_tokens_remaining": 0,
+         "prefill_upper_bound": 0,
+         "prefill_eligible": false,
+         "decode_eligible": true,
+         "preemption_eligible": true,
+         "prefill_fixed_charge": 0,
+         "decode_demand": 0,
+         "preemption_recovery": 1,
+         "decode_utility": 1.0,
+         "prefill_token_utility": 0.0,
+         "preemption_penalty": 1.0,
+         "service_rank": 0,
+         "victim_rank": 0
+        }
+       ],
+       "legal_preemption_ids": [
+        "1"
+       ],
+       "b_max": 8,
+       "c_max": 8,
+       "s_max": 1,
+       "resident_limit": 1,
+       "resident_count": 1,
+       "m_free": 7,
+       "admission_watermark": 0,
+       "problem_id": "4",
+       "numerical_policy": {
+        "policy_id": "lp_relaxation_mvp_v1",
+        "feasibility_tol": 1e-07,
+        "integrality_tol": 1e-06,
+        "objective_abs_tol": 1e-09,
+        "objective_rel_tol": 1e-09
+       }
+      }
+     }
+    },
+    {
+     "call": "solve_and_extract",
+     "result_type": "SchedulingSuccess",
+     "result": {
+      "problem_id": "4",
+      "plan": {
+       "problem_id": "4",
+       "decisions": [
+        {
+         "request_id": "1",
+         "order_key": [
+          1
+         ],
+         "prefill_tokens": 0,
+         "decode": 1,
+         "preempt": 0,
+         "prefill_indicator": 0
+        }
+       ],
+       "victim_order": [],
+       "execution_order": [
+        "1"
+       ],
+       "token_use": 1,
+       "action_count": 1,
+       "resident_count_after": 1,
+       "free_blocks_before_decodes": 7,
+       "decode_demand": 0,
+       "numerical_policy": {
+        "policy_id": "lp_relaxation_mvp_v1",
+        "feasibility_tol": 1e-07,
+        "integrality_tol": 1e-06,
+        "objective_abs_tol": 1e-09,
+        "objective_rel_tol": 1e-09
+       },
+       "objective": 1.0,
+       "extraction": {
+        "candidate_order": [
+         "1"
+        ],
+        "victim_candidate_order": [
+         "1"
+        ],
+        "accepted_order": [
+         "1"
+        ],
+        "trial_count": 1,
+        "failed_trial_count": 0,
+        "declined_optional_trial_count": 0,
+        "skipped_candidate_count": 0,
+        "fractional_request_count": 0
+       }
+      },
+      "relaxed": {
+       "decisions": [
+        {
+         "request_id": "1",
+         "x": 0.0,
+         "y": 1.0,
+         "prefill_indicator": 0.0,
+         "z": 0.0
+        }
+       ],
+       "raw_vector": [
+        0.0,
+        1.0,
+        0.0,
+        0.0
+       ],
+       "projection_count": 0,
+       "worst_raw_violation": 0.0,
+       "worst_normalized_violation": 0.0,
+       "normalized_objective": 1.0
+      },
+      "solver": {
+       "category": "optimal_candidate",
+       "reason": "optimal candidate",
+       "diagnostics": {
+        "solver": "scipy.optimize.linprog",
+        "scipy_version": "1.15.3",
+        "method": "highs-ds",
+        "options": [
+         [
+          "presolve",
+          true
+         ]
+        ],
+        "raw_status": 0,
+        "raw_success": true,
+        "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+        "iterations": 0,
+        "vector_present": true,
+        "vector_length": 4,
+        "expected_vector_length": 4
+       },
+       "raw_vector": [
+        0.0,
+        1.0,
+        0.0,
+        0.0
+       ],
+       "reported_objective_min": -1.0,
+       "recomputed_objective_min": -1.0
+      }
+     }
+    },
+    {
+     "call": "execute_plan",
+     "result_type": "SchedulerOutputs",
+     "result": {
+      "id": 4,
+      "scheduled": [
+       [
+        1,
+        0
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     }
+    }
+   ],
+   "schedules": [
+    {
+     "outputs": {
+      "id": 4,
+      "scheduled": [
+       [
+        1,
+        0
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "num_ops": 1,
+     "state": {
+      "total_blocks": 8,
+      "watermark_blocks": 0,
+      "free_blocks": 7,
+      "free_block_ids": [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ],
+      "block_tables": {
+       "1": [
+        7
+       ]
+      },
+      "seqs": {
+       "1": {
+        "status": "PAUSED",
+        "prompt_len": 8,
+        "prompt_token_ids": [
+         2000,
+         2001,
+         2002,
+         2003,
+         2004,
+         2005,
+         2006,
+         2007
+        ],
+        "prompt_tokens_processed": 8,
+        "prompt_processing_finished": true,
+        "output_token_ids": [],
+        "logical_blocks": 1
+       }
+      },
+      "iteration_id": 4,
+      "num_running_batches": 1,
+      "waiting": [],
+      "running": [
+       1
+      ]
+     }
+    }
+   ],
+   "central_ops": [
+    [
+     "append",
+     1,
+     [
+      7
+     ],
+     [
+      7
+     ]
+    ]
+   ],
+   "after": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 7,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "block_tables": {
+     "1": [
+      7
+     ]
+    },
+    "seqs": {
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 8,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       501
+      ],
+      "logical_blocks": 1
+     }
+    },
+    "iteration_id": 4,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [
+     1
+    ]
+   },
+   "worker_after": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 7,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "block_tables": {
+     "1": [
+      7
+     ]
+    },
+    "seqs": {
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 8,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       501
+      ],
+      "logical_blocks": 1
+     }
+    },
+    "block_ops": [
+     [
+      "append",
+      1,
+      [
+       7
+      ],
+      [
+       7
+      ]
+     ]
+    ]
+   },
+   "sampler_outputs": [
+    [
+     1,
+     501
+    ]
+   ],
+   "request_outputs": [
+    {
+     "seq_id": 1,
+     "prompt_token_ids": [
+      2000,
+      2001,
+      2002,
+      2003,
+      2004,
+      2005,
+      2006,
+      2007
+     ],
+     "token_ids": [
+      501
+     ],
+     "text": "",
+     "finished": false,
+     "finish_reason": null
+    }
+   ],
+   "lp_comparison": {
+    "relaxed_objective": 1.0,
+    "integer_objective": 1.0,
+    "fractional_request_count": 0,
+    "extraction_changed_relaxed": false,
+    "relaxed": {
+     "1": [
+      0.0,
+      1.0,
+      0.0,
+      0.0
+     ]
+    },
+    "integer": {
+     "1": [
+      0,
+      1,
+      0,
+      0
+     ]
+    }
+   },
+   "victim_need": {
+    "free_blocks": 7,
+    "victims": [],
+    "recovered_blocks": 0,
+    "selected_admission_charges": 0,
+    "selected_decode_demands": 0,
+    "selected_decodes": 1,
+    "decode_demands": {
+     "1": 0
+    },
+    "victim_blocks_needed_for_decodes": 0,
+    "victim_blocks_needed_physical": 0,
+    "victim_blocks_needed_with_lp_prerequisite": 0,
+    "victims_needed_for_resident_limit": 0,
+    "reasons": [],
+    "non_preemptive_actions": [
+     [
+      1,
+      "decode"
+     ]
+    ],
+    "preemption_free_alternative": true,
+    "extraction_changed_relaxed": false
+   },
+   "physical_block_ids_equal": true,
+   "accounting": {
+    "A": {
+     "original_prompt_len": 5,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": 2,
+     "generated_token_events": 2,
+     "native_output_count": 2,
+     "overgeneration": 0,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 5,
+     "prefill_tokens_first_time": 5,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 5,
+     "omitted_decisions": []
+    },
+    "B": {
+     "original_prompt_len": 8,
+     "first_prefill": 3,
+     "first_decode": 4,
+     "completion": null,
+     "generated_token_events": 1,
+     "native_output_count": 1,
+     "overgeneration": null,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 8,
+     "prefill_tokens_first_time": 8,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 8,
+     "omitted_decisions": [
+      0,
+      1,
+      2
+     ]
+    }
+   },
+   "virtual_time": 4
+  },
+  {
+   "index": 5,
+   "before": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 7,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "block_tables": {
+     "1": [
+      7
+     ]
+    },
+    "seqs": {
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 8,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       501
+      ],
+      "logical_blocks": 1
+     }
+    },
+    "iteration_id": 4,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": [
+     1
+    ],
+    "arrival_times": {
+     "1": 1457537.567587402
+    }
+   },
+   "worker_before": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 7,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "block_tables": {
+     "1": [
+      7
+     ]
+    },
+    "seqs": {
+     "1": {
+      "status": "PAUSED",
+      "prompt_len": 8,
+      "prompt_token_ids": [
+       2000,
+       2001,
+       2002,
+       2003,
+       2004,
+       2005,
+       2006,
+       2007
+      ],
+      "prompt_tokens_processed": 8,
+      "prompt_processing_finished": true,
+      "output_token_ids": [
+       501
+      ],
+      "logical_blocks": 1
+     }
+    },
+    "block_ops": []
+   },
+   "proposals": [],
+   "lp_events": [
+    {
+     "call": "map_scheduler_state",
+     "result_type": "StateSnapshot",
+     "result": {
+      "snapshot_id": "5",
+      "snapshot_time": 1457537.577889456,
+      "scheduler_iteration_id": 5,
+      "num_pipeline_stages": 1,
+      "num_running_batches": 0,
+      "resident_count": 1,
+      "resident_limit": 1,
+      "max_model_len": 32,
+      "block_size": 16,
+      "total_blocks": 8,
+      "free_physical_blocks": 7,
+      "watermark_blocks": 0,
+      "requests": [
+       {
+        "raw_seq_id": 1,
+        "request_id": "1",
+        "order_key": [
+         1
+        ],
+        "ownership": "running",
+        "queue_position": 0,
+        "status": "PAUSED",
+        "arrival_time": 1457537.567587402,
+        "prompt_len": 8,
+        "prompt_tokens_processed": 8,
+        "prompt_tokens_remaining": 0,
+        "prompt_processing_finished": true,
+        "output_len": 1,
+        "context_len": 9,
+        "logical_block_count": 1,
+        "physical_block_count": 1,
+        "prefill_eligible": false,
+        "decode_eligible": true,
+        "preemption_eligible": true,
+        "prefill_fixed_charge": 0,
+        "decode_demand": 0,
+        "preemption_recovery": 1,
+        "service_rank": 0,
+        "victim_rank": 0,
+        "utility": {
+         "decode_utility": 1.0,
+         "prefill_token_utility": 0.0,
+         "preemption_penalty": 1.0
+        }
+       }
+      ],
+      "running_order": [
+       1
+      ],
+      "arrived_waiting_order": [],
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      },
+      "lp_problem": {
+       "requests": [
+        {
+         "request_id": "1",
+         "order_key": [
+          1
+         ],
+         "resident": true,
+         "prompt_tokens_remaining": 0,
+         "prefill_upper_bound": 0,
+         "prefill_eligible": false,
+         "decode_eligible": true,
+         "preemption_eligible": true,
+         "prefill_fixed_charge": 0,
+         "decode_demand": 0,
+         "preemption_recovery": 1,
+         "decode_utility": 1.0,
+         "prefill_token_utility": 0.0,
+         "preemption_penalty": 1.0,
+         "service_rank": 0,
+         "victim_rank": 0
+        }
+       ],
+       "legal_preemption_ids": [
+        "1"
+       ],
+       "b_max": 8,
+       "c_max": 8,
+       "s_max": 1,
+       "resident_limit": 1,
+       "resident_count": 1,
+       "m_free": 7,
+       "admission_watermark": 0,
+       "problem_id": "5",
+       "numerical_policy": {
+        "policy_id": "lp_relaxation_mvp_v1",
+        "feasibility_tol": 1e-07,
+        "integrality_tol": 1e-06,
+        "objective_abs_tol": 1e-09,
+        "objective_rel_tol": 1e-09
+       }
+      }
+     }
+    },
+    {
+     "call": "solve_and_extract",
+     "result_type": "SchedulingSuccess",
+     "result": {
+      "problem_id": "5",
+      "plan": {
+       "problem_id": "5",
+       "decisions": [
+        {
+         "request_id": "1",
+         "order_key": [
+          1
+         ],
+         "prefill_tokens": 0,
+         "decode": 1,
+         "preempt": 0,
+         "prefill_indicator": 0
+        }
+       ],
+       "victim_order": [],
+       "execution_order": [
+        "1"
+       ],
+       "token_use": 1,
+       "action_count": 1,
+       "resident_count_after": 1,
+       "free_blocks_before_decodes": 7,
+       "decode_demand": 0,
+       "numerical_policy": {
+        "policy_id": "lp_relaxation_mvp_v1",
+        "feasibility_tol": 1e-07,
+        "integrality_tol": 1e-06,
+        "objective_abs_tol": 1e-09,
+        "objective_rel_tol": 1e-09
+       },
+       "objective": 1.0,
+       "extraction": {
+        "candidate_order": [
+         "1"
+        ],
+        "victim_candidate_order": [
+         "1"
+        ],
+        "accepted_order": [
+         "1"
+        ],
+        "trial_count": 1,
+        "failed_trial_count": 0,
+        "declined_optional_trial_count": 0,
+        "skipped_candidate_count": 0,
+        "fractional_request_count": 0
+       }
+      },
+      "relaxed": {
+       "decisions": [
+        {
+         "request_id": "1",
+         "x": 0.0,
+         "y": 1.0,
+         "prefill_indicator": 0.0,
+         "z": 0.0
+        }
+       ],
+       "raw_vector": [
+        0.0,
+        1.0,
+        0.0,
+        0.0
+       ],
+       "projection_count": 0,
+       "worst_raw_violation": 0.0,
+       "worst_normalized_violation": 0.0,
+       "normalized_objective": 1.0
+      },
+      "solver": {
+       "category": "optimal_candidate",
+       "reason": "optimal candidate",
+       "diagnostics": {
+        "solver": "scipy.optimize.linprog",
+        "scipy_version": "1.15.3",
+        "method": "highs-ds",
+        "options": [
+         [
+          "presolve",
+          true
+         ]
+        ],
+        "raw_status": 0,
+        "raw_success": true,
+        "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+        "iterations": 0,
+        "vector_present": true,
+        "vector_length": 4,
+        "expected_vector_length": 4
+       },
+       "raw_vector": [
+        0.0,
+        1.0,
+        0.0,
+        0.0
+       ],
+       "reported_objective_min": -1.0,
+       "recomputed_objective_min": -1.0
+      }
+     }
+    },
+    {
+     "call": "execute_plan",
+     "result_type": "SchedulerOutputs",
+     "result": {
+      "id": 5,
+      "scheduled": [
+       [
+        1,
+        0
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     }
+    }
+   ],
+   "schedules": [
+    {
+     "outputs": {
+      "id": 5,
+      "scheduled": [
+       [
+        1,
+        0
+       ]
+      ],
+      "ignored_seq_ids": [],
+      "preempted_seq_ids": []
+     },
+     "num_ops": 1,
+     "state": {
+      "total_blocks": 8,
+      "watermark_blocks": 0,
+      "free_blocks": 7,
+      "free_block_ids": [
+       0,
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ],
+      "block_tables": {
+       "1": [
+        7
+       ]
+      },
+      "seqs": {
+       "1": {
+        "status": "PAUSED",
+        "prompt_len": 8,
+        "prompt_token_ids": [
+         2000,
+         2001,
+         2002,
+         2003,
+         2004,
+         2005,
+         2006,
+         2007
+        ],
+        "prompt_tokens_processed": 8,
+        "prompt_processing_finished": true,
+        "output_token_ids": [
+         501
+        ],
+        "logical_blocks": 1
+       }
+      },
+      "iteration_id": 5,
+      "num_running_batches": 1,
+      "waiting": [],
+      "running": [
+       1
+      ]
+     }
+    }
+   ],
+   "central_ops": [
+    [
+     "append",
+     1,
+     [
+      7
+     ],
+     [
+      7
+     ]
+    ],
+    [
+     "free",
+     1,
+     [
+      7
+     ],
+     []
+    ]
+   ],
+   "after": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 8,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7
+    ],
+    "block_tables": {},
+    "seqs": {},
+    "iteration_id": 5,
+    "num_running_batches": 0,
+    "waiting": [],
+    "running": []
+   },
+   "worker_after": {
+    "total_blocks": 8,
+    "watermark_blocks": 0,
+    "free_blocks": 8,
+    "free_block_ids": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7
+    ],
+    "block_tables": {},
+    "seqs": {},
+    "block_ops": [
+     [
+      "append",
+      1,
+      [
+       7
+      ],
+      [
+       7
+      ]
+     ],
+     [
+      "free",
+      1,
+      [
+       7
+      ],
+      []
+     ]
+    ]
+   },
+   "sampler_outputs": [
+    [
+     1,
+     601
+    ]
+   ],
+   "request_outputs": [
+    {
+     "seq_id": 1,
+     "prompt_token_ids": [
+      2000,
+      2001,
+      2002,
+      2003,
+      2004,
+      2005,
+      2006,
+      2007
+     ],
+     "token_ids": [
+      501,
+      601
+     ],
+     "text": "",
+     "finished": true,
+     "finish_reason": "length"
+    }
+   ],
+   "lp_comparison": {
+    "relaxed_objective": 1.0,
+    "integer_objective": 1.0,
+    "fractional_request_count": 0,
+    "extraction_changed_relaxed": false,
+    "relaxed": {
+     "1": [
+      0.0,
+      1.0,
+      0.0,
+      0.0
+     ]
+    },
+    "integer": {
+     "1": [
+      0,
+      1,
+      0,
+      0
+     ]
+    }
+   },
+   "victim_need": {
+    "free_blocks": 7,
+    "victims": [],
+    "recovered_blocks": 0,
+    "selected_admission_charges": 0,
+    "selected_decode_demands": 0,
+    "selected_decodes": 1,
+    "decode_demands": {
+     "1": 0
+    },
+    "victim_blocks_needed_for_decodes": 0,
+    "victim_blocks_needed_physical": 0,
+    "victim_blocks_needed_with_lp_prerequisite": 0,
+    "victims_needed_for_resident_limit": 0,
+    "reasons": [],
+    "non_preemptive_actions": [
+     [
+      1,
+      "decode"
+     ]
+    ],
+    "preemption_free_alternative": true,
+    "extraction_changed_relaxed": false
+   },
+   "physical_block_ids_equal": true,
+   "accounting": {
+    "A": {
+     "original_prompt_len": 5,
+     "first_prefill": 0,
+     "first_decode": 1,
+     "completion": 2,
+     "generated_token_events": 2,
+     "native_output_count": 2,
+     "overgeneration": 0,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 5,
+     "prefill_tokens_first_time": 5,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 5,
+     "omitted_decisions": []
+    },
+    "B": {
+     "original_prompt_len": 8,
+     "first_prefill": 3,
+     "first_decode": 4,
+     "completion": 5,
+     "generated_token_events": 2,
+     "native_output_count": 2,
+     "overgeneration": 0,
+     "preemptions": 0,
+     "preemptions_after_output": 0,
+     "discarded_prompt_tokens": 0,
+     "generated_tokens_moved_to_context": 0,
+     "prefill_actions": 1,
+     "prefill_tokens_executed": 8,
+     "prefill_tokens_first_time": 8,
+     "prefill_tokens_replayed": 0,
+     "prefill_tokens_expanded_context": 0,
+     "prefilled_position_high_water": 8,
+     "omitted_decisions": [
+      0,
+      1,
+      2
+     ]
+    }
+   },
+   "virtual_time": 5
+  }
+ ],
+ "final": {
+  "central": {
+   "total_blocks": 8,
+   "watermark_blocks": 0,
+   "free_blocks": 8,
+   "free_block_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "block_tables": {},
+   "seqs": {},
+   "iteration_id": 5,
+   "num_running_batches": 0,
+   "waiting": [],
+   "running": []
+  },
+  "worker": {
+   "total_blocks": 8,
+   "watermark_blocks": 0,
+   "free_blocks": 8,
+   "free_block_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "block_tables": {},
+   "seqs": {},
+   "block_ops": []
+  },
+  "unfinished": [],
+  "residual_allocations": {},
+  "accounting": {
+   "A": {
+    "original_prompt_len": 5,
+    "first_prefill": 0,
+    "first_decode": 1,
+    "completion": 2,
+    "generated_token_events": 2,
+    "native_output_count": 2,
+    "overgeneration": 0,
+    "preemptions": 0,
+    "preemptions_after_output": 0,
+    "discarded_prompt_tokens": 0,
+    "generated_tokens_moved_to_context": 0,
+    "prefill_actions": 1,
+    "prefill_tokens_executed": 5,
+    "prefill_tokens_first_time": 5,
+    "prefill_tokens_replayed": 0,
+    "prefill_tokens_expanded_context": 0,
+    "prefilled_position_high_water": 5,
+    "omitted_decisions": []
+   },
+   "B": {
+    "original_prompt_len": 8,
+    "first_prefill": 3,
+    "first_decode": 4,
+    "completion": 5,
+    "generated_token_events": 2,
+    "native_output_count": 2,
+    "overgeneration": 0,
+    "preemptions": 0,
+    "preemptions_after_output": 0,
+    "discarded_prompt_tokens": 0,
+    "generated_tokens_moved_to_context": 0,
+    "prefill_actions": 1,
+    "prefill_tokens_executed": 8,
+    "prefill_tokens_first_time": 8,
+    "prefill_tokens_replayed": 0,
+    "prefill_tokens_expanded_context": 0,
+    "prefilled_position_high_water": 8,
+    "omitted_decisions": [
+     0,
+     1,
+     2
+    ]
+   }
+  },
+  "unsubmitted": []
+ },
+ "idle": {
+  "before": {
+   "total_blocks": 8,
+   "watermark_blocks": 0,
+   "free_blocks": 8,
+   "free_block_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "block_tables": {},
+   "seqs": {},
+   "iteration_id": 5,
+   "num_running_batches": 0,
+   "waiting": [],
+   "running": []
+  },
+  "after": {
+   "total_blocks": 8,
+   "watermark_blocks": 0,
+   "free_blocks": 8,
+   "free_block_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "block_tables": {},
+   "seqs": {},
+   "iteration_id": 6,
+   "num_running_batches": 0,
+   "waiting": [],
+   "running": []
+  },
+  "worker_after": {
+   "total_blocks": 8,
+   "watermark_blocks": 0,
+   "free_blocks": 8,
+   "free_block_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "block_tables": {},
+   "seqs": {},
+   "block_ops": []
+  },
+  "proposals": [],
+  "lp_events": [],
+  "schedules": [
+   {
+    "outputs": {
+     "id": 6,
+     "scheduled": [],
+     "ignored_seq_ids": [],
+     "preempted_seq_ids": []
+    },
+    "num_ops": 0,
+    "state": {
+     "total_blocks": 8,
+     "watermark_blocks": 0,
+     "free_blocks": 8,
+     "free_block_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+     ],
+     "block_tables": {},
+     "seqs": {},
+     "iteration_id": 6,
+     "num_running_batches": 0,
+     "waiting": [],
+     "running": []
+    }
+   }
+  ],
+  "central_ops": []
+ }
+}

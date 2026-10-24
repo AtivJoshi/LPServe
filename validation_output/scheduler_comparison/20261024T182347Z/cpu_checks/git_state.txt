@@ -1,0 +1,25 @@
+branch=main
+head=870d017dac687211d834ac14cb6aecade9397248
+base_reviewed=870d017dac687211d834ac14cb6aecade9397248
+--- git status --short --untracked-files=all
+ M lp_relaxation_scheduler.py
+ M lpserve_state_mapping.py
+ M scripts/compare_scheduler_gpu.py
+ M tests/test_compare_scheduler_gpu.py
+ M tests/test_lpserve_state_mapping.py
+?? scripts/compare_coefficient_policies_cpu.py
+?? scripts/exact_integer_plan.py
+?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/environment.txt
+?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/git_state.txt
+?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/run_checks.sh
+?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/run_checks_stdout.txt
+--- ignored new test (tests/ matches .gitignore test*)
+!! tests/test_exact_integer_plan.py
+--- git diff HEAD --stat (tracked changes)
+ lp_relaxation_scheduler.py          |  34 ++++-
+ lpserve_state_mapping.py            |  56 ++++++++
+ scripts/compare_scheduler_gpu.py    | 264 ++++++++++++++++++++++++++++--------
+ tests/test_compare_scheduler_gpu.py | 217 ++++++++++++++++++++++++++++-
+ tests/test_lpserve_state_mapping.py | 103 ++++++++++++++
+ 5 files changed, 610 insertions(+), 64 deletions(-)
+git_diff_head_sha256=6da0fbd2ef6a44ecf191098970dc28e0d1791452de8e03c2ac776f9b72ab2684  -

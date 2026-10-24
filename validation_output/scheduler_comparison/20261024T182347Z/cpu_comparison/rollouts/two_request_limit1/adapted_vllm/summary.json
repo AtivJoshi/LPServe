@@ -1,0 +1,134 @@
+{
+ "method": "adapted_vllm",
+ "case": "two_request",
+ "resident_limit": 1,
+ "validation_passed": true,
+ "workload_outcome": "drained",
+ "failure": null,
+ "decisions": 6,
+ "idle_intervals": [],
+ "finished": [
+  "A",
+  "B"
+ ],
+ "unfinished": [],
+ "unsubmitted": [],
+ "completion": {
+  "A": 2,
+  "B": 5
+ },
+ "preemptions": 0,
+ "preemptions_after_output": 0,
+ "decisions_with_admission_and_victims": 0,
+ "victim_reason_counts": {},
+ "discarded_prompt_tokens": 0,
+ "prefill_tokens_executed": 13,
+ "prefill_tokens_replayed": 0,
+ "prefill_tokens_expanded_context": 0,
+ "generated_token_events": 4,
+ "overgeneration": 0,
+ "omitted_decisions": 3,
+ "emitted": [
+  [
+   [],
+   [
+    [
+     0,
+     5
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     0,
+     0
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     0,
+     0
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     1,
+     8
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     1,
+     0
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     1,
+     0
+    ]
+   ]
+  ]
+ ],
+ "parameters": {
+  "case": "two_request",
+  "policy": "adapted_vllm",
+  "resident_limit": 1,
+  "block_size": 16,
+  "num_gpu_blocks": 8,
+  "max_model_len": 32,
+  "native_watermark_blocks": 0,
+  "prompts": {
+   "A": [
+    1000,
+    1001,
+    1002,
+    1003,
+    1004
+   ],
+   "B": [
+    2000,
+    2001,
+    2002,
+    2003,
+    2004,
+    2005,
+    2006,
+    2007
+   ]
+  },
+  "max_tokens": 2,
+  "virtual_arrivals": {
+   "A": 0,
+   "B": 0
+  },
+  "token_budget": 8,
+  "max_decisions": 8,
+  "scheduler_type": "adapted_vllm",
+  "max_num_batched_tokens": 8,
+  "chunk_cap": null,
+  "action_cap": null
+ },
+ "coefficient_magnitudes": {
+  "min_positive": 0.03125,
+  "max": 1.0,
+  "feasibility_tol": 1e-07,
+  "objective_abs_tol": 1e-09,
+  "highs_default_dual_feasibility_tol": 1e-07,
+  "min_over_dual_tol": 312500.0
+ }
+}

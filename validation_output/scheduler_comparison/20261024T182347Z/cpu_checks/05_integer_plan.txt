@@ -1,0 +1,15 @@
+$ python -B -m unittest tests.test_exact_integer_plan -v
+test_evaluate_assignment_reports_every_violation (tests.test_exact_integer_plan.IntegerModelTest) ... ok
+test_fractional_admission_separates_relaxation_and_extraction (tests.test_exact_integer_plan.IntegerModelTest) ... ok
+test_integer_domains_and_shared_constraints (tests.test_exact_integer_plan.IntegerModelTest) ... ok
+test_known_optima_match_bounded_enumeration (tests.test_exact_integer_plan.IntegerModelTest) ... ok
+test_integer_plans_pass_the_shared_validator_only_when_complete (tests.test_exact_integer_plan.IntegerResultValidationTest) ... ok
+test_malformed_optimal_results (tests.test_exact_integer_plan.IntegerResultValidationTest) ... ok
+test_other_statuses_and_exceptions (tests.test_exact_integer_plan.IntegerResultValidationTest) ... ok
+test_time_limit_keeps_the_incumbent_as_a_diagnostic (tests.test_exact_integer_plan.IntegerResultValidationTest) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.218s
+
+OK
+exit_status=0

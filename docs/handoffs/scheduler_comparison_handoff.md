@@ -416,3 +416,262 @@ PYTHONPATH="$PWD" timeout 600s python -B scripts/compare_scheduler_gpu.py \
   --case memory_pressure --policy <policy> --model-path <model dir> \
   --output-dir validation_output/scheduler_comparison/20261018T195933Z/memory_pressure_<policy>
 ```
+
+## Addendum 2026-10-24: coordinated coefficient policy and integer optimum
+
+**Scope.** One provisional coefficient policy, `coordinated_rank_utility`
+(policy name `lp_coordinated`), studied against the adapted reference, the
+existing uniform and rank-based LPs, and a CPU-only experimental integer
+optimum of the same coordinated problem (`ilp_coordinated`). The batch has
+three parts: CPU closed-loop runs, same-state comparisons, and four bounded
+GPU confirmation runs. The formulation, LP extraction, resource conventions
+(including both schedulers' free-block conventions), numerical policy,
+native order, and failure behavior are unchanged. Q11, D-01–D-04, κ, and F02
+remain OPEN. These values are demonstration inputs, not selected
+coefficients, and they were not tuned after the results were seen.
+
+**Evidence:** [`validation_output/scheduler_comparison/20261024T182347Z/`](../../validation_output/scheduler_comparison/20261024T182347Z/)
+(`cpu_checks/` with `run_checks.sh`, step logs 01–13, `working_tree.diff`,
+`new_files/`, `sha256sums.txt`; `cpu_comparison/` with `comparison.txt`,
+`rollouts/<case>_limit<n>/<method>/{summary,decision_trace}.json`,
+`same_state/`, `diagnostic_states.json`, `divergences.json`, `run_record.json`;
+`gpu_<case>_<policy>_limit<n>/` with `command.txt`, `console.log`,
+`exit_status.txt`, `summary.json`, `decision_trace.json`, `cleanup.json`;
+`run_gpu.sh`, `run_gpu_stdout.txt`, `shell_environment.txt`,
+`git_state_gpu.txt`, `sha256sums_gpu.txt`). Tested at HEAD
+`870d017dac687211d834ac14cb6aecade9397248` plus the uncommitted changes
+below: tracked diff `git diff HEAD` sha256 `6da0fbd2…`, the same at the CPU
+gate and the GPU start, plus three new files, copied under
+`cpu_checks/new_files/`. Every file hash in `cpu_checks/sha256sums.txt`
+equals `sha256sums_gpu.txt` and the files at report time. Host `gpu050`,
+Slurm job `66022154` (partition `gpu-preempt`), NVIDIA A16
+`GPU-685ce071-19c9-a4f8-0bde-2abc602c98d2`, driver 595.91.07; modules
+`uri/main`, `Python/3.10.8-GCCcore-12.2.0`, `CUDA/12.1.1`; `env/bin/python`
+3.10.8, numpy 2.2.6, scipy 1.15.3 (HiGHS through `milp`/`linprog`), torch
+2.3.0+cu121, ray 2.58.0. Same TinyLlama snapshot `fe8a4ea1…`, offline.
+
+### Files
+
+| File | Change |
+|---|---|
+| `lpserve_state_mapping.py` | `coordinated_rank_utility` (new callable policy for the existing hook); uniform and rank-based policies unchanged |
+| `lp_relaxation_scheduler.py` | Metadata only: `DirectIntegerSolution` provenance record; `validate_integer_plan` accepts it in `plan.extraction`; `SchedulingSuccess` documents `relaxed`/`solver` as `None` for a direct integer plan. Construction, solve, extraction, and every other validation are unchanged |
+| `scripts/exact_integer_plan.py` | New, CPU-only: `solve_integer_plan`, `evaluate_assignment`, `compare_same_state`, `integer_decision` |
+| `scripts/compare_coefficient_policies_cpu.py` | New CPU batch entrypoint |
+| `scripts/compare_scheduler_gpu.py` | `lp_coordinated` policy (GPU and CPU); CPU-only `ilp_coordinated` method and representative cases (not accepted on the command line); per-request output limits; virtual arrival clock |
+| `tests/test_compare_scheduler_gpu.py` | Fixture: sequence-ID counter (finished requests leave `seq_map`, so `len(seq_map)` reused IDs once arrivals were staggered); earlier rows pinned to the earlier three policies; 10 new tests |
+| `tests/test_lpserve_state_mapping.py` | 3 new policy tests |
+| `tests/test_exact_integer_plan.py` | New, 8 tests; needs `git add -f` (`.gitignore` `test*`) |
+
+The executor, live scheduler, registry, allocator, `EngineArgs`, and
+dependencies are unchanged. There is no registered or GPU ILP path.
+
+### Policy and solver inputs (provisional, recorded in `run_record.json` and each `summary.json`)
+
+With `r` the zero-based position in running order followed by arrived
+waiting order: `w = (1/4) ** r`; for a prefill-eligible request
+`q = min(remaining, c_max, b_max)`. Decode reward is `w` (decode-eligible
+requests, else 0), prefill token reward `w / q` (prefill-eligible, else 0),
+and preemption penalty `w` (eligible resident victims, else 0). `c_max` and
+`b_max` are bound from the case's LP caps, and the driver checks them
+against the scheduler's configuration. The mapper's service and victim
+ranks are unchanged and are not read by the policy.
+
+The integer solver uses `scipy.optimize.milp` with options `mip_rel_gap=0`,
+`presolve=True`, and `time_limit=10` s per solve. The objective, bounds, and
+rows come from `_build_lp` unchanged; every variable is integer. A
+conversion tolerance of 1e-6 is applied. A result is accepted only after
+checks of the status, finite values, near-integrality, objective agreement,
+`I = 1{x>0}`, every row at the integer point, and `validate_integer_plan`.
+Fractional or non-optimal results are never rounded into a plan, and there
+is no retry. Objectives of different methods are compared with
+COMPARISON_TOL 1e-7. "Optimal" means HiGHS-reported optimality within its
+tolerances.
+
+The CPU rollout uses `integer_decision`, installed on one scheduler
+instance. It follows the live coordinator's order (capture → coordinated
+coefficients → one integer solve → unchanged `execute_plan`). No LP is
+solved for its inputs. A failed integer solve raises `LPSchedulingError`
+before mutation, with no fallback; this was tested with an injected time
+limit.
+
+The virtual clock is the number of nonempty decisions executed. A request is
+submitted before the first decision at or after its arrival time. When
+nothing is unfinished, the clock jumps to the next arrival without a
+scheduler call; this was tested with an induced gap. In the staggered cases,
+request k arrives at time 2k. No staggered run went idle.
+
+### Critical review (analytical unless marked observed)
+
+1. **"Protect earlier residents" holds per request, not per token.** A
+   full chunk and a decode are worth the same `w`, so one prefill token is
+   worth `w_i/q_i`. A later decode-ready request j outbids a single token of
+   an earlier prefill i whenever `q_i > 4^(r_j−r_i)`. When the budget binds,
+   the policy therefore shortens the earlier request's chunk by one token to
+   serve the later decode. The reference never does this: it gives the head
+   its full chunk first. Observed in the `mixed_ample` diagnostic: A:7 plus
+   B's decode, 7/8 + 1/4 = 1.125 > 1, and the same in the LP and the ILP.
+   With q up to 32, the gap is up to two ranks. This is a consequence of the
+   specified policy, not a defect, and it is not corrected here.
+2. **Voluntary replacement by a waiting request is never profitable on its
+   own.** The waiting rank is at least |R|, so its full-chunk value is below
+   the penalty plus the lost action value of any resident. Observed: zero
+   `resident_capacity` victims in every coordinated run. The uniform and
+   rank-based LPs had 1–7 such decisions per run. The only coordinated
+   replacement (memory-pressure decision 3) comes from the LP decode
+   prerequisite: A and B have demand 0 and the pool has 0 free blocks, so a
+   victim is forced. Evicting B (penalty 1/4) frees 2 blocks; one funds D's
+   admission (+16/1024) and one gives H = 1. Utility 0.765625, matched by
+   enumeration. C (rank 2) was skipped because its 2-block charge would leave
+   H = 0.
+3. **The weights shrink geometrically with rank.** The smallest coefficients
+   observed were 3.05e-5 (`mixed_burst`: r = 5, q = 32), well above HiGHS's
+   documented default dual feasibility tolerance (1e-7) and the extraction
+   threshold (≈1e-9). By arithmetic, `4^-r/32` reaches about 1.2e-7 at r = 9
+   and 1e-9 near r = 13. The policy as specified is therefore numerically
+   meaningful only for small universes (about ten ranked requests at q ≤ 32)
+   under the unchanged numerical policy. No weight was clamped or rescaled.
+   Larger universes need an explicit decision.
+4. **The LP decode prerequisite remains the main source of LP-only
+   preemption** (inherited convention, design §8.3, unchanged). Coordinated
+   memory-pressure victims: 4 decisions cite `lp_decode_prerequisite` and 1
+   cites `decode_block_demand`. The reference had 1.
+5. **Driver weakening caught and fixed before the gate.** An early draft of
+   the arrival loop drained the worker operation log after every decision.
+   That would have masked the "worker operations outside a step" check. The
+   log is now drained only after an actual submission.
+6. **Inherited defect seen, not repaired:** `SchedulerOutputs.__repr__`
+   names a missing `new_seqs` attribute. It surfaced when formatting a check
+   message, and the entrypoint now formats only the type.
+
+No defect was found in the formulation, extraction, or executor paths used.
+Review scope: the policy, mapper construction, `_build_lp`/`_residuals`, the
+constructor and plan validator, the executor's precommit path for a
+`SchedulingSuccess` with `relaxed = None` (it reads only `plan` and
+`problem_id`), the driver checks, and the reference proposal. Kernels, cache
+contents, and multi-worker paths were not reviewed.
+
+### Results (executed)
+
+**Diagnostic single states.** These were constructed with native allocation
+and progress methods and mapped once per method. The LP plan and the integer
+plan were each executed by the native executor on a separate copy. The
+reference proposal was evaluated under the LP contracts, and bounded
+enumeration ran.
+
+| State | LP relaxed | LP plan | Integer optimum (= enumeration) | Reference (LP-contract evaluation) |
+|---|---|---|---|---|
+| `mixed_ample` (A 8 left, B decode-ready, budget 8, s 2) | 1.125 | A:7 + B decode, 1.125 | same | A:8, 1.0: strict objective preference |
+| `mixed_pressure` (+ 0 free, B demand 1, later C legal victim) | 1.1042 | A:7 + B decode, preempt C, 1.0625 | same | A:8, 1.0: strict objective preference |
+| `zero_free_decodes` (4 decode-ready, 0 free, demand 0) | 1.3031 | decode A,B,C, preempt tail D, 1.296875 | same (unique by enumeration) | decode all four: contract difference (`decode_prerequisite`) |
+| `fractional_admission` (charges 16, 1; pool 16; cap 1) | 1.1875 (A 15/16, B 1) | B:1, 0.25 | A:1, 1.0 | A:2: contract difference (chunk cap) |
+
+In the last row, the relaxation gap is 0.1875 and the extraction loss is
+0.75. Extraction tries B first because its e = 1 is larger than A's 0.9375,
+and A can then no longer be admitted.
+
+**CPU closed-loop runs** (35 runs, all `validation_passed`; full table in
+`cpu_comparison/comparison.txt`). Columns: total preemptions, preemptions
+after output, discarded prompt progress, replayed prefill tokens, and
+overgeneration.
+
+| Workload | Reference | Uniform LP | Rank-based LP | Coordinated LP = ILP |
+|---|---|---|---|---|
+| two_request, limit 1 | drained 6; 0 | bounded 8; 7 victims, 39 replayed | bounded 8; 7, 39 | drained 6; 0 |
+| two_request, limit 2 | drained 4 | drained 6 | drained 6 | drained 6; 0 |
+| memory_pressure | drained 8; 2 (2), 32 discarded, 32 replayed, +2 | bounded 16; 26, 407 replayed | bounded 16; 28, 437 | drained 15; 5 (3), 83 discarded, 83 replayed, +4 |
+| equal_burst_ample | drained 9; 0 | drained 14; 11, 180 | drained 9; 4, 60 | drained 9; 0 |
+| mixed_burst_ample | drained 10; 0 | drained 13; 6, 123 | drained 9; 1, 17 | drained 10; 0 |
+| mixed_staggered_ample | drained 16; 0 | drained 16; 0 | drained 16; 0 | drained 16; 0 |
+| mixed_staggered_tight | drained 16; 0 | drained 18; 1, 32 | drained 21; 2, 63 | drained 17; 0 |
+
+The two_request limit-1 hypothesis held: six decisions, no preemption. In
+memory_pressure, the coordinated LP drained where the uniform and rank-based
+LPs stayed bounded-unfinished. It still preempted 5 times against the
+reference's 2 and replayed 83 tokens against 32. Completion is observed here,
+not guaranteed.
+
+**Same-state, coordinated LP vs integer optimum** (79 identical problems):
+all 79 have identical selected actions, and extraction loss is 0
+everywhere. A relaxation gap appears in 8 problems: memory_pressure
+decisions 1, 3, 4, 6, 8, 9, 10 (0.006–0.389) and tight-staggered decision
+10 (0.047). The LP bound ≥ integer optimum ≥ LP plan holds in every problem.
+Bounded enumeration agreed with the integer optimum in all 136 same-state
+problems small enough to enumerate (12 were skipped as too large). The
+largest node count was 1.
+
+**Same-state, reference vs integer optimum.** Each of the 69 reference
+states was mapped with coordinated coefficients and the case's LP caps. In
+60, the integer optimum selects the reference's actions. The other 9 are
+contract differences: `action_width` (s_max = 1) at three two_request
+limit-2 states, and `decode_prerequisite` at five memory_pressure states and
+one tight-staggered state. No rollout state showed a tie or a strict
+objective preference.
+
+**Does integer optimization change the trajectory?** Not in this batch.
+The ILP rollouts emitted exactly the coordinated-LP decisions in all seven
+workloads, so the relaxation gaps never changed a selected plan. The
+`fractional_admission` state shows that the two can separate, but no
+rollout reached such a state.
+
+**Where the coordinated runs first deviate from the reference** (identical
+before-states in every case): two_request limit 2, decision 0 (action cap
+s_max = 1); memory_pressure decision 1 (LP decode prerequisite: tail D
+preempted, the reference decodes all four); mixed_staggered_tight decision
+10 (prerequisite: the LP omits the reference's F:30 admission). equal_burst
+and mixed_burst first differ at decision 2 only in emitted order, with the
+same selected set: the LP declared order puts zero-demand decodes before
+one-block decodes. mixed_staggered_ample and two_request limit 1 never
+diverge.
+
+**GPU confirmation** (four fresh processes, sequential, one attempt each).
+Every run printed `RESULT: PASS`, drained, exited 0 (timeout/Python and tee),
+and shut down its own Ray. Profiling reported 15616 blocks (two_request) and
+15606 (memory_pressure); exactly 8 and 4 blocks were initialized natively.
+The only warning was the bfloat16→float16 cast. Each GPU decision sequence
+equals its CPU trace decision for decision.
+
+| Run | Outcome | Decisions | Preemptions | Physical IDs differ after |
+|---|---|---|---|---|
+| coordinated LP, two_request limit 1 | drained | 6 | 0 | 0 decisions |
+| reference, two_request limit 1 | drained | 6 | 0 | 0 |
+| coordinated LP, memory_pressure | drained | 15 | 5 | 0 |
+| reference, memory_pressure | drained | 8 | 2 | 3 (recorded, not required) |
+
+### Checks (CPU gate, `CUDA_VISIBLE_DEVICES=""`)
+
+`bash validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/run_checks.sh <run dir>`. Every step exited 0:
+
+| Step | Result |
+|---|---|
+| 01 `py_compile` of the 8 changed or new files | pass |
+| 02/03 `--help` for both entrypoints under `-W error` (CPU entrypoint test: no torch, Ray, or engine imported) | pass |
+| 04 `tests.test_compare_scheduler_gpu` | 34 passed (24 earlier with the two-request and memory-pressure rows unchanged, plus 10 new) |
+| 05 `tests.test_exact_integer_plan` | 8 passed (shared model and integer domains; 154 states against enumeration; statuses 1–4, exceptions, malformed vectors; near-integral acceptance; validator) |
+| 06 `tests.test_lpserve_state_mapping` | 18 passed (3 new) |
+| 07 `tests.test_lp_relaxation_scheduler` | 38 passed |
+| 08 `tests.test_lpserve_plan_execution` | 16 passed |
+| 09 `tests.test_lp_scheduler` | 24 passed |
+| 10 `tests.test_check_lp_scheduler_ordering` | 5 passed |
+| 11 trailing whitespace, 12 `git diff --check` | pass |
+| 13 `compare_coefficient_policies_cpu.py --output-dir <run>/cpu_comparison` | `RESULT: PASS` |
+
+Not run: the adapted-reference unit suite, the other `check_*` script
+suites, and `test_lp_engine_args`/`test_run_lp_inference`. Their code is
+unchanged and not imported differently. No GPU representative workload, GPU
+ILP, or earlier-policy GPU rerun was run (none was authorized).
+
+GPU: `bash validation_output/scheduler_comparison/20261024T182347Z/run_gpu.sh <run dir>`, each run as
+
+```text
+PYTHONPATH="$PWD" timeout 600s python -B scripts/compare_scheduler_gpu.py \
+  --case <two_request|memory_pressure> --policy <lp_coordinated|adapted_vllm> \
+  --resident-limit <1|4> --model-path <model dir> --output-dir <run dir>/gpu_<case>_<policy>_limit<n>
+```
+
+**Not established:** cache contents, attention correctness, sampler
+generality, quality, physical-ID equality, recovery, starvation, fairness,
+latency, throughput, and eventual completion. Inherited behavior (final-
+prefill sample discarded, counter reset with overgeneration after restart:
+reference +2 and coordinated +4 in memory_pressure) is recorded, not
+repaired.

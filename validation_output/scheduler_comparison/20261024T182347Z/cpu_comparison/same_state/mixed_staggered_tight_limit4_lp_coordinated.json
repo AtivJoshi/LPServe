@@ -1,0 +1,545 @@
+[
+ {
+  "problem_id": "0",
+  "comparison_tol": 1e-07,
+  "lp_status": "SchedulingSuccess",
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.0,
+  "integer_dual_bound": 1.0,
+  "integer_reported_gap": 0.0,
+  "integer_node_count": 0,
+  "integer_actions": {
+   "0": "prefill:5"
+  },
+  "lp_relaxed_objective": 1.0,
+  "lp_plan_objective": 1.0,
+  "lp_actions": {
+   "0": "prefill:5"
+  },
+  "fractional_request_count": 0,
+  "relaxation_gap": 0.0,
+  "extraction_loss": 0.0,
+  "same_actions": true,
+  "bounds_consistent": true,
+  "attribution": "identical_actions",
+  "relaxation_gap_present": false,
+  "index": 0,
+  "enumeration": {
+   "plan_space": 6,
+   "useful_plan_exists": true,
+   "best": 1.0
+  }
+ },
+ {
+  "problem_id": "1",
+  "comparison_tol": 1e-07,
+  "lp_status": "SchedulingSuccess",
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.0,
+  "integer_dual_bound": 1.0,
+  "integer_reported_gap": 0.0,
+  "integer_node_count": 0,
+  "integer_actions": {
+   "0": "decode"
+  },
+  "lp_relaxed_objective": 1.0,
+  "lp_plan_objective": 1.0,
+  "lp_actions": {
+   "0": "decode"
+  },
+  "fractional_request_count": 0,
+  "relaxation_gap": 0.0,
+  "extraction_loss": 0.0,
+  "same_actions": true,
+  "bounds_consistent": true,
+  "attribution": "identical_actions",
+  "relaxation_gap_present": false,
+  "index": 1,
+  "enumeration": {
+   "plan_space": 3,
+   "useful_plan_exists": true,
+   "best": 1.0
+  }
+ },
+ {
+  "problem_id": "2",
+  "comparison_tol": 1e-07,
+  "lp_status": "SchedulingSuccess",
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.25,
+  "integer_dual_bound": 1.25,
+  "integer_reported_gap": 0.0,
+  "integer_node_count": 0,
+  "integer_actions": {
+   "0": "decode",
+   "1": "prefill:8"
+  },
+  "lp_relaxed_objective": 1.25,
+  "lp_plan_objective": 1.25,
+  "lp_actions": {
+   "0": "decode",
+   "1": "prefill:8"
+  },
+  "fractional_request_count": 0,
+  "relaxation_gap": 0.0,
+  "extraction_loss": 0.0,
+  "same_actions": true,
+  "bounds_consistent": true,
+  "attribution": "identical_actions",
+  "relaxation_gap_present": false,
+  "index": 2,
+  "enumeration": {
+   "plan_space": 27,
+   "useful_plan_exists": true,
+   "best": 1.25
+  }
+ },
+ {
+  "problem_id": "3",
+  "comparison_tol": 1e-07,
+  "lp_status": "SchedulingSuccess",
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.0,
+  "integer_dual_bound": 1.0,
+  "integer_reported_gap": 0.0,
+  "integer_node_count": 0,
+  "integer_actions": {
+   "1": "decode"
+  },
+  "lp_relaxed_objective": 1.0,
+  "lp_plan_objective": 1.0,
+  "lp_actions": {
+   "1": "decode"
+  },
+  "fractional_request_count": 0,
+  "relaxation_gap": 0.0,
+  "extraction_loss": 0.0,
+  "same_actions": true,
+  "bounds_consistent": true,
+  "attribution": "identical_actions",
+  "relaxation_gap_present": false,
+  "index": 3,
+  "enumeration": {
+   "plan_space": 3,
+   "useful_plan_exists": true,
+   "best": 1.0
+  }
+ },
+ {
+  "problem_id": "4",
+  "comparison_tol": 1e-07,
+  "lp_status": "SchedulingSuccess",
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.25,
+  "integer_dual_bound": 1.25,
+  "integer_reported_gap": 0.0,
+  "integer_node_count": 0,
+  "integer_actions": {
+   "1": "decode",
+   "2": "prefill:16"
+  },
+  "lp_relaxed_objective": 1.25,
+  "lp_plan_objective": 1.25,
+  "lp_actions": {
+   "1": "decode",
+   "2": "prefill:16"
+  },
+  "fractional_request_count": 0,
+  "relaxation_gap": 0.0,
+  "extraction_loss": 0.0,
+  "same_actions": true,
+  "bounds_consistent": true,
+  "attribution": "identical_actions",
+  "relaxation_gap_present": false,
+  "index": 4,
+  "enumeration": {
+   "plan_space": 51,
+   "useful_plan_exists": true,
+   "best": 1.25
+  }
+ },
+ {
+  "problem_id": "5",
+  "comparison_tol": 1e-07,
+  "lp_status": "SchedulingSuccess",
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.25,
+  "integer_dual_bound": 1.25,
+  "integer_reported_gap": 0.0,
+  "integer_node_count": 0,
+  "integer_actions": {
+   "1": "decode",
+   "2": "decode"
+  },
+  "lp_relaxed_objective": 1.25,
+  "lp_plan_objective": 1.25,
+  "lp_actions": {
+   "1": "decode",
+   "2": "decode"
+  },
+  "fractional_request_count": 0,
+  "relaxation_gap": 0.0,
+  "extraction_loss": 0.0,
+  "same_actions": true,
+  "bounds_consistent": true,
+  "attribution": "identical_actions",
+  "relaxation_gap_present": false,
+  "index": 5,
+  "enumeration": {
+   "plan_space": 9,
+   "useful_plan_exists": true,
+   "best": 1.25
+  }
+ },
+ {
+  "problem_id": "6",
+  "comparison_tol": 1e-07,
+  "lp_status": "SchedulingSuccess",
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.25,
+  "integer_dual_bound": 1.25,
+  "integer_reported_gap": 0.0,
+  "integer_node_count": 0,
+  "integer_actions": {
+   "2": "decode",
+   "3": "prefill:17"
+  },
+  "lp_relaxed_objective": 1.25,
+  "lp_plan_objective": 1.25,
+  "lp_actions": {
+   "2": "decode",
+   "3": "prefill:17"
+  },
+  "fractional_request_count": 0,
+  "relaxation_gap": 0.0,
+  "extraction_loss": 0.0,
+  "same_actions": true,
+  "bounds_consistent": true,
+  "attribution": "identical_actions",
+  "relaxation_gap_present": false,
+  "index": 6,
+  "enumeration": {
+   "plan_space": 54,
+   "useful_plan_exists": true,
+   "best": 1.25
+  }
+ },
+ {
+  "problem_id": "7",
+  "comparison_tol": 1e-07,
+  "lp_status": "SchedulingSuccess",
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.0,
+  "integer_dual_bound": 1.0,
+  "integer_reported_gap": 0.0,
+  "integer_node_count": 0,
+  "integer_actions": {
+   "3": "decode"
+  },
+  "lp_relaxed_objective": 1.0,
+  "lp_plan_objective": 1.0,
+  "lp_actions": {
+   "3": "decode"
+  },
+  "fractional_request_count": 0,
+  "relaxation_gap": 0.0,
+  "extraction_loss": 0.0,
+  "same_actions": true,
+  "bounds_consistent": true,
+  "attribution": "identical_actions",
+  "relaxation_gap_present": false,
+  "index": 7,
+  "enumeration": {
+   "plan_space": 3,
+   "useful_plan_exists": true,
+   "best": 1.0
+  }
+ },
+ {
+  "problem_id": "8",
+  "comparison_tol": 1e-07,
+  "lp_status": "SchedulingSuccess",
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.25,
+  "integer_dual_bound": 1.25,
+  "integer_reported_gap": 0.0,
+  "integer_node_count": 0,
+  "integer_actions": {
+   "3": "decode",
+   "4": "prefill:31"
+  },
+  "lp_relaxed_objective": 1.25,
+  "lp_plan_objective": 1.25,
+  "lp_actions": {
+   "3": "decode",
+   "4": "prefill:31"
+  },
+  "fractional_request_count": 0,
+  "relaxation_gap": 0.0,
+  "extraction_loss": 0.0,
+  "same_actions": true,
+  "bounds_consistent": true,
+  "attribution": "identical_actions",
+  "relaxation_gap_present": false,
+  "index": 8,
+  "enumeration": {
+   "plan_space": 96,
+   "useful_plan_exists": true,
+   "best": 1.25
+  }
+ },
+ {
+  "problem_id": "9",
+  "comparison_tol": 1e-07,
+  "lp_status": "SchedulingSuccess",
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.25,
+  "integer_dual_bound": 1.25,
+  "integer_reported_gap": 0.0,
+  "integer_node_count": 0,
+  "integer_actions": {
+   "3": "decode",
+   "4": "decode"
+  },
+  "lp_relaxed_objective": 1.25,
+  "lp_plan_objective": 1.25,
+  "lp_actions": {
+   "3": "decode",
+   "4": "decode"
+  },
+  "fractional_request_count": 0,
+  "relaxation_gap": 0.0,
+  "extraction_loss": 0.0,
+  "same_actions": true,
+  "bounds_consistent": true,
+  "attribution": "identical_actions",
+  "relaxation_gap_present": false,
+  "index": 9,
+  "enumeration": {
+   "plan_space": 9,
+   "useful_plan_exists": true,
+   "best": 1.25
+  }
+ },
+ {
+  "problem_id": "10",
+  "comparison_tol": 1e-07,
+  "lp_status": "SchedulingSuccess",
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.25,
+  "integer_dual_bound": 1.25,
+  "integer_reported_gap": 0.0,
+  "integer_node_count": 1,
+  "integer_actions": {
+   "3": "decode",
+   "4": "decode"
+  },
+  "lp_relaxed_objective": 1.296875,
+  "lp_plan_objective": 1.25,
+  "lp_actions": {
+   "3": "decode",
+   "4": "decode"
+  },
+  "fractional_request_count": 1,
+  "relaxation_gap": 0.046875,
+  "extraction_loss": 0.0,
+  "same_actions": true,
+  "bounds_consistent": true,
+  "attribution": "identical_actions",
+  "relaxation_gap_present": true,
+  "index": 10,
+  "enumeration": {
+   "plan_space": 297,
+   "useful_plan_exists": true,
+   "best": 1.25
+  }
+ },
+ {
+  "problem_id": "11",
+  "comparison_tol": 1e-07,
+  "lp_status": "SchedulingSuccess",
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.2421875,
+  "integer_dual_bound": 1.2421875,
+  "integer_reported_gap": 0.0,
+  "integer_node_count": 1,
+  "integer_actions": {
+   "4": "decode",
+   "5": "prefill:31"
+  },
+  "lp_relaxed_objective": 1.2421875,
+  "lp_plan_objective": 1.2421875,
+  "lp_actions": {
+   "4": "decode",
+   "5": "prefill:31"
+  },
+  "fractional_request_count": 1,
+  "relaxation_gap": 0.0,
+  "extraction_loss": 0.0,
+  "same_actions": true,
+  "bounds_consistent": true,
+  "attribution": "identical_actions",
+  "relaxation_gap_present": false,
+  "index": 11,
+  "enumeration": {
+   "plan_space": 99,
+   "useful_plan_exists": true,
+   "best": 1.2421875
+  }
+ },
+ {
+  "problem_id": "12",
+  "comparison_tol": 1e-07,
+  "lp_status": "SchedulingSuccess",
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.0,
+  "integer_dual_bound": 1.0,
+  "integer_reported_gap": 0.0,
+  "integer_node_count": 0,
+  "integer_actions": {
+   "5": "prefill:1"
+  },
+  "lp_relaxed_objective": 1.0,
+  "lp_plan_objective": 1.0,
+  "lp_actions": {
+   "5": "prefill:1"
+  },
+  "fractional_request_count": 0,
+  "relaxation_gap": 0.0,
+  "extraction_loss": 0.0,
+  "same_actions": true,
+  "bounds_consistent": true,
+  "attribution": "identical_actions",
+  "relaxation_gap_present": false,
+  "index": 12,
+  "enumeration": {
+   "plan_space": 3,
+   "useful_plan_exists": true,
+   "best": 1.0
+  }
+ },
+ {
+  "problem_id": "13",
+  "comparison_tol": 1e-07,
+  "lp_status": "SchedulingSuccess",
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.0,
+  "integer_dual_bound": 1.0,
+  "integer_reported_gap": 0.0,
+  "integer_node_count": 0,
+  "integer_actions": {
+   "5": "decode"
+  },
+  "lp_relaxed_objective": 1.0,
+  "lp_plan_objective": 1.0,
+  "lp_actions": {
+   "5": "decode"
+  },
+  "fractional_request_count": 0,
+  "relaxation_gap": 0.0,
+  "extraction_loss": 0.0,
+  "same_actions": true,
+  "bounds_consistent": true,
+  "attribution": "identical_actions",
+  "relaxation_gap_present": false,
+  "index": 13,
+  "enumeration": {
+   "plan_space": 3,
+   "useful_plan_exists": true,
+   "best": 1.0
+  }
+ },
+ {
+  "problem_id": "14",
+  "comparison_tol": 1e-07,
+  "lp_status": "SchedulingSuccess",
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.0,
+  "integer_dual_bound": 1.0,
+  "integer_reported_gap": 0.0,
+  "integer_node_count": 0,
+  "integer_actions": {
+   "5": "decode"
+  },
+  "lp_relaxed_objective": 1.0,
+  "lp_plan_objective": 1.0,
+  "lp_actions": {
+   "5": "decode"
+  },
+  "fractional_request_count": 0,
+  "relaxation_gap": 0.0,
+  "extraction_loss": 0.0,
+  "same_actions": true,
+  "bounds_consistent": true,
+  "attribution": "identical_actions",
+  "relaxation_gap_present": false,
+  "index": 14,
+  "enumeration": {
+   "plan_space": 3,
+   "useful_plan_exists": true,
+   "best": 1.0
+  }
+ },
+ {
+  "problem_id": "15",
+  "comparison_tol": 1e-07,
+  "lp_status": "SchedulingSuccess",
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.0,
+  "integer_dual_bound": 1.0,
+  "integer_reported_gap": 0.0,
+  "integer_node_count": 0,
+  "integer_actions": {
+   "5": "decode"
+  },
+  "lp_relaxed_objective": 1.0,
+  "lp_plan_objective": 1.0,
+  "lp_actions": {
+   "5": "decode"
+  },
+  "fractional_request_count": 0,
+  "relaxation_gap": 0.0,
+  "extraction_loss": 0.0,
+  "same_actions": true,
+  "bounds_consistent": true,
+  "attribution": "identical_actions",
+  "relaxation_gap_present": false,
+  "index": 15,
+  "enumeration": {
+   "plan_space": 3,
+   "useful_plan_exists": true,
+   "best": 1.0
+  }
+ },
+ {
+  "problem_id": "16",
+  "comparison_tol": 1e-07,
+  "lp_status": "SchedulingSuccess",
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.0,
+  "integer_dual_bound": 1.0,
+  "integer_reported_gap": 0.0,
+  "integer_node_count": 0,
+  "integer_actions": {
+   "5": "decode"
+  },
+  "lp_relaxed_objective": 1.0,
+  "lp_plan_objective": 1.0,
+  "lp_actions": {
+   "5": "decode"
+  },
+  "fractional_request_count": 0,
+  "relaxation_gap": 0.0,
+  "extraction_loss": 0.0,
+  "same_actions": true,
+  "bounds_consistent": true,
+  "attribution": "identical_actions",
+  "relaxation_gap_present": false,
+  "index": 16,
+  "enumeration": {
+   "plan_space": 3,
+   "useful_plan_exists": true,
+   "best": 1.0
+  }
+ }
+]

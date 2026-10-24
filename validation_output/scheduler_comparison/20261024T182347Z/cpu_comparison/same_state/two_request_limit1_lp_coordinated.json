@@ -1,0 +1,188 @@
+[
+ {
+  "problem_id": "0",
+  "comparison_tol": 1e-07,
+  "lp_status": "SchedulingSuccess",
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.0,
+  "integer_dual_bound": 1.0,
+  "integer_reported_gap": 0.0,
+  "integer_node_count": 1,
+  "integer_actions": {
+   "0": "prefill:5"
+  },
+  "lp_relaxed_objective": 1.0,
+  "lp_plan_objective": 1.0,
+  "lp_actions": {
+   "0": "prefill:5"
+  },
+  "fractional_request_count": 0,
+  "relaxation_gap": 0.0,
+  "extraction_loss": 0.0,
+  "same_actions": true,
+  "bounds_consistent": true,
+  "attribution": "identical_actions",
+  "relaxation_gap_present": false,
+  "index": 0,
+  "enumeration": {
+   "plan_space": 54,
+   "useful_plan_exists": true,
+   "best": 1.0
+  }
+ },
+ {
+  "problem_id": "1",
+  "comparison_tol": 1e-07,
+  "lp_status": "SchedulingSuccess",
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.0,
+  "integer_dual_bound": 1.0,
+  "integer_reported_gap": 0.0,
+  "integer_node_count": 1,
+  "integer_actions": {
+   "0": "decode"
+  },
+  "lp_relaxed_objective": 1.0,
+  "lp_plan_objective": 1.0,
+  "lp_actions": {
+   "0": "decode"
+  },
+  "fractional_request_count": 0,
+  "relaxation_gap": 0.0,
+  "extraction_loss": 0.0,
+  "same_actions": true,
+  "bounds_consistent": true,
+  "attribution": "identical_actions",
+  "relaxation_gap_present": false,
+  "index": 1,
+  "enumeration": {
+   "plan_space": 27,
+   "useful_plan_exists": true,
+   "best": 1.0
+  }
+ },
+ {
+  "problem_id": "2",
+  "comparison_tol": 1e-07,
+  "lp_status": "SchedulingSuccess",
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.0,
+  "integer_dual_bound": 1.0,
+  "integer_reported_gap": 0.0,
+  "integer_node_count": 1,
+  "integer_actions": {
+   "0": "decode"
+  },
+  "lp_relaxed_objective": 1.0,
+  "lp_plan_objective": 1.0,
+  "lp_actions": {
+   "0": "decode"
+  },
+  "fractional_request_count": 0,
+  "relaxation_gap": 0.0,
+  "extraction_loss": 0.0,
+  "same_actions": true,
+  "bounds_consistent": true,
+  "attribution": "identical_actions",
+  "relaxation_gap_present": false,
+  "index": 2,
+  "enumeration": {
+   "plan_space": 27,
+   "useful_plan_exists": true,
+   "best": 1.0
+  }
+ },
+ {
+  "problem_id": "3",
+  "comparison_tol": 1e-07,
+  "lp_status": "SchedulingSuccess",
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.0,
+  "integer_dual_bound": 1.0,
+  "integer_reported_gap": 0.0,
+  "integer_node_count": 0,
+  "integer_actions": {
+   "1": "prefill:8"
+  },
+  "lp_relaxed_objective": 1.0,
+  "lp_plan_objective": 1.0,
+  "lp_actions": {
+   "1": "prefill:8"
+  },
+  "fractional_request_count": 0,
+  "relaxation_gap": 0.0,
+  "extraction_loss": 0.0,
+  "same_actions": true,
+  "bounds_consistent": true,
+  "attribution": "identical_actions",
+  "relaxation_gap_present": false,
+  "index": 3,
+  "enumeration": {
+   "plan_space": 9,
+   "useful_plan_exists": true,
+   "best": 1.0
+  }
+ },
+ {
+  "problem_id": "4",
+  "comparison_tol": 1e-07,
+  "lp_status": "SchedulingSuccess",
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.0,
+  "integer_dual_bound": 1.0,
+  "integer_reported_gap": 0.0,
+  "integer_node_count": 0,
+  "integer_actions": {
+   "1": "decode"
+  },
+  "lp_relaxed_objective": 1.0,
+  "lp_plan_objective": 1.0,
+  "lp_actions": {
+   "1": "decode"
+  },
+  "fractional_request_count": 0,
+  "relaxation_gap": 0.0,
+  "extraction_loss": 0.0,
+  "same_actions": true,
+  "bounds_consistent": true,
+  "attribution": "identical_actions",
+  "relaxation_gap_present": false,
+  "index": 4,
+  "enumeration": {
+   "plan_space": 3,
+   "useful_plan_exists": true,
+   "best": 1.0
+  }
+ },
+ {
+  "problem_id": "5",
+  "comparison_tol": 1e-07,
+  "lp_status": "SchedulingSuccess",
+  "integer_status": "IntegerOptimum",
+  "integer_objective": 1.0,
+  "integer_dual_bound": 1.0,
+  "integer_reported_gap": 0.0,
+  "integer_node_count": 0,
+  "integer_actions": {
+   "1": "decode"
+  },
+  "lp_relaxed_objective": 1.0,
+  "lp_plan_objective": 1.0,
+  "lp_actions": {
+   "1": "decode"
+  },
+  "fractional_request_count": 0,
+  "relaxation_gap": 0.0,
+  "extraction_loss": 0.0,
+  "same_actions": true,
+  "bounds_consistent": true,
+  "attribution": "identical_actions",
+  "relaxation_gap_present": false,
+  "index": 5,
+  "enumeration": {
+   "plan_space": 3,
+   "useful_plan_exists": true,
+   "best": 1.0
+  }
+ }
+]

@@ -16,8 +16,10 @@ LP decode prerequisite, and the strictly ordered rank-based coefficients;
 the LP runs are not required to drain.
 """
 
+import contextlib
 import copy
 import dataclasses
+import io
 import json
 import os
 import subprocess
@@ -56,7 +58,9 @@ from sarathi.engine import arg_utils  # noqa: E402
 setUpModule = lpt.setUpModule
 tearDownModule = lpt.tearDownModule
 
-RUNS = [(p, n) for n in driver.RESIDENT_LIMITS for p in driver.POLICIES]
+# The earlier three policies, whose rows are preserved below.
+EARLIER_POLICIES = ("adapted_vllm", "lp_uniform", "lp_rank_based")
+RUNS = [(p, n) for n in driver.RESIDENT_LIMITS for p in EARLIER_POLICIES]
 PRESSURE = driver.MEMORY_PRESSURE
 
 # Earlier CPU comparison rows (validation_output/adapted_vllm_reference/
@@ -107,6 +111,9 @@ class CpuRuntime:
                                         self.worker_ops)
         self.lp = policy != "adapted_vllm"
         self.steps = 0
+        # As the engine's request counter: finished requests leave seq_map,
+        # so its length cannot name the next request.
+        self.next_seq_id = 0
 
     def sample(self, seq_id):
         # Synthetic and distinct per request and step, so a misassociated
@@ -115,8 +122,9 @@ class CpuRuntime:
 
     def submit(self, prompt_ids, sampling_params):
         # Same construction, arrival clock, and LP check as add_request.
-        seq = Sequence(len(self.seq_map), None, prompt_ids, driver.BLOCK_SIZE,
+        seq = Sequence(self.next_seq_id, None, prompt_ids, driver.BLOCK_SIZE,
                        2, time.perf_counter(), sampling_params)
+        self.next_seq_id += 1
         if self.lp:
             self.scheduler.check_new_request(seq)
         self.engine_seqs.add_seq(seq)
@@ -175,8 +183,8 @@ class DriverImportAndHelpTest(unittest.TestCase):
                                 cwd=REPO_ROOT, env=env, capture_output=True,
                                 text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("--policy {adapted_vllm,lp_uniform,lp_rank_based}",
-                      result.stdout)
+        self.assertIn("--policy {adapted_vllm,lp_uniform,lp_rank_based,"
+                      "lp_coordinated}", result.stdout)
         self.assertIn("--resident-limit {2,1,4}", result.stdout)
         self.assertIn("--case {two_request,memory_pressure}", result.stdout)
         self.assertEqual(result.stdout.strip().splitlines()[-1], "RESULT 0 []")
@@ -365,7 +373,7 @@ class BoundAndFailureTest(unittest.TestCase):
                 _run("adapted_vllm", 2)
         # Rank-based coefficients checked against the uniform triple.
         with mock.patch.object(driver, "expected_coefficients",
-                               lambda policy, snap, r: driver.UNIFORM):
+                               lambda policy, snap, r, c: driver.UNIFORM):
             with self.assertRaisesRegex(driver.CheckFailure,
                                         "decision 0: coefficients of"):
                 _run("lp_rank_based", 2)
@@ -558,7 +566,7 @@ class MemoryPressureConfigurationTest(unittest.TestCase):
                               D=(4000, 16)))
         flat = [t for p in inputs["prompts"].values() for t in p]
         self.assertEqual(len(flat), len(set(flat)))
-        for policy in driver.POLICIES:
+        for policy in EARLIER_POLICIES:
             with self.subTest(policy=policy), tempfile.TemporaryDirectory() as tmp:
                 kwargs, (_, cache, parallel, sched, _) = native_configs(
                     policy, 4, tmp, PRESSURE)
@@ -603,7 +611,7 @@ class MemoryPressureReplayTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.runs = {p: _run(p, 4, PRESSURE) for p in driver.POLICIES}
+        cls.runs = {p: _run(p, 4, PRESSURE) for p in EARLIER_POLICIES}
 
     def test_reference_follows_its_specification(self):
         # Matches the earlier reference preemption case (same workload).
@@ -789,6 +797,201 @@ class MemoryPressureDetectionTest(unittest.TestCase):
         self.assertIn("victim_need", trace["decisions"][1])
         self.assertEqual(trace["decisions"][2]["central_ops"], [])
         self.assertIsNone(trace["final"])
+
+
+import exact_integer_plan as eip  # noqa: E402
+
+COORDINATED = ("lp_coordinated", driver.INTEGER_POLICY)
+
+
+class CoordinatedPolicyTest(unittest.TestCase):
+    """The coordinated LP and the CPU-only integer method through the
+    driver's checks and native CPU replay."""
+
+    def test_configuration_and_hook_selection(self):
+        for case, limit, caps in ((driver.TWO_REQUEST, 1, (8, 8)),
+                                  (PRESSURE, 4, (64, 64)),
+                                  ("mixed_staggered_tight", 4, (32, 32))):
+            for policy in COORDINATED:
+                with self.subTest(case=case, policy=policy):
+                    runtime = CpuRuntime(policy, limit, case)
+                    scheduler = runtime.scheduler
+                    driver.select_coefficient_policy(scheduler, policy, case)
+                    bound = scheduler._coefficient_policy()
+                    self.assertIs(bound.func, lsm.coordinated_rank_utility)
+                    self.assertEqual(bound.keywords, dict(
+                        rank_base=0.25, c_max=caps[0], b_max=caps[1]))
+                    self.assertEqual(
+                        "_schedule" in vars(scheduler),
+                        policy == driver.INTEGER_POLICY)
+                    params = driver.run_parameters(policy, limit, case)
+                    self.assertEqual(params["coefficient_policy"][
+                        "coordinated_rank_utility"]["rank_base"], 0.25)
+        self.assertNotIn("_schedule", vars(CpuRuntime("lp_coordinated", 1)
+                                           .scheduler))
+
+    def test_two_request_limit_one_drains_without_preemption(self):
+        rows = {}
+        for policy in COORDINATED:
+            _, trace, outcome = _run(policy, 1)
+            rows[policy] = [_emitted(d) for d in trace["decisions"]]
+            self.assertEqual(_row(trace, outcome),
+                             (6, (0, 3), (1, 4), (2, 5), 0, "drained"))
+            calls = driver.decision_calls(policy)
+            for d in trace["decisions"]:
+                self.assertEqual([e["call"] for e in d["lp_events"]], calls)
+            if policy == driver.INTEGER_POLICY:
+                d = trace["decisions"][0]
+                self.assertEqual(d["lp_events"][1]["result_type"],
+                                 "IntegerOptimum")
+                self.assertIsNone(d["lp_comparison"])
+                self.assertEqual(d["integer_solution"]["objective"], 1.0)
+        # Integer optimization does not change this trajectory.
+        self.assertEqual(rows["lp_coordinated"], rows[driver.INTEGER_POLICY])
+
+    def test_coordinated_coefficients_are_checked(self):
+        with mock.patch.object(driver, "expected_coefficients",
+                               lambda policy, snap, r, c: driver.UNIFORM):
+            with self.assertRaisesRegex(driver.CheckFailure,
+                                        "decision 0: coefficients of"):
+                _run("lp_coordinated", 1)
+
+    def test_zero_free_block_prerequisite_selects_the_tail(self):
+        for policy in COORDINATED:
+            with self.subTest(policy=policy):
+                _, trace, outcome = _run(policy, 4, PRESSURE)
+                self.assertIn(outcome, (driver.DRAINED,
+                                        driver.BOUNDED_UNFINISHED))
+                d1 = trace["decisions"][1]
+                self.assertEqual(d1["before"]["free_blocks"], 0)
+                self.assertEqual(d1["victim_need"]["reasons"],
+                                 ["lp_decode_prerequisite"])
+                self.assertEqual(_emitted(d1)["preempted_seq_ids"], [3])
+                self.assertEqual(_emitted(d1)["scheduled"],
+                                 [[0, 0], [1, 0], [2, 0]])
+
+    def test_integer_failure_stops_the_rollout_without_fallback(self):
+        native = eip.solve_integer_plan
+        calls = []
+
+        def fail_second(problem):
+            calls.append(problem.problem_id)
+            if len(calls) == 2:
+                return eip.IntegerSolveFailure(
+                    problem.problem_id, eip.STAGE_INTEGER_SOLVER,
+                    "solver_limit", "injected", 1, "time limit",
+                    incumbent_objective=0.5)
+            return native(problem)
+        trace = {}
+        runtime = CpuRuntime(driver.INTEGER_POLICY, 1)
+        with mock.patch.object(eip, "solve_integer_plan", fail_second), \
+                mock.patch.object(lrs, "solve_and_extract") as lp:
+            with self.assertRaises(LPSchedulingError) as caught:
+                driver.run_comparison(driver.INTEGER_POLICY, 1, runtime, trace)
+        lp.assert_not_called()
+        self.assertEqual(caught.exception.category, "solver_limit")
+        record = trace["decisions"][1]
+        self.assertEqual([e["call"] for e in record["lp_events"]],
+                         driver.INTEGER_CALLS[:2])
+        self.assertEqual(record["lp_events"][1]["result"]
+                         ["incumbent_objective"], 0.5)
+        self.assertEqual(record["central_ops"], [])
+        self.assertEqual(record["central_at_failure"]["running"], [0])
+        self.assertIsNone(trace["final"])
+
+    def test_cli_accepts_no_integer_method_or_cpu_only_case(self):
+        for argv in (["--policy", driver.INTEGER_POLICY],
+                     ["--policy", "lp_coordinated", "--case",
+                      "mixed_burst_ample"]):
+            with self.subTest(argv=argv), \
+                    contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as caught:
+                    driver.parse_args(argv + ["--model-path", "m",
+                                              "--output-dir", "o"])
+                self.assertEqual(caught.exception.code, 2)
+
+
+class VirtualArrivalTest(unittest.TestCase):
+
+    def test_representative_inputs(self):
+        c = driver.case_inputs("mixed_staggered_tight")
+        self.assertEqual([len(p) for p in c["prompts"].values()],
+                         [5, 8, 16, 17, 31, 32])
+        self.assertEqual(list(c["max_tokens"].values()), [2, 3, 2, 4, 3, 4])
+        self.assertEqual(list(c["arrivals"].values()), [0, 2, 4, 6, 8, 10])
+        self.assertEqual((c["num_gpu_blocks"], c["max_model_len"],
+                          c["resident_limits"], c["token_budget"], c["b_max"],
+                          c["c_max"], c["s_max"], c["max_decisions"]),
+                         (6, 64, (4,), 32, 32, 32, 4, 64))
+        equal = driver.case_inputs("equal_burst_ample")
+        self.assertEqual(([len(p) for p in equal["prompts"].values()],
+                          equal["max_tokens"], set(equal["arrivals"].values()),
+                          equal["num_gpu_blocks"]), ([16] * 6, 3, {0}, 16))
+        flat = [t for p in c["prompts"].values() for t in p]
+        self.assertEqual(len(flat), len(set(flat)))
+        # Existing cases have every request at virtual time 0.
+        self.assertEqual(set(driver.case_inputs(PRESSURE)["arrivals"]
+                             .values()), {0})
+
+    def test_staggered_submission_and_per_request_limits(self):
+        case = "mixed_staggered_tight"
+        c = driver.case_inputs(case)
+        _, trace, outcome = _run("adapted_vllm", 4, case)
+        acc = trace["final"]["accounting"]
+        for name, when in c["arrivals"].items():
+            submitted = trace["submitted_at_virtual_time"][name]
+            self.assertGreaterEqual(submitted, when)
+            sid = list(c["prompts"]).index(name)
+            # Never mapped or proposed before submission.
+            for d in trace["decisions"]:
+                present = sid in d["before"]["waiting"] + d["before"]["running"]
+                self.assertEqual(present and d["virtual_time"] < submitted,
+                                 False)
+            if acc[name]["completion"] is not None:
+                self.assertEqual(acc[name]["native_output_count"],
+                                 c["max_tokens"][name])
+        self.assertEqual([d["virtual_time"] for d in trace["decisions"]],
+                         list(range(len(trace["decisions"]))))
+        self.assertIn(outcome, (driver.DRAINED, driver.BOUNDED_UNFINISHED))
+
+    def test_idle_interval_jumps_without_a_scheduler_call(self):
+        inputs = json.loads(json.dumps(
+            driver.REPRESENTATIVE_INPUTS["mixed_burst_ample"]))
+        inputs["arrivals"] = dict(zip("ABCDEF", [0, 40, 40, 40, 40, 40]))
+        with mock.patch.dict(driver.REPRESENTATIVE_INPUTS,
+                             {"mixed_burst_ample": inputs}):
+            runtime, trace, outcome = _run("lp_coordinated", 4,
+                                           "mixed_burst_ample")
+        self.assertEqual(outcome, driver.DRAINED)
+        # A (5 tokens, 2 outputs) drains after 3 decisions; the clock then
+        # jumps to 40 and the next decision sees B..F only.
+        self.assertEqual(trace["idle_intervals"], [[3, 40]])
+        times = [d["virtual_time"] for d in trace["decisions"]]
+        self.assertEqual(times[:4], [0, 1, 2, 40])
+        self.assertEqual(trace["decisions"][3]["before"]["waiting"],
+                         [1, 2, 3, 4, 5])
+        self.assertEqual(sorted(trace["submitted_at_virtual_time"].values()),
+                         [0, 40, 40, 40, 40, 40])
+        # Sequence IDs stay unique after A leaves seq_map.
+        self.assertEqual(runtime.next_seq_id, 6)
+
+
+class CpuEntrypointTest(unittest.TestCase):
+    def test_help_loads_no_engine_worker_ray_or_torch(self):
+        code = (
+            "import sys; sys.path.insert(0, 'scripts'); "
+            "import compare_coefficient_policies_cpu as m\n"
+            "try:\n    m.main(['--help'])\nexcept SystemExit as e:\n"
+            "    code = e.code\n"
+            "print('RESULT', code, sorted(n for n in ('torch', 'ray', "
+            "'sarathi.engine.base_llm_engine') if n in sys.modules))")
+        env = dict(os.environ, CUDA_VISIBLE_DEVICES="")
+        result = subprocess.run([sys.executable, "-B", "-c", code],
+                                cwd=REPO_ROOT, env=env, capture_output=True,
+                                text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("--output-dir", result.stdout)
+        self.assertEqual(result.stdout.strip().splitlines()[-1], "RESULT 0 []")
 
 
 if __name__ == "__main__":

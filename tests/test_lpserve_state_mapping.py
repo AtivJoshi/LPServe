@@ -936,6 +936,109 @@ class LPServeStateMappingTest(unittest.TestCase):
                     self.assertIn(f"rank-based utility {field}", result.reason)
                     problem_spy.assert_not_called()
 
+    # -- coordinated rank utility policy ---------------------------------------
+
+    @staticmethod
+    def _coordinated(c_max=C_MAX, b_max=B_MAX, rank_base=0.25):
+        return functools.partial(lsm.coordinated_rank_utility,
+                                 rank_base=rank_base, c_max=c_max, b_max=b_max)
+
+    def test_coordinated_utility_values_ranks_and_chunk_normalization(self):
+        # Running: 5 (partial prefill, 2 of 6 left), 3 (decode). Waiting:
+        # future head 0, then 9 (10 left) and 2 (4 left). Positions r:
+        # 5->0, 3->1, 9->2, 2->3, so w = 1, 1/4, 1/16, 1/64.
+        holder, _ = _build_holder()
+        self._resident(holder, 5, 6, 4)
+        self._resident(holder, 3, 4, 4)
+        holder.waiting.append(_make_sequence(0, 4, SNAPSHOT_TIME + 1))
+        holder.waiting.append(_make_sequence(9, 10, 1.0))
+        holder.waiting.append(_make_sequence(2, 4, 1.0))
+        before = _fingerprint(holder)
+        with mock.patch.object(lsm, "_capture", wraps=lsm._capture) as spy:
+            snapshot = _map(holder, self._coordinated())
+        self.assertEqual(spy.call_count, 1)
+        self.assertEqual(_fingerprint(holder), before)
+        self.assertIsInstance(snapshot, lsm.StateSnapshot, snapshot)
+        # q = min(remaining, C_max = 4, B_max = 8): 2 (remainder binds) for
+        # 5, 4 (chunk cap binds) for 9, 4 for 2. Decode and penalty are w;
+        # ineligible terms are exactly 0.
+        self.assertEqual(self._triples(snapshot), {
+            5: (0.0, 1.0 / 2, 1.0),
+            3: (0.25, 0.0, 0.25),
+            9: (0.0, (1 / 16) / 4, 0.0),
+            2: (0.0, (1 / 64) / 4, 0.0),
+        })
+        by_id = {r.raw_seq_id: r for r in snapshot.requests}
+        # A complete available chunk earns the same value as one decode.
+        for raw_id, q in ((5, 2), (9, 4), (2, 4)):
+            r = by_id[raw_id]
+            self.assertEqual(r.utility.prefill_token_utility * q,
+                             0.25 ** r.service_rank)
+        # Ranks come from the unchanged profile; the victim rank is separate.
+        self.assertEqual({k: (r.service_rank, r.victim_rank)
+                          for k, r in by_id.items()},
+                         {5: (0, 1), 3: (1, 0), 9: (2, None), 2: (3, None)})
+        self.assertEqual(
+            {r.request_id: (r.decode_utility, r.prefill_token_utility,
+                            r.preemption_penalty)
+             for r in snapshot.lp_problem.requests},
+            {str(k): v for k, v in self._triples(snapshot).items()})
+        # The token budget also binds q when it is the smallest limit.
+        captured = lsm.capture_scheduler_state(holder,
+                                               snapshot_time=SNAPSHOT_TIME)
+        tight = lsm.construct_coefficients(captured,
+                                           self._coordinated(b_max=3))
+        self.assertEqual(
+            {r.raw_seq_id: c.prefill_token_utility
+             for r, c in zip(captured.requests, tight)},
+            {5: 1.0 / 2, 3: 0.0, 9: (1 / 16) / 3, 2: (1 / 64) / 3})
+
+    def test_coordinated_utility_is_fixed_by_the_capture(self):
+        holder, block_manager = _build_holder()
+        self._resident(holder, 1, 4, 4)
+        holder.waiting.append(_make_sequence(0, 6, 1.0))
+        policy = self._coordinated()
+        snapshot = _map(holder, policy)
+        self.assertIsInstance(snapshot, lsm.StateSnapshot, snapshot)
+        triples = self._triples(snapshot)
+        problem = snapshot.lp_problem
+        self.assertEqual(triples, {1: (1.0, 0.0, 1.0), 0: (0.0, 0.25 / 4, 0.0)})
+        # Construction reads only the capture: with the live holder emptied
+        # and its block manager removed, the same capture yields the same
+        # coefficients, and the earlier snapshot and problem are unchanged.
+        captured = lsm.capture_scheduler_state(holder,
+                                               snapshot_time=SNAPSHOT_TIME)
+        holder.waiting.clear()
+        holder.running.clear()
+        holder.block_manager = None
+        self.assertEqual(
+            {r.raw_seq_id: c for r, c in zip(
+                captured.requests,
+                lsm.construct_coefficients(captured, policy))},
+            {r.raw_seq_id: r.utility for r in snapshot.requests})
+        self.assertEqual(self._triples(snapshot), triples)
+        self.assertIs(snapshot.lp_problem, problem)
+        with self.assertRaises(dataclasses.FrozenInstanceError):
+            snapshot.requests[0].utility.decode_utility = 2.0
+
+    def test_coordinated_utility_rejects_invalid_parameters(self):
+        cases = [("rank_base", bad) for bad in (
+            0, 0.0, -0.25, 1.5, float("nan"), float("inf"), True, "0.25",
+            None)]
+        cases += [(name, bad) for name in ("c_max", "b_max")
+                  for bad in (0, -1, 1.5, True, None, "4")]
+        for field, bad in cases:
+            with self.subTest(field=field, bad=bad):
+                params = dict(rank_base=0.25, c_max=C_MAX, b_max=B_MAX)
+                params[field] = bad
+                holder = _build_three_request_holder()
+                before = _fingerprint(holder)
+                result = _map(holder, functools.partial(
+                    lsm.coordinated_rank_utility, **params))
+                self.assertEqual(_fingerprint(holder), before)
+                self.assertIsInstance(result, lsm.MappingFailure)
+                self.assertIn(f"coordinated utility {field}", result.reason)
+
 
 
 if __name__ == "__main__":

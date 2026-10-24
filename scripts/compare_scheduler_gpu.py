@@ -1,5 +1,5 @@
-"""Bounded dummy-weight GPU comparison of the adapted vLLM reference and two
-LP coefficient policies on one of two small workloads.
+"""Bounded dummy-weight GPU comparison of the adapted vLLM reference and
+three LP coefficient policies on one of two small workloads.
 
 One process runs one (case, policy, resident limit) through a real
 ``BaseLLMEngine`` built from native ``EngineArgs``, one GPU worker (tensor
@@ -14,8 +14,18 @@ EOS ignored, and native replay and completion. Policies:
   ``lpserve_state_mapping.rank_based_utility`` (D = P = G = 1) selected
   through the existing ``_coefficient_policy`` hook; the configured triple
   is then unused.
+- ``lp_coordinated``: the registered ``LPScheduler`` with
+  ``lpserve_state_mapping.coordinated_rank_utility`` (rank base 1/4, bound to
+  the case's ``c_max`` and ``b_max``) selected through the same hook.
 
-Both LP policies use numerical policy ``lp_relaxation_mvp_v1``.
+The LP policies use numerical policy ``lp_relaxation_mvp_v1``.
+
+CPU-only additions (``run_comparison`` with a CPU runtime; never accepted on
+the command line): the method ``ilp_coordinated``, which takes each decision
+from the integer optimum of the same coordinated problem
+(``exact_integer_plan.integer_decision``), and the representative cases
+``REPRESENTATIVE_CASES`` (six requests, optional per-request output limits,
+and virtual arrival times; see ``case_inputs``).
 
 Cases (``--case``):
 
@@ -130,10 +140,15 @@ NUMERICAL_POLICY_FIELDS = dict(
     objective_abs_tol=1e-9,
     objective_rel_tol=1e-9,
 )
-POLICIES = ("adapted_vllm", "lp_uniform", "lp_rank_based")
+# Coordinated policy: w = RANK_BASE ** r (provisional, not tuned).
+COORDINATED = dict(rank_base=0.25)
+POLICIES = ("adapted_vllm", "lp_uniform", "lp_rank_based", "lp_coordinated")
+INTEGER_POLICY = "ilp_coordinated"  # CPU comparison only
+CPU_POLICIES = POLICIES + (INTEGER_POLICY,)
+COORDINATED_POLICIES = ("lp_coordinated", INTEGER_POLICY)
 MAX_DECISIONS = 8  # observation bound per run, not a scheduler restart cap
 TWO_REQUEST, MEMORY_PRESSURE = "two_request", "memory_pressure"
-CASES = (TWO_REQUEST, MEMORY_PRESSURE)
+GPU_CASES = (TWO_REQUEST, MEMORY_PRESSURE)
 # The reference check's ``preemption`` workload (same prompt IDs, outputs,
 # pool, length, budget, and resident limit). LP caps equal the budget and
 # resident limit, so they add no restriction in this case.
@@ -142,6 +157,41 @@ MEMORY_PRESSURE_INPUTS = dict(
                  C=list(range(3000, 3016)), D=list(range(4000, 4016))),
     max_tokens=3, token_budget=64, num_gpu_blocks=4, max_model_len=64,
     resident_limits=(4,), b_max=64, c_max=64, s_max=4, max_decisions=16)
+# Representative CPU workloads (provisional inputs): six requests A..F with
+# disjoint prompt IDs from 1000 * (k + 1), block size 16, max_model_len 64,
+# resident limit 4, budget/b_max/c_max 32, s_max 4, bound 64 nonempty
+# decisions. Virtual arrivals: the clock is the number of nonempty decisions
+# executed; a request is submitted before the first decision at or after its
+# arrival time, and when nothing is unfinished the clock jumps to the next
+# arrival without a scheduler call. Staggered: request k arrives at 2k.
+EQUAL_LENGTHS, MIXED_LENGTHS = [16] * 6, [5, 8, 16, 17, 31, 32]
+MIXED_OUTPUTS = [2, 3, 2, 4, 3, 4]
+STAGGERED_ARRIVALS = [2 * k for k in range(6)]
+
+
+def _representative(lengths, outputs, arrivals, pool):
+    names = "ABCDEF"
+    return dict(
+        prompts={n: list(range(1000 * (k + 1), 1000 * (k + 1) + lengths[k]))
+                 for k, n in enumerate(names)},
+        max_tokens=(outputs if isinstance(outputs, int)
+                    else dict(zip(names, outputs))),
+        arrivals=dict(zip(names, arrivals)), token_budget=32,
+        num_gpu_blocks=pool, max_model_len=64, resident_limits=(4,), b_max=32,
+        c_max=32, s_max=4, max_decisions=64)
+
+
+REPRESENTATIVE_INPUTS = {
+    "equal_burst_ample": _representative(EQUAL_LENGTHS, 3, [0] * 6, 16),
+    "mixed_burst_ample": _representative(MIXED_LENGTHS, MIXED_OUTPUTS,
+                                         [0] * 6, 16),
+    "mixed_staggered_ample": _representative(MIXED_LENGTHS, MIXED_OUTPUTS,
+                                             STAGGERED_ARRIVALS, 16),
+    "mixed_staggered_tight": _representative(MIXED_LENGTHS, MIXED_OUTPUTS,
+                                             STAGGERED_ARRIVALS, 6),
+}
+REPRESENTATIVE_CASES = tuple(REPRESENTATIVE_INPUTS)
+CASES = GPU_CASES + REPRESENTATIVE_CASES
 PROCESS_TIMEOUT_SECONDS = 600
 PROFILE_METHOD = preemption.PROFILE_METHOD
 INIT_CACHE_METHOD = preemption.INIT_CACHE_METHOD
@@ -149,14 +199,23 @@ INIT_CACHE_METHOD = preemption.INIT_CACHE_METHOD
 DRAINED, BOUNDED_UNFINISHED, FAILURE = "drained", "bounded_unfinished", "failure"
 ADMISSION, PREFILL, DECODE = "admission", "resident_prefill", "decode"
 LP_CALLS = ["map_scheduler_state", "solve_and_extract", "execute_plan"]
+INTEGER_CALLS = ["map_scheduler_state", "solve_integer_plan", "execute_plan"]
+
+
+def decision_calls(policy):
+    return INTEGER_CALLS if policy == INTEGER_POLICY else LP_CALLS
 
 
 def case_inputs(case):
     """The workload, capacity, limit, and LP cap inputs of ``case``. The
-    two-request values are read from the module constants at call time."""
+    two-request values are read from the module constants at call time.
+    ``max_tokens`` is one limit or a per-request mapping, and ``arrivals``
+    maps each request to its virtual arrival time (0 for every request when
+    a case gives none)."""
     check(case in CASES, f"unknown case {case}")
-    if case == MEMORY_PRESSURE:
-        inputs = json.loads(json.dumps(MEMORY_PRESSURE_INPUTS))
+    if case == MEMORY_PRESSURE or case in REPRESENTATIVE_INPUTS:
+        inputs = json.loads(json.dumps(REPRESENTATIVE_INPUTS.get(
+            case, MEMORY_PRESSURE_INPUTS)))
         inputs["resident_limits"] = tuple(inputs["resident_limits"])
     else:
         inputs = dict(prompts=PROMPTS, max_tokens=MAX_TOKENS,
@@ -166,13 +225,20 @@ def case_inputs(case):
                       c_max=LP_C_MAX, s_max=LP_S_MAX,
                       max_decisions=MAX_DECISIONS)
     inputs["names"] = dict(enumerate(inputs["prompts"]))
+    inputs.setdefault("arrivals", {n: 0 for n in inputs["prompts"]})
     return inputs
+
+
+def max_tokens(c, name):
+    """The output limit of request ``name`` in case inputs ``c``."""
+    limit = c["max_tokens"]
+    return limit[name] if isinstance(limit, dict) else limit
 
 
 def run_parameters(policy, resident_limit, case=TWO_REQUEST):
     """The provisional inputs of one run, as recorded and checked."""
     c = case_inputs(case)
-    check(policy in POLICIES and resident_limit in c["resident_limits"],
+    check(policy in CPU_POLICIES and resident_limit in c["resident_limits"],
           f"unknown run {case} {policy} {resident_limit}")
     params = dict(
         case=case, policy=policy, resident_limit=resident_limit,
@@ -180,6 +246,7 @@ def run_parameters(policy, resident_limit, case=TWO_REQUEST):
         max_model_len=c["max_model_len"],
         native_watermark_blocks=int(0.01 * c["num_gpu_blocks"]),
         prompts=c["prompts"], max_tokens=c["max_tokens"],
+        virtual_arrivals=c["arrivals"],
         token_budget=c["token_budget"], max_decisions=c["max_decisions"])
     if policy == "adapted_vllm":
         params.update(scheduler_type="adapted_vllm",
@@ -189,11 +256,28 @@ def run_parameters(policy, resident_limit, case=TWO_REQUEST):
         params.update(scheduler_type="lp", b_max=c["b_max"], c_max=c["c_max"],
                       s_max=c["s_max"], numerical_policy=NUMERICAL_POLICY_FIELDS,
                       configured_triple=UNIFORM,
-                      coefficient_policy=(
-                          "configured uniform triple" if policy == "lp_uniform"
-                          else dict(rank_based_utility=RANK_SCALES,
-                                    note="configured triple unused")))
+                      coefficient_policy=coefficient_policy_record(policy, c))
+    if policy == INTEGER_POLICY:
+        import exact_integer_plan as eip
+        params.update(decision_method="integer optimum (CPU comparison only)",
+                      integer_solver=eip.SOLVER,
+                      integer_solver_options=eip.SOLVER_OPTIONS,
+                      integer_conversion_tol=eip.CONVERSION_TOL)
     return params
+
+
+def coefficient_policy_record(policy, c):
+    if policy == "lp_uniform":
+        return "configured uniform triple"
+    if policy == "lp_rank_based":
+        return dict(rank_based_utility=RANK_SCALES,
+                    note="configured triple unused")
+    return dict(coordinated_rank_utility=dict(COORDINATED, c_max=c["c_max"],
+                                              b_max=c["b_max"]),
+                formula="w = rank_base ** r (r: running then arrived waiting "
+                "position); q = min(remaining, c_max, b_max); decode w; "
+                "prefill token w / q; penalty w",
+                note="configured triple unused")
 
 
 def engine_args(policy, resident_limit, model_path, metrics_dir,
@@ -230,12 +314,24 @@ def engine_args(policy, resident_limit, model_path, metrics_dir,
         **common)
 
 
-def select_coefficient_policy(scheduler, policy):
-    """Rank-based runs override the live hook on this instance only."""
+def select_coefficient_policy(scheduler, policy, case=TWO_REQUEST):
+    """Rank-based and coordinated runs override the live hook on this
+    instance only. The integer method additionally replaces this instance's
+    decision with ``exact_integer_plan.integer_decision`` (CPU only)."""
+    import lpserve_state_mapping as lsm
     if policy == "lp_rank_based":
-        import lpserve_state_mapping as lsm
         coefficients = functools.partial(lsm.rank_based_utility, **RANK_SCALES)
-        scheduler._coefficient_policy = lambda: coefficients
+    elif policy in COORDINATED_POLICIES:
+        c = case_inputs(case)
+        coefficients = functools.partial(
+            lsm.coordinated_rank_utility, c_max=c["c_max"], b_max=c["b_max"],
+            **COORDINATED)
+    else:
+        return
+    scheduler._coefficient_policy = lambda: coefficients
+    if policy == INTEGER_POLICY:
+        import exact_integer_plan as eip
+        scheduler._schedule = functools.partial(eip.integer_decision, scheduler)
 
 
 def register_worker_helpers_by_value():
@@ -269,8 +365,10 @@ class DecisionObserver:
             import lp_relaxation_scheduler as lrs
             import lpserve_plan_execution as lpe
             import lpserve_state_mapping as lsm
-            for module, name in ((lsm, LP_CALLS[0]), (lrs, LP_CALLS[1]),
-                                 (lpe, LP_CALLS[2])):
+            solver = lrs
+            if policy == INTEGER_POLICY:
+                import exact_integer_plan as solver
+            for module, name in zip((lsm, solver, lpe), decision_calls(policy)):
                 self._wrap(module, name, functools.partial(self._lp, name))
         self._wrap(scheduler, "schedule", lambda r: self.schedules.append(dict(
             outputs=outputs_record(r), num_ops=len(self.ops),
@@ -364,12 +462,19 @@ def check_reference_decision(tag, before, record, resident_limit, c):
     return victims, layout
 
 
-def expected_coefficients(policy, snap, request):
+def expected_coefficients(policy, snap, request, c):
     """The coefficient triple the run's policy specifies for ``request``."""
     if policy == "lp_uniform":
         return UNIFORM
     order = list(snap["running_order"]) + list(snap["arrived_waiting_order"])
     r = order.index(request["raw_seq_id"])
+    if policy in COORDINATED_POLICIES:
+        w = COORDINATED["rank_base"] ** r
+        q = min(request["prompt_tokens_remaining"], c["c_max"], c["b_max"])
+        return dict(
+            decode_utility=w if request["decode_eligible"] else 0.0,
+            prefill_token_utility=w / q if request["prefill_eligible"] else 0.0,
+            preemption_penalty=w if request["preemption_eligible"] else 0.0)
     penalty = 0.0
     if request["preemption_eligible"]:
         s = list(snap["running_order"]).index(request["raw_seq_id"])
@@ -381,13 +486,16 @@ def expected_coefficients(policy, snap, request):
 
 def check_lp_decision(tag, before, record, policy, resident_limit, c):
     events = record["lp_events"]
-    check([e["call"] for e in events] == LP_CALLS and not record["proposals"],
+    integer = policy == INTEGER_POLICY
+    check([e["call"] for e in events] == decision_calls(policy)
+          and not record["proposals"],
           f"{tag}: LP calls {[e['call'] for e in events]}; expected one "
           "mapping, one solve, and one execution")
     mapped, solved, executed = events
     check(mapped["result_type"] == "StateSnapshot",
           f"{tag}: mapping returned {mapped['result']}")
-    check(solved["result_type"] == "SchedulingSuccess",
+    check(solved["result_type"] == ("IntegerOptimum" if integer
+                                    else "SchedulingSuccess"),
           f"{tag}: solve returned {solved['result']}")
     check(executed["result_type"] == "SchedulerOutputs",
           f"{tag}: executor returned {executed['result']}")
@@ -418,7 +526,7 @@ def check_lp_decision(tag, before, record, policy, resident_limit, c):
     residents = len(snap["running_order"])
     for rid, fact in facts.items():
         raw, lp_in = fact["raw_seq_id"], inputs[rid]
-        want = expected_coefficients(policy, snap, fact)
+        want = expected_coefficients(policy, snap, fact, c)
         check(fact["utility"] == want
               and (lp_in["decode_utility"], lp_in["prefill_token_utility"],
                    lp_in["preemption_penalty"])
@@ -479,6 +587,43 @@ def check_lp_decision(tag, before, record, policy, resident_limit, c):
     tol = NUMERICAL_POLICY_FIELDS["feasibility_tol"]
     check(abs(objective - plan["objective"]) <= tol * max(1.0, abs(objective)),
           f"{tag}: plan objective {plan['objective']} vs {objective}")
+    if integer:
+        # A direct integer optimum: no relaxation was solved or extracted.
+        source = plan["extraction"]
+        check(source["raw_status"] == 0
+              and source["max_integrality_deviation"] <= source["conversion_tol"]
+              and abs(source["objective"] - objective)
+              <= tol * max(1.0, abs(objective)),
+              f"{tag}: integer optimum provenance {source}")
+        record["lp_comparison"] = None
+        record["integer_solution"] = dict(
+            objective=objective, dual_bound=source["dual_bound"],
+            reported_gap=source["reported_gap"],
+            node_count=source["node_count"])
+    else:
+        _check_relaxed_bound(tag, record, result, plan, facts, inputs,
+                             objective, tol)
+
+    # Emitted order is the derived declared order, and the executor's own
+    # output is what the scheduler emitted.
+    emitted = record["schedules"][0]["outputs"]
+    check(executed["result"] == emitted, f"{tag}: executor output differs")
+    victims, ordered = check_declared_order(tag, snap, plan, emitted)
+    raw = {rid: f["raw_seq_id"] for rid, f in facts.items()}
+    layout = []
+    for d in ordered:
+        r = inputs[d["request_id"]]
+        if d["prefill_tokens"] > 0:
+            kind = PREFILL if r["resident"] else ADMISSION
+            layout.append([raw[d["request_id"]], kind, d["prefill_tokens"],
+                           0 if r["resident"] else r["prefill_fixed_charge"]])
+        else:
+            layout.append([raw[d["request_id"]], DECODE, 0, r["decode_demand"]])
+    return [raw[v] for v in victims], layout
+
+
+def _check_relaxed_bound(tag, record, result, plan, facts, inputs, objective,
+                         tol):
     # The integer plan is feasible for the relaxation, so the relaxed
     # objective (recomputed from the relaxed values) bounds it above.
     relaxed = {d["request_id"]: d for d in result["relaxed"]["decisions"]}
@@ -503,23 +648,6 @@ def check_lp_decision(tag, before, record, policy, resident_limit, c):
         extraction_changed_relaxed=any(
             abs(a - b) > eps for k in values for a, b in zip(values[k], chosen[k])),
         relaxed=values, integer=chosen)
-
-    # Emitted order is the derived declared order, and the executor's own
-    # output is what the scheduler emitted.
-    emitted = record["schedules"][0]["outputs"]
-    check(executed["result"] == emitted, f"{tag}: executor output differs")
-    victims, ordered = check_declared_order(tag, snap, plan, emitted)
-    raw = {rid: f["raw_seq_id"] for rid, f in facts.items()}
-    layout = []
-    for d in ordered:
-        r = inputs[d["request_id"]]
-        if d["prefill_tokens"] > 0:
-            kind = PREFILL if r["resident"] else ADMISSION
-            layout.append([raw[d["request_id"]], kind, d["prefill_tokens"],
-                           0 if r["resident"] else r["prefill_fixed_charge"]])
-        else:
-            layout.append([raw[d["request_id"]], DECODE, 0, r["decode_demand"]])
-    return [raw[v] for v in victims], layout
 
 
 # ---------------------------------------------------------------------------
@@ -624,7 +752,8 @@ def check_execution(tag, before, record, victims, layout, resident_limit, c):
             # reaches max_tokens with this step's actual sampled token.
             out = outputs[sid]
             check(chunks.get(sid) == 0 and out["finish_reason"] == "length"
-                  and len(seq["output_token_ids"]) + 1 == c["max_tokens"]
+                  and len(seq["output_token_ids"]) + 1
+                  == max_tokens(c, c["names"][sid])
                   and out["token_ids"] == seq["output_token_ids"] + [sampled[sid]]
                   and out["prompt_token_ids"] == seq["prompt_token_ids"]
                   and key not in after["seqs"] and key not in worker_after["seqs"]
@@ -728,8 +857,9 @@ def _update_accounting(acc, c, index, before, after, victims, layout, finished):
         a = acc[names[sid]]
         if sid in finished:
             a["completion"] = index
-            a["native_output_count"] = c["max_tokens"]
-            a["overgeneration"] = a["generated_token_events"] - c["max_tokens"]
+            a["native_output_count"] = max_tokens(c, names[sid])
+            a["overgeneration"] = (a["generated_token_events"]
+                                   - max_tokens(c, names[sid]))
         else:
             a["native_output_count"] = len(after["seqs"][str(sid)]["output_token_ids"])
 
@@ -797,8 +927,8 @@ def victim_need(policy, before, victims, layout, resident_limit, record):
         non_preemptive_actions=alone,
         preemption_free_alternative=bool(alone),
         extraction_changed_relaxed=(
-            record["lp_comparison"]["extraction_changed_relaxed"] if lp
-            else None))
+            record["lp_comparison"]["extraction_changed_relaxed"]
+            if record.get("lp_comparison") else None))
 
 
 def run_comparison(policy, resident_limit, runtime, trace, case=TWO_REQUEST):
@@ -815,6 +945,7 @@ def run_comparison(policy, resident_limit, runtime, trace, case=TWO_REQUEST):
     config = scheduler.scheduler_config
     expected_type = ("AdaptedVLLMScheduler" if policy == "adapted_vllm"
                      else "LPScheduler")
+    check(policy in CPU_POLICIES, f"unknown policy {policy}")
     check(type(scheduler).__name__ == expected_type,
           f"registered scheduler is {type(scheduler).__name__}")
     limits = (config.max_num_seqs, config.max_model_len, config.num_pipeline_stages,
@@ -834,24 +965,39 @@ def run_comparison(policy, resident_limit, runtime, trace, case=TWO_REQUEST):
           and manager.watermark_blocks == 0 and not manager.block_tables
           and manager.block_size == BLOCK_SIZE, "central pool before requests")
 
-    select_coefficient_policy(scheduler, policy)
+    select_coefficient_policy(scheduler, policy, case)
     observer = DecisionObserver(scheduler, runtime.seq_map, policy)
     trace.update(case=case, policy=policy, resident_limit=resident_limit,
-                 prompts={}, arrival_times={}, decisions=[], final=None,
-                 idle=None)
+                 prompts={}, arrival_times={}, virtual_arrivals=c["arrivals"],
+                 submitted_at_virtual_time={}, idle_intervals=[],
+                 decisions=[], final=None, idle=None)
     acc = _accounting(c)
-    try:
-        for sid, name in names.items():
+    pending = list(names.items())
+    clock = 0  # virtual time: nonempty decisions executed (see case_inputs)
+
+    def submit_arrived():
+        if not (pending and c["arrivals"][pending[0][1]] <= clock):
+            return
+        while pending and c["arrivals"][pending[0][1]] <= clock:
+            sid, name = pending.pop(0)
             runtime.submit(list(c["prompts"][name]), SamplingParams(
-                temperature=TEMPERATURE, max_tokens=c["max_tokens"],
+                temperature=TEMPERATURE, max_tokens=max_tokens(c, name),
                 ignore_eos=IGNORE_EOS, stop=None))
-            check(sorted(runtime.seq_map) == list(range(sid + 1)),
+            check(sid in runtime.seq_map and max(runtime.seq_map) == sid,
                   f"request {name} must be seq {sid}")
             trace["prompts"][name] = list(c["prompts"][name])
             trace["arrival_times"][name] = runtime.seq_map[sid].arrival_time
+            trace["submitted_at_virtual_time"][name] = clock
         runtime.worker_state()  # drop registration-time worker operations
 
+    try:
+        submit_arrived()
         for index in range(c["max_decisions"]):
+            if not scheduler.has_unfinished_seqs() and pending:
+                # Idle until the next arrival: no scheduler call, no work.
+                start, clock = clock, c["arrivals"][pending[0][1]]
+                trace["idle_intervals"].append([start, clock])
+                submit_arrived()
             if not scheduler.has_unfinished_seqs():
                 break
             tag = f"{case} {policy} limit {resident_limit} decision {index}"
@@ -908,6 +1054,9 @@ def run_comparison(policy, resident_limit, runtime, trace, case=TWO_REQUEST):
                   f"{record['schedules'][0]['outputs']['scheduled']} free "
                   f"{record['after']['free_blocks']}/"
                   f"{record['worker_after']['free_blocks']}", flush=True)
+            record["virtual_time"] = clock
+            clock += 1
+            submit_arrived()
 
         final = central_state(scheduler, runtime.seq_map)
         worker_final = runtime.worker_state()
@@ -917,9 +1066,11 @@ def run_comparison(policy, resident_limit, runtime, trace, case=TWO_REQUEST):
             residual_allocations={names[int(k)]: len(v) for k, v in
                                   final["block_tables"].items()},
             accounting=acc)
-        if scheduler.has_unfinished_seqs():
+        trace["final"]["unsubmitted"] = [name for _, name in pending]
+        if scheduler.has_unfinished_seqs() or pending:
             # Bounded: retain the final native state; nothing is forced.
-            check(unfinished and len(trace["decisions"]) == c["max_decisions"],
+            check((unfinished or pending)
+                  and len(trace["decisions"]) == c["max_decisions"],
                   "unfinished work without reaching the decision bound")
             check_quiescent("final", quiescent, final, worker_final)
             return BOUNDED_UNFINISHED
@@ -963,9 +1114,10 @@ def run_comparison(policy, resident_limit, runtime, trace, case=TWO_REQUEST):
 
 PROVENANCE_FILES = [
     "scripts/compare_scheduler_gpu.py", "scripts/check_adapted_vllm_gpu.py",
+    "scripts/exact_integer_plan.py", "scripts/compare_coefficient_policies_cpu.py",
     "scripts/check_lp_scheduler_gpu.py",
     "scripts/check_lp_scheduler_preemption_gpu.py",
-    "tests/test_compare_scheduler_gpu.py",
+    "tests/test_compare_scheduler_gpu.py", "tests/test_exact_integer_plan.py",
     "sarathi/core/scheduler/adapted_vllm_scheduler.py",
     "sarathi/core/scheduler/lp_scheduler.py",
     "sarathi/core/scheduler/base_scheduler.py", "sarathi/config.py",
@@ -995,7 +1147,7 @@ def provenance_record():
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--case", default=TWO_REQUEST, choices=CASES)
+    parser.add_argument("--case", default=TWO_REQUEST, choices=GPU_CASES)
     parser.add_argument("--policy", required=True, choices=POLICIES)
     parser.add_argument("--resident-limit", type=int, choices=(2, 1, 4),
                         help="two_request: 2 or 1 (required); "

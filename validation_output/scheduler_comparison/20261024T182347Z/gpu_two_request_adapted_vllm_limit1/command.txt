@@ -1,0 +1,1 @@
+timeout 600s python -B scripts/compare_scheduler_gpu.py --case two_request --policy adapted_vllm --resident-limit 1 --model-path /home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6 --output-dir validation_output/scheduler_comparison/20261024T182347Z/gpu_two_request_adapted_vllm_limit1

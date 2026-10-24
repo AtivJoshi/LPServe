@@ -1,0 +1,135 @@
+{
+ "argv": [
+  "scripts/compare_coefficient_policies_cpu.py",
+  "--output-dir",
+  "validation_output/scheduler_comparison/20261024T182347Z/cpu_comparison"
+ ],
+ "methods": [
+  "adapted_vllm",
+  "lp_uniform",
+  "lp_rank_based",
+  "lp_coordinated",
+  "ilp_coordinated"
+ ],
+ "workloads": [
+  [
+   "two_request",
+   1
+  ],
+  [
+   "two_request",
+   2
+  ],
+  [
+   "memory_pressure",
+   4
+  ],
+  [
+   "equal_burst_ample",
+   4
+  ],
+  [
+   "mixed_burst_ample",
+   4
+  ],
+  [
+   "mixed_staggered_ample",
+   4
+  ],
+  [
+   "mixed_staggered_tight",
+   4
+  ]
+ ],
+ "coordinated": {
+  "rank_base": 0.25
+ },
+ "integer_solver": {
+  "solver": "scipy.optimize.milp (HiGHS)",
+  "options": [
+   [
+    "mip_rel_gap",
+    0.0
+   ],
+   [
+    "presolve",
+    true
+   ],
+   [
+    "time_limit",
+    10.0
+   ]
+  ],
+  "conversion_tol": 1e-06,
+  "comparison_tol": 1e-07
+ },
+ "provenance": {
+  "git_head": "870d017dac687211d834ac14cb6aecade9397248",
+  "git_branch": "main",
+  "git_status_short": " M lp_relaxation_scheduler.py\n M lpserve_state_mapping.py\n M scripts/compare_scheduler_gpu.py\n M tests/test_compare_scheduler_gpu.py\n M tests/test_lpserve_state_mapping.py\n?? scripts/compare_coefficient_policies_cpu.py\n?? scripts/exact_integer_plan.py\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/01_py_compile.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/02_help_gpu_driver.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/03_help_cpu_batch.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/04_compare_driver.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/05_integer_plan.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/06_state_mapping.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/07_lp_relaxation.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/08_plan_execution.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/09_live_scheduler.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/10_ordering.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/11_whitespace.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/12_git_diff_check.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/13_cpu_comparison.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/environment.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/git_state.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/new_files/scripts/compare_coefficient_policies_cpu.py\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/new_files/scripts/exact_integer_plan.py\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/run_checks.sh\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/run_checks_stdout.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/sha256sums.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/working_tree.diff\n?? validation_output/scheduler_comparison/20261024T182347Z/run_gpu.sh\n",
+  "git_diff_head_sha256": "6da0fbd2ef6a44ecf191098970dc28e0d1791452de8e03c2ac776f9b72ab2684",
+  "file_sha256": {
+   "scripts/compare_scheduler_gpu.py": "6fd2b7f357632655f6912e7d9adb838d3fbf58d7d3f54538f2202ab2c57c4c8e",
+   "scripts/check_adapted_vllm_gpu.py": "cdf6b7f4cb302664b775975b78f2bcae155ef37691c8662d63bcb6015797c25b",
+   "scripts/exact_integer_plan.py": "43b0215cb6a8c08c30c658ff9a1d83d69dbdf52d191544e68b2b0d51721ab8e3",
+   "scripts/compare_coefficient_policies_cpu.py": "325cdd81a84dd3d025bb0c8e0f94bbc42b88adcf5a1f9a07c101b9b759b2af2e",
+   "scripts/check_lp_scheduler_gpu.py": "18b145d0689f1beaae933671955251dcae8fd9f3696ff371246a3845d6224dd8",
+   "scripts/check_lp_scheduler_preemption_gpu.py": "517fef8b8bbd035c5b77e11c906585fc8b047b390e798a3d84e581c3beec09e5",
+   "tests/test_compare_scheduler_gpu.py": "bd7ed6add4b4908b26af314682423291a73090ed52c4ca57713596207024b851",
+   "tests/test_exact_integer_plan.py": "84484f0d6faa9112aedf1118cbc66d5ba31c14129c315c0027cd44a9d2bf9528",
+   "sarathi/core/scheduler/adapted_vllm_scheduler.py": "41444565d62d54e15e0de90c61fbc4125b4bb45f84a2d439bafd7a2f8c066165",
+   "sarathi/core/scheduler/lp_scheduler.py": "85720a9ba576354fe908c807698c67d7783aa18350ad21e084d60e3cc4350233",
+   "sarathi/core/scheduler/base_scheduler.py": "5b4ac0fd3154ae25b580614fb4b3fd773091eb730951f72b3624fd71ecf06cbd",
+   "sarathi/config.py": "718caee0f4c73001e2f42c54303d435fa527441fea8d75f2dcd2ffccc8300a55",
+   "sarathi/engine/arg_utils.py": "e079e5dbaa01ca472a6bfe08920de6a369e041e4f5b616365157b67b40ecb958",
+   "sarathi/engine/base_llm_engine.py": "5f2db9ce5c8ed736ab1a97f66455d6bd19aa519e3bf4ce7d07467242be9c8afd",
+   "sarathi/core/block_space_manager/base_block_space_manager.py": "75b6e133fd5665e38f53a185aaf34db07883b468a557bd19b97c1632b4c91e0c",
+   "sarathi/core/sequence_manager/base_sequence_manager.py": "1705241edd761aabde072332a806772eb90e1f245db608b183e5bcec29a6a103",
+   "sarathi/core/sequence_manager/worker_sequence_manager.py": "0f40e95a484fbf7d8d0f08c36757fd2f0bedb9514fd49b6cfa7a790fbcb0d0ff",
+   "sarathi/worker/base_worker.py": "b6de07bc0e2609b1306c26eebf39839ec4433494ad6cc571ca5577008d8569c2",
+   "sarathi/model_executor/model_runner.py": "259dc36dbd87986847284146003cdb4d4485ac881ef8d18e80198d1cd99179b3",
+   "lp_relaxation_scheduler.py": "da5fd1d8839ddab320d12616c77eabef8706d08c229cf41fdbb140e80e73fe18",
+   "lpserve_state_mapping.py": "93a4b77c65811be43e2c74d94ba52a74b5856c37b3d320a5aac14e65614130c8",
+   "lpserve_plan_execution.py": "21c20dc1ca28712461393cdf0eb7466566fbb34c76f03d209a38ceee6972fd74"
+  },
+  "imported_helper_sha256": {
+   "check_adapted_vllm_gpu": "cdf6b7f4cb302664b775975b78f2bcae155ef37691c8662d63bcb6015797c25b",
+   "check_lp_scheduler_gpu": "18b145d0689f1beaae933671955251dcae8fd9f3696ff371246a3845d6224dd8",
+   "check_lp_scheduler_preemption_gpu": "517fef8b8bbd035c5b77e11c906585fc8b047b390e798a3d84e581c3beec09e5"
+  },
+  "loaded_modules": "uri/main:ICU/75.1-GCCcore-13.3.0:nodejs/20.13.1-GCCcore-13.3.0:GCCcore/12.2.0:zlib/.1.2.12-GCCcore-12.2.0:binutils/.2.39-GCCcore-12.2.0:bzip2/.1.0.8-GCCcore-12.2.0:ncurses/.6.3-GCCcore-12.2.0:libreadline/.8.2-GCCcore-12.2.0:Tcl/.8.6.12-GCCcore-12.2.0:SQLite/.3.39.4-GCCcore-12.2.0:XZ/.5.2.7-GCCcore-12.2.0:GMP/.6.2.1-GCCcore-12.2.0:libffi/3.4.4-GCCcore-12.2.0:OpenSSL/1.1:CUDA/12.1.1:Python/3.10.8-GCCcore-12.2.0"
+ },
+ "environment": {
+  "hostname": "gpu050",
+  "slurm": {
+   "SLURM_JOB_ID": "66022154",
+   "SLURM_JOB_NODELIST": "gpu050",
+   "SLURM_JOB_PARTITION": "gpu-preempt",
+   "SLURM_STEP_ID": "4294967290"
+  },
+  "cuda_visible_devices": "",
+  "gpu": "0, NVIDIA A16, GPU-685ce071-19c9-a4f8-0bde-2abc602c98d2, 595.91.07, 15356 MiB",
+  "torch_cuda": "12.1",
+  "python_executable": "/home/atjoshi_umass_edu/LPServe/env/bin/python",
+  "python_version": "3.10.8",
+  "virtual_env": "/home/atjoshi_umass_edu/LPServe/env",
+  "pythonpath": "/home/atjoshi_umass_edu/LPServe",
+  "versions": {
+   "torch": "2.3.0+cu121",
+   "transformers": "4.57.6",
+   "ray": "2.58.0",
+   "numpy": "2.2.6",
+   "scipy": "1.15.3",
+   "flashinfer": "0.2.0.post1+cu121torch2.3",
+   "vllm-flash-attn": "2.5.9",
+   "sarathi": "0.1.7",
+   "nvidia-ml-py": "13.595.45",
+   "huggingface-hub": "0.36.2",
+   "tokenizers": "0.22.2"
+  },
+  "git_head": "870d017dac687211d834ac14cb6aecade9397248",
+  "git_status_short": "M lp_relaxation_scheduler.py\n M lpserve_state_mapping.py\n M scripts/compare_scheduler_gpu.py\n M tests/test_compare_scheduler_gpu.py\n M tests/test_lpserve_state_mapping.py\n?? scripts/compare_coefficient_policies_cpu.py\n?? scripts/exact_integer_plan.py\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/01_py_compile.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/02_help_gpu_driver.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/03_help_cpu_batch.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/04_compare_driver.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/05_integer_plan.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/06_state_mapping.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/07_lp_relaxation.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/08_plan_execution.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/09_live_scheduler.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/10_ordering.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/11_whitespace.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/12_git_diff_check.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/13_cpu_comparison.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/environment.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/git_state.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/new_files/scripts/compare_coefficient_policies_cpu.py\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/new_files/scripts/exact_integer_plan.py\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/run_checks.sh\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/run_checks_stdout.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/sha256sums.txt\n?? validation_output/scheduler_comparison/20261024T182347Z/cpu_checks/working_tree.diff\n?? validation_output/scheduler_comparison/20261024T182347Z/run_gpu.sh",
+  "cwd": "/home/atjoshi_umass_edu/LPServe"
+ },
+ "all_checks_passed": true
+}
