@@ -1,0 +1,687 @@
+{
+ "method": "lp_reciprocal_square",
+ "case": "queue6_burst",
+ "resident_limit": 8,
+ "validation_passed": true,
+ "workload_outcome": "drained",
+ "failure": null,
+ "decisions": 11,
+ "idle_intervals": [],
+ "finished": [
+  "R00",
+  "R01",
+  "R02",
+  "R03",
+  "R04",
+  "R05"
+ ],
+ "unfinished": [],
+ "unsubmitted": [],
+ "completion": {
+  "R00": 2,
+  "R01": 4,
+  "R02": 8,
+  "R03": 2,
+  "R04": 5,
+  "R05": 10
+ },
+ "preemptions": 0,
+ "preemptions_after_output": 0,
+ "decisions_with_admission_and_victims": 0,
+ "victim_reason_counts": {},
+ "discarded_prompt_tokens": 0,
+ "prefill_tokens_executed": 265,
+ "prefill_tokens_replayed": 0,
+ "prefill_tokens_expanded_context": 0,
+ "generated_token_events": 28,
+ "overgeneration": 0,
+ "omitted_decisions": 1,
+ "emitted": [
+  [
+   [],
+   [
+    [
+     0,
+     8
+    ],
+    [
+     1,
+     16
+    ],
+    [
+     2,
+     17
+    ],
+    [
+     3,
+     32
+    ],
+    [
+     4,
+     55
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     4,
+     9
+    ],
+    [
+     5,
+     115
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     1,
+     0
+    ],
+    [
+     2,
+     0
+    ],
+    [
+     3,
+     0
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     5,
+     13
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     2,
+     0
+    ],
+    [
+     4,
+     0
+    ],
+    [
+     1,
+     0
+    ],
+    [
+     3,
+     0
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     1,
+     0
+    ],
+    [
+     2,
+     0
+    ],
+    [
+     5,
+     0
+    ],
+    [
+     4,
+     0
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     1,
+     0
+    ],
+    [
+     2,
+     0
+    ],
+    [
+     4,
+     0
+    ],
+    [
+     5,
+     0
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     2,
+     0
+    ],
+    [
+     4,
+     0
+    ],
+    [
+     5,
+     0
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     2,
+     0
+    ],
+    [
+     5,
+     0
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     2,
+     0
+    ],
+    [
+     5,
+     0
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     2,
+     0
+    ],
+    [
+     5,
+     0
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     5,
+     0
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     5,
+     0
+    ]
+   ]
+  ]
+ ],
+ "parameters": {
+  "case": "queue6_burst",
+  "policy": "lp_reciprocal_square",
+  "resident_limit": 8,
+  "block_size": 16,
+  "num_gpu_blocks": 128,
+  "max_model_len": 256,
+  "native_watermark_blocks": 1,
+  "prompts": {
+   "R00": [
+    1000,
+    1001,
+    1002,
+    1003,
+    1004,
+    1005,
+    1006,
+    1007
+   ],
+   "R01": [
+    1256,
+    1257,
+    1258,
+    1259,
+    1260,
+    1261,
+    1262,
+    1263,
+    1264,
+    1265,
+    1266,
+    1267,
+    1268,
+    1269,
+    1270,
+    1271
+   ],
+   "R02": [
+    1512,
+    1513,
+    1514,
+    1515,
+    1516,
+    1517,
+    1518,
+    1519,
+    1520,
+    1521,
+    1522,
+    1523,
+    1524,
+    1525,
+    1526,
+    1527,
+    1528
+   ],
+   "R03": [
+    1768,
+    1769,
+    1770,
+    1771,
+    1772,
+    1773,
+    1774,
+    1775,
+    1776,
+    1777,
+    1778,
+    1779,
+    1780,
+    1781,
+    1782,
+    1783,
+    1784,
+    1785,
+    1786,
+    1787,
+    1788,
+    1789,
+    1790,
+    1791,
+    1792,
+    1793,
+    1794,
+    1795,
+    1796,
+    1797,
+    1798,
+    1799
+   ],
+   "R04": [
+    2024,
+    2025,
+    2026,
+    2027,
+    2028,
+    2029,
+    2030,
+    2031,
+    2032,
+    2033,
+    2034,
+    2035,
+    2036,
+    2037,
+    2038,
+    2039,
+    2040,
+    2041,
+    2042,
+    2043,
+    2044,
+    2045,
+    2046,
+    2047,
+    2048,
+    2049,
+    2050,
+    2051,
+    2052,
+    2053,
+    2054,
+    2055,
+    2056,
+    2057,
+    2058,
+    2059,
+    2060,
+    2061,
+    2062,
+    2063,
+    2064,
+    2065,
+    2066,
+    2067,
+    2068,
+    2069,
+    2070,
+    2071,
+    2072,
+    2073,
+    2074,
+    2075,
+    2076,
+    2077,
+    2078,
+    2079,
+    2080,
+    2081,
+    2082,
+    2083,
+    2084,
+    2085,
+    2086,
+    2087
+   ],
+   "R05": [
+    2280,
+    2281,
+    2282,
+    2283,
+    2284,
+    2285,
+    2286,
+    2287,
+    2288,
+    2289,
+    2290,
+    2291,
+    2292,
+    2293,
+    2294,
+    2295,
+    2296,
+    2297,
+    2298,
+    2299,
+    2300,
+    2301,
+    2302,
+    2303,
+    2304,
+    2305,
+    2306,
+    2307,
+    2308,
+    2309,
+    2310,
+    2311,
+    2312,
+    2313,
+    2314,
+    2315,
+    2316,
+    2317,
+    2318,
+    2319,
+    2320,
+    2321,
+    2322,
+    2323,
+    2324,
+    2325,
+    2326,
+    2327,
+    2328,
+    2329,
+    2330,
+    2331,
+    2332,
+    2333,
+    2334,
+    2335,
+    2336,
+    2337,
+    2338,
+    2339,
+    2340,
+    2341,
+    2342,
+    2343,
+    2344,
+    2345,
+    2346,
+    2347,
+    2348,
+    2349,
+    2350,
+    2351,
+    2352,
+    2353,
+    2354,
+    2355,
+    2356,
+    2357,
+    2358,
+    2359,
+    2360,
+    2361,
+    2362,
+    2363,
+    2364,
+    2365,
+    2366,
+    2367,
+    2368,
+    2369,
+    2370,
+    2371,
+    2372,
+    2373,
+    2374,
+    2375,
+    2376,
+    2377,
+    2378,
+    2379,
+    2380,
+    2381,
+    2382,
+    2383,
+    2384,
+    2385,
+    2386,
+    2387,
+    2388,
+    2389,
+    2390,
+    2391,
+    2392,
+    2393,
+    2394,
+    2395,
+    2396,
+    2397,
+    2398,
+    2399,
+    2400,
+    2401,
+    2402,
+    2403,
+    2404,
+    2405,
+    2406,
+    2407
+   ]
+  },
+  "max_tokens": {
+   "R00": 2,
+   "R01": 4,
+   "R02": 8,
+   "R03": 2,
+   "R04": 4,
+   "R05": 8
+  },
+  "virtual_arrivals": {
+   "R00": 0,
+   "R01": 0,
+   "R02": 0,
+   "R03": 0,
+   "R04": 0,
+   "R05": 0
+  },
+  "token_budget": 128,
+  "max_decisions": 48,
+  "scheduler_type": "lp",
+  "b_max": 128,
+  "c_max": 128,
+  "s_max": 8,
+  "numerical_policy": {
+   "policy_id": "lp_relaxation_mvp_v1",
+   "feasibility_tol": 1e-07,
+   "integrality_tol": 1e-06,
+   "objective_abs_tol": 1e-09,
+   "objective_rel_tol": 1e-09
+  },
+  "configured_triple": {
+   "decode_utility": 1.0,
+   "prefill_token_utility": 1.0,
+   "preemption_penalty": 1.0
+  },
+  "coefficient_policy": {
+   "reciprocal_square_rank_utility": {
+    "c_max": 128,
+    "b_max": 128
+   },
+   "formula": "w = 1 / (1 + r) ** 2 (r: running then arrived waiting position); q = min(remaining, c_max, b_max); decode w; prefill token w / q; penalty w",
+   "note": "configured triple unused"
+  }
+ },
+ "coverage": {
+  "reached_decisions": 11,
+  "valid_problems": 11,
+  "mapping_failures": 0,
+  "missing_problems": 0,
+  "round_trip_failures": 0,
+  "attempted_solves": 11,
+  "reused_integer_results": 0,
+  "optimal": 11,
+  "time_limits": 0,
+  "other_failures": 0,
+  "comparison_errors": 0,
+  "records": 11,
+  "missing_records": 0,
+  "no_valid_problem": 0,
+  "complete": true
+ },
+ "service": {
+  "victims": [],
+  "victim_running_positions": [],
+  "decisions_with_victims_and_admissions": 0,
+  "resident_omissions": 0,
+  "longest_resident_omission_streak": 0,
+  "admission_order_inversions": 0,
+  "completion_order_inversions": 3,
+  "by_prompt_length": {
+   "8": {
+    "requests": 1,
+    "first_prefill_mean": 0.0,
+    "first_prefill_max": 0,
+    "first_prefill_count": 1,
+    "completion_mean": 2.0,
+    "completion_max": 2,
+    "completion_count": 1
+   },
+   "16": {
+    "requests": 1,
+    "first_prefill_mean": 0.0,
+    "first_prefill_max": 0,
+    "first_prefill_count": 1,
+    "completion_mean": 4.0,
+    "completion_max": 4,
+    "completion_count": 1
+   },
+   "17": {
+    "requests": 1,
+    "first_prefill_mean": 0.0,
+    "first_prefill_max": 0,
+    "first_prefill_count": 1,
+    "completion_mean": 8.0,
+    "completion_max": 8,
+    "completion_count": 1
+   },
+   "32": {
+    "requests": 1,
+    "first_prefill_mean": 0.0,
+    "first_prefill_max": 0,
+    "first_prefill_count": 1,
+    "completion_mean": 2.0,
+    "completion_max": 2,
+    "completion_count": 1
+   },
+   "64": {
+    "requests": 1,
+    "first_prefill_mean": 0.0,
+    "first_prefill_max": 0,
+    "first_prefill_count": 1,
+    "completion_mean": 5.0,
+    "completion_max": 5,
+    "completion_count": 1
+   },
+   "128": {
+    "requests": 1,
+    "first_prefill_mean": 1.0,
+    "first_prefill_max": 1,
+    "first_prefill_count": 1,
+    "completion_mean": 10.0,
+    "completion_max": 10,
+    "completion_count": 1
+   }
+  },
+  "non_tail_victims": 0,
+  "repeat_victims": {}
+ },
+ "comparisons": {
+  "attributions": {
+   "identical_actions": 11
+  },
+  "relaxation_gaps": [],
+  "extraction_losses": [],
+  "action_differences": [],
+  "reference_classes": {},
+  "reference_violated_rows": {},
+  "near_ties": [],
+  "strict_preference_gap_min": null,
+  "fractional_lp_decisions": 2,
+  "max_integrality_deviation": 0.0,
+  "integer_raw_statuses": {
+   "0": 11
+  },
+  "max_service_rank": 5,
+  "min_positive_coefficient": 0.00021701388888888888,
+  "min_gaps": {
+   "prefill_token": 0.00040798611111111114,
+   "full_chunk": 0.012222222222222225,
+   "decode": 0.0225,
+   "penalty": 0.012222222222222225
+  },
+  "exact_ties": {
+   "decode": 0,
+   "prefill_token": 0,
+   "full_chunk": 0,
+   "penalty": 0
+  },
+  "solve_seconds_max": 0.0019159229705110192
+ },
+ "running_order": null
+}

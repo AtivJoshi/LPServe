@@ -1,0 +1,382 @@
+{
+ "method": "adapted_vllm",
+ "case": "memory_pressure",
+ "resident_limit": 4,
+ "validation_passed": true,
+ "workload_outcome": "drained",
+ "failure": null,
+ "decisions": 8,
+ "idle_intervals": [],
+ "finished": [
+  "A",
+  "B",
+  "C",
+  "D"
+ ],
+ "unfinished": [],
+ "unsubmitted": [],
+ "completion": {
+  "A": 3,
+  "B": 3,
+  "C": 7,
+  "D": 7
+ },
+ "preemptions": 2,
+ "preemptions_after_output": 2,
+ "decisions_with_admission_and_victims": 0,
+ "victim_reason_counts": {
+  "decode_block_demand": 1
+ },
+ "discarded_prompt_tokens": 32,
+ "prefill_tokens_executed": 98,
+ "prefill_tokens_replayed": 32,
+ "prefill_tokens_expanded_context": 2,
+ "generated_token_events": 14,
+ "overgeneration": 2,
+ "omitted_decisions": 2,
+ "emitted": [
+  [
+   [],
+   [
+    [
+     0,
+     16
+    ],
+    [
+     1,
+     16
+    ],
+    [
+     2,
+     16
+    ],
+    [
+     3,
+     16
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     0,
+     0
+    ],
+    [
+     1,
+     0
+    ],
+    [
+     2,
+     0
+    ],
+    [
+     3,
+     0
+    ]
+   ]
+  ],
+  [
+   [
+    3,
+    2
+   ],
+   [
+    [
+     0,
+     0
+    ],
+    [
+     1,
+     0
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     0,
+     0
+    ],
+    [
+     1,
+     0
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     2,
+     17
+    ],
+    [
+     3,
+     17
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     2,
+     0
+    ],
+    [
+     3,
+     0
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     2,
+     0
+    ],
+    [
+     3,
+     0
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     2,
+     0
+    ],
+    [
+     3,
+     0
+    ]
+   ]
+  ]
+ ],
+ "parameters": {
+  "case": "memory_pressure",
+  "policy": "adapted_vllm",
+  "resident_limit": 4,
+  "block_size": 16,
+  "num_gpu_blocks": 4,
+  "max_model_len": 64,
+  "native_watermark_blocks": 0,
+  "prompts": {
+   "A": [
+    1000,
+    1001,
+    1002,
+    1003,
+    1004,
+    1005,
+    1006,
+    1007,
+    1008,
+    1009,
+    1010,
+    1011,
+    1012,
+    1013,
+    1014,
+    1015
+   ],
+   "B": [
+    2000,
+    2001,
+    2002,
+    2003,
+    2004,
+    2005,
+    2006,
+    2007,
+    2008,
+    2009,
+    2010,
+    2011,
+    2012,
+    2013,
+    2014,
+    2015
+   ],
+   "C": [
+    3000,
+    3001,
+    3002,
+    3003,
+    3004,
+    3005,
+    3006,
+    3007,
+    3008,
+    3009,
+    3010,
+    3011,
+    3012,
+    3013,
+    3014,
+    3015
+   ],
+   "D": [
+    4000,
+    4001,
+    4002,
+    4003,
+    4004,
+    4005,
+    4006,
+    4007,
+    4008,
+    4009,
+    4010,
+    4011,
+    4012,
+    4013,
+    4014,
+    4015
+   ]
+  },
+  "max_tokens": 3,
+  "virtual_arrivals": {
+   "A": 0,
+   "B": 0,
+   "C": 0,
+   "D": 0
+  },
+  "token_budget": 64,
+  "max_decisions": 16,
+  "scheduler_type": "adapted_vllm",
+  "max_num_batched_tokens": 64,
+  "chunk_cap": null,
+  "action_cap": null
+ },
+ "coverage": {
+  "reached_decisions": 8,
+  "valid_problems": 8,
+  "mapping_failures": 0,
+  "missing_problems": 0,
+  "round_trip_failures": 0,
+  "attempted_solves": 8,
+  "reused_integer_results": 0,
+  "optimal": 8,
+  "time_limits": 0,
+  "other_failures": 0,
+  "comparison_errors": 0,
+  "records": 8,
+  "missing_records": 0,
+  "no_valid_problem": 0,
+  "complete": true
+ },
+ "service": {
+  "victims": [
+   {
+    "index": 2,
+    "victim": "D",
+    "running_position": 3,
+    "running_count": 4,
+    "had_output": true,
+    "prompt_progress": 16,
+    "reasons": [
+     "decode_block_demand"
+    ],
+    "admitted_same_decision": []
+   },
+   {
+    "index": 2,
+    "victim": "C",
+    "running_position": 2,
+    "running_count": 4,
+    "had_output": true,
+    "prompt_progress": 16,
+    "reasons": [
+     "decode_block_demand"
+    ],
+    "admitted_same_decision": []
+   }
+  ],
+  "victim_running_positions": [
+   [
+    3,
+    4
+   ],
+   [
+    2,
+    4
+   ]
+  ],
+  "decisions_with_victims_and_admissions": 0,
+  "resident_omissions": 0,
+  "longest_resident_omission_streak": 0,
+  "admission_order_inversions": 0,
+  "completion_order_inversions": 0,
+  "by_prompt_length": {
+   "16": {
+    "requests": 4,
+    "first_prefill_mean": 0.0,
+    "first_prefill_max": 0,
+    "first_prefill_count": 4,
+    "completion_mean": 5.0,
+    "completion_max": 7,
+    "completion_count": 4
+   }
+  },
+  "non_tail_victims": 1,
+  "repeat_victims": {}
+ },
+ "comparisons": {
+  "attributions": {},
+  "relaxation_gaps": [],
+  "extraction_losses": [],
+  "action_differences": [],
+  "reference_classes": {
+   "identical_actions": 3,
+   "contract_difference": 5
+  },
+  "reference_violated_rows": {
+   "decode_prerequisite": 5
+  },
+  "near_ties": [],
+  "strict_preference_gap_min": null,
+  "fractional_lp_decisions": 0,
+  "max_integrality_deviation": 0.0,
+  "integer_raw_statuses": {
+   "0": 8
+  },
+  "max_service_rank": 3,
+  "min_positive_coefficient": 0.0009765625,
+  "min_gaps": {
+   "prefill_token": 0.000759548611111111,
+   "full_chunk": 0.012152777777777776,
+   "decode": 2.0,
+   "penalty": 2.0
+  },
+  "exact_ties": {
+   "decode": 0,
+   "prefill_token": 0,
+   "full_chunk": 0,
+   "penalty": 0
+  },
+  "solve_seconds_max": 0.00143994705285877
+ },
+ "running_order": {
+  "decisions": 8,
+  "findings": {},
+  "finding_indices": {},
+  "max_weight": 27,
+  "max_objective_range": 80,
+  "min_positive_coefficient": 0.0009765625,
+  "max_coefficient_ratio": 1536.0,
+  "min_float_margin": 1.0,
+  "enumerated": 7,
+  "enumeration_skipped": 1,
+  "integer_vs_other": {
+   "reference: same_actions": 3,
+   "reference: infeasible": 5
+  }
+ }
+}

@@ -1142,6 +1142,107 @@ class LPServeStateMappingTest(unittest.TestCase):
             lsm.reciprocal_square_rank_utility(None, None, rank_base=0.5,
                                                c_max=C_MAX, b_max=B_MAX)
 
+    # -- running-order utility policy ----------------------------------------
+
+    @staticmethod
+    def _running_order(c_max=C_MAX, b_max=B_MAX):
+        return functools.partial(lsm.running_order_utility, c_max=c_max,
+                                 b_max=b_max)
+
+    def _running_order_holder(self, waiting=True):
+        # Running: 5 (2 of 6 prompt tokens left), 3 (decode-ready), 7 (10 of
+        # 12 left, chunk cap 4 binds). Waiting: future head 0, then 9 and 2.
+        holder, _ = _build_holder()
+        self._resident(holder, 5, 6, 4)
+        self._resident(holder, 3, 4, 4)
+        self._resident(holder, 7, 12, 2)
+        if waiting:
+            holder.waiting.append(_make_sequence(0, 4, SNAPSHOT_TIME + 1))
+            holder.waiting.append(_make_sequence(9, 10, 1.0))
+            holder.waiting.append(_make_sequence(2, 4, 1.0))
+        return holder
+
+    def test_running_order_values_terms_and_waiting_position(self):
+        holder = self._running_order_holder()
+        before = _fingerprint(holder)
+        with mock.patch.object(lsm, "_capture", wraps=lsm._capture) as spy:
+            snapshot = _map(holder, self._running_order())
+        self.assertEqual(spy.call_count, 1)
+        self.assertEqual(_fingerprint(holder), before)
+        self.assertIsInstance(snapshot, lsm.StateSnapshot, snapshot)
+        # Worked by hand with W = 1 (arrived waiting work exists) and
+        # executable progress 2, 1, 4: weight of 7 = 2; of 3 = 2 + (4*2 + 2)
+        # = 12; of 5 = 2 + 10 + (1*12 + 12) = 36. Waiting 9 and 2 are at
+        # waiting positions 0 and 1 (service ranks 3 and 4): 1/8 and 1/32.
+        self.assertEqual(self._triples(snapshot), {
+            5: (0.0, 36.0, 36.0),
+            3: (12.0, 0.0, 12.0),
+            7: (0.0, 2.0, 2.0),
+            9: (0.0, 1 / 8, 0.0),
+            2: (0.0, 1 / 32, 0.0),
+        })
+        by_id = {r.raw_seq_id: r for r in snapshot.requests}
+        self.assertEqual({k: (r.service_rank, r.victim_rank)
+                          for k, r in by_id.items()},
+                         {5: (0, 2), 3: (1, 1), 7: (2, 0), 9: (3, None),
+                          2: (4, None)})
+        # Without arrived waiting work, W = 0: 1, 1 + (4 + 1) = 6, and
+        # 1 + 5 + (6 + 6) = 18.
+        snapshot = _map(self._running_order_holder(waiting=False),
+                        self._running_order())
+        self.assertEqual(self._triples(snapshot), {
+            5: (0.0, 18.0, 18.0), 3: (6.0, 0.0, 6.0), 7: (0.0, 1.0, 1.0)})
+        # The token budget binds the executable progress when smallest:
+        # b_max = 3 gives progress 2, 1, 3, weights 2, 2 + (3*2 + 2) = 10,
+        # 2 + 8 + (10 + 10) = 30, and waiting 1/3, 1/12.
+        captured = lsm.capture_scheduler_state(self._running_order_holder(),
+                                               snapshot_time=SNAPSHOT_TIME)
+        tight = lsm.construct_coefficients(captured,
+                                           self._running_order(b_max=3))
+        self.assertEqual(
+            {r.raw_seq_id: (c.decode_utility, c.prefill_token_utility)
+             for r, c in zip(captured.requests, tight)},
+            {5: (0.0, 30.0), 3: (10.0, 0.0), 7: (0.0, 2.0),
+             9: (0.0, 1 / 3), 2: (0.0, 1 / 12)})
+
+    def test_running_order_is_fixed_by_the_capture(self):
+        holder = self._running_order_holder()
+        policy = self._running_order()
+        snapshot = _map(holder, policy)
+        captured = lsm.capture_scheduler_state(holder,
+                                               snapshot_time=SNAPSHOT_TIME)
+        holder.waiting.clear()
+        holder.running.clear()
+        holder.block_manager = None
+        self.assertEqual(
+            {r.raw_seq_id: c for r, c in zip(
+                captured.requests,
+                lsm.construct_coefficients(captured, policy))},
+            {r.raw_seq_id: r.utility for r in snapshot.requests})
+
+    def test_running_order_rejects_invalid_parameters_and_huge_weights(self):
+        for name in ("c_max", "b_max"):
+            for bad in (0, -1, 1.5, True, None, "4"):
+                with self.subTest(field=name, bad=bad):
+                    params = dict(c_max=C_MAX, b_max=B_MAX)
+                    params[name] = bad
+                    holder = _build_three_request_holder()
+                    result = _map(holder, functools.partial(
+                        lsm.running_order_utility, **params))
+                    self.assertIsInstance(result, lsm.MappingFailure)
+                    self.assertIn(f"running-order utility {name}",
+                                  result.reason)
+        # A weight beyond the float range is a structured mapping failure,
+        # not a clipped or rescaled coefficient.
+        holder = self._running_order_holder()
+        before = _fingerprint(holder)
+        with mock.patch.object(lsm, "_running_order_weights",
+                               return_value={5: 10 ** 400, 3: 1, 7: 1}):
+            result = _map(holder, self._running_order())
+        self.assertEqual(_fingerprint(holder), before)
+        self.assertIsInstance(result, lsm.MappingFailure)
+        self.assertIn("not representable as a finite float", result.reason)
+
 
 
 if __name__ == "__main__":

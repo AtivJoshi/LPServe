@@ -1,0 +1,21 @@
+branch=main
+head=16b359a3ef0e32a8917eb7ac46fc30bb501db52d
+base_reviewed=16b359a3ef0e32a8917eb7ac46fc30bb501db52d
+--- git status --short --untracked-files=all
+ M lpserve_state_mapping.py
+ M scripts/compare_coefficient_policies_cpu.py
+ M scripts/compare_scheduler_gpu.py
+ M tests/test_compare_scheduler_gpu.py
+ M tests/test_lpserve_state_mapping.py
+?? validation_output/scheduler_comparison/20261026T045354Z_running_order/checks/environment.txt
+?? validation_output/scheduler_comparison/20261026T045354Z_running_order/checks/git_state.txt
+?? validation_output/scheduler_comparison/20261026T045354Z_running_order/run_batch.sh
+?? validation_output/scheduler_comparison/20261026T045354Z_running_order/run_batch_stdout.txt
+--- git diff HEAD --stat (tracked changes)
+ lpserve_state_mapping.py                    |  79 +++
+ scripts/compare_coefficient_policies_cpu.py | 925 +++++++++++++++++++++++++++-
+ scripts/compare_scheduler_gpu.py            | 106 +++-
+ tests/test_compare_scheduler_gpu.py         | 365 +++++++++++
+ tests/test_lpserve_state_mapping.py         | 101 +++
+ 5 files changed, 1539 insertions(+), 37 deletions(-)
+git_diff_head_sha256=d43a111b9b0f21842f9be5311294632595accfea6c6c3274168a76851068cb51  -

@@ -1,0 +1,23 @@
+$ python -B -m unittest tests.test_lpserve_plan_execution -v
+test_admission_and_resident_prefill_through_mapper_and_solver (tests.test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_append_gate_rejects_gap_zero_decode_without_free_block (tests.test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_combined_memory_rejection_with_native_watermark (tests.test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_compact_precommit_rejections (tests.test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_control_only_plans_fail_progress_gate (tests.test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_decode_with_block_gap_zero_and_one (tests.test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_exception_after_native_preemption_propagates (tests.test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_malformed_nested_records_return_failure (tests.test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_mixed_output_is_prompt_first_in_native_execution_order (tests.test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_multiple_victims_use_declared_native_and_control_order (tests.test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_planned_resources_must_match_current_state (tests.test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_post_mutation_exception_propagates_without_recovery (tests.test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_preemption_recovery_enables_admission (tests.test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_preemption_rejections_have_zero_mutation (tests.test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_prefills_then_zero_then_one_block_decodes (tests.test_lpserve_plan_execution.PlanExecutionTest) ... ok
+test_readmitted_victim_joins_running_tail (tests.test_lpserve_plan_execution.PlanExecutionTest) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 0.069s
+
+OK
+exit_status=0

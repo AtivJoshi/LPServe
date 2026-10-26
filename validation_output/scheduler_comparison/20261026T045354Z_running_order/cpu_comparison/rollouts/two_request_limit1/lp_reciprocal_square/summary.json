@@ -1,0 +1,225 @@
+{
+ "method": "lp_reciprocal_square",
+ "case": "two_request",
+ "resident_limit": 1,
+ "validation_passed": true,
+ "workload_outcome": "drained",
+ "failure": null,
+ "decisions": 6,
+ "idle_intervals": [],
+ "finished": [
+  "A",
+  "B"
+ ],
+ "unfinished": [],
+ "unsubmitted": [],
+ "completion": {
+  "A": 2,
+  "B": 5
+ },
+ "preemptions": 0,
+ "preemptions_after_output": 0,
+ "decisions_with_admission_and_victims": 0,
+ "victim_reason_counts": {},
+ "discarded_prompt_tokens": 0,
+ "prefill_tokens_executed": 13,
+ "prefill_tokens_replayed": 0,
+ "prefill_tokens_expanded_context": 0,
+ "generated_token_events": 4,
+ "overgeneration": 0,
+ "omitted_decisions": 3,
+ "emitted": [
+  [
+   [],
+   [
+    [
+     0,
+     5
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     0,
+     0
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     0,
+     0
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     1,
+     8
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     1,
+     0
+    ]
+   ]
+  ],
+  [
+   [],
+   [
+    [
+     1,
+     0
+    ]
+   ]
+  ]
+ ],
+ "parameters": {
+  "case": "two_request",
+  "policy": "lp_reciprocal_square",
+  "resident_limit": 1,
+  "block_size": 16,
+  "num_gpu_blocks": 8,
+  "max_model_len": 32,
+  "native_watermark_blocks": 0,
+  "prompts": {
+   "A": [
+    1000,
+    1001,
+    1002,
+    1003,
+    1004
+   ],
+   "B": [
+    2000,
+    2001,
+    2002,
+    2003,
+    2004,
+    2005,
+    2006,
+    2007
+   ]
+  },
+  "max_tokens": 2,
+  "virtual_arrivals": {
+   "A": 0,
+   "B": 0
+  },
+  "token_budget": 8,
+  "max_decisions": 8,
+  "scheduler_type": "lp",
+  "b_max": 8,
+  "c_max": 8,
+  "s_max": 1,
+  "numerical_policy": {
+   "policy_id": "lp_relaxation_mvp_v1",
+   "feasibility_tol": 1e-07,
+   "integrality_tol": 1e-06,
+   "objective_abs_tol": 1e-09,
+   "objective_rel_tol": 1e-09
+  },
+  "configured_triple": {
+   "decode_utility": 1.0,
+   "prefill_token_utility": 1.0,
+   "preemption_penalty": 1.0
+  },
+  "coefficient_policy": {
+   "reciprocal_square_rank_utility": {
+    "c_max": 8,
+    "b_max": 8
+   },
+   "formula": "w = 1 / (1 + r) ** 2 (r: running then arrived waiting position); q = min(remaining, c_max, b_max); decode w; prefill token w / q; penalty w",
+   "note": "configured triple unused"
+  }
+ },
+ "coverage": {
+  "reached_decisions": 6,
+  "valid_problems": 6,
+  "mapping_failures": 0,
+  "missing_problems": 0,
+  "round_trip_failures": 0,
+  "attempted_solves": 6,
+  "reused_integer_results": 0,
+  "optimal": 6,
+  "time_limits": 0,
+  "other_failures": 0,
+  "comparison_errors": 0,
+  "records": 6,
+  "missing_records": 0,
+  "no_valid_problem": 0,
+  "complete": true
+ },
+ "service": {
+  "victims": [],
+  "victim_running_positions": [],
+  "decisions_with_victims_and_admissions": 0,
+  "resident_omissions": 0,
+  "longest_resident_omission_streak": 0,
+  "admission_order_inversions": 0,
+  "completion_order_inversions": 0,
+  "by_prompt_length": {
+   "5": {
+    "requests": 1,
+    "first_prefill_mean": 0.0,
+    "first_prefill_max": 0,
+    "first_prefill_count": 1,
+    "completion_mean": 2.0,
+    "completion_max": 2,
+    "completion_count": 1
+   },
+   "8": {
+    "requests": 1,
+    "first_prefill_mean": 3.0,
+    "first_prefill_max": 3,
+    "first_prefill_count": 1,
+    "completion_mean": 5.0,
+    "completion_max": 5,
+    "completion_count": 1
+   }
+  },
+  "non_tail_victims": 0,
+  "repeat_victims": {}
+ },
+ "comparisons": {
+  "attributions": {
+   "identical_actions": 6
+  },
+  "relaxation_gaps": [],
+  "extraction_losses": [],
+  "action_differences": [],
+  "reference_classes": {},
+  "reference_violated_rows": {},
+  "near_ties": [],
+  "strict_preference_gap_min": null,
+  "fractional_lp_decisions": 0,
+  "max_integrality_deviation": 0.0,
+  "integer_raw_statuses": {
+   "0": 6
+  },
+  "max_service_rank": 1,
+  "min_positive_coefficient": 0.03125,
+  "min_gaps": {
+   "prefill_token": 0.16875,
+   "full_chunk": 0.75
+  },
+  "exact_ties": {
+   "decode": 0,
+   "prefill_token": 0,
+   "full_chunk": 0,
+   "penalty": 0
+  },
+  "solve_seconds_max": 0.001242064987309277
+ },
+ "running_order": null
+}

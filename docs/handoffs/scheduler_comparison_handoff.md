@@ -1249,3 +1249,252 @@ per-decision driver check, with complete same-state ILP coverage.
 **Not established:** cache contents, attention correctness, quality,
 physical-ID equality, recovery, fairness, latency, throughput, or
 completion of other workloads.
+
+## Addendum 2026-10-26: running-order coefficient policy (CPU only)
+
+**Scope.** One provisional policy, `running_order_utility`
+(`lpserve_state_mapping.py`), run as the CPU-only methods
+`lp_running_order` and `ilp_running_order`. It is compared with the
+adapted reference and the unchanged reciprocal-square LP (the control) on
+15 workload/limit pairs, giving 60 fresh rollouts. The run also includes 13
+single-state diagnostics. The question was whether the integer objective
+now follows the reference's running order, and where the LP relaxation and
+extraction depart from that. Tuning was not a goal. The formulation,
+extraction, numerical policy, solver options, executor, live scheduler,
+registry, `EngineArgs`, GPU command line, earlier policies and batches, and
+historical artifacts are unchanged. D-01–D-04, κ, Q11, and F02 remain
+OPEN. No GPU run was made or authorized.
+
+**Policy.** For a waiting request at position j of `arrived_waiting_order`,
+the prefill-token utility is `1/(b_max (1+j)^2)`, and its other terms are
+0. `W` is 1 if any arrived request is waiting, else 0. A resident's
+executable progress is `m = min(remaining, c_max, b_max)` if it can
+prefill, 1 if it can decode, and 0 otherwise. Its weight is
+`a_i = 1 + W + Σ_{later j} (m_j a_j + γ_j)`, computed backward as exact
+integers and then converted to float once. A weight that does not convert
+to a finite float is a `MappingFailure`. The decode, prefill-token, and
+penalty terms are `a_i` where the action is eligible, else 0. Ranks are
+unchanged and not read.
+
+**Evidence:**
+[`validation_output/scheduler_comparison/20261026T045354Z_running_order/`](../../validation_output/scheduler_comparison/20261026T045354Z_running_order/)
+holds `run_batch.sh` (the single top-level runner), `run_batch_stdout.txt`,
+and `checks/` (step logs 01–14, `steps.tsv`, `aggregate_status.txt`,
+`environment.txt`, `git_state.txt`, `working_tree.diff`,
+`sha256sums_{start,end}.txt`). It also holds `cpu_comparison/`:
+`comparison.txt`, `run_record.json` (status, inputs, input checks,
+provenance), `diagnostics.json`, `divergences.json`, and
+`rollouts/<case>_limit<n>/<method>/{decision_trace.json.gz,comparisons.json.gz,summary.json,console.log}`.
+It was tested at HEAD `16b359a3ef0e32a8917eb7ac46fc30bb501db52d` plus
+uncommitted changes to five files (`git diff HEAD` sha256 `d43a111b…`).
+The file hashes were equal at the start and end of the run (step 14) and
+at report time. Host `gpu048`, Slurm job `66132987`, with
+`CUDA_VISIBLE_DEVICES=""`. Modules `uri/main` and
+`Python/3.10.8-GCCcore-12.2.0`; `env/bin/python` 3.10.8, numpy 2.2.6,
+scipy 1.15.3. The evidence directory is 57 MB, mostly compressed traces.
+
+### Files
+
+| File | Change |
+|---|---|
+| `lpserve_state_mapping.py` | `running_order_utility` and its helper `_running_order_weights`; earlier policies unchanged |
+| `scripts/compare_scheduler_gpu.py` | CPU-only `lp_running_order`/`ilp_running_order` (not in `POLICIES`, so not accepted on the command line); CPU-only cases `queue96_burst` and `queue96_burst_pool12` (`RUNNING_ORDER_QUEUE_CASES`; the six queue-growth cases are unchanged); `running_order_policy`; `capture_reference_problems(..., policy=None)` (the default is still reciprocal-square); an independent driver-side recomputation of the running-order coefficients |
+| `scripts/compare_coefficient_policies_cpu.py` | `--batch running_order`; exact checks (`running_order_check`, `running_order_decision`); diagnostics; report. Additive extensions to `run_queue_rollout`, `decision_comparisons`, `analyse_run`, and `queue_report` keep their defaults, and earlier batch outputs are unchanged |
+| `tests/test_lpserve_state_mapping.py` | 3 new tests (values worked out by hand, the waiting position rather than the combined rank, fixed by the capture, invalid caps, and a weight outside the float range) |
+| `tests/test_compare_scheduler_gpu.py` | 8 new tests (`RunningOrderTest`) |
+
+### Critical review (analytical unless marked executed)
+
+1. **The dominance argument is correct for the integer objective.** For
+   resident i, every possible change from later residents and waiting
+   requests lies within `W + Σ_{later}(m_j a_j + γ_j) = a_i − 1`. One unit
+   of i's progress therefore wins by an exact margin of 1. The optimum
+   lexicographically maximizes the resident progress vector (chunk length,
+   1 for a decode, 0 idle, −1 preempted) in running order. Executed: 40
+   deterministic native states (`test_bounded_enumeration_resident_priority`)
+   and 785 enumerated rollout decisions were checked. In every one, a
+   larger vector meant larger utility, and the integer optimum had the
+   largest vector. This holds only in exact arithmetic. It does not cover
+   the relaxation or extraction.
+2. **Scale grows multiplicatively and is the policy's main limitation.**
+   The weights are a product over later residents, so the head weight is
+   about `∏(m_j + 2)`. At resident limit 8 and `c_max` 128 the worst case is
+   `2·130^7 = 1,254,970,340,000,000`. This was checked against the stated
+   value, and the closed form `a_i = 2·130^(R−1−i)` agreed (executed). The
+   objective range is then about 1.6e17, above 2^53, so the float spacing
+   is 32 and a margin of 1 cannot be represented. The existing relative
+   comparison tolerance (1e-7) already hides unit margins at R = 4. A
+   resident limit of 16 would give about 1e32. The policy is numerically
+   sound only while the objective range stays well below 2^53. The
+   observed rollouts stayed far below that (finding 8).
+3. **The waiting order is soft, as specified.** A later waiting request
+   with more executable tokens can outbid the head. With a binding resident
+   limit, action cap, or memory-blocked head, the integer optimum admits
+   later requests, whereas the reference is FCFS and stops at a blocked
+   head. A strict waiting order would need lexicographic waiting weights,
+   which would make the scale problem worse.
+4. **The objective ignores discarded work.** It evicts a later resident
+   with large prefill progress to fund one decode of an earlier one, as the
+   reference does. R18/κ stays OPEN.
+5. **The inherited LP decode prerequisite (`H ≥ 1` before any decode,
+   design §8.3) interacts with the policy.** When a victim is needed for
+   decode demand, the integer optimum fills the extra freed blocks with
+   waiting admissions, since waiting value is positive. The next decision
+   then has zero free blocks, so the prerequisite evicts the tail, which
+   is the request just admitted. This is a myopic replacement cycle that
+   the reference cannot produce, because it has no prerequisite and never
+   admits in a step that preempts. Changing it needs a contract decision
+   and is not attempted here.
+
+No defect was found in the mapper, solver, extraction, or executor paths
+used. One of my own test expectations was wrong and was corrected before
+the run: it compared intended exact utilities with values computed from
+float coefficients. Review scope: the policy and helper, mapper
+construction, `_build_lp`/`_residuals` (read), the integer helper (read),
+the reference proposal path, the driver checks, and the new batch code.
+Kernels, cache contents, and multi-worker paths were not reviewed.
+
+### Results (executed; `cpu_comparison/comparison.txt`)
+
+**Status.** All 60 rollouts passed validation and drained, with no
+bounded-unfinished run and no failure. Coverage: 2,793 reached decisions,
+each with one record and a valid round-trip problem. 2,091 offline solves
+and 702 reused integer results were all HiGHS-optimal, with 0 time limits,
+0 other failures, 0 comparison errors, and 0 missing records. The exact
+checks of the 2,092 running-order decisions found 0 counterexamples, 0
+recorded-coefficient mismatches, 0 nonpositive float margins, 0 differences
+hidden by the tolerance, and 0 float-order reversals. All 13 diagnostics
+met their expectations. `RESULT: PASS`; all 14 runner steps exited 0.
+
+**Diagnostics** (integer optimum = enumeration wherever enumerated; the LP
+plan equals the integer plan unless noted):
+
+| State | Integer plan (exact utility) | Reference |
+|---|---|---|
+| earlier decode vs later prefill (weights 10, 1) | decode A, evict B (9) | identical |
+| second running decode (30, 10, 1) | decode A and B, evict C (39) | identical |
+| large earlier victim (9, 3, 1) | decode A, evict C, B idle (8); evicting A gives −5 | evicts C and then itself (B): 5, a procedural difference |
+| blocked waiting head (2) | decode, admit the later 8-token request for 7 tokens (71/32) | decode only (2): soft waiting order |
+| waiting action cap | later request, 8 tokens (1/4); head-only plan 1/8 | both admitted: contract difference (`action_width`) |
+| mixed_ample, mixed_pressure | head prefills 8 (earlier policies split the head's chunk) | identical |
+| zero_free_decodes | decode A–C, evict D | decodes all four: contract difference (`decode_prerequisite`) |
+| fractional_admission | A:1 (1/2) | contract difference. The LP plan is B:1 (1/8): extraction loss, as before |
+| numerical stress R = 1, 2, 4, 8 | head prefills 128, no victim, in both the LP and integer plans | identical |
+
+**Rollouts** (decisions; preemptions, with those after output in
+parentheses; replayed prefill tokens; admission/completion-order
+inversions):
+
+| Case | Reference | Control LP | Running-order LP | Running-order ILP |
+|---|---|---|---|---|
+| memory_pressure | 8; 2 (2); 32; 0/0 | 15; 5 (3); 83; 0/2 | same as control | same as control |
+| queue24_burst | 24; 0; 0; 0/34 | 23; 0; 0; 32/67 | 24; 0; 0; 0/34 | 24; 0; 0; 0/34 |
+| queue48_burst | 42; 0; 0; 0/80 | 40; 0; 0; 33/110 | 42; 0; 0; 6/69 | 42; 0; 0; 3/73 |
+| queue96_burst | 78; 0; 0; 0/172 | 76; 0; 0; 37/203 | 76; 0; 0; 18/139 | 77; 0; 0; 6/154 |
+| queue48_burst_pool12 | 117; 6 (3); 102; 0/27 | 118; 5 (3); 226; 208/246 | 117; 2 (0); 96; 251/301 | 117; 6 (0); 97; 211/242 |
+| queue96_burst_pool12 | 233; 14 (7); 238; 0/55 | 235; 11 (5); 488; 791/878 | 229; 12 (1); 363; 869/942 | 233; 13 (2); 281; 730/780 |
+
+two_request (limits 1 and 2), the four representative workloads,
+queue6_burst, and queue48_staggered select the same actions as the
+reference at every decision where the reference is LP-feasible.
+
+Answers to the batch questions:
+
+1. **Running order.** Wherever the reference proposal is LP-feasible, the
+   integer optimum's resident progress vector equals the reference's. No
+   state has a better or worse vector; differences are in waiting work
+   only (`vector_equal` strict preferences: 2, 6, 40, and 88 in queue48,
+   queue96, and the two pool-12 cases). The remaining reference states are
+   contract differences.
+2. **Replacement cycles remain under memory pressure** (critical review
+   item 5). Decisions that both admit and evict: 1 (LP) and 1 (ILP) in
+   pool 12 at 48 requests, and 6 and 4 at 96, against 0 for the reference
+   and 3 and 9 for the control. Examples are ILP decisions 16→17 and 55→56
+   at 96 requests: admit, then the request admitted is evicted under
+   `lp_decode_prerequisite`. In memory_pressure, all 5 preemptions are the
+   control's own, driven by the prerequisite (5 reference states are
+   `decode_prerequisite` contract differences).
+3. **Earlier large victims no longer win in the integer objective.** Every
+   ILP victim was at the tail of the running order. The LP evicted a
+   non-tail resident once per pool-12 case, at decision 2. The relaxation
+   satisfies the decode row with z = 0.25 on R04 (4 blocks). Extraction
+   then evicts R04 whole, decodes the tail, and admits two requests with
+   the freed blocks. The loss is 7.95 of 724. This comes from extraction,
+   not from the coefficients. It is also where the LP and ILP trajectories
+   first diverge.
+4. **LP extraction departs from the integer optimum** in 0 decisions in
+   the small, representative, staggered, and queue6–24 cases, and in 1/42,
+   5/76, 12/117, and 26/229 decisions in queue48, queue96, and the two
+   pool-12 cases. Only the decision-2 case above loses resident progress.
+   The rest lose waiting utility, at most 0.0016 (the fractional action
+   cap or knapsack). Relaxation gaps occurred in up to 195 decisions
+   without changing the actions.
+5. **Service order versus the control.** In the ample bursts, admission
+   inversions fall from 32/33/37 to 0/6/18 (LP) and 0/3/6 (ILP). Under
+   memory pressure the order is not reference-like and not better than the
+   control: 251 and 869 admission inversions (LP), against 208 and 791. In
+   the running-order and control runs, the 128-token prompts start at a
+   mean decision index of about 76–78 (reference 57) at 48 requests. The cause is the soft waiting
+   order around a memory-blocked large head (critical review item 3).
+6. **Preemption and completion.** Every request completed in every run.
+   With pool 12, running order replayed 96/97 tokens against the
+   reference's 102 at 48 requests, and 363/281 against 238 at 96 (control
+   226 and 488). Preemptions after output fell to 0–2, against the
+   reference's 3 and 7, and overgeneration fell to 0–2. One resident
+   omission per 96-request pool-12 LP/ILP run (decisions 103 and 77):
+   the tail is kept idle rather than self-evicted, the same procedural
+   difference as in the large-earlier-victim diagnostic.
+7. **Expected and accepted reference differences:** `decode_prerequisite`
+   (5, 1, 8, and 16 states), `action_width` (3, two_request limit 2),
+   self-eviction, and the soft waiting order.
+8. **Scale did not undermine the policy in these rollouts.** The maximum
+   weight was 104,976 and the maximum objective range 314,927. The
+   smallest positive coefficient was 8.5e-7 (waiting rank 95), and the
+   largest coefficient ratio 1.7e10. Note that adjacent waiting
+   coefficients near rank 95 differ by about 2e-8, below HiGHS's default
+   1e-7 dual tolerance. No resulting ambiguity was observed, which is not a
+   proof. The stress states (finding 2) solved to the expected plan, but at
+   R = 8 the unit margins and every waiting term are below the float
+   spacing. That result follows from the head's dominance, not from
+   numerical resolution.
+9. **Suitability.** The integer objective now matches the reference's
+   resident ordering, so a bounded GPU confirmation of `lp_running_order`
+   on the ample or representative workloads is reasonable. It would first
+   need an approved command-line addition, because the method is CPU-only
+   here. Under memory pressure, matching the reference needs a separate
+   decision on one of: the inherited decode prerequisite (item 5), the soft
+   waiting order around a blocked head (item 3), and extraction's victim
+   choice (answer 3). Larger resident limits or chunk caps need a
+   different numerical approach (item 2). None of these was changed.
+
+### Checks (`bash <run>/run_batch.sh <run>`; every step exited 0)
+
+| Step | Result |
+|---|---|
+| 01 `py_compile` (5 changed files); 02/03 `--help` for both entrypoints under `-W error` | pass |
+| 04 `tests.test_lpserve_state_mapping` | 24 passed (21 earlier + 3 new) |
+| 05 `tests.test_compare_scheduler_gpu` | 56 passed (48 earlier, unchanged + 8 new) |
+| 06 `test_exact_integer_plan`, 07 `test_lp_relaxation_scheduler`, 08 `test_check_lp_scheduler_ordering`, 09 `test_lpserve_plan_execution`, 10 `test_lp_scheduler` | 8, 38, 5, 16, 24 passed |
+| 11 whitespace, 12 `git diff --check` | pass |
+| 13 `compare_coefficient_policies_cpu.py --batch running_order` | `RESULT: PASS` |
+| 14 source hashes unchanged during the run | pass |
+
+The new driver tests cover CPU-only selection and command-line rejection;
+the 96-request inputs (token IDs, outputs, caps, bound 768, and the native
+`_init_cache` rule through a CPU stub); rollouts and detection of wrong
+coefficients; the explicit reference capture policy (default unchanged,
+mapping before each decision, decisions unaffected); recorded failures
+(an offline time limit, an ILP rollout stopping before mutation with no LP
+fallback, and an LP failure in a diagnostic that is never executed); exact
+checks (counterexample, a difference hidden by the tolerance, a recorded
+mismatch, and the R = 8 head weight); bounded enumeration of the
+resident-priority property; and the runner's aggregate status (PASS, or
+FAIL with an injected solver failure).
+
+Not run: the adapted-reference and other `check_*` suites,
+`test_lp_engine_args`, and `test_run_lp_inference`. Their code is
+unchanged and is not imported differently. No GPU run was made.
+
+**Not established:** GPU execution of the new methods, general
+equivalence with the reference, fairness, starvation, generation quality,
+latency, throughput, and production readiness.

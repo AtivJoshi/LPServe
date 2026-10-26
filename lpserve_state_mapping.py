@@ -437,6 +437,85 @@ def reciprocal_square_rank_utility(captured, request, *, c_max, b_max):
     )
 
 
+def running_order_utility(captured, request, *, c_max, b_max):
+    """Running-order coefficient policy for ``construct_coefficients``.
+
+    Bind the decision's configured ``c_max`` and ``b_max`` (for example with
+    ``functools.partial``) to obtain a ``policy(captured, request)``.
+
+    A waiting request at zero-based position ``j`` of
+    ``arrived_waiting_order`` gets ``prefill_token_utility = 1 / (b_max *
+    (1 + j) ** 2)`` and zero decode and preemption terms, so all waiting
+    execution together earns at most ``W = 1`` (``W = 0`` without arrived
+    waiting requests). A resident ``i`` has the maximum executable progress
+    ``m_i = min(prompt_tokens_remaining, c_max, b_max)`` if prefill-eligible,
+    else 1 if decode-eligible, else 0, and the weight::
+
+        a_i = 1 + W + sum(m_j * a_j + gamma_j for residents j later than i
+                          in running_order)
+
+    where ``gamma_j`` is ``j``'s assigned preemption penalty (0 if
+    ineligible). Its decode, prefill-token, and preemption terms are each
+    ``a_i`` when that action is eligible, otherwise 0. In exact arithmetic
+    one unit of an earlier resident's progress (chunk length, 1 for a
+    decode, 0 idle, -1 preempted) then outweighs every possible change in
+    later residents' and waiting requests' utility. This is a claim about
+    the integer objective only, not about fractional solutions or
+    extraction.
+
+    The weights are exact integers (``_running_order_weights``) converted to
+    float once; a weight that is not a finite float is a mapping failure.
+    Nothing is clipped, rescaled, or capped. The service and victim ranks are
+    not read. Reads only the immutable captured data. This is one provisional
+    candidate (D-01 to D-04 remain OPEN), not a selected policy.
+    """
+    for name, value in (("c_max", c_max), ("b_max", b_max)):
+        _require(
+            _is_int(value) and value > 0,
+            f"running-order utility {name} must be a positive integer, got "
+            f"{value!r}",
+        )
+    raw_id = request.raw_seq_id
+    if request.ownership == OWNERSHIP_WAITING:
+        position = captured.arrived_waiting_order.index(raw_id)
+        return RequestUtility(
+            decode_utility=0.0,
+            prefill_token_utility=(1 / (b_max * (1 + position) ** 2)
+                                   if request.prefill_eligible else 0.0),
+            preemption_penalty=0.0,
+        )
+    weight = _running_order_weights(captured, c_max, b_max)[raw_id]
+    _require(
+        _is_real(weight),
+        f"raw_seq_id {raw_id}: running-order weight {weight} is not "
+        "representable as a finite float",
+    )
+    weight = float(weight)
+    return RequestUtility(
+        decode_utility=weight if request.decode_eligible else 0.0,
+        prefill_token_utility=weight if request.prefill_eligible else 0.0,
+        preemption_penalty=weight if request.preemption_eligible else 0.0,
+    )
+
+
+def _running_order_weights(captured, c_max, b_max):
+    """Exact integer weights ``{raw_seq_id: a_i}`` of the residents of
+    ``running_order_utility``, computed backward through ``running_order``."""
+    by_id = {r.raw_seq_id: r for r in captured.requests}
+    later = 1 if captured.arrived_waiting_order else 0
+    weights = {}
+    for raw_id in reversed(captured.running_order):
+        r = by_id[raw_id]
+        weight = 1 + later
+        weights[raw_id] = weight
+        if r.prefill_eligible:
+            progress = min(r.prompt_tokens_remaining, c_max, b_max)
+        else:
+            progress = 1 if r.decode_eligible else 0
+        later += progress * weight + (weight if r.preemption_eligible else 0)
+    return weights
+
+
 def construct_coefficients(captured, policy):
     """Pure coefficient construction for one decision.
 

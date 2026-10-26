@@ -1,0 +1,756 @@
+$ env PYTHONPATH=/home/atjoshi_umass_edu/LPServe python -B scripts/compare_coefficient_policies_cpu.py --batch running_order --output-dir validation_output/scheduler_comparison/20261026T045354Z_running_order/cpu_comparison
+INFO 10-26 04:55:55 metrics_store.py:72] MetricsStore disabled
+rollout two_request_limit1 adapted_vllm
+  -> valid True outcome drained decisions 6 coverage complete True findings {}
+rollout two_request_limit1 lp_reciprocal_square
+  -> valid True outcome drained decisions 6 coverage complete True findings None
+rollout two_request_limit1 lp_running_order
+  -> valid True outcome drained decisions 6 coverage complete True findings {}
+rollout two_request_limit1 ilp_running_order
+  -> valid True outcome drained decisions 6 coverage complete True findings {}
+rollout two_request_limit2 adapted_vllm
+  -> valid True outcome drained decisions 4 coverage complete True findings {}
+rollout two_request_limit2 lp_reciprocal_square
+  -> valid True outcome drained decisions 6 coverage complete True findings None
+rollout two_request_limit2 lp_running_order
+  -> valid True outcome drained decisions 6 coverage complete True findings {}
+rollout two_request_limit2 ilp_running_order
+  -> valid True outcome drained decisions 6 coverage complete True findings {}
+rollout memory_pressure_limit4 adapted_vllm
+  -> valid True outcome drained decisions 8 coverage complete True findings {}
+rollout memory_pressure_limit4 lp_reciprocal_square
+  -> valid True outcome drained decisions 15 coverage complete True findings None
+rollout memory_pressure_limit4 lp_running_order
+  -> valid True outcome drained decisions 15 coverage complete True findings {}
+rollout memory_pressure_limit4 ilp_running_order
+  -> valid True outcome drained decisions 15 coverage complete True findings {}
+rollout equal_burst_ample_limit4 adapted_vllm
+  -> valid True outcome drained decisions 9 coverage complete True findings {}
+rollout equal_burst_ample_limit4 lp_reciprocal_square
+  -> valid True outcome drained decisions 9 coverage complete True findings None
+rollout equal_burst_ample_limit4 lp_running_order
+  -> valid True outcome drained decisions 9 coverage complete True findings {}
+rollout equal_burst_ample_limit4 ilp_running_order
+  -> valid True outcome drained decisions 9 coverage complete True findings {}
+rollout mixed_burst_ample_limit4 adapted_vllm
+  -> valid True outcome drained decisions 10 coverage complete True findings {}
+rollout mixed_burst_ample_limit4 lp_reciprocal_square
+  -> valid True outcome drained decisions 10 coverage complete True findings None
+rollout mixed_burst_ample_limit4 lp_running_order
+  -> valid True outcome drained decisions 10 coverage complete True findings {}
+rollout mixed_burst_ample_limit4 ilp_running_order
+  -> valid True outcome drained decisions 10 coverage complete True findings {}
+rollout mixed_staggered_ample_limit4 adapted_vllm
+  -> valid True outcome drained decisions 16 coverage complete True findings {}
+rollout mixed_staggered_ample_limit4 lp_reciprocal_square
+  -> valid True outcome drained decisions 16 coverage complete True findings None
+rollout mixed_staggered_ample_limit4 lp_running_order
+  -> valid True outcome drained decisions 16 coverage complete True findings {}
+rollout mixed_staggered_ample_limit4 ilp_running_order
+  -> valid True outcome drained decisions 16 coverage complete True findings {}
+rollout mixed_staggered_tight_limit4 adapted_vllm
+  -> valid True outcome drained decisions 16 coverage complete True findings {}
+rollout mixed_staggered_tight_limit4 lp_reciprocal_square
+  -> valid True outcome drained decisions 17 coverage complete True findings None
+rollout mixed_staggered_tight_limit4 lp_running_order
+  -> valid True outcome drained decisions 17 coverage complete True findings {}
+rollout mixed_staggered_tight_limit4 ilp_running_order
+  -> valid True outcome drained decisions 17 coverage complete True findings {}
+rollout queue6_burst_limit8 adapted_vllm
+  -> valid True outcome drained decisions 11 coverage complete True findings {}
+rollout queue6_burst_limit8 lp_reciprocal_square
+  -> valid True outcome drained decisions 11 coverage complete True findings None
+rollout queue6_burst_limit8 lp_running_order
+  -> valid True outcome drained decisions 11 coverage complete True findings {}
+rollout queue6_burst_limit8 ilp_running_order
+  -> valid True outcome drained decisions 11 coverage complete True findings {}
+rollout queue12_burst_limit8 adapted_vllm
+  -> valid True outcome drained decisions 15 coverage complete True findings {}
+rollout queue12_burst_limit8 lp_reciprocal_square
+  -> valid True outcome drained decisions 15 coverage complete True findings None
+rollout queue12_burst_limit8 lp_running_order
+  -> valid True outcome drained decisions 15 coverage complete True findings {}
+rollout queue12_burst_limit8 ilp_running_order
+  -> valid True outcome drained decisions 15 coverage complete True findings {}
+rollout queue24_burst_limit8 adapted_vllm
+  -> valid True outcome drained decisions 24 coverage complete True findings {}
+rollout queue24_burst_limit8 lp_reciprocal_square
+  -> valid True outcome drained decisions 23 coverage complete True findings None
+rollout queue24_burst_limit8 lp_running_order
+  -> valid True outcome drained decisions 24 coverage complete True findings {}
+rollout queue24_burst_limit8 ilp_running_order
+  -> valid True outcome drained decisions 24 coverage complete True findings {}
+rollout queue48_burst_limit8 adapted_vllm
+  -> valid True outcome drained decisions 42 coverage complete True findings {}
+rollout queue48_burst_limit8 lp_reciprocal_square
+  -> valid True outcome drained decisions 40 coverage complete True findings None
+rollout queue48_burst_limit8 lp_running_order
+  -> valid True outcome drained decisions 42 coverage complete True findings {}
+rollout queue48_burst_limit8 ilp_running_order
+  -> valid True outcome drained decisions 42 coverage complete True findings {}
+rollout queue48_staggered_limit8 adapted_vllm
+  -> valid True outcome drained decisions 104 coverage complete True findings {}
+rollout queue48_staggered_limit8 lp_reciprocal_square
+  -> valid True outcome drained decisions 104 coverage complete True findings None
+rollout queue48_staggered_limit8 lp_running_order
+  -> valid True outcome drained decisions 104 coverage complete True findings {}
+rollout queue48_staggered_limit8 ilp_running_order
+  -> valid True outcome drained decisions 104 coverage complete True findings {}
+rollout queue48_burst_pool12_limit8 adapted_vllm
+  -> valid True outcome drained decisions 117 coverage complete True findings {}
+rollout queue48_burst_pool12_limit8 lp_reciprocal_square
+  -> valid True outcome drained decisions 118 coverage complete True findings None
+rollout queue48_burst_pool12_limit8 lp_running_order
+  -> valid True outcome drained decisions 117 coverage complete True findings {}
+rollout queue48_burst_pool12_limit8 ilp_running_order
+  -> valid True outcome drained decisions 117 coverage complete True findings {}
+rollout queue96_burst_limit8 adapted_vllm
+  -> valid True outcome drained decisions 78 coverage complete True findings {}
+rollout queue96_burst_limit8 lp_reciprocal_square
+  -> valid True outcome drained decisions 76 coverage complete True findings None
+rollout queue96_burst_limit8 lp_running_order
+  -> valid True outcome drained decisions 76 coverage complete True findings {}
+rollout queue96_burst_limit8 ilp_running_order
+  -> valid True outcome drained decisions 77 coverage complete True findings {}
+rollout queue96_burst_pool12_limit8 adapted_vllm
+  -> valid True outcome drained decisions 233 coverage complete True findings {}
+rollout queue96_burst_pool12_limit8 lp_reciprocal_square
+  -> valid True outcome drained decisions 235 coverage complete True findings None
+rollout queue96_burst_pool12_limit8 lp_running_order
+  -> valid True outcome drained decisions 229 coverage complete True findings {}
+rollout queue96_burst_pool12_limit8 ilp_running_order
+  -> valid True outcome drained decisions 233 coverage complete True findings {}
+diagnostic mixed_ample
+  -> findings []
+diagnostic mixed_pressure
+  -> findings []
+diagnostic zero_free_decodes
+  -> findings []
+diagnostic fractional_admission
+  -> findings []
+diagnostic earlier_decode_vs_later_prefill
+  -> findings []
+diagnostic second_running_decode
+  -> findings []
+diagnostic large_earlier_victim
+  -> findings []
+diagnostic blocked_waiting_head
+  -> findings []
+diagnostic waiting_action_cap
+  -> findings []
+diagnostic numerical_stress_r1
+  -> findings []
+diagnostic numerical_stress_r2
+  -> findings []
+diagnostic numerical_stress_r4
+  -> findings ['comparison_tol_hides_unit_margin']
+diagnostic numerical_stress_r8
+  -> findings ['comparison_tol_hides_unit_margin', 'ulp_exceeds_unit_margin']
+Running-order batch (CPU, native central/worker replay)
+
+Rollouts
+case | method | valid | outcome | dec | done | preempt | after_out | adm+victim | discarded | replayed | expanded | events | overgen | res_omit | max_streak | adm_inv | done_inv
+two_request_limit1 | adapted_vllm | True | drained | 6 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0
+two_request_limit1 | lp_reciprocal_square | True | drained | 6 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0
+two_request_limit1 | lp_running_order | True | drained | 6 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0
+two_request_limit1 | ilp_running_order | True | drained | 6 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0
+two_request_limit2 | adapted_vllm | True | drained | 4 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0
+two_request_limit2 | lp_reciprocal_square | True | drained | 6 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0
+two_request_limit2 | lp_running_order | True | drained | 6 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0
+two_request_limit2 | ilp_running_order | True | drained | 6 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0
+memory_pressure_limit4 | adapted_vllm | True | drained | 8 | 4 | 2 | 2 | 0 | 32 | 32 | 2 | 14 | 2 | 0 | 0 | 0 | 0
+memory_pressure_limit4 | lp_reciprocal_square | True | drained | 15 | 4 | 5 | 3 | 1 | 83 | 83 | 4 | 16 | 4 | 0 | 0 | 0 | 2
+memory_pressure_limit4 | lp_running_order | True | drained | 15 | 4 | 5 | 3 | 1 | 83 | 83 | 4 | 16 | 4 | 0 | 0 | 0 | 2
+memory_pressure_limit4 | ilp_running_order | True | drained | 15 | 4 | 5 | 3 | 1 | 83 | 83 | 4 | 16 | 4 | 0 | 0 | 0 | 2
+equal_burst_ample_limit4 | adapted_vllm | True | drained | 9 | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 18 | 0 | 0 | 0 | 0 | 0
+equal_burst_ample_limit4 | lp_reciprocal_square | True | drained | 9 | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 18 | 0 | 0 | 0 | 0 | 0
+equal_burst_ample_limit4 | lp_running_order | True | drained | 9 | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 18 | 0 | 0 | 0 | 0 | 0
+equal_burst_ample_limit4 | ilp_running_order | True | drained | 9 | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 18 | 0 | 0 | 0 | 0 | 0
+mixed_burst_ample_limit4 | adapted_vllm | True | drained | 10 | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 18 | 0 | 0 | 0 | 0 | 1
+mixed_burst_ample_limit4 | lp_reciprocal_square | True | drained | 10 | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 18 | 0 | 0 | 0 | 0 | 1
+mixed_burst_ample_limit4 | lp_running_order | True | drained | 10 | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 18 | 0 | 0 | 0 | 0 | 1
+mixed_burst_ample_limit4 | ilp_running_order | True | drained | 10 | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 18 | 0 | 0 | 0 | 0 | 1
+mixed_staggered_ample_limit4 | adapted_vllm | True | drained | 16 | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 18 | 0 | 0 | 0 | 0 | 0
+mixed_staggered_ample_limit4 | lp_reciprocal_square | True | drained | 16 | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 18 | 0 | 0 | 0 | 0 | 0
+mixed_staggered_ample_limit4 | lp_running_order | True | drained | 16 | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 18 | 0 | 0 | 0 | 0 | 0
+mixed_staggered_ample_limit4 | ilp_running_order | True | drained | 16 | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 18 | 0 | 0 | 0 | 0 | 0
+mixed_staggered_tight_limit4 | adapted_vllm | True | drained | 16 | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 18 | 0 | 0 | 0 | 0 | 0
+mixed_staggered_tight_limit4 | lp_reciprocal_square | True | drained | 17 | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 18 | 0 | 0 | 0 | 0 | 0
+mixed_staggered_tight_limit4 | lp_running_order | True | drained | 17 | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 18 | 0 | 0 | 0 | 0 | 0
+mixed_staggered_tight_limit4 | ilp_running_order | True | drained | 17 | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 18 | 0 | 0 | 0 | 0 | 0
+queue6_burst_limit8 | adapted_vllm | True | drained | 11 | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 28 | 0 | 0 | 0 | 0 | 3
+queue6_burst_limit8 | lp_reciprocal_square | True | drained | 11 | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 28 | 0 | 0 | 0 | 0 | 3
+queue6_burst_limit8 | lp_running_order | True | drained | 11 | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 28 | 0 | 0 | 0 | 0 | 3
+queue6_burst_limit8 | ilp_running_order | True | drained | 11 | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 28 | 0 | 0 | 0 | 0 | 3
+queue12_burst_limit8 | adapted_vllm | True | drained | 15 | 12 | 0 | 0 | 0 | 0 | 0 | 0 | 56 | 0 | 0 | 0 | 0 | 14
+queue12_burst_limit8 | lp_reciprocal_square | True | drained | 15 | 12 | 0 | 0 | 0 | 0 | 0 | 0 | 56 | 0 | 0 | 0 | 3 | 17
+queue12_burst_limit8 | lp_running_order | True | drained | 15 | 12 | 0 | 0 | 0 | 0 | 0 | 0 | 56 | 0 | 0 | 0 | 0 | 14
+queue12_burst_limit8 | ilp_running_order | True | drained | 15 | 12 | 0 | 0 | 0 | 0 | 0 | 0 | 56 | 0 | 0 | 0 | 0 | 14
+queue24_burst_limit8 | adapted_vllm | True | drained | 24 | 24 | 0 | 0 | 0 | 0 | 0 | 0 | 112 | 0 | 0 | 0 | 0 | 34
+queue24_burst_limit8 | lp_reciprocal_square | True | drained | 23 | 24 | 0 | 0 | 0 | 0 | 0 | 0 | 112 | 0 | 0 | 0 | 32 | 67
+queue24_burst_limit8 | lp_running_order | True | drained | 24 | 24 | 0 | 0 | 0 | 0 | 0 | 0 | 112 | 0 | 0 | 0 | 0 | 34
+queue24_burst_limit8 | ilp_running_order | True | drained | 24 | 24 | 0 | 0 | 0 | 0 | 0 | 0 | 112 | 0 | 0 | 0 | 0 | 34
+queue48_burst_limit8 | adapted_vllm | True | drained | 42 | 48 | 0 | 0 | 0 | 0 | 0 | 0 | 224 | 0 | 0 | 0 | 0 | 80
+queue48_burst_limit8 | lp_reciprocal_square | True | drained | 40 | 48 | 0 | 0 | 0 | 0 | 0 | 0 | 224 | 0 | 0 | 0 | 33 | 110
+queue48_burst_limit8 | lp_running_order | True | drained | 42 | 48 | 0 | 0 | 0 | 0 | 0 | 0 | 224 | 0 | 0 | 0 | 6 | 69
+queue48_burst_limit8 | ilp_running_order | True | drained | 42 | 48 | 0 | 0 | 0 | 0 | 0 | 0 | 224 | 0 | 0 | 0 | 3 | 73
+queue48_staggered_limit8 | adapted_vllm | True | drained | 104 | 48 | 0 | 0 | 0 | 0 | 0 | 0 | 224 | 0 | 0 | 0 | 0 | 22
+queue48_staggered_limit8 | lp_reciprocal_square | True | drained | 104 | 48 | 0 | 0 | 0 | 0 | 0 | 0 | 224 | 0 | 0 | 0 | 0 | 22
+queue48_staggered_limit8 | lp_running_order | True | drained | 104 | 48 | 0 | 0 | 0 | 0 | 0 | 0 | 224 | 0 | 0 | 0 | 0 | 22
+queue48_staggered_limit8 | ilp_running_order | True | drained | 104 | 48 | 0 | 0 | 0 | 0 | 0 | 0 | 224 | 0 | 0 | 0 | 0 | 22
+queue48_burst_pool12_limit8 | adapted_vllm | True | drained | 117 | 48 | 6 | 3 | 0 | 102 | 102 | 3 | 227 | 3 | 0 | 0 | 0 | 27
+queue48_burst_pool12_limit8 | lp_reciprocal_square | True | drained | 118 | 48 | 5 | 3 | 3 | 226 | 226 | 3 | 227 | 3 | 0 | 0 | 208 | 246
+queue48_burst_pool12_limit8 | lp_running_order | True | drained | 117 | 48 | 2 | 0 | 1 | 96 | 96 | 0 | 224 | 0 | 0 | 0 | 251 | 301
+queue48_burst_pool12_limit8 | ilp_running_order | True | drained | 117 | 48 | 6 | 0 | 1 | 97 | 97 | 0 | 224 | 0 | 0 | 0 | 211 | 242
+queue96_burst_limit8 | adapted_vllm | True | drained | 78 | 96 | 0 | 0 | 0 | 0 | 0 | 0 | 448 | 0 | 0 | 0 | 0 | 172
+queue96_burst_limit8 | lp_reciprocal_square | True | drained | 76 | 96 | 0 | 0 | 0 | 0 | 0 | 0 | 448 | 0 | 0 | 0 | 37 | 203
+queue96_burst_limit8 | lp_running_order | True | drained | 76 | 96 | 0 | 0 | 0 | 0 | 0 | 0 | 448 | 0 | 0 | 0 | 18 | 139
+queue96_burst_limit8 | ilp_running_order | True | drained | 77 | 96 | 0 | 0 | 0 | 0 | 0 | 0 | 448 | 0 | 0 | 0 | 6 | 154
+queue96_burst_pool12_limit8 | adapted_vllm | True | drained | 233 | 96 | 14 | 7 | 0 | 238 | 238 | 7 | 455 | 7 | 0 | 0 | 0 | 55
+queue96_burst_pool12_limit8 | lp_reciprocal_square | True | drained | 235 | 96 | 11 | 5 | 9 | 488 | 488 | 6 | 454 | 6 | 0 | 0 | 791 | 878
+queue96_burst_pool12_limit8 | lp_running_order | True | drained | 229 | 96 | 12 | 1 | 6 | 363 | 363 | 1 | 449 | 1 | 1 | 1 | 869 | 942
+queue96_burst_pool12_limit8 | ilp_running_order | True | drained | 233 | 96 | 13 | 2 | 4 | 281 | 281 | 2 | 450 | 2 | 1 | 1 | 730 | 780
+
+Comparison coverage (every reached decision)
+case | method | reached | records | valid | no_problem | solved | reused | optimal | time_limit | other_fail | errors | missing | round_trip_fail | complete
+two_request_limit1 | adapted_vllm | 6 | 6 | 6 | 0 | 6 | 0 | 6 | 0 | 0 | 0 | 0 | 0 | True
+two_request_limit1 | lp_reciprocal_square | 6 | 6 | 6 | 0 | 6 | 0 | 6 | 0 | 0 | 0 | 0 | 0 | True
+two_request_limit1 | lp_running_order | 6 | 6 | 6 | 0 | 6 | 0 | 6 | 0 | 0 | 0 | 0 | 0 | True
+two_request_limit1 | ilp_running_order | 6 | 6 | 6 | 0 | 0 | 6 | 6 | 0 | 0 | 0 | 0 | 0 | True
+two_request_limit2 | adapted_vllm | 4 | 4 | 4 | 0 | 4 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | True
+two_request_limit2 | lp_reciprocal_square | 6 | 6 | 6 | 0 | 6 | 0 | 6 | 0 | 0 | 0 | 0 | 0 | True
+two_request_limit2 | lp_running_order | 6 | 6 | 6 | 0 | 6 | 0 | 6 | 0 | 0 | 0 | 0 | 0 | True
+two_request_limit2 | ilp_running_order | 6 | 6 | 6 | 0 | 0 | 6 | 6 | 0 | 0 | 0 | 0 | 0 | True
+memory_pressure_limit4 | adapted_vllm | 8 | 8 | 8 | 0 | 8 | 0 | 8 | 0 | 0 | 0 | 0 | 0 | True
+memory_pressure_limit4 | lp_reciprocal_square | 15 | 15 | 15 | 0 | 15 | 0 | 15 | 0 | 0 | 0 | 0 | 0 | True
+memory_pressure_limit4 | lp_running_order | 15 | 15 | 15 | 0 | 15 | 0 | 15 | 0 | 0 | 0 | 0 | 0 | True
+memory_pressure_limit4 | ilp_running_order | 15 | 15 | 15 | 0 | 0 | 15 | 15 | 0 | 0 | 0 | 0 | 0 | True
+equal_burst_ample_limit4 | adapted_vllm | 9 | 9 | 9 | 0 | 9 | 0 | 9 | 0 | 0 | 0 | 0 | 0 | True
+equal_burst_ample_limit4 | lp_reciprocal_square | 9 | 9 | 9 | 0 | 9 | 0 | 9 | 0 | 0 | 0 | 0 | 0 | True
+equal_burst_ample_limit4 | lp_running_order | 9 | 9 | 9 | 0 | 9 | 0 | 9 | 0 | 0 | 0 | 0 | 0 | True
+equal_burst_ample_limit4 | ilp_running_order | 9 | 9 | 9 | 0 | 0 | 9 | 9 | 0 | 0 | 0 | 0 | 0 | True
+mixed_burst_ample_limit4 | adapted_vllm | 10 | 10 | 10 | 0 | 10 | 0 | 10 | 0 | 0 | 0 | 0 | 0 | True
+mixed_burst_ample_limit4 | lp_reciprocal_square | 10 | 10 | 10 | 0 | 10 | 0 | 10 | 0 | 0 | 0 | 0 | 0 | True
+mixed_burst_ample_limit4 | lp_running_order | 10 | 10 | 10 | 0 | 10 | 0 | 10 | 0 | 0 | 0 | 0 | 0 | True
+mixed_burst_ample_limit4 | ilp_running_order | 10 | 10 | 10 | 0 | 0 | 10 | 10 | 0 | 0 | 0 | 0 | 0 | True
+mixed_staggered_ample_limit4 | adapted_vllm | 16 | 16 | 16 | 0 | 16 | 0 | 16 | 0 | 0 | 0 | 0 | 0 | True
+mixed_staggered_ample_limit4 | lp_reciprocal_square | 16 | 16 | 16 | 0 | 16 | 0 | 16 | 0 | 0 | 0 | 0 | 0 | True
+mixed_staggered_ample_limit4 | lp_running_order | 16 | 16 | 16 | 0 | 16 | 0 | 16 | 0 | 0 | 0 | 0 | 0 | True
+mixed_staggered_ample_limit4 | ilp_running_order | 16 | 16 | 16 | 0 | 0 | 16 | 16 | 0 | 0 | 0 | 0 | 0 | True
+mixed_staggered_tight_limit4 | adapted_vllm | 16 | 16 | 16 | 0 | 16 | 0 | 16 | 0 | 0 | 0 | 0 | 0 | True
+mixed_staggered_tight_limit4 | lp_reciprocal_square | 17 | 17 | 17 | 0 | 17 | 0 | 17 | 0 | 0 | 0 | 0 | 0 | True
+mixed_staggered_tight_limit4 | lp_running_order | 17 | 17 | 17 | 0 | 17 | 0 | 17 | 0 | 0 | 0 | 0 | 0 | True
+mixed_staggered_tight_limit4 | ilp_running_order | 17 | 17 | 17 | 0 | 0 | 17 | 17 | 0 | 0 | 0 | 0 | 0 | True
+queue6_burst_limit8 | adapted_vllm | 11 | 11 | 11 | 0 | 11 | 0 | 11 | 0 | 0 | 0 | 0 | 0 | True
+queue6_burst_limit8 | lp_reciprocal_square | 11 | 11 | 11 | 0 | 11 | 0 | 11 | 0 | 0 | 0 | 0 | 0 | True
+queue6_burst_limit8 | lp_running_order | 11 | 11 | 11 | 0 | 11 | 0 | 11 | 0 | 0 | 0 | 0 | 0 | True
+queue6_burst_limit8 | ilp_running_order | 11 | 11 | 11 | 0 | 0 | 11 | 11 | 0 | 0 | 0 | 0 | 0 | True
+queue12_burst_limit8 | adapted_vllm | 15 | 15 | 15 | 0 | 15 | 0 | 15 | 0 | 0 | 0 | 0 | 0 | True
+queue12_burst_limit8 | lp_reciprocal_square | 15 | 15 | 15 | 0 | 15 | 0 | 15 | 0 | 0 | 0 | 0 | 0 | True
+queue12_burst_limit8 | lp_running_order | 15 | 15 | 15 | 0 | 15 | 0 | 15 | 0 | 0 | 0 | 0 | 0 | True
+queue12_burst_limit8 | ilp_running_order | 15 | 15 | 15 | 0 | 0 | 15 | 15 | 0 | 0 | 0 | 0 | 0 | True
+queue24_burst_limit8 | adapted_vllm | 24 | 24 | 24 | 0 | 24 | 0 | 24 | 0 | 0 | 0 | 0 | 0 | True
+queue24_burst_limit8 | lp_reciprocal_square | 23 | 23 | 23 | 0 | 23 | 0 | 23 | 0 | 0 | 0 | 0 | 0 | True
+queue24_burst_limit8 | lp_running_order | 24 | 24 | 24 | 0 | 24 | 0 | 24 | 0 | 0 | 0 | 0 | 0 | True
+queue24_burst_limit8 | ilp_running_order | 24 | 24 | 24 | 0 | 0 | 24 | 24 | 0 | 0 | 0 | 0 | 0 | True
+queue48_burst_limit8 | adapted_vllm | 42 | 42 | 42 | 0 | 42 | 0 | 42 | 0 | 0 | 0 | 0 | 0 | True
+queue48_burst_limit8 | lp_reciprocal_square | 40 | 40 | 40 | 0 | 40 | 0 | 40 | 0 | 0 | 0 | 0 | 0 | True
+queue48_burst_limit8 | lp_running_order | 42 | 42 | 42 | 0 | 42 | 0 | 42 | 0 | 0 | 0 | 0 | 0 | True
+queue48_burst_limit8 | ilp_running_order | 42 | 42 | 42 | 0 | 0 | 42 | 42 | 0 | 0 | 0 | 0 | 0 | True
+queue48_staggered_limit8 | adapted_vllm | 104 | 104 | 104 | 0 | 104 | 0 | 104 | 0 | 0 | 0 | 0 | 0 | True
+queue48_staggered_limit8 | lp_reciprocal_square | 104 | 104 | 104 | 0 | 104 | 0 | 104 | 0 | 0 | 0 | 0 | 0 | True
+queue48_staggered_limit8 | lp_running_order | 104 | 104 | 104 | 0 | 104 | 0 | 104 | 0 | 0 | 0 | 0 | 0 | True
+queue48_staggered_limit8 | ilp_running_order | 104 | 104 | 104 | 0 | 0 | 104 | 104 | 0 | 0 | 0 | 0 | 0 | True
+queue48_burst_pool12_limit8 | adapted_vllm | 117 | 117 | 117 | 0 | 117 | 0 | 117 | 0 | 0 | 0 | 0 | 0 | True
+queue48_burst_pool12_limit8 | lp_reciprocal_square | 118 | 118 | 118 | 0 | 118 | 0 | 118 | 0 | 0 | 0 | 0 | 0 | True
+queue48_burst_pool12_limit8 | lp_running_order | 117 | 117 | 117 | 0 | 117 | 0 | 117 | 0 | 0 | 0 | 0 | 0 | True
+queue48_burst_pool12_limit8 | ilp_running_order | 117 | 117 | 117 | 0 | 0 | 117 | 117 | 0 | 0 | 0 | 0 | 0 | True
+queue96_burst_limit8 | adapted_vllm | 78 | 78 | 78 | 0 | 78 | 0 | 78 | 0 | 0 | 0 | 0 | 0 | True
+queue96_burst_limit8 | lp_reciprocal_square | 76 | 76 | 76 | 0 | 76 | 0 | 76 | 0 | 0 | 0 | 0 | 0 | True
+queue96_burst_limit8 | lp_running_order | 76 | 76 | 76 | 0 | 76 | 0 | 76 | 0 | 0 | 0 | 0 | 0 | True
+queue96_burst_limit8 | ilp_running_order | 77 | 77 | 77 | 0 | 0 | 77 | 77 | 0 | 0 | 0 | 0 | 0 | True
+queue96_burst_pool12_limit8 | adapted_vllm | 233 | 233 | 233 | 0 | 233 | 0 | 233 | 0 | 0 | 0 | 0 | 0 | True
+queue96_burst_pool12_limit8 | lp_reciprocal_square | 235 | 235 | 235 | 0 | 235 | 0 | 235 | 0 | 0 | 0 | 0 | 0 | True
+queue96_burst_pool12_limit8 | lp_running_order | 229 | 229 | 229 | 0 | 229 | 0 | 229 | 0 | 0 | 0 | 0 | 0 | True
+queue96_burst_pool12_limit8 | ilp_running_order | 233 | 233 | 233 | 0 | 0 | 233 | 233 | 0 | 0 | 0 | 0 | 0 | True
+
+Same-state results (identical problems only; objectives of different policies are not compared)
+  two_request_limit1 adapted_vllm: reference vs running-order integer optimum {'identical_actions': 6}; violated LP rows {}; smallest strict preference None; near ties []; integer raw statuses {'0': 6}, max integrality deviation 0
+  two_request_limit1 lp_reciprocal_square: {'identical_actions': 6}; fractional relaxations 0; relaxation gaps 0 (max 0); extraction losses []; action differences []; near ties []; integer raw statuses {'0': 6}, max integrality deviation 0
+  two_request_limit1 lp_running_order: {'identical_actions': 6}; fractional relaxations 0; relaxation gaps 0 (max 0); extraction losses []; action differences []; near ties []; integer raw statuses {'0': 6}, max integrality deviation 0
+  two_request_limit1 ilp_running_order: integer results reused from the rollout; integer raw statuses {'0': 6}, max integrality deviation 0
+  two_request_limit2 adapted_vllm: reference vs running-order integer optimum {'contract_difference': 3, 'identical_actions': 1}; violated LP rows {'action_width': 3}; smallest strict preference None; near ties []; integer raw statuses {'0': 4}, max integrality deviation 0
+  two_request_limit2 lp_reciprocal_square: {'identical_actions': 6}; fractional relaxations 0; relaxation gaps 0 (max 0); extraction losses []; action differences []; near ties []; integer raw statuses {'0': 6}, max integrality deviation 0
+  two_request_limit2 lp_running_order: {'identical_actions': 6}; fractional relaxations 0; relaxation gaps 0 (max 0); extraction losses []; action differences []; near ties []; integer raw statuses {'0': 6}, max integrality deviation 0
+  two_request_limit2 ilp_running_order: integer results reused from the rollout; integer raw statuses {'0': 6}, max integrality deviation 0
+  memory_pressure_limit4 adapted_vllm: reference vs running-order integer optimum {'identical_actions': 3, 'contract_difference': 5}; violated LP rows {'decode_prerequisite': 5}; smallest strict preference None; near ties []; integer raw statuses {'0': 8}, max integrality deviation 0
+  memory_pressure_limit4 lp_reciprocal_square: {'identical_actions': 15}; fractional relaxations 7; relaxation gaps 7 (max 0.388889); extraction losses []; action differences []; near ties []; integer raw statuses {'0': 15}, max integrality deviation 0
+  memory_pressure_limit4 lp_running_order: {'identical_actions': 15}; fractional relaxations 7; relaxation gaps 7 (max 3.11111); extraction losses []; action differences []; near ties []; integer raw statuses {'0': 15}, max integrality deviation 0
+  memory_pressure_limit4 ilp_running_order: integer results reused from the rollout; integer raw statuses {'0': 15}, max integrality deviation 0
+  equal_burst_ample_limit4 adapted_vllm: reference vs running-order integer optimum {'identical_actions': 9}; violated LP rows {}; smallest strict preference None; near ties []; integer raw statuses {'0': 9}, max integrality deviation 0
+  equal_burst_ample_limit4 lp_reciprocal_square: {'identical_actions': 9}; fractional relaxations 2; relaxation gaps 0 (max 0); extraction losses []; action differences []; near ties []; integer raw statuses {'0': 9}, max integrality deviation 0
+  equal_burst_ample_limit4 lp_running_order: {'identical_actions': 9}; fractional relaxations 2; relaxation gaps 0 (max 0); extraction losses []; action differences []; near ties []; integer raw statuses {'0': 9}, max integrality deviation 0
+  equal_burst_ample_limit4 ilp_running_order: integer results reused from the rollout; integer raw statuses {'0': 9}, max integrality deviation 0
+  mixed_burst_ample_limit4 adapted_vllm: reference vs running-order integer optimum {'identical_actions': 10}; violated LP rows {}; smallest strict preference None; near ties []; integer raw statuses {'0': 10}, max integrality deviation 0
+  mixed_burst_ample_limit4 lp_reciprocal_square: {'identical_actions': 10}; fractional relaxations 3; relaxation gaps 0 (max 0); extraction losses []; action differences []; near ties []; integer raw statuses {'0': 10}, max integrality deviation 0
+  mixed_burst_ample_limit4 lp_running_order: {'identical_actions': 10}; fractional relaxations 3; relaxation gaps 0 (max 0); extraction losses []; action differences []; near ties []; integer raw statuses {'0': 10}, max integrality deviation 0
+  mixed_burst_ample_limit4 ilp_running_order: integer results reused from the rollout; integer raw statuses {'0': 10}, max integrality deviation 0
+  mixed_staggered_ample_limit4 adapted_vllm: reference vs running-order integer optimum {'identical_actions': 16}; violated LP rows {}; smallest strict preference None; near ties []; integer raw statuses {'0': 16}, max integrality deviation 0
+  mixed_staggered_ample_limit4 lp_reciprocal_square: {'identical_actions': 16}; fractional relaxations 1; relaxation gaps 0 (max 0); extraction losses []; action differences []; near ties []; integer raw statuses {'0': 16}, max integrality deviation 0
+  mixed_staggered_ample_limit4 lp_running_order: {'identical_actions': 16}; fractional relaxations 1; relaxation gaps 0 (max 0); extraction losses []; action differences []; near ties []; integer raw statuses {'0': 16}, max integrality deviation 0
+  mixed_staggered_ample_limit4 ilp_running_order: integer results reused from the rollout; integer raw statuses {'0': 16}, max integrality deviation 0
+  mixed_staggered_tight_limit4 adapted_vllm: reference vs running-order integer optimum {'identical_actions': 15, 'contract_difference': 1}; violated LP rows {'decode_prerequisite': 1}; smallest strict preference None; near ties []; integer raw statuses {'0': 16}, max integrality deviation 0
+  mixed_staggered_tight_limit4 lp_reciprocal_square: {'identical_actions': 17}; fractional relaxations 2; relaxation gaps 1 (max 0.0833333); extraction losses []; action differences []; near ties []; integer raw statuses {'0': 17}, max integrality deviation 0
+  mixed_staggered_tight_limit4 lp_running_order: {'identical_actions': 17}; fractional relaxations 2; relaxation gaps 1 (max 0.75); extraction losses []; action differences []; near ties []; integer raw statuses {'0': 17}, max integrality deviation 0
+  mixed_staggered_tight_limit4 ilp_running_order: integer results reused from the rollout; integer raw statuses {'0': 17}, max integrality deviation 0
+  queue6_burst_limit8 adapted_vllm: reference vs running-order integer optimum {'identical_actions': 11}; violated LP rows {}; smallest strict preference None; near ties []; integer raw statuses {'0': 11}, max integrality deviation 0
+  queue6_burst_limit8 lp_reciprocal_square: {'identical_actions': 11}; fractional relaxations 2; relaxation gaps 0 (max 0); extraction losses []; action differences []; near ties []; integer raw statuses {'0': 11}, max integrality deviation 0
+  queue6_burst_limit8 lp_running_order: {'identical_actions': 11}; fractional relaxations 2; relaxation gaps 0 (max 0); extraction losses []; action differences []; near ties []; integer raw statuses {'0': 11}, max integrality deviation 0
+  queue6_burst_limit8 ilp_running_order: integer results reused from the rollout; integer raw statuses {'0': 11}, max integrality deviation 0
+  queue12_burst_limit8 adapted_vllm: reference vs running-order integer optimum {'identical_actions': 15}; violated LP rows {}; smallest strict preference None; near ties []; integer raw statuses {'0': 15}, max integrality deviation 0
+  queue12_burst_limit8 lp_reciprocal_square: {'identical_actions': 15}; fractional relaxations 3; relaxation gaps 0 (max 0); extraction losses []; action differences []; near ties []; integer raw statuses {'0': 15}, max integrality deviation 0
+  queue12_burst_limit8 lp_running_order: {'identical_actions': 15}; fractional relaxations 3; relaxation gaps 0 (max 0); extraction losses []; action differences []; near ties []; integer raw statuses {'0': 15}, max integrality deviation 0
+  queue12_burst_limit8 ilp_running_order: integer results reused from the rollout; integer raw statuses {'0': 15}, max integrality deviation 0
+  queue24_burst_limit8 adapted_vllm: reference vs running-order integer optimum {'identical_actions': 24}; violated LP rows {}; smallest strict preference None; near ties []; integer raw statuses {'0': 24}, max integrality deviation 0
+  queue24_burst_limit8 lp_reciprocal_square: {'extraction_loss': 4, 'identical_actions': 19}; fractional relaxations 9; relaxation gaps 6 (max 0.00272839); extraction losses [[0, 0.002832840236686396], [3, 0.0013892940096149609], [5, 0.0011160714285713969], [8, 0.0012755102040815647]]; action differences [[0, 'extraction_loss'], [3, 'extraction_loss'], [5, 'extraction_loss'], [8, 'extraction_loss']]; near ties []; integer raw statuses {'0': 23}, max integrality deviation 1.42109e-14
+  queue24_burst_limit8 lp_running_order: {'identical_actions': 24}; fractional relaxations 5; relaxation gaps 0 (max 0); extraction losses []; action differences []; near ties []; integer raw statuses {'0': 24}, max integrality deviation 0
+  queue24_burst_limit8 ilp_running_order: integer results reused from the rollout; integer raw statuses {'0': 24}, max integrality deviation 0
+  queue48_burst_limit8 adapted_vllm: reference vs running-order integer optimum {'identical_actions': 40, 'strict_objective_preference': 2}; violated LP rows {}; smallest strict preference 0.00493056; near ties []; integer raw statuses {'0': 42}, max integrality deviation 1.73372e-12
+  queue48_burst_limit8 lp_reciprocal_square: {'extraction_loss': 4, 'identical_actions': 36}; fractional relaxations 14; relaxation gaps 13 (max 0.00272839); extraction losses [[0, 0.002832840236686396], [3, 0.0013892940096149609], [5, 0.0011160714285713969], [8, 0.0012755102040815647]]; action differences [[0, 'extraction_loss'], [3, 'extraction_loss'], [5, 'extraction_loss'], [8, 'extraction_loss']]; near ties []; integer raw statuses {'0': 40}, max integrality deviation 1.42109e-14
+  queue48_burst_limit8 lp_running_order: {'identical_actions': 41, 'extraction_loss': 1}; fractional relaxations 10; relaxation gaps 2 (max 0.00544975); extraction losses [[25, 7.812499995907274e-05]]; action differences [[25, 'extraction_loss']]; near ties []; integer raw statuses {'0': 42}, max integrality deviation 1.73372e-12
+  queue48_burst_limit8 ilp_running_order: integer results reused from the rollout; integer raw statuses {'0': 42}, max integrality deviation 1.73372e-12
+  queue48_staggered_limit8 adapted_vllm: reference vs running-order integer optimum {'identical_actions': 104}; violated LP rows {}; smallest strict preference None; near ties []; integer raw statuses {'0': 104}, max integrality deviation 0
+  queue48_staggered_limit8 lp_reciprocal_square: {'identical_actions': 104}; fractional relaxations 8; relaxation gaps 0 (max 0); extraction losses []; action differences []; near ties []; integer raw statuses {'0': 104}, max integrality deviation 0
+  queue48_staggered_limit8 lp_running_order: {'identical_actions': 104}; fractional relaxations 8; relaxation gaps 0 (max 0); extraction losses []; action differences []; near ties []; integer raw statuses {'0': 104}, max integrality deviation 0
+  queue48_staggered_limit8 ilp_running_order: integer results reused from the rollout; integer raw statuses {'0': 104}, max integrality deviation 0
+  queue48_burst_pool12_limit8 adapted_vllm: reference vs running-order integer optimum {'identical_actions': 69, 'strict_objective_preference': 40, 'contract_difference': 8}; violated LP rows {'decode_prerequisite': 8}; smallest strict preference 0.000868056; near ties []; integer raw statuses {'0': 117}, max integrality deviation 0
+  queue48_burst_pool12_limit8 lp_reciprocal_square: {'extraction_loss': 6, 'identical_actions': 112}; fractional relaxations 92; relaxation gaps 92 (max 0.21875); extraction losses [[0, 0.0011121612243407686], [8, 0.00042201316801238065], [13, 6.174976915973573e-05], [20, 0.08376201460976551], [24, 0.000754462039253001], [34, 0.09130506245890868]]; action differences [[0, 'extraction_loss'], [8, 'extraction_loss'], [13, 'extraction_loss'], [20, 'extraction_loss'], [24, 'extraction_loss'], [34, 'extraction_loss']]; near ties []; integer raw statuses {'0': 118}, max integrality deviation 2.22045e-16
+  queue48_burst_pool12_limit8 lp_running_order: {'identical_actions': 105, 'extraction_loss': 12}; fractional relaxations 96; relaxation gaps 95 (max 2); extraction losses [[2, 7.953993055555543], [3, 0.0008149092970484162], [5, 0.00047839506180480385], [6, 0.0016319444444548026], [7, 0.00030561719256638753], [9, 0.00018838532656673124], [11, 0.0013351606224318857], [13, 0.00011654110676317941], [15, 0.0008603395061754782], [21, 0.0008603395061754782], [24, 0.0006384871441689199], [29, 0.0005569809130498982]]; action differences [[2, 'extraction_loss'], [3, 'extraction_loss'], [5, 'extraction_loss'], [6, 'extraction_loss'], [7, 'extraction_loss'], [9, 'extraction_loss'], [11, 'extraction_loss'], [13, 'extraction_loss'], [15, 'extraction_loss'], [21, 'extraction_loss'], [24, 'extraction_loss'], [29, 'extraction_loss']]; near ties []; integer raw statuses {'0': 117}, max integrality deviation 0
+  queue48_burst_pool12_limit8 ilp_running_order: integer results reused from the rollout; integer raw statuses {'0': 117}, max integrality deviation 0
+  queue96_burst_limit8 adapted_vllm: reference vs running-order integer optimum {'identical_actions': 72, 'strict_objective_preference': 6}; violated LP rows {}; smallest strict preference 0.00493056; near ties []; integer raw statuses {'0': 78}, max integrality deviation 0
+  queue96_burst_limit8 lp_reciprocal_square: {'extraction_loss': 4, 'identical_actions': 72}; fractional relaxations 29; relaxation gaps 28 (max 0.00272839); extraction losses [[0, 0.002832840236686396], [3, 0.0013892940096149609], [5, 0.0011160714285713969], [8, 0.0012755102040815647]]; action differences [[0, 'extraction_loss'], [3, 'extraction_loss'], [5, 'extraction_loss'], [8, 'extraction_loss']]; near ties []; integer raw statuses {'0': 76}, max integrality deviation 3.41061e-13
+  queue96_burst_limit8 lp_running_order: {'identical_actions': 71, 'extraction_loss': 5}; fractional relaxations 22; relaxation gaps 8 (max 0.00544975); extraction losses [[25, 7.812499995907274e-05], [38, 7.812499995907274e-05], [43, 7.812499995907274e-05], [56, 7.812499995907274e-05], [61, 7.812499995907274e-05]]; action differences [[25, 'extraction_loss'], [38, 'extraction_loss'], [43, 'extraction_loss'], [56, 'extraction_loss'], [61, 'extraction_loss']]; near ties []; integer raw statuses {'0': 76}, max integrality deviation 4.583e-13
+  queue96_burst_limit8 ilp_running_order: integer results reused from the rollout; integer raw statuses {'0': 77}, max integrality deviation 4.583e-13
+  queue96_burst_pool12_limit8 adapted_vllm: reference vs running-order integer optimum {'identical_actions': 129, 'strict_objective_preference': 88, 'contract_difference': 16}; violated LP rows {'decode_prerequisite': 16}; smallest strict preference 0.000868056; near ties []; integer raw statuses {'0': 233}, max integrality deviation 0
+  queue96_burst_pool12_limit8 lp_reciprocal_square: {'extraction_loss': 17, 'identical_actions': 218}; fractional relaxations 193; relaxation gaps 193 (max 0.21875); extraction losses [[0, 0.0011121612243407686], [8, 0.00042201316801238065], [13, 6.174976915973573e-05], [20, 0.08376201460976551], [24, 0.000754462039253001], [28, 0.00025666393283141353], [34, 0.08784485484645188], [38, 0.13527777777777783], [41, 0.0031790202683323887], [44, 0.2683333333333333], [46, 0.0029042091836735118], [50, 0.043109640831757945], [53, 0.013698646298616612], [61, 0.000754462039253001], [66, 0.0002519526329050059], [74, 0.000825638658048522], [76, 0.0019502528555794818]]; action differences [[0, 'extraction_loss'], [8, 'extraction_loss'], [13, 'extraction_loss'], [20, 'extraction_loss'], [24, 'extraction_loss'], [28, 'extraction_loss'], [34, 'extraction_loss'], [38, 'extraction_loss'], [41, 'extraction_loss'], [44, 'extraction_loss'], [46, 'extraction_loss'], [50, 'extraction_loss'], [53, 'extraction_loss'], [61, 'extraction_loss'], [66, 'extraction_loss'], [74, 'extraction_loss'], [76, 'extraction_loss']]; near ties []; integer raw statuses {'0': 235}, max integrality deviation 2.22045e-16
+  queue96_burst_pool12_limit8 lp_running_order: {'identical_actions': 203, 'extraction_loss': 26}; fractional relaxations 200; relaxation gaps 195 (max 3.7566); extraction losses [[2, 7.953993055555543], [3, 0.0008149092970484162], [5, 0.00047839506180480385], [6, 0.0016319444444548026], [7, 0.00030561719256638753], [9, 0.00018838532656673124], [11, 0.0013351606224318857], [13, 0.00011654110676317941], [15, 0.0008603395061754782], [18, 0.00010716266464783075], [21, 0.0008603395061754782], [23, 8.491124260245897e-05], [28, 0.0009452507487850426], [32, 0.0006384871441724727], [37, 0.0006484739686065666], [41, 0.0004896374230156653], [43, 8.491124260245897e-05], [47, 0.00043349631519618015], [50, 8.491124260245897e-05], [52, 0.00038628472222512755], [57, 9.149305556377385e-05], [61, 7.370489347913178e-05], [63, 0.00038628472222157484], [79, 0.00034625307498936664], [92, 0.000386284722222463], [105, 0.000312046114742337]]; action differences [[2, 'extraction_loss'], [3, 'extraction_loss'], [5, 'extraction_loss'], [6, 'extraction_loss'], [7, 'extraction_loss'], [9, 'extraction_loss'], [11, 'extraction_loss'], [13, 'extraction_loss'], [15, 'extraction_loss'], [18, 'extraction_loss'], [21, 'extraction_loss'], [23, 'extraction_loss'], [28, 'extraction_loss'], [32, 'extraction_loss'], [37, 'extraction_loss'], [41, 'extraction_loss'], [43, 'extraction_loss'], [47, 'extraction_loss'], [50, 'extraction_loss'], [52, 'extraction_loss'], [57, 'extraction_loss'], [61, 'extraction_loss'], [63, 'extraction_loss'], [79, 'extraction_loss'], [92, 'extraction_loss'], [105, 'extraction_loss']]; near ties []; integer raw statuses {'0': 229}, max integrality deviation 0
+  queue96_burst_pool12_limit8 ilp_running_order: integer results reused from the rollout; integer raw statuses {'0': 233}, max integrality deviation 1.11022e-16
+
+Numerical scale (eligible terms over all valid problems)
+  two_request_limit1 adapted_vllm: max rank 1, min positive coefficient 0.03125, min gaps {'prefill_token': 0.0938, 'full_chunk': 0.375}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00352233 s
+  two_request_limit1 lp_reciprocal_square: max rank 1, min positive coefficient 0.03125, min gaps {'prefill_token': 0.169, 'full_chunk': 0.75}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00124206 s
+  two_request_limit1 lp_running_order: max rank 1, min positive coefficient 0.03125, min gaps {'prefill_token': 0.0938, 'full_chunk': 0.375}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00126678 s
+  two_request_limit1 ilp_running_order: max rank 1, min positive coefficient 0.03125, min gaps {'prefill_token': 0.0938, 'full_chunk': 0.375}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve None s
+  two_request_limit2 adapted_vllm: max rank 1, min positive coefficient 0.03125, min gaps {'prefill_token': 0.0938, 'full_chunk': 0.375, 'penalty': 2.0, 'decode': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00142902 s
+  two_request_limit2 lp_reciprocal_square: max rank 1, min positive coefficient 0.03125, min gaps {'prefill_token': 0.169, 'full_chunk': 0.75}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00126108 s
+  two_request_limit2 lp_running_order: max rank 1, min positive coefficient 0.03125, min gaps {'prefill_token': 0.0938, 'full_chunk': 0.375}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00119643 s
+  two_request_limit2 ilp_running_order: max rank 1, min positive coefficient 0.03125, min gaps {'prefill_token': 0.0938, 'full_chunk': 0.375}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve None s
+  memory_pressure_limit4 adapted_vllm: max rank 3, min positive coefficient 0.000976562, min gaps {'prefill_token': 0.00076, 'full_chunk': 0.0122, 'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00143995 s
+  memory_pressure_limit4 lp_reciprocal_square: max rank 3, min positive coefficient 0.00390625, min gaps {'prefill_token': 0.00263, 'full_chunk': 0.0486, 'decode': 0.0486, 'penalty': 0.0486}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00142834 s
+  memory_pressure_limit4 lp_running_order: max rank 3, min positive coefficient 0.000976562, min gaps {'prefill_token': 0.00076, 'full_chunk': 0.0122, 'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00145229 s
+  memory_pressure_limit4 ilp_running_order: max rank 3, min positive coefficient 0.000976562, min gaps {'prefill_token': 0.00076, 'full_chunk': 0.0122, 'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve None s
+  equal_burst_ample_limit4 adapted_vllm: max rank 5, min positive coefficient 0.000868056, min gaps {'prefill_token': 0.000382, 'full_chunk': 0.00611, 'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00185305 s
+  equal_burst_ample_limit4 lp_reciprocal_square: max rank 5, min positive coefficient 0.00173611, min gaps {'prefill_token': 0.000764, 'full_chunk': 0.0122, 'decode': 0.0486, 'penalty': 0.0486}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00164771 s
+  equal_burst_ample_limit4 lp_running_order: max rank 5, min positive coefficient 0.000868056, min gaps {'prefill_token': 0.000382, 'full_chunk': 0.00611, 'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00183038 s
+  equal_burst_ample_limit4 ilp_running_order: max rank 5, min positive coefficient 0.000868056, min gaps {'prefill_token': 0.000382, 'full_chunk': 0.00611, 'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve None s
+  mixed_burst_ample_limit4 adapted_vllm: max rank 5, min positive coefficient 0.000868056, min gaps {'prefill_token': 0.000382, 'full_chunk': 0.00543, 'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00208347 s
+  mixed_burst_ample_limit4 lp_reciprocal_square: max rank 5, min positive coefficient 0.000868056, min gaps {'prefill_token': 0.000422, 'full_chunk': 0.0122, 'decode': 0.0486, 'penalty': 0.0486}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00193986 s
+  mixed_burst_ample_limit4 lp_running_order: max rank 5, min positive coefficient 0.000868056, min gaps {'prefill_token': 0.000382, 'full_chunk': 0.00543, 'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00192486 s
+  mixed_burst_ample_limit4 ilp_running_order: max rank 5, min positive coefficient 0.000868056, min gaps {'prefill_token': 0.000382, 'full_chunk': 0.00543, 'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve None s
+  mixed_staggered_ample_limit4 adapted_vllm: max rank 2, min positive coefficient 0.03125, min gaps {'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00127098 s
+  mixed_staggered_ample_limit4 lp_reciprocal_square: max rank 2, min positive coefficient 0.00347222, min gaps {'decode': 0.75, 'penalty': 0.75}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00125558 s
+  mixed_staggered_ample_limit4 lp_running_order: max rank 2, min positive coefficient 0.03125, min gaps {'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00116367 s
+  mixed_staggered_ample_limit4 ilp_running_order: max rank 2, min positive coefficient 0.03125, min gaps {'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve None s
+  mixed_staggered_tight_limit4 adapted_vllm: max rank 2, min positive coefficient 0.03125, min gaps {'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00128986 s
+  mixed_staggered_tight_limit4 lp_reciprocal_square: max rank 2, min positive coefficient 0.00347222, min gaps {'decode': 0.75, 'penalty': 0.75}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00114375 s
+  mixed_staggered_tight_limit4 lp_running_order: max rank 2, min positive coefficient 0.03125, min gaps {'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00115684 s
+  mixed_staggered_tight_limit4 ilp_running_order: max rank 2, min positive coefficient 0.03125, min gaps {'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve None s
+  queue6_burst_limit8 adapted_vllm: max rank 5, min positive coefficient 0.000217014, min gaps {'prefill_token': 9.55e-05, 'full_chunk': 0.000868, 'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00194555 s
+  queue6_burst_limit8 lp_reciprocal_square: max rank 5, min positive coefficient 0.000217014, min gaps {'prefill_token': 0.000408, 'full_chunk': 0.0122, 'decode': 0.0225, 'penalty': 0.0122}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00191592 s
+  queue6_burst_limit8 lp_running_order: max rank 5, min positive coefficient 0.000217014, min gaps {'prefill_token': 9.55e-05, 'full_chunk': 0.000868, 'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00191069 s
+  queue6_burst_limit8 ilp_running_order: max rank 5, min positive coefficient 0.000217014, min gaps {'prefill_token': 9.55e-05, 'full_chunk': 0.000868, 'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve None s
+  queue12_burst_limit8 adapted_vllm: max rank 11, min positive coefficient 5.42535e-05, min gaps {'prefill_token': 1.03e-05, 'full_chunk': 0.000313, 'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 2, 'penalty': 0}, max offline solve 0.00236839 s
+  queue12_burst_limit8 lp_reciprocal_square: max rank 11, min positive coefficient 5.42535e-05, min gaps {'prefill_token': 2.71e-05, 'full_chunk': 0.00132, 'decode': 0.00478, 'penalty': 0.00478}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00306932 s
+  queue12_burst_limit8 lp_running_order: max rank 11, min positive coefficient 5.42535e-05, min gaps {'prefill_token': 1.03e-05, 'full_chunk': 0.000313, 'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 2, 'penalty': 0}, max offline solve 0.00235503 s
+  queue12_burst_limit8 ilp_running_order: max rank 11, min positive coefficient 5.42535e-05, min gaps {'prefill_token': 1.03e-05, 'full_chunk': 0.000313, 'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 2, 'penalty': 0}, max offline solve None s
+  queue24_burst_limit8 adapted_vllm: max rank 23, min positive coefficient 1.35634e-05, min gaps {'prefill_token': 1.21e-06, 'full_chunk': 6.01e-06, 'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 9, 'penalty': 0}, max offline solve 0.00328621 s
+  queue24_burst_limit8 lp_reciprocal_square: max rank 23, min positive coefficient 1.35634e-05, min gaps {'prefill_token': 1.88e-07, 'full_chunk': 0.000154, 'decode': 0.00478, 'penalty': 0.00478}, exact ties {'decode': 0, 'prefill_token': 6, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00409409 s
+  queue24_burst_limit8 lp_running_order: max rank 23, min positive coefficient 1.35634e-05, min gaps {'prefill_token': 1.21e-06, 'full_chunk': 6.01e-06, 'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 9, 'penalty': 0}, max offline solve 0.00318948 s
+  queue24_burst_limit8 ilp_running_order: max rank 23, min positive coefficient 1.35634e-05, min gaps {'prefill_token': 1.21e-06, 'full_chunk': 6.01e-06, 'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 9, 'penalty': 0}, max offline solve None s
+  queue48_burst_limit8 adapted_vllm: max rank 47, min positive coefficient 3.39084e-06, min gaps {'prefill_token': 1.46e-07, 'full_chunk': 1.06e-07, 'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 41, 'penalty': 0}, max offline solve 0.00858033 s
+  queue48_burst_limit8 lp_reciprocal_square: max rank 47, min positive coefficient 3.39084e-06, min gaps {'prefill_token': 4.96e-08, 'full_chunk': 1.87e-05, 'decode': 0.00478, 'penalty': 0.00478}, exact ties {'decode': 0, 'prefill_token': 29, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00811842 s
+  queue48_burst_limit8 lp_running_order: max rank 47, min positive coefficient 3.39084e-06, min gaps {'prefill_token': 1.46e-07, 'full_chunk': 1.06e-07, 'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 39, 'penalty': 0}, max offline solve 0.00861159 s
+  queue48_burst_limit8 ilp_running_order: max rank 47, min positive coefficient 3.39084e-06, min gaps {'prefill_token': 1.46e-07, 'full_chunk': 1.06e-07, 'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 40, 'penalty': 0}, max offline solve None s
+  queue48_staggered_limit8 adapted_vllm: max rank 3, min positive coefficient 0.0078125, min gaps {'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.001793 s
+  queue48_staggered_limit8 lp_reciprocal_square: max rank 3, min positive coefficient 0.000868056, min gaps {'decode': 0.139, 'penalty': 0.139}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00152398 s
+  queue48_staggered_limit8 lp_running_order: max rank 3, min positive coefficient 0.0078125, min gaps {'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00174229 s
+  queue48_staggered_limit8 ilp_running_order: max rank 3, min positive coefficient 0.0078125, min gaps {'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 0, 'penalty': 0}, max offline solve None s
+  queue48_burst_pool12_limit8 adapted_vllm: max rank 47, min positive coefficient 3.39084e-06, min gaps {'prefill_token': 1.46e-07, 'full_chunk': 1.06e-07, 'decode': 4.0, 'penalty': 4.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 146, 'penalty': 0}, max offline solve 0.0225157 s
+  queue48_burst_pool12_limit8 lp_reciprocal_square: max rank 47, min positive coefficient 3.39084e-06, min gaps {'prefill_token': 4.96e-08, 'full_chunk': 1.87e-05, 'decode': 0.00478, 'penalty': 0.00478}, exact ties {'decode': 0, 'prefill_token': 37, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00961229 s
+  queue48_burst_pool12_limit8 lp_running_order: max rank 47, min positive coefficient 3.39084e-06, min gaps {'prefill_token': 1.46e-07, 'full_chunk': 1.06e-07, 'decode': 4.0, 'penalty': 4.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 18, 'penalty': 0}, max offline solve 0.011808 s
+  queue48_burst_pool12_limit8 ilp_running_order: max rank 47, min positive coefficient 3.39084e-06, min gaps {'prefill_token': 1.46e-07, 'full_chunk': 1.06e-07, 'decode': 4.0, 'penalty': 4.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 28, 'penalty': 0}, max offline solve None s
+  queue96_burst_limit8 adapted_vllm: max rank 95, min positive coefficient 8.47711e-07, min gaps {'prefill_token': 1.79e-08, 'full_chunk': 4.17e-08, 'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 187, 'penalty': 0}, max offline solve 0.018992 s
+  queue96_burst_limit8 lp_reciprocal_square: max rank 95, min positive coefficient 8.47711e-07, min gaps {'prefill_token': 2.76e-09, 'full_chunk': 2.3e-06, 'decode': 0.00478, 'penalty': 0.00478}, exact ties {'decode': 0, 'prefill_token': 130, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.0254934 s
+  queue96_burst_limit8 lp_running_order: max rank 95, min positive coefficient 8.47711e-07, min gaps {'prefill_token': 1.79e-08, 'full_chunk': 4.17e-08, 'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 142, 'penalty': 0}, max offline solve 0.0190982 s
+  queue96_burst_limit8 ilp_running_order: max rank 95, min positive coefficient 8.47711e-07, min gaps {'prefill_token': 1.79e-08, 'full_chunk': 4.17e-08, 'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 163, 'penalty': 0}, max offline solve None s
+  queue96_burst_pool12_limit8 adapted_vllm: max rank 95, min positive coefficient 8.47711e-07, min gaps {'prefill_token': 1.79e-08, 'full_chunk': 4.17e-08, 'decode': 4.0, 'penalty': 4.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 564, 'penalty': 0}, max offline solve 0.0622379 s
+  queue96_burst_pool12_limit8 lp_reciprocal_square: max rank 95, min positive coefficient 8.47711e-07, min gaps {'prefill_token': 2.76e-09, 'full_chunk': 2.3e-06, 'decode': 0.00478, 'penalty': 0.00478}, exact ties {'decode': 0, 'prefill_token': 254, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.0238312 s
+  queue96_burst_pool12_limit8 lp_running_order: max rank 95, min positive coefficient 8.47711e-07, min gaps {'prefill_token': 1.79e-08, 'full_chunk': 4.17e-08, 'decode': 4.0, 'penalty': 4.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 109, 'penalty': 0}, max offline solve 0.0226882 s
+  queue96_burst_pool12_limit8 ilp_running_order: max rank 95, min positive coefficient 8.47711e-07, min gaps {'prefill_token': 1.79e-08, 'full_chunk': 4.17e-08, 'decode': 4.0, 'penalty': 4.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 118, 'penalty': 0}, max offline solve None s
+
+Victims: [decision, victim, running position / count, had output, reasons, admitted in the same decision]
+  memory_pressure_limit4 adapted_vllm:
+    2 D 3/4 True ['decode_block_demand'] []
+    2 C 2/4 True ['decode_block_demand'] []
+  memory_pressure_limit4 lp_reciprocal_square:
+    1 D 3/4 False ['lp_decode_prerequisite'] []
+    2 C 2/3 True ['decode_block_demand'] []
+    3 B 1/2 True ['admission_charges', 'lp_decode_prerequisite'] ['D']
+    6 B 1/2 True ['lp_decode_prerequisite'] []
+    8 C 1/2 False ['lp_decode_prerequisite'] []
+  memory_pressure_limit4 lp_running_order:
+    1 D 3/4 False ['lp_decode_prerequisite'] []
+    2 C 2/3 True ['decode_block_demand'] []
+    3 B 1/2 True ['admission_charges', 'lp_decode_prerequisite'] ['D']
+    6 B 1/2 True ['lp_decode_prerequisite'] []
+    8 C 1/2 False ['lp_decode_prerequisite'] []
+  memory_pressure_limit4 ilp_running_order:
+    1 D 3/4 False ['lp_decode_prerequisite'] []
+    2 C 2/3 True ['decode_block_demand'] []
+    3 B 1/2 True ['admission_charges', 'lp_decode_prerequisite'] ['D']
+    6 B 1/2 True ['lp_decode_prerequisite'] []
+    8 C 1/2 False ['lp_decode_prerequisite'] []
+  queue48_burst_pool12_limit8 adapted_vllm:
+    23 R14 3/4 False ['decode_block_demand'] []
+    38 R20 3/4 True ['decode_block_demand'] []
+    52 R26 3/4 False ['decode_block_demand'] []
+    67 R32 3/4 True ['decode_block_demand'] []
+    81 R38 3/4 False ['decode_block_demand'] []
+    96 R44 3/4 True ['decode_block_demand'] []
+  queue48_burst_pool12_limit8 lp_reciprocal_square:
+    2 R08 6/8 True ['decode_block_demand'] []
+    11 R04 4/5 True ['admission_charges', 'lp_decode_prerequisite'] ['R21', 'R24']
+    20 R16 2/4 False ['admission_charges', 'lp_decode_prerequisite'] ['R36', 'R27']
+    25 R38 4/5 False ['decode_block_demand'] []
+    34 R34 2/4 True ['decode_block_demand', 'admission_charges'] ['R44']
+  queue48_burst_pool12_limit8 lp_running_order:
+    2 R04 4/6 False ['decode_block_demand', 'admission_charges'] ['R07', 'R08']
+    18 R27 4/5 False ['decode_block_demand'] []
+  queue48_burst_pool12_limit8 ilp_running_order:
+    2 R06 5/6 False ['decode_block_demand'] []
+    4 R13 5/6 False ['lp_decode_prerequisite'] []
+    12 R25 4/5 False ['decode_block_demand'] []
+    16 R21 4/5 False ['decode_block_demand', 'admission_charges'] ['R30']
+    17 R30 4/5 False ['lp_decode_prerequisite'] []
+    21 R20 4/5 False ['decode_block_demand'] []
+  queue96_burst_pool12_limit8 adapted_vllm:
+    23 R14 3/4 False ['decode_block_demand'] []
+    38 R20 3/4 True ['decode_block_demand'] []
+    52 R26 3/4 False ['decode_block_demand'] []
+    67 R32 3/4 True ['decode_block_demand'] []
+    81 R38 3/4 False ['decode_block_demand'] []
+    96 R44 3/4 True ['decode_block_demand'] []
+    110 R50 3/4 False ['decode_block_demand'] []
+    125 R56 3/4 True ['decode_block_demand'] []
+    139 R62 3/4 False ['decode_block_demand'] []
+    154 R68 3/4 True ['decode_block_demand'] []
+    168 R74 3/4 False ['decode_block_demand'] []
+    183 R80 3/4 True ['decode_block_demand'] []
+    197 R86 3/4 False ['decode_block_demand'] []
+    212 R92 3/4 True ['decode_block_demand'] []
+  queue96_burst_pool12_limit8 lp_reciprocal_square:
+    2 R08 6/8 True ['decode_block_demand'] []
+    11 R04 4/5 True ['admission_charges', 'lp_decode_prerequisite'] ['R21', 'R24']
+    20 R16 2/4 False ['admission_charges', 'lp_decode_prerequisite'] ['R36', 'R27']
+    25 R38 4/5 False ['decode_block_demand'] []
+    34 R34 2/4 True ['decode_block_demand', 'admission_charges'] ['R44', 'R48']
+    38 R34 2/5 True ['admission_charges', 'lp_decode_prerequisite'] ['R40']
+    41 R34 2/3 False ['admission_charges', 'lp_decode_prerequisite'] ['R46']
+    44 R34 1/3 False ['admission_charges', 'lp_decode_prerequisite'] ['R51', 'R55', 'R60']
+    50 R61 3/5 True ['admission_charges', 'lp_decode_prerequisite'] ['R67']
+    53 R62 5/7 False ['decode_block_demand', 'admission_charges'] ['R78']
+    60 R63 4/5 False ['admission_charges', 'lp_decode_prerequisite'] ['R91']
+  queue96_burst_pool12_limit8 lp_running_order:
+    2 R04 4/6 False ['decode_block_demand', 'admission_charges'] ['R07', 'R08']
+    18 R27 4/5 False ['decode_block_demand', 'admission_charges'] ['R48']
+    19 R48 4/5 False ['lp_decode_prerequisite'] []
+    22 R32 4/5 False ['decode_block_demand', 'admission_charges'] ['R49']
+    28 R22 3/4 False ['decode_block_demand', 'admission_charges'] ['R38', 'R60']
+    29 R60 4/5 False ['lp_decode_prerequisite'] []
+    38 R66 4/5 False ['lp_decode_prerequisite'] []
+    42 R56 4/5 False ['decode_block_demand', 'admission_charges'] ['R67']
+    48 R62 4/5 False ['decode_block_demand'] []
+    73 R75 2/3 False ['decode_block_demand'] []
+    92 R58 1/2 False ['admission_charges', 'lp_decode_prerequisite'] ['R86']
+    104 R87 2/3 True ['lp_decode_prerequisite'] []
+  queue96_burst_pool12_limit8 ilp_running_order:
+    2 R06 5/6 False ['decode_block_demand'] []
+    4 R13 5/6 False ['lp_decode_prerequisite'] []
+    12 R25 4/5 False ['decode_block_demand'] []
+    16 R21 4/5 False ['decode_block_demand', 'admission_charges'] ['R30']
+    17 R30 4/5 False ['lp_decode_prerequisite'] []
+    21 R20 4/5 False ['decode_block_demand'] []
+    36 R49 4/5 True ['decode_block_demand'] []
+    46 R57 4/5 False ['decode_block_demand', 'admission_charges'] ['R54']
+    50 R58 4/5 False ['admission_charges', 'lp_decode_prerequisite'] ['R60', 'R63']
+    55 R69 4/5 True ['decode_block_demand', 'admission_charges'] ['R73']
+    56 R73 4/5 False ['lp_decode_prerequisite'] []
+    61 R79 3/4 False ['lp_decode_prerequisite'] []
+    68 R78 4/5 False ['decode_block_demand'] []
+
+Mean first-prefill and completion decision index by prompt length (decision indices, not time)
+  two_request_limit1 adapted_vllm: 5: 0/2 (max done 2), 8: 3/5 (max done 5)
+  two_request_limit1 lp_reciprocal_square: 5: 0/2 (max done 2), 8: 3/5 (max done 5)
+  two_request_limit1 lp_running_order: 5: 0/2 (max done 2), 8: 3/5 (max done 5)
+  two_request_limit1 ilp_running_order: 5: 0/2 (max done 2), 8: 3/5 (max done 5)
+  two_request_limit2 adapted_vllm: 5: 0/2 (max done 2), 8: 0/3 (max done 3)
+  two_request_limit2 lp_reciprocal_square: 5: 0/2 (max done 2), 8: 3/5 (max done 5)
+  two_request_limit2 lp_running_order: 5: 0/2 (max done 2), 8: 3/5 (max done 5)
+  two_request_limit2 ilp_running_order: 5: 0/2 (max done 2), 8: 3/5 (max done 5)
+  memory_pressure_limit4 adapted_vllm: 16: 0/5 (max done 7)
+  memory_pressure_limit4 lp_reciprocal_square: 16: 0/8.25 (max done 14)
+  memory_pressure_limit4 lp_running_order: 16: 0/8.25 (max done 14)
+  memory_pressure_limit4 ilp_running_order: 16: 0/8.25 (max done 14)
+  equal_burst_ample_limit4 adapted_vllm: 16: 1.66667/5 (max done 8)
+  equal_burst_ample_limit4 lp_reciprocal_square: 16: 1.66667/5 (max done 8)
+  equal_burst_ample_limit4 lp_running_order: 16: 1.66667/5 (max done 8)
+  equal_burst_ample_limit4 ilp_running_order: 16: 1.66667/5 (max done 8)
+  mixed_burst_ample_limit4 adapted_vllm: 5: 0/2 (max done 2), 8: 0/3 (max done 3), 16: 0/2 (max done 2), 17: 0/5 (max done 5), 31: 3/7 (max done 7), 32: 4/9 (max done 9)
+  mixed_burst_ample_limit4 lp_reciprocal_square: 5: 0/2 (max done 2), 8: 0/3 (max done 3), 16: 0/2 (max done 2), 17: 0/5 (max done 5), 31: 3/7 (max done 7), 32: 4/9 (max done 9)
+  mixed_burst_ample_limit4 lp_running_order: 5: 0/2 (max done 2), 8: 0/3 (max done 3), 16: 0/2 (max done 2), 17: 0/5 (max done 5), 31: 3/7 (max done 7), 32: 4/9 (max done 9)
+  mixed_burst_ample_limit4 ilp_running_order: 5: 0/2 (max done 2), 8: 0/3 (max done 3), 16: 0/2 (max done 2), 17: 0/5 (max done 5), 31: 3/7 (max done 7), 32: 4/9 (max done 9)
+  mixed_staggered_ample_limit4 adapted_vllm: 5: 0/2 (max done 2), 8: 2/5 (max done 5), 16: 4/6 (max done 6), 17: 6/10 (max done 10), 31: 8/11 (max done 11), 32: 10/15 (max done 15)
+  mixed_staggered_ample_limit4 lp_reciprocal_square: 5: 0/2 (max done 2), 8: 2/5 (max done 5), 16: 4/6 (max done 6), 17: 6/10 (max done 10), 31: 8/11 (max done 11), 32: 10/15 (max done 15)
+  mixed_staggered_ample_limit4 lp_running_order: 5: 0/2 (max done 2), 8: 2/5 (max done 5), 16: 4/6 (max done 6), 17: 6/10 (max done 10), 31: 8/11 (max done 11), 32: 10/15 (max done 15)
+  mixed_staggered_ample_limit4 ilp_running_order: 5: 0/2 (max done 2), 8: 2/5 (max done 5), 16: 4/6 (max done 6), 17: 6/10 (max done 10), 31: 8/11 (max done 11), 32: 10/15 (max done 15)
+  mixed_staggered_tight_limit4 adapted_vllm: 5: 0/2 (max done 2), 8: 2/5 (max done 5), 16: 4/6 (max done 6), 17: 6/10 (max done 10), 31: 8/11 (max done 11), 32: 10/15 (max done 15)
+  mixed_staggered_tight_limit4 lp_reciprocal_square: 5: 0/2 (max done 2), 8: 2/5 (max done 5), 16: 4/6 (max done 6), 17: 6/10 (max done 10), 31: 8/11 (max done 11), 32: 11/16 (max done 16)
+  mixed_staggered_tight_limit4 lp_running_order: 5: 0/2 (max done 2), 8: 2/5 (max done 5), 16: 4/6 (max done 6), 17: 6/10 (max done 10), 31: 8/11 (max done 11), 32: 11/16 (max done 16)
+  mixed_staggered_tight_limit4 ilp_running_order: 5: 0/2 (max done 2), 8: 2/5 (max done 5), 16: 4/6 (max done 6), 17: 6/10 (max done 10), 31: 8/11 (max done 11), 32: 11/16 (max done 16)
+  queue6_burst_limit8 adapted_vllm: 8: 0/2 (max done 2), 16: 0/4 (max done 4), 17: 0/8 (max done 8), 32: 0/2 (max done 2), 64: 0/5 (max done 5), 128: 1/10 (max done 10)
+  queue6_burst_limit8 lp_reciprocal_square: 8: 0/2 (max done 2), 16: 0/4 (max done 4), 17: 0/8 (max done 8), 32: 0/2 (max done 2), 64: 0/5 (max done 5), 128: 1/10 (max done 10)
+  queue6_burst_limit8 lp_running_order: 8: 0/2 (max done 2), 16: 0/4 (max done 4), 17: 0/8 (max done 8), 32: 0/2 (max done 2), 64: 0/5 (max done 5), 128: 1/10 (max done 10)
+  queue6_burst_limit8 ilp_running_order: 8: 0/2 (max done 2), 16: 0/4 (max done 4), 17: 0/8 (max done 8), 32: 0/2 (max done 2), 64: 0/5 (max done 5), 128: 1/10 (max done 10)
+  queue12_burst_limit8 adapted_vllm: 8: 1/3 (max done 4), 16: 1/5 (max done 6), 17: 1.5/9.5 (max done 11), 32: 1.5/3.5 (max done 5), 64: 2.5/7 (max done 9), 128: 3/12 (max done 14)
+  queue12_burst_limit8 lp_reciprocal_square: 8: 0/2 (max done 2), 16: 0/4 (max done 4), 17: 0/8 (max done 8), 32: 1.5/3.5 (max done 5), 64: 1.5/6 (max done 7), 128: 4/13 (max done 14)
+  queue12_burst_limit8 lp_running_order: 8: 1/3 (max done 4), 16: 1/5 (max done 6), 17: 1.5/9.5 (max done 11), 32: 1.5/3.5 (max done 5), 64: 2.5/7 (max done 9), 128: 3/12 (max done 14)
+  queue12_burst_limit8 ilp_running_order: 8: 1/3 (max done 4), 16: 1/5 (max done 6), 17: 1.5/9.5 (max done 11), 32: 1.5/3.5 (max done 5), 64: 2.5/7 (max done 9), 128: 3/12 (max done 14)
+  queue24_burst_limit8 adapted_vllm: 8: 4.75/6.75 (max done 13), 16: 4.75/8.75 (max done 15), 17: 5.5/13.5 (max done 20), 32: 6/8 (max done 14), 64: 7/11.25 (max done 18), 128: 7.5/16.5 (max done 23)
+  queue24_burst_limit8 lp_reciprocal_square: 8: 0.75/2.75 (max done 5), 16: 2.75/6.75 (max done 12), 17: 3.5/11.5 (max done 17), 32: 4.5/6.5 (max done 11), 64: 6.5/10.5 (max done 14), 128: 10/19 (max done 22)
+  queue24_burst_limit8 lp_running_order: 8: 4.75/6.75 (max done 13), 16: 4.75/8.75 (max done 15), 17: 5.5/13.5 (max done 20), 32: 6/8 (max done 14), 64: 7/11.25 (max done 18), 128: 7.5/16.5 (max done 23)
+  queue24_burst_limit8 ilp_running_order: 8: 4.75/6.75 (max done 13), 16: 4.75/8.75 (max done 15), 17: 5.5/13.5 (max done 20), 32: 6/8 (max done 14), 64: 7/11.25 (max done 18), 128: 7.5/16.5 (max done 23)
+  queue48_burst_limit8 adapted_vllm: 8: 13.375/15.375 (max done 31), 16: 13.375/17.375 (max done 33), 17: 14/22 (max done 37), 32: 14.375/16.375 (max done 31), 64: 16/20.125 (max done 36), 128: 16.5/25.5 (max done 41)
+  queue48_burst_limit8 lp_reciprocal_square: 8: 10.5/12.5 (max done 29), 16: 12/16 (max done 32), 17: 12.5/20.5 (max done 36), 32: 13.5/15.5 (max done 31), 64: 14.875/18.875 (max done 34), 128: 17.25/26.25 (max done 39)
+  queue48_burst_limit8 lp_running_order: 8: 13.375/15.375 (max done 31), 16: 13.625/17.625 (max done 34), 17: 14.375/22.375 (max done 38), 32: 15/17 (max done 32), 64: 15.875/20.125 (max done 35), 128: 15.75/24.75 (max done 41)
+  queue48_burst_limit8 ilp_running_order: 8: 13.375/15.375 (max done 31), 16: 13.5/17.5 (max done 33), 17: 14.25/22.25 (max done 38), 32: 14.875/16.875 (max done 32), 64: 15.75/19.875 (max done 34), 128: 16.125/25.125 (max done 41)
+  queue48_staggered_limit8 adapted_vllm: 8: 42/44 (max done 86), 16: 44/48 (max done 90), 17: 46/54 (max done 96), 32: 48/50 (max done 92), 64: 50/54 (max done 96), 128: 52/61 (max done 103)
+  queue48_staggered_limit8 lp_reciprocal_square: 8: 42/44 (max done 86), 16: 44/48 (max done 90), 17: 46/54 (max done 96), 32: 48/50 (max done 92), 64: 50/54 (max done 96), 128: 52/61 (max done 103)
+  queue48_staggered_limit8 lp_running_order: 8: 42/44 (max done 86), 16: 44/48 (max done 90), 17: 46/54 (max done 96), 32: 48/50 (max done 92), 64: 50/54 (max done 96), 128: 52/61 (max done 103)
+  queue48_staggered_limit8 ilp_running_order: 8: 42/44 (max done 86), 16: 44/48 (max done 90), 17: 46/54 (max done 96), 32: 48/50 (max done 92), 64: 50/54 (max done 96), 128: 52/61 (max done 103)
+  queue48_burst_pool12_limit8 adapted_vllm: 8: 44.375/46.375 (max done 96), 16: 44.375/48.375 (max done 98), 17: 45/56.75 (max done 107), 32: 51.875/53.875 (max done 105), 64: 51.875/56 (max done 107), 128: 57/65.5 (max done 116)
+  queue48_burst_pool12_limit8 lp_reciprocal_square: 8: 9.375/11.375 (max done 29), 16: 12.125/16.125 (max done 36), 17: 13.25/21.875 (max done 42), 32: 15.75/17.75 (max done 37), 64: 26.75/32.25 (max done 45), 128: 77.5/85.5 (max done 117)
+  queue48_burst_pool12_limit8 lp_running_order: 8: 6.125/8.125 (max done 15), 16: 7.25/11.25 (max done 20), 17: 13.5/21.5 (max done 37), 32: 15/17.375 (max done 32), 64: 27.625/33.5 (max done 44), 128: 76.5/84.5 (max done 116)
+  queue48_burst_pool12_limit8 ilp_running_order: 8: 12/14.5 (max done 31), 16: 9.25/13.75 (max done 23), 17: 20/28.25 (max done 45), 32: 18.125/20.625 (max done 36), 64: 21/25.125 (max done 43), 128: 76.375/84.5 (max done 116)
+  queue96_burst_limit8 adapted_vllm: 8: 31.1875/33.1875 (max done 67), 16: 31.1875/35.1875 (max done 69), 17: 31.75/39.75 (max done 73), 32: 31.9375/33.9375 (max done 67), 64: 34/38.0625 (max done 72), 128: 34.5/43.5 (max done 77)
+  queue96_burst_limit8 lp_reciprocal_square: 8: 28.5/30.5 (max done 65), 16: 29.9375/33.9375 (max done 67), 17: 30.5/38.5 (max done 72), 32: 31.125/33.125 (max done 66), 64: 32.125/36.3125 (max done 69), 128: 34.3125/43.3125 (max done 75)
+  queue96_burst_limit8 lp_running_order: 8: 30.6875/32.75 (max done 65), 16: 31.5/35.5 (max done 69), 17: 32.4375/40.4375 (max done 74), 32: 32.9375/34.9375 (max done 68), 64: 33.4375/37.625 (max done 70), 128: 33/42 (max done 75)
+  queue96_burst_limit8 ilp_running_order: 8: 30.9375/32.9375 (max done 66), 16: 31.125/35.125 (max done 68), 17: 31.875/39.875 (max done 73), 32: 32.4375/34.4375 (max done 67), 64: 33.375/37.4375 (max done 70), 128: 33.75/42.75 (max done 76)
+  queue96_burst_pool12_limit8 adapted_vllm: 8: 101.938/103.938 (max done 212), 16: 101.938/105.938 (max done 214), 17: 102.25/114.625 (max done 223), 32: 109.938/111.938 (max done 221), 64: 109.938/114 (max done 223), 128: 115/123.5 (max done 232)
+  queue96_burst_pool12_limit8 lp_reciprocal_square: 8: 28.5/30.5 (max done 60), 16: 31/35.25 (max done 64), 17: 37.6875/46.125 (max done 87), 32: 40.3125/42.4375 (max done 84), 64: 48.4375/54.4375 (max done 90), 128: 158.5/166.5 (max done 234)
+  queue96_burst_pool12_limit8 lp_running_order: 8: 22.875/25.3125 (max done 63), 16: 25.8125/29.8125 (max done 75), 17: 39.4375/47.8125 (max done 113), 32: 43/45.6875 (max done 108), 64: 65.25/71 (max done 120), 128: 146.625/154.875 (max done 228)
+  queue96_burst_pool12_limit8 ilp_running_order: 8: 35.125/37.5 (max done 77), 16: 31.3125/36 (max done 73), 17: 41.875/50 (max done 88), 32: 38.1875/41 (max done 78), 64: 41.75/46 (max done 83), 128: 156.5/164.5 (max done 232)
+
+First emitted difference between rollouts (closed loop): first index whose emitted output differs, and first index whose selected set (victims and served requests) differs
+  two_request_limit1 lp_running_order vs ilp_running_order: {'emitted': None, 'first_selection_difference': None}
+  two_request_limit1 adapted_vllm vs ilp_running_order: {'emitted': None, 'first_selection_difference': None}
+  two_request_limit1 adapted_vllm vs lp_running_order: {'emitted': None, 'first_selection_difference': None}
+  two_request_limit1 lp_reciprocal_square vs lp_running_order: {'emitted': None, 'first_selection_difference': None}
+  two_request_limit2 lp_running_order vs ilp_running_order: {'emitted': None, 'first_selection_difference': None}
+  two_request_limit2 adapted_vllm vs ilp_running_order: {'emitted': {'index': 0, 'same_before_state': True, 'a': [[], [[0, 5], [1, 3]]], 'b': [[], [[0, 5]]]}, 'first_selection_difference': 0}
+  two_request_limit2 adapted_vllm vs lp_running_order: {'emitted': {'index': 0, 'same_before_state': True, 'a': [[], [[0, 5], [1, 3]]], 'b': [[], [[0, 5]]]}, 'first_selection_difference': 0}
+  two_request_limit2 lp_reciprocal_square vs lp_running_order: {'emitted': None, 'first_selection_difference': None}
+  memory_pressure_limit4 lp_running_order vs ilp_running_order: {'emitted': None, 'first_selection_difference': None}
+  memory_pressure_limit4 adapted_vllm vs ilp_running_order: {'emitted': {'index': 1, 'same_before_state': True, 'a': [[], [[0, 0], [1, 0], [2, 0], [3, 0]]], 'b': [[3], [[0, 0], [1, 0], [2, 0]]]}, 'first_selection_difference': 1}
+  memory_pressure_limit4 adapted_vllm vs lp_running_order: {'emitted': {'index': 1, 'same_before_state': True, 'a': [[], [[0, 0], [1, 0], [2, 0], [3, 0]]], 'b': [[3], [[0, 0], [1, 0], [2, 0]]]}, 'first_selection_difference': 1}
+  memory_pressure_limit4 lp_reciprocal_square vs lp_running_order: {'emitted': None, 'first_selection_difference': None}
+  equal_burst_ample_limit4 lp_running_order vs ilp_running_order: {'emitted': None, 'first_selection_difference': None}
+  equal_burst_ample_limit4 adapted_vllm vs ilp_running_order: {'emitted': {'index': 2, 'same_before_state': True, 'a': [[], [[3, 2], [0, 0], [1, 0], [2, 0]]], 'b': [[], [[3, 2], [2, 0], [0, 0], [1, 0]]]}, 'first_selection_difference': None}
+  equal_burst_ample_limit4 adapted_vllm vs lp_running_order: {'emitted': {'index': 2, 'same_before_state': True, 'a': [[], [[3, 2], [0, 0], [1, 0], [2, 0]]], 'b': [[], [[3, 2], [2, 0], [0, 0], [1, 0]]]}, 'first_selection_difference': None}
+  equal_burst_ample_limit4 lp_reciprocal_square vs lp_running_order: {'emitted': None, 'first_selection_difference': None}
+  mixed_burst_ample_limit4 lp_running_order vs ilp_running_order: {'emitted': None, 'first_selection_difference': None}
+  mixed_burst_ample_limit4 adapted_vllm vs ilp_running_order: {'emitted': {'index': 2, 'same_before_state': True, 'a': [[], [[0, 0], [1, 0], [2, 0], [3, 0]]], 'b': [[], [[0, 0], [1, 0], [3, 0], [2, 0]]]}, 'first_selection_difference': None}
+  mixed_burst_ample_limit4 adapted_vllm vs lp_running_order: {'emitted': {'index': 2, 'same_before_state': True, 'a': [[], [[0, 0], [1, 0], [2, 0], [3, 0]]], 'b': [[], [[0, 0], [1, 0], [3, 0], [2, 0]]]}, 'first_selection_difference': None}
+  mixed_burst_ample_limit4 lp_reciprocal_square vs lp_running_order: {'emitted': None, 'first_selection_difference': None}
+  mixed_staggered_ample_limit4 lp_running_order vs ilp_running_order: {'emitted': None, 'first_selection_difference': None}
+  mixed_staggered_ample_limit4 adapted_vllm vs ilp_running_order: {'emitted': None, 'first_selection_difference': None}
+  mixed_staggered_ample_limit4 adapted_vllm vs lp_running_order: {'emitted': None, 'first_selection_difference': None}
+  mixed_staggered_ample_limit4 lp_reciprocal_square vs lp_running_order: {'emitted': None, 'first_selection_difference': None}
+  mixed_staggered_tight_limit4 lp_running_order vs ilp_running_order: {'emitted': None, 'first_selection_difference': None}
+  mixed_staggered_tight_limit4 adapted_vllm vs ilp_running_order: {'emitted': {'index': 10, 'same_before_state': True, 'a': [[], [[5, 30], [3, 0], [4, 0]]], 'b': [[], [[3, 0], [4, 0]]]}, 'first_selection_difference': 10}
+  mixed_staggered_tight_limit4 adapted_vllm vs lp_running_order: {'emitted': {'index': 10, 'same_before_state': True, 'a': [[], [[5, 30], [3, 0], [4, 0]]], 'b': [[], [[3, 0], [4, 0]]]}, 'first_selection_difference': 10}
+  mixed_staggered_tight_limit4 lp_reciprocal_square vs lp_running_order: {'emitted': None, 'first_selection_difference': None}
+  queue6_burst_limit8 lp_running_order vs ilp_running_order: {'emitted': None, 'first_selection_difference': None}
+  queue6_burst_limit8 adapted_vllm vs ilp_running_order: {'emitted': {'index': 2, 'same_before_state': True, 'a': [[], [[5, 13], [0, 0], [1, 0], [2, 0], [3, 0], [4, 0]]], 'b': [[], [[5, 13], [0, 0], [2, 0], [4, 0], [1, 0], [3, 0]]]}, 'first_selection_difference': None}
+  queue6_burst_limit8 adapted_vllm vs lp_running_order: {'emitted': {'index': 2, 'same_before_state': True, 'a': [[], [[5, 13], [0, 0], [1, 0], [2, 0], [3, 0], [4, 0]]], 'b': [[], [[5, 13], [0, 0], [2, 0], [4, 0], [1, 0], [3, 0]]]}, 'first_selection_difference': None}
+  queue6_burst_limit8 lp_reciprocal_square vs lp_running_order: {'emitted': None, 'first_selection_difference': None}
+  queue12_burst_limit8 lp_running_order vs ilp_running_order: {'emitted': None, 'first_selection_difference': None}
+  queue12_burst_limit8 adapted_vllm vs ilp_running_order: {'emitted': {'index': 2, 'same_before_state': True, 'a': [[], [[5, 13], [6, 8], [7, 16], [0, 0], [1, 0], [2, 0], [3, 0], [4, 0]]], 'b': [[], [[5, 13], [6, 8], [7, 16], [0, 0], [2, 0], [4, 0], [1, 0], [3, 0]]]}, 'first_selection_difference': None}
+  queue12_burst_limit8 adapted_vllm vs lp_running_order: {'emitted': {'index': 2, 'same_before_state': True, 'a': [[], [[5, 13], [6, 8], [7, 16], [0, 0], [1, 0], [2, 0], [3, 0], [4, 0]]], 'b': [[], [[5, 13], [6, 8], [7, 16], [0, 0], [2, 0], [4, 0], [1, 0], [3, 0]]]}, 'first_selection_difference': None}
+  queue12_burst_limit8 lp_reciprocal_square vs lp_running_order: {'emitted': {'index': 0, 'same_before_state': True, 'a': [[], [[0, 8], [1, 16], [2, 17], [3, 32], [4, 14], [6, 8], [7, 16], [8, 17]]], 'b': [[], [[0, 8], [1, 16], [2, 17], [3, 32], [4, 55]]]}, 'first_selection_difference': 0}
+  queue24_burst_limit8 lp_running_order vs ilp_running_order: {'emitted': None, 'first_selection_difference': None}
+  queue24_burst_limit8 adapted_vllm vs ilp_running_order: {'emitted': {'index': 2, 'same_before_state': True, 'a': [[], [[5, 13], [6, 8], [7, 16], [0, 0], [1, 0], [2, 0], [3, 0], [4, 0]]], 'b': [[], [[5, 13], [6, 8], [7, 16], [0, 0], [2, 0], [4, 0], [1, 0], [3, 0]]]}, 'first_selection_difference': None}
+  queue24_burst_limit8 adapted_vllm vs lp_running_order: {'emitted': {'index': 2, 'same_before_state': True, 'a': [[], [[5, 13], [6, 8], [7, 16], [0, 0], [1, 0], [2, 0], [3, 0], [4, 0]]], 'b': [[], [[5, 13], [6, 8], [7, 16], [0, 0], [2, 0], [4, 0], [1, 0], [3, 0]]]}, 'first_selection_difference': None}
+  queue24_burst_limit8 lp_reciprocal_square vs lp_running_order: {'emitted': {'index': 0, 'same_before_state': True, 'a': [[], [[0, 8], [1, 16], [2, 17], [3, 32], [6, 8], [7, 16], [8, 17], [12, 8]]], 'b': [[], [[0, 8], [1, 16], [2, 17], [3, 32], [4, 55]]]}, 'first_selection_difference': 0}
+  queue48_burst_limit8 lp_running_order vs ilp_running_order: {'emitted': {'index': 25, 'same_before_state': True, 'a': [[], [[37, 16], [41, 106], [29, 0], [35, 0], [32, 0], [36, 0], [33, 0], [34, 0]]], 'b': [[], [[37, 16], [38, 17], [29, 0], [35, 0], [32, 0], [36, 0], [33, 0], [34, 0]]]}, 'first_selection_difference': 25}
+  queue48_burst_limit8 adapted_vllm vs ilp_running_order: {'emitted': {'index': 2, 'same_before_state': True, 'a': [[], [[5, 13], [6, 8], [7, 16], [0, 0], [1, 0], [2, 0], [3, 0], [4, 0]]], 'b': [[], [[5, 13], [6, 8], [7, 16], [0, 0], [2, 0], [4, 0], [1, 0], [3, 0]]]}, 'first_selection_difference': 20}
+  queue48_burst_limit8 adapted_vllm vs lp_running_order: {'emitted': {'index': 2, 'same_before_state': True, 'a': [[], [[5, 13], [6, 8], [7, 16], [0, 0], [1, 0], [2, 0], [3, 0], [4, 0]]], 'b': [[], [[5, 13], [6, 8], [7, 16], [0, 0], [2, 0], [4, 0], [1, 0], [3, 0]]]}, 'first_selection_difference': 20}
+  queue48_burst_limit8 lp_reciprocal_square vs lp_running_order: {'emitted': {'index': 0, 'same_before_state': True, 'a': [[], [[0, 8], [1, 16], [2, 17], [3, 32], [6, 8], [7, 16], [8, 17], [12, 8]]], 'b': [[], [[0, 8], [1, 16], [2, 17], [3, 32], [4, 55]]]}, 'first_selection_difference': 0}
+  queue48_staggered_limit8 lp_running_order vs ilp_running_order: {'emitted': None, 'first_selection_difference': None}
+  queue48_staggered_limit8 adapted_vllm vs ilp_running_order: {'emitted': {'index': 13, 'same_before_state': True, 'a': [[], [[5, 0], [6, 0]]], 'b': [[], [[6, 0], [5, 0]]]}, 'first_selection_difference': None}
+  queue48_staggered_limit8 adapted_vllm vs lp_running_order: {'emitted': {'index': 13, 'same_before_state': True, 'a': [[], [[5, 0], [6, 0]]], 'b': [[], [[6, 0], [5, 0]]]}, 'first_selection_difference': None}
+  queue48_staggered_limit8 lp_reciprocal_square vs lp_running_order: {'emitted': None, 'first_selection_difference': None}
+  queue48_burst_pool12_limit8 lp_running_order vs ilp_running_order: {'emitted': {'index': 2, 'same_before_state': True, 'a': [[4], [[7, 16], [8, 17], [0, 0], [2, 0], [6, 0], [1, 0], [3, 0]]], 'b': [[6], [[0, 0], [2, 0], [4, 0], [1, 0], [3, 0]]]}, 'first_selection_difference': 2}
+  queue48_burst_pool12_limit8 adapted_vllm vs ilp_running_order: {'emitted': {'index': 1, 'same_before_state': True, 'a': [[], [[4, 9], [0, 0], [1, 0], [2, 0], [3, 0]]], 'b': [[], [[4, 9], [6, 8], [0, 0], [1, 0], [2, 0], [3, 0]]]}, 'first_selection_difference': 1}
+  queue48_burst_pool12_limit8 adapted_vllm vs lp_running_order: {'emitted': {'index': 1, 'same_before_state': True, 'a': [[], [[4, 9], [0, 0], [1, 0], [2, 0], [3, 0]]], 'b': [[], [[4, 9], [6, 8], [0, 0], [1, 0], [2, 0], [3, 0]]]}, 'first_selection_difference': 1}
+  queue48_burst_pool12_limit8 lp_reciprocal_square vs lp_running_order: {'emitted': {'index': 0, 'same_before_state': True, 'a': [[], [[0, 8], [1, 16], [2, 17], [3, 32], [6, 8], [7, 16], [8, 17], [12, 8]]], 'b': [[], [[0, 8], [1, 16], [2, 17], [3, 32], [4, 55]]]}, 'first_selection_difference': 0}
+  queue96_burst_limit8 lp_running_order vs ilp_running_order: {'emitted': {'index': 25, 'same_before_state': True, 'a': [[], [[37, 16], [41, 106], [29, 0], [35, 0], [32, 0], [36, 0], [33, 0], [34, 0]]], 'b': [[], [[37, 16], [38, 17], [29, 0], [35, 0], [32, 0], [36, 0], [33, 0], [34, 0]]]}, 'first_selection_difference': 25}
+  queue96_burst_limit8 adapted_vllm vs ilp_running_order: {'emitted': {'index': 2, 'same_before_state': True, 'a': [[], [[5, 13], [6, 8], [7, 16], [0, 0], [1, 0], [2, 0], [3, 0], [4, 0]]], 'b': [[], [[5, 13], [6, 8], [7, 16], [0, 0], [2, 0], [4, 0], [1, 0], [3, 0]]]}, 'first_selection_difference': 20}
+  queue96_burst_limit8 adapted_vllm vs lp_running_order: {'emitted': {'index': 2, 'same_before_state': True, 'a': [[], [[5, 13], [6, 8], [7, 16], [0, 0], [1, 0], [2, 0], [3, 0], [4, 0]]], 'b': [[], [[5, 13], [6, 8], [7, 16], [0, 0], [2, 0], [4, 0], [1, 0], [3, 0]]]}, 'first_selection_difference': 20}
+  queue96_burst_limit8 lp_reciprocal_square vs lp_running_order: {'emitted': {'index': 0, 'same_before_state': True, 'a': [[], [[0, 8], [1, 16], [2, 17], [3, 32], [6, 8], [7, 16], [8, 17], [12, 8]]], 'b': [[], [[0, 8], [1, 16], [2, 17], [3, 32], [4, 55]]]}, 'first_selection_difference': 0}
+  queue96_burst_pool12_limit8 lp_running_order vs ilp_running_order: {'emitted': {'index': 2, 'same_before_state': True, 'a': [[4], [[7, 16], [8, 17], [0, 0], [2, 0], [6, 0], [1, 0], [3, 0]]], 'b': [[6], [[0, 0], [2, 0], [4, 0], [1, 0], [3, 0]]]}, 'first_selection_difference': 2}
+  queue96_burst_pool12_limit8 adapted_vllm vs ilp_running_order: {'emitted': {'index': 1, 'same_before_state': True, 'a': [[], [[4, 9], [0, 0], [1, 0], [2, 0], [3, 0]]], 'b': [[], [[4, 9], [6, 8], [0, 0], [1, 0], [2, 0], [3, 0]]]}, 'first_selection_difference': 1}
+  queue96_burst_pool12_limit8 adapted_vllm vs lp_running_order: {'emitted': {'index': 1, 'same_before_state': True, 'a': [[], [[4, 9], [0, 0], [1, 0], [2, 0], [3, 0]]], 'b': [[], [[4, 9], [6, 8], [0, 0], [1, 0], [2, 0], [3, 0]]]}, 'first_selection_difference': 1}
+  queue96_burst_pool12_limit8 lp_reciprocal_square vs lp_running_order: {'emitted': {'index': 0, 'same_before_state': True, 'a': [[], [[0, 8], [1, 16], [2, 17], [3, 32], [6, 8], [7, 16], [8, 17], [12, 8]]], 'b': [[], [[0, 8], [1, 16], [2, 17], [3, 32], [4, 55]]]}, 'first_selection_difference': 0}
+
+Running-order exact checks (decisions with running-order coefficients; the control LP is not included)
+  two_request_limit1 adapted_vllm: 6 decisions, enumerated 6 (skipped 0); max weight 2, max objective range 5, min positive coefficient 0.03125, max coefficient ratio 16, min float margin 1; integer vs other {'reference: same_actions': 6}; findings {}
+  two_request_limit1 lp_running_order: 6 decisions, enumerated 6 (skipped 0); max weight 2, max objective range 5, min positive coefficient 0.03125, max coefficient ratio 16, min float margin 1; integer vs other {'lp_plan: same_actions': 6}; findings {}
+  two_request_limit1 ilp_running_order: 6 decisions, enumerated 6 (skipped 0); max weight 2, max objective range 5, min positive coefficient 0.03125, max coefficient ratio 16, min float margin 1; integer vs other {}; findings {}
+  two_request_limit2 adapted_vllm: 4 decisions, enumerated 4 (skipped 0); max weight 7, max objective range 20, min positive coefficient 0.03125, max coefficient ratio 7, min float margin 1; integer vs other {'reference: infeasible': 3, 'reference: same_actions': 1}; findings {}
+  two_request_limit2 lp_running_order: 6 decisions, enumerated 6 (skipped 0); max weight 2, max objective range 5, min positive coefficient 0.03125, max coefficient ratio 16, min float margin 1; integer vs other {'lp_plan: same_actions': 6}; findings {}
+  two_request_limit2 ilp_running_order: 6 decisions, enumerated 6 (skipped 0); max weight 2, max objective range 5, min positive coefficient 0.03125, max coefficient ratio 16, min float margin 1; integer vs other {}; findings {}
+  memory_pressure_limit4 adapted_vllm: 8 decisions, enumerated 7 (skipped 1); max weight 27, max objective range 80, min positive coefficient 0.000976562, max coefficient ratio 1536, min float margin 1; integer vs other {'reference: same_actions': 3, 'reference: infeasible': 5}; findings {}
+  memory_pressure_limit4 lp_running_order: 15 decisions, enumerated 14 (skipped 1); max weight 27, max objective range 80, min positive coefficient 0.000976562, max coefficient ratio 1536, min float margin 1; integer vs other {'lp_plan: same_actions': 15}; findings {}
+  memory_pressure_limit4 ilp_running_order: 15 decisions, enumerated 14 (skipped 1); max weight 27, max objective range 80, min positive coefficient 0.000976562, max coefficient ratio 1536, min float margin 1; integer vs other {}; findings {}
+  equal_burst_ample_limit4 adapted_vllm: 9 decisions, enumerated 7 (skipped 2); max weight 72, max objective range 215, min positive coefficient 0.000868056, max coefficient ratio 9216, min float margin 1; integer vs other {'reference: same_actions': 9}; findings {}
+  equal_burst_ample_limit4 lp_running_order: 9 decisions, enumerated 7 (skipped 2); max weight 72, max objective range 215, min positive coefficient 0.000868056, max coefficient ratio 9216, min float margin 1; integer vs other {'lp_plan: same_actions': 9}; findings {}
+  equal_burst_ample_limit4 ilp_running_order: 9 decisions, enumerated 7 (skipped 2); max weight 72, max objective range 215, min positive coefficient 0.000868056, max coefficient ratio 9216, min float margin 1; integer vs other {}; findings {}
+  mixed_burst_ample_limit4 adapted_vllm: 10 decisions, enumerated 7 (skipped 3); max weight 288, max objective range 863, min positive coefficient 0.000868056, max coefficient ratio 36864, min float margin 1; integer vs other {'reference: same_actions': 10}; findings {}
+  mixed_burst_ample_limit4 lp_running_order: 10 decisions, enumerated 7 (skipped 3); max weight 288, max objective range 863, min positive coefficient 0.000868056, max coefficient ratio 36864, min float margin 1; integer vs other {'lp_plan: same_actions': 10}; findings {}
+  mixed_burst_ample_limit4 ilp_running_order: 10 decisions, enumerated 7 (skipped 3); max weight 288, max objective range 863, min positive coefficient 0.000868056, max coefficient ratio 36864, min float margin 1; integer vs other {}; findings {}
+  mixed_staggered_ample_limit4 adapted_vllm: 16 decisions, enumerated 16 (skipped 0); max weight 6, max objective range 17, min positive coefficient 0.03125, max coefficient ratio 192, min float margin 1; integer vs other {'reference: same_actions': 16}; findings {}
+  mixed_staggered_ample_limit4 lp_running_order: 16 decisions, enumerated 16 (skipped 0); max weight 6, max objective range 17, min positive coefficient 0.03125, max coefficient ratio 192, min float margin 1; integer vs other {'lp_plan: same_actions': 16}; findings {}
+  mixed_staggered_ample_limit4 ilp_running_order: 16 decisions, enumerated 16 (skipped 0); max weight 6, max objective range 17, min positive coefficient 0.03125, max coefficient ratio 192, min float margin 1; integer vs other {}; findings {}
+  mixed_staggered_tight_limit4 adapted_vllm: 16 decisions, enumerated 16 (skipped 0); max weight 6, max objective range 17, min positive coefficient 0.03125, max coefficient ratio 192, min float margin 1; integer vs other {'reference: same_actions': 15, 'reference: infeasible': 1}; findings {}
+  mixed_staggered_tight_limit4 lp_running_order: 17 decisions, enumerated 17 (skipped 0); max weight 6, max objective range 17, min positive coefficient 0.03125, max coefficient ratio 192, min float margin 1; integer vs other {'lp_plan: same_actions': 17}; findings {}
+  mixed_staggered_tight_limit4 ilp_running_order: 17 decisions, enumerated 17 (skipped 0); max weight 6, max objective range 17, min positive coefficient 0.03125, max coefficient ratio 192, min float margin 1; integer vs other {}; findings {}
+  queue6_burst_limit8 adapted_vllm: 11 decisions, enumerated 9 (skipped 2); max weight 1215, max objective range 3644, min positive coefficient 0.000217014, max coefficient ratio 76032, min float margin 1; integer vs other {'reference: same_actions': 11}; findings {}
+  queue6_burst_limit8 lp_running_order: 11 decisions, enumerated 9 (skipped 2); max weight 1215, max objective range 3644, min positive coefficient 0.000217014, max coefficient ratio 76032, min float margin 1; integer vs other {'lp_plan: same_actions': 11}; findings {}
+  queue6_burst_limit8 ilp_running_order: 11 decisions, enumerated 9 (skipped 2); max weight 1215, max objective range 3644, min positive coefficient 0.000217014, max coefficient ratio 76032, min float margin 1; integer vs other {}; findings {}
+  queue12_burst_limit8 adapted_vllm: 15 decisions, enumerated 9 (skipped 6); max weight 5832, max objective range 17495, min positive coefficient 5.42535e-05, max coefficient ratio 1.11974e+07, min float margin 1; integer vs other {'reference: same_actions': 15}; findings {}
+  queue12_burst_limit8 lp_running_order: 15 decisions, enumerated 9 (skipped 6); max weight 5832, max objective range 17495, min positive coefficient 5.42535e-05, max coefficient ratio 1.11974e+07, min float margin 1; integer vs other {'lp_plan: same_actions': 15}; findings {}
+  queue12_burst_limit8 ilp_running_order: 15 decisions, enumerated 9 (skipped 6); max weight 5832, max objective range 17495, min positive coefficient 5.42535e-05, max coefficient ratio 1.11974e+07, min float margin 1; integer vs other {}; findings {}
+  queue24_burst_limit8 adapted_vllm: 24 decisions, enumerated 9 (skipped 15); max weight 11664, max objective range 34991, min positive coefficient 1.35634e-05, max coefficient ratio 2.14991e+08, min float margin 1; integer vs other {'reference: same_actions': 24}; findings {}
+  queue24_burst_limit8 lp_running_order: 24 decisions, enumerated 9 (skipped 15); max weight 11664, max objective range 34991, min positive coefficient 1.35634e-05, max coefficient ratio 2.14991e+08, min float margin 1; integer vs other {'lp_plan: same_actions': 24}; findings {}
+  queue24_burst_limit8 ilp_running_order: 24 decisions, enumerated 9 (skipped 15); max weight 11664, max objective range 34991, min positive coefficient 1.35634e-05, max coefficient ratio 2.14991e+08, min float margin 1; integer vs other {}; findings {}
+  queue48_burst_limit8 adapted_vllm: 42 decisions, enumerated 9 (skipped 33); max weight 11664, max objective range 34991, min positive coefficient 3.39084e-06, max coefficient ratio 1.93492e+09, min float margin 1; integer vs other {'reference: same_actions': 40, 'reference: vector_equal': 2}; findings {}
+  queue48_burst_limit8 lp_running_order: 42 decisions, enumerated 9 (skipped 33); max weight 17496, max objective range 52487, min positive coefficient 3.39084e-06, max coefficient ratio 1.93492e+09, min float margin 1; integer vs other {'lp_plan: same_actions': 41, 'lp_plan: vector_equal': 1}; findings {}
+  queue48_burst_limit8 ilp_running_order: 42 decisions, enumerated 9 (skipped 33); max weight 17496, max objective range 52487, min positive coefficient 3.39084e-06, max coefficient ratio 1.93492e+09, min float margin 1; integer vs other {}; findings {}
+  queue48_staggered_limit8 adapted_vllm: 104 decisions, enumerated 104 (skipped 0); max weight 18, max objective range 53, min positive coefficient 0.0078125, max coefficient ratio 2304, min float margin 1; integer vs other {'reference: same_actions': 104}; findings {}
+  queue48_staggered_limit8 lp_running_order: 104 decisions, enumerated 104 (skipped 0); max weight 18, max objective range 53, min positive coefficient 0.0078125, max coefficient ratio 2304, min float margin 1; integer vs other {'lp_plan: same_actions': 104}; findings {}
+  queue48_staggered_limit8 ilp_running_order: 104 decisions, enumerated 104 (skipped 0); max weight 18, max objective range 53, min positive coefficient 0.0078125, max coefficient ratio 2304, min float margin 1; integer vs other {}; findings {}
+  queue48_burst_pool12_limit8 adapted_vllm: 117 decisions, enumerated 13 (skipped 104); max weight 594, max objective range 1781, min positive coefficient 3.39084e-06, max coefficient ratio 1.40583e+08, min float margin 1; integer vs other {'reference: same_actions': 69, 'reference: vector_equal': 40, 'reference: infeasible': 8}; findings {}
+  queue48_burst_pool12_limit8 lp_running_order: 117 decisions, enumerated 26 (skipped 91); max weight 594, max objective range 1781, min positive coefficient 3.39084e-06, max coefficient ratio 1.40583e+08, min float margin 1; integer vs other {'lp_plan: same_actions': 105, 'lp_plan: vector_worse': 1, 'lp_plan: vector_equal': 11}; findings {}
+  queue48_burst_pool12_limit8 ilp_running_order: 117 decisions, enumerated 26 (skipped 91); max weight 1458, max objective range 4373, min positive coefficient 3.39084e-06, max coefficient ratio 2.41865e+08, min float margin 1; integer vs other {}; findings {}
+  queue96_burst_limit8 adapted_vllm: 78 decisions, enumerated 9 (skipped 69); max weight 11664, max objective range 34991, min positive coefficient 8.47711e-07, max coefficient ratio 1.05346e+10, min float margin 1; integer vs other {'reference: same_actions': 72, 'reference: vector_equal': 6}; findings {}
+  queue96_burst_limit8 lp_running_order: 76 decisions, enumerated 8 (skipped 68); max weight 86751, max objective range 260252, min positive coefficient 8.47711e-07, max coefficient ratio 1.05346e+10, min float margin 1; integer vs other {'lp_plan: same_actions': 71, 'lp_plan: vector_equal': 5}; findings {}
+  queue96_burst_limit8 ilp_running_order: 77 decisions, enumerated 9 (skipped 68); max weight 104976, max objective range 314927, min positive coefficient 8.47711e-07, max coefficient ratio 1.74143e+10, min float margin 1; integer vs other {}; findings {}
+  queue96_burst_pool12_limit8 adapted_vllm: 233 decisions, enumerated 13 (skipped 220); max weight 594, max objective range 1781, min positive coefficient 8.47711e-07, max coefficient ratio 6.29621e+08, min float margin 1; integer vs other {'reference: same_actions': 129, 'reference: vector_equal': 88, 'reference: infeasible': 16}; findings {}
+  queue96_burst_pool12_limit8 lp_running_order: 229 decisions, enumerated 26 (skipped 203); max weight 594, max objective range 1781, min positive coefficient 8.47711e-07, max coefficient ratio 6.29621e+08, min float margin 1; integer vs other {'lp_plan: same_actions': 203, 'lp_plan: vector_worse': 1, 'lp_plan: vector_equal': 25}; findings {}
+  queue96_burst_pool12_limit8 ilp_running_order: 233 decisions, enumerated 26 (skipped 207); max weight 1458, max objective range 4373, min positive coefficient 8.47711e-07, max coefficient ratio 1.31682e+09, min float margin 1; integer vs other {}; findings {}
+
+Victim patterns (non-tail victims; requests preempted more than once)
+  memory_pressure_limit4 adapted_vllm: {'non_tail_victims': 1, 'repeat_victims': {}}
+  memory_pressure_limit4 lp_reciprocal_square: {'non_tail_victims': 0, 'repeat_victims': {'C': 2, 'B': 2}}
+  memory_pressure_limit4 lp_running_order: {'non_tail_victims': 0, 'repeat_victims': {'C': 2, 'B': 2}}
+  memory_pressure_limit4 ilp_running_order: {'non_tail_victims': 0, 'repeat_victims': {'C': 2, 'B': 2}}
+  queue48_burst_pool12_limit8 adapted_vllm: {'non_tail_victims': 0, 'repeat_victims': {}}
+  queue48_burst_pool12_limit8 lp_reciprocal_square: {'non_tail_victims': 3, 'repeat_victims': {}}
+  queue48_burst_pool12_limit8 lp_running_order: {'non_tail_victims': 1, 'repeat_victims': {}}
+  queue48_burst_pool12_limit8 ilp_running_order: {'non_tail_victims': 0, 'repeat_victims': {}}
+  queue96_burst_pool12_limit8 adapted_vllm: {'non_tail_victims': 0, 'repeat_victims': {}}
+  queue96_burst_pool12_limit8 lp_reciprocal_square: {'non_tail_victims': 7, 'repeat_victims': {'R34': 4}}
+  queue96_burst_pool12_limit8 lp_running_order: {'non_tail_victims': 1, 'repeat_victims': {}}
+  queue96_burst_pool12_limit8 ilp_running_order: {'non_tail_victims': 0, 'repeat_victims': {}}
+
+Single-state diagnostics (running-order coefficients)
+  mixed_ample: weights {'0': 3, '1': 1}; free 6; LP relaxed 24 (identical_actions); integer {'0': 'prefill:8'} vec [8, 0] exact 24/1 float 24; lp_plan {'0': 'prefill:8'} vec [8, 0] exact 24/1 float 24; reference {'0': 'prefill:8'} vec [8, 0] exact 24/1 float 24
+      reference vs integer: identical_actions; enumeration {'plan_space': 30, 'legal_useful_plans': 25, 'best_vector': [8, 0], 'best_exact': {'exact': '24/1', 'approx': 24.0}, 'exact_maximizers_have_best_vector': True}; findings []
+      expectations met: []; not met: {}
+      numerics: max coefficient 3, min positive 1, ratio 3, ulp at objective range 3.55271e-15, min float margin 1, recorded mismatches []
+  mixed_pressure: weights {'0': 9, '1': 3, '2': 1}; free 0; LP relaxed 72 (identical_actions); integer {'0': 'prefill:8'} vec [8, 0, 0] exact 72/1 float 72; lp_plan {'0': 'prefill:8'} vec [8, 0, 0] exact 72/1 float 72; reference {'0': 'prefill:8'} vec [8, 0, 0] exact 72/1 float 72
+      reference vs integer: identical_actions; enumeration {'plan_space': 90, 'legal_useful_plans': 53, 'best_vector': [8, 0, 0], 'best_exact': {'exact': '72/1', 'approx': 72.0}, 'exact_maximizers_have_best_vector': True}; findings []
+      expectations met: []; not met: {}
+      numerics: max coefficient 9, min positive 1, ratio 9, ulp at objective range 1.42109e-14, min float margin 1, recorded mismatches []
+  zero_free_decodes: weights {'0': 27, '1': 9, '2': 3, '3': 1}; free 0; LP relaxed 38.4 (identical_actions); integer {'0': 'decode', '1': 'decode', '2': 'decode', '3': 'preempt'} vec [1, 1, 1, -1] exact 38/1 float 38; lp_plan {'0': 'decode', '1': 'decode', '2': 'decode', '3': 'preempt'} vec [1, 1, 1, -1] exact 38/1 float 38; reference {'0': 'decode', '1': 'decode', '2': 'decode', '3': 'decode'} vec [1, 1, 1, 1] exact 40/1 float 40 INFEASIBLE ['decode_prerequisite']
+      reference vs integer: contract_difference; enumeration {'plan_space': 81, 'legal_useful_plans': 50, 'best_vector': [1, 1, 1, -1], 'best_exact': {'exact': '38/1', 'approx': 38.0}, 'exact_maximizers_have_best_vector': True}; findings []
+      expectations met: []; not met: {}
+      numerics: max coefficient 27, min positive 1, ratio 27, ulp at objective range 1.42109e-14, min float margin 1, recorded mismatches []
+  fractional_admission: weights {}; free 16; LP relaxed 0.59375 (extraction_loss); integer {'0': 'prefill:1'} vec [] exact 1/2 float 0.5; lp_plan {'1': 'prefill:1'} vec [] exact 1/8 float 0.125; reference {'0': 'prefill:2'} vec [] exact 1/1 float 1 INFEASIBLE ['prefill_linkage_upper[0]', '0: prefill 2 outside [1, 1]']
+      reference vs integer: contract_difference; enumeration {'plan_space': 4, 'legal_useful_plans': 2, 'best_vector': [], 'best_exact': {'exact': '1/2', 'approx': 0.5}, 'exact_maximizers_have_best_vector': True}; findings []
+      expectations met: []; not met: {}
+      numerics: max coefficient 0.5, min positive 0.125, ratio 4, ulp at objective range 2.22045e-16, min float margin None, recorded mismatches []
+  earlier_decode_vs_later_prefill: weights {'0': 10, '1': 1}; free 0; LP relaxed 9 (identical_actions); integer {'0': 'decode', '1': 'preempt'} vec [1, -1] exact 9/1 float 9; lp_plan {'0': 'decode', '1': 'preempt'} vec [1, -1] exact 9/1 float 9; reference {'1': 'preempt', '0': 'decode'} vec [1, -1] exact 9/1 float 9; alternative:prefill_b {'1': 'prefill:8'} vec [0, 8] exact 8/1 float 8
+      reference vs integer: identical_actions; enumeration {'plan_space': 30, 'legal_useful_plans': 17, 'best_vector': [1, -1], 'best_exact': {'exact': '9/1', 'approx': 9.0}, 'exact_maximizers_have_best_vector': True}; findings []
+      expectations met: ['decode_demand', 'free_blocks', 'integer_actions', 'integer_utility', 'physical', 'weights']; not met: {}
+      numerics: max coefficient 10, min positive 1, ratio 10, ulp at objective range 3.55271e-15, min float margin 1, recorded mismatches []
+  second_running_decode: weights {'0': 30, '1': 10, '2': 1}; free 1; LP relaxed 39 (identical_actions); integer {'0': 'decode', '1': 'decode', '2': 'preempt'} vec [1, 1, -1] exact 39/1 float 39; lp_plan {'0': 'decode', '1': 'decode', '2': 'preempt'} vec [1, 1, -1] exact 39/1 float 39; reference {'2': 'preempt', '0': 'decode', '1': 'decode'} vec [1, 1, -1] exact 39/1 float 39; alternative:head_decode_and_c_prefill {'0': 'decode', '2': 'prefill:7'} vec [1, 0, 7] exact 37/1 float 37
+      reference vs integer: identical_actions; enumeration {'plan_space': 90, 'legal_useful_plans': 69, 'best_vector': [1, 1, -1], 'best_exact': {'exact': '39/1', 'approx': 39.0}, 'exact_maximizers_have_best_vector': True}; findings []
+      expectations met: ['decode_demand', 'free_blocks', 'integer_actions', 'integer_utility', 'physical', 'weights']; not met: {}
+      numerics: max coefficient 30, min positive 1, ratio 30, ulp at objective range 1.42109e-14, min float margin 1, recorded mismatches []
+  large_earlier_victim: weights {'0': 9, '1': 3, '2': 1}; free 0; LP relaxed 8 (identical_actions); integer {'0': 'decode', '2': 'preempt'} vec [1, 0, -1] exact 8/1 float 8; lp_plan {'0': 'decode', '2': 'preempt'} vec [1, 0, -1] exact 8/1 float 8; reference {'2': 'preempt', '1': 'preempt', '0': 'decode'} vec [1, -1, -1] exact 5/1 float 5; alternative:evict_large_earlier {'0': 'preempt', '1': 'decode', '2': 'decode'} vec [-1, 1, 1] exact -5/1 float -5
+      reference vs integer: strict_objective_preference; enumeration {'plan_space': 27, 'legal_useful_plans': 10, 'best_vector': [1, 0, -1], 'best_exact': {'exact': '8/1', 'approx': 8.0}, 'exact_maximizers_have_best_vector': True}; findings []
+      expectations met: ['decode_demand', 'free_blocks', 'integer_actions', 'integer_utility', 'physical', 'reference_actions', 'weights']; not met: {}
+      numerics: max coefficient 9, min positive 1, ratio 9, ulp at objective range 3.55271e-15, min float margin 1, recorded mismatches []
+  blocked_waiting_head: weights {'0': 2}; free 2; LP relaxed 2.55556 (identical_actions); integer {'0': 'decode', '2': 'prefill:7'} vec [1] exact 71/32 float 2.21875; lp_plan {'0': 'decode', '2': 'prefill:7'} vec [1] exact 71/32 float 2.21875; reference {'0': 'decode'} vec [1] exact 2/1 float 2
+      reference vs integer: strict_objective_preference; enumeration {'plan_space': 243, 'legal_useful_plans': 32, 'best_vector': [1], 'best_exact': {'exact': '71/32', 'approx': 2.21875}, 'exact_maximizers_have_best_vector': True}; findings []
+      expectations met: ['decode_demand', 'free_blocks', 'integer_actions', 'integer_utility', 'reference_actions', 'weights']; not met: {}
+      numerics: max coefficient 2, min positive 0.03125, ratio 64, ulp at objective range 8.88178e-16, min float margin 1, recorded mismatches []
+  waiting_action_cap: weights {}; free 2; LP relaxed 0.25 (identical_actions); integer {'1': 'prefill:8'} vec [] exact 1/4 float 0.25; lp_plan {'1': 'prefill:8'} vec [] exact 1/4 float 0.25; reference {'0': 'prefill:1', '1': 'prefill:7'} vec [] exact 11/32 float 0.34375 INFEASIBLE ['action_width']; alternative:head_only {'0': 'prefill:1'} vec [] exact 1/8 float 0.125
+      reference vs integer: contract_difference; enumeration {'plan_space': 18, 'legal_useful_plans': 9, 'best_vector': [], 'best_exact': {'exact': '1/4', 'approx': 0.25}, 'exact_maximizers_have_best_vector': True}; findings []
+      expectations met: ['free_blocks', 'integer_actions', 'integer_utility']; not met: {}
+      numerics: max coefficient 0.125, min positive 0.03125, ratio 4, ulp at objective range 2.22045e-16, min float margin None, recorded mismatches []
+  numerical_stress_r1: weights {'0': 2}; free 1; LP relaxed 256 (identical_actions); integer {'0': 'prefill:128'} vec [128] exact 256/1 float 256; lp_plan {'0': 'prefill:128'} vec [128] exact 256/1 float 256; reference {'0': 'prefill:128'} vec [128] exact 256/1 float 256
+      reference vs integer: identical_actions; enumeration {'plan_space': 1170, 'legal_useful_plans': 136, 'best_vector': [128], 'best_exact': {'exact': '256/1', 'approx': 256.0}, 'exact_maximizers_have_best_vector': True}; findings []
+      expectations met: ['free_blocks', 'integer_actions', 'integer_utility', 'physical', 'weights']; not met: {}
+      numerics: max coefficient 2, min positive 0.0078125, ratio 256, ulp at objective range 5.68434e-14, min float margin 1, recorded mismatches []
+  numerical_stress_r2: weights {'0': 260, '1': 2}; free 1; LP relaxed 33280 (identical_actions); integer {'0': 'prefill:128'} vec [128, 0] exact 33280/1 float 33280; lp_plan {'0': 'prefill:128'} vec [128, 0] exact 33280/1 float 33280; reference {'0': 'prefill:128'} vec [128, 0] exact 33280/1 float 33280
+      reference vs integer: identical_actions; enumeration {'skipped': 'plan space 152100 exceeds 50000'}; findings []
+      expectations met: ['free_blocks', 'integer_actions', 'integer_utility', 'physical', 'weights']; not met: {}
+      numerics: max coefficient 260, min positive 0.0078125, ratio 33280, ulp at objective range 7.27596e-12, min float margin 1, recorded mismatches []
+  numerical_stress_r4: weights {'0': 4394000, '1': 33800, '2': 260, '3': 2}; free 1; LP relaxed 5.62432e+08 (identical_actions); integer {'0': 'prefill:128'} vec [128, 0, 0, 0] exact 562432000/1 float 5.62432e+08; lp_plan {'0': 'prefill:128'} vec [128, 0, 0, 0] exact 562432000/1 float 5.62432e+08; reference {'0': 'prefill:128'} vec [128, 0, 0, 0] exact 562432000/1 float 5.62432e+08
+      reference vs integer: identical_actions; enumeration {'skipped': 'plan space 2570490000 exceeds 50000'}; findings ['comparison_tol_hides_unit_margin']
+      expectations met: ['free_blocks', 'integer_actions', 'integer_utility', 'physical', 'weights']; not met: {}
+      numerics: max coefficient 4.394e+06, min positive 0.0078125, ratio 5.62432e+08, ulp at objective range 1.19209e-07, min float margin 1, recorded mismatches []
+  numerical_stress_r8: weights {'0': 1254970340000000, '1': 9653618000000, '2': 74258600000, '3': 571220000, '4': 4394000, '5': 33800, '6': 260, '7': 2}; free 1; LP relaxed 1.60636e+17 (identical_actions); integer {'0': 'prefill:128'} vec [128, 0, 0, 0, 0, 0, 0, 0] exact 160636203520000000/1 float 1.60636e+17; lp_plan {'0': 'prefill:128'} vec [128, 0, 0, 0, 0, 0, 0, 0] exact 160636203520000000/1 float 1.60636e+17; reference {'0': 'prefill:128'} vec [128, 0, 0, 0, 0, 0, 0, 0] exact 160636203520000000/1 float 1.60636e+17
+      reference vs integer: identical_actions; enumeration {'skipped': 'plan space 734157648900000000 exceeds 50000'}; findings ['comparison_tol_hides_unit_margin', 'ulp_exceeds_unit_margin']
+      expectations met: ['free_blocks', 'integer_actions', 'integer_utility', 'physical', 'stated_head_weight', 'weights']; not met: {}
+      numerics: max coefficient 1.25497e+15, min positive 0.0078125, ratio 1.60636e+17, ulp at objective range 32, min float margin 1, recorded mismatches []
+
+Aggregate status
+  {
+ "runs_expected": 60,
+ "runs_completed": 60,
+ "validation_passed": 60,
+ "outcomes": {
+  "drained": 60,
+  "bounded_unfinished": 0,
+  "failure": 0
+ },
+ "diagnostics": 13,
+ "problems": [],
+ "result": "PASS"
+}
+
+RESULT: PASS
+exit_status=0

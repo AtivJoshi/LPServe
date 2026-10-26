@@ -1,0 +1,32 @@
+$ python -B -m unittest tests.test_lpserve_state_mapping -v
+test_coordinated_utility_is_fixed_by_the_capture (tests.test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_coordinated_utility_rejects_invalid_parameters (tests.test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_coordinated_utility_values_ranks_and_chunk_normalization (tests.test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_full_context_rounding_recovery_and_decode_demand (tests.test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_future_head_does_not_hide_arrived_work (tests.test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_future_only_universe_is_mapping_failure (tests.test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_iteration_snapshot_id_and_plan_identity_check (tests.test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_malformed_arrival_time_is_rejected (tests.test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_malformed_utilities_return_mapping_failure (tests.test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_one_capture_and_state_dependent_policy_inputs (tests.test_lpserve_state_mapping.LPServeStateMappingTest)
+A compact state-dependent coefficient fixture (not a production ... ok
+test_orphan_block_table_is_rejected (tests.test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_rank_based_utility_follows_state_between_decisions (tests.test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_rank_based_utility_rejects_invalid_scales (tests.test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_rank_based_utility_values_and_compact_positions (tests.test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_reciprocal_square_later_ranks_and_fixed_capture (tests.test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_reciprocal_square_rejects_invalid_parameters (tests.test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_reciprocal_square_values_terms_and_normalization (tests.test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_resident_ledger_and_inadmissible_registered_context (tests.test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_running_order_is_fixed_by_the_capture (tests.test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_running_order_rejects_invalid_parameters_and_huge_weights (tests.test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_running_order_values_terms_and_waiting_position (tests.test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_snapshot_is_independent_of_later_utility_changes (tests.test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_supported_mapping_and_nonmutation (tests.test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+test_unsupported_gap_and_malformed_allocation (tests.test_lpserve_state_mapping.LPServeStateMappingTest) ... ok
+
+----------------------------------------------------------------------
+Ran 24 tests in 0.033s
+
+OK
+exit_status=0

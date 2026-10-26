@@ -25,13 +25,17 @@ EOS ignored, and native replay and completion. Policies:
 The LP policies use numerical policy ``lp_relaxation_mvp_v1``.
 
 CPU-only additions (``run_comparison`` with a CPU runtime; never accepted on
-the command line): the methods ``ilp_coordinated`` and
-``ilp_reciprocal_square``, which take each decision from the integer optimum
-of the same coordinated or reciprocal-square problem
-(``exact_integer_plan.integer_decision``); the representative cases
-``REPRESENTATIVE_CASES`` (six requests, optional per-request output limits,
-and virtual arrival times; see ``case_inputs``); and the queue-growth cases
-``QUEUE_GROWTH_CASES`` other than ``queue48_burst_pool12``.
+the command line): the methods ``ilp_coordinated``,
+``ilp_reciprocal_square``, and ``ilp_running_order``, which take each
+decision from the integer optimum of the same coordinated, reciprocal-square,
+or running-order problem (``exact_integer_plan.integer_decision``); the LP
+method ``lp_running_order`` (``lpserve_state_mapping.running_order_utility``,
+bound to the case's ``c_max`` and ``b_max``, through the same hook); the
+representative cases ``REPRESENTATIVE_CASES`` (six requests, optional
+per-request output limits, and virtual arrival times; see ``case_inputs``);
+the queue-growth cases ``QUEUE_GROWTH_CASES`` other than
+``queue48_burst_pool12``; and the 96-request cases
+``RUNNING_ORDER_QUEUE_CASES``.
 
 Cases (``--case``):
 
@@ -162,11 +166,16 @@ POLICIES = ("adapted_vllm", "lp_uniform", "lp_rank_based", "lp_coordinated",
             RECIPROCAL_SQUARE_POLICY)
 INTEGER_POLICY = "ilp_coordinated"  # CPU comparison only
 RECIPROCAL_SQUARE_INTEGER_POLICY = "ilp_reciprocal_square"  # CPU only
-INTEGER_POLICIES = (INTEGER_POLICY, RECIPROCAL_SQUARE_INTEGER_POLICY)
-CPU_POLICIES = POLICIES + INTEGER_POLICIES
+# Running-order policy (provisional; CPU comparison only, LP and integer).
+RUNNING_ORDER_POLICY = "lp_running_order"
+RUNNING_ORDER_INTEGER_POLICY = "ilp_running_order"
+INTEGER_POLICIES = (INTEGER_POLICY, RECIPROCAL_SQUARE_INTEGER_POLICY,
+                    RUNNING_ORDER_INTEGER_POLICY)
+CPU_POLICIES = POLICIES + (RUNNING_ORDER_POLICY,) + INTEGER_POLICIES
 COORDINATED_POLICIES = ("lp_coordinated", INTEGER_POLICY)
 RECIPROCAL_SQUARE_POLICIES = (RECIPROCAL_SQUARE_POLICY,
                               RECIPROCAL_SQUARE_INTEGER_POLICY)
+RUNNING_ORDER_POLICIES = (RUNNING_ORDER_POLICY, RUNNING_ORDER_INTEGER_POLICY)
 MAX_DECISIONS = 8  # observation bound per run, not a scheduler restart cap
 TWO_REQUEST, MEMORY_PRESSURE = "two_request", "memory_pressure"
 GPU_CASES = (TWO_REQUEST, MEMORY_PRESSURE, "queue48_burst_pool12")
@@ -248,7 +257,15 @@ QUEUE_GROWTH_INPUTS = {
     CONSTRAINED_QUEUE_CASE: _queue_growth(48, False, 12, max_model_len=192),
 }
 QUEUE_GROWTH_CASES = tuple(QUEUE_GROWTH_INPUTS)
-CASES = (TWO_REQUEST, MEMORY_PRESSURE) + REPRESENTATIVE_CASES + QUEUE_GROWTH_CASES
+# CPU-only 96-request cases of the running-order batch (same generator; the
+# six queue-growth cases above are unchanged).
+RUNNING_ORDER_QUEUE_INPUTS = {
+    "queue96_burst": _queue_growth(96, False, 128),
+    "queue96_burst_pool12": _queue_growth(96, False, 12, max_model_len=192),
+}
+RUNNING_ORDER_QUEUE_CASES = tuple(RUNNING_ORDER_QUEUE_INPUTS)
+CASES = ((TWO_REQUEST, MEMORY_PRESSURE) + REPRESENTATIVE_CASES
+         + QUEUE_GROWTH_CASES + RUNNING_ORDER_QUEUE_CASES)
 PROCESS_TIMEOUT_SECONDS = 600
 PROFILE_METHOD = preemption.PROFILE_METHOD
 INIT_CACHE_METHOD = preemption.INIT_CACHE_METHOD
@@ -273,7 +290,7 @@ def case_inputs(case):
     if case != TWO_REQUEST:
         inputs = json.loads(json.dumps({
             MEMORY_PRESSURE: MEMORY_PRESSURE_INPUTS, **REPRESENTATIVE_INPUTS,
-            **QUEUE_GROWTH_INPUTS}[case]))
+            **QUEUE_GROWTH_INPUTS, **RUNNING_ORDER_QUEUE_INPUTS}[case]))
         inputs["resident_limits"] = tuple(inputs["resident_limits"])
     else:
         inputs = dict(prompts=PROMPTS, max_tokens=MAX_TOKENS,
@@ -353,6 +370,11 @@ def coefficient_policy_record(policy, c):
                     "waiting position); q = min(remaining, c_max, b_max); "
                     "decode w; prefill token w / q; penalty w",
                     note="configured triple unused")
+    if policy in RUNNING_ORDER_POLICIES:
+        return dict(running_order_utility=dict(c_max=c["c_max"],
+                                               b_max=c["b_max"]),
+                    formula=RUNNING_ORDER_FORMULA,
+                    note="configured triple unused")
     return dict(coordinated_rank_utility=dict(COORDINATED, c_max=c["c_max"],
                                               b_max=c["b_max"]),
                 formula="w = rank_base ** r (r: running then arrived waiting "
@@ -409,6 +431,8 @@ def select_coefficient_policy(scheduler, policy, case=TWO_REQUEST):
             **COORDINATED)
     elif policy in RECIPROCAL_SQUARE_POLICIES:
         coefficients = reciprocal_square_policy(case_inputs(case))
+    elif policy in RUNNING_ORDER_POLICIES:
+        coefficients = running_order_policy(case_inputs(case))
     else:
         return
     scheduler._coefficient_policy = lambda: coefficients
@@ -424,16 +448,26 @@ def reciprocal_square_policy(c):
                              c_max=c["c_max"], b_max=c["b_max"])
 
 
-def capture_reference_problems(runtime, case):
+def running_order_policy(c):
+    """The running-order policy bound to case inputs ``c``'s LP caps."""
+    import lpserve_state_mapping as lsm
+    return functools.partial(lsm.running_order_utility, c_max=c["c_max"],
+                             b_max=c["b_max"])
+
+
+def capture_reference_problems(runtime, case, policy=None):
     """Wrap ``runtime.step`` so that, before each reference decision with
     unfinished work, the quiescent pre-decision state is mapped once,
-    read-only, with the reciprocal-square coefficients and the case's LP
-    caps. Returns the list that receives one JSON record (``LPProblem`` or
+    read-only, with the coefficients of ``policy`` (a factory of case
+    inputs; default ``reciprocal_square_policy``) and the case's LP caps.
+    Returns the list that receives one JSON record (``LPProblem`` or
     ``MappingFailure``) per such step, in decision order. Diagnostic only:
-    the reference does not read it, and ordinary idle steps map nothing."""
+    the mapping precedes the decision, the reference does not read it, and
+    ordinary idle steps map nothing."""
     import lp_relaxation_scheduler as lrs
     import lpserve_state_mapping as lsm
     c, records, native = case_inputs(case), [], runtime.step
+    coefficients = (policy or reciprocal_square_policy)(c)
 
     def step():
         scheduler = runtime.scheduler
@@ -441,7 +475,7 @@ def capture_reference_problems(runtime, case):
             snap = lsm.map_scheduler_state(
                 scheduler, snapshot_time=time.monotonic(), b_max=c["b_max"],
                 c_max=c["c_max"], s_max=c["s_max"],
-                coefficient_policy=reciprocal_square_policy(c),
+                coefficient_policy=coefficients,
                 rank_profile=lsm.vllm_oriented_ranks,
                 numerical_policy=lrs.NumericalPolicy(**NUMERICAL_POLICY_FIELDS))
             records.append(dict(
@@ -584,6 +618,8 @@ def expected_coefficients(policy, snap, request, c):
     """The coefficient triple the run's policy specifies for ``request``."""
     if policy == "lp_uniform":
         return UNIFORM
+    if policy in RUNNING_ORDER_POLICIES:
+        return expected_running_order_coefficients(snap, request, c)
     order = list(snap["running_order"]) + list(snap["arrived_waiting_order"])
     r = order.index(request["raw_seq_id"])
     if policy in COORDINATED_POLICIES + RECIPROCAL_SQUARE_POLICIES:
@@ -601,6 +637,44 @@ def expected_coefficients(policy, snap, request, c):
     return dict(decode_utility=RANK_SCALES["decode_scale"] / (1 + r),
                 prefill_token_utility=RANK_SCALES["prefill_scale"] / (1 + r),
                 preemption_penalty=penalty)
+
+
+def expected_running_order_coefficients(snap, request, c):
+    """Driver-side recomputation of the running-order triple from the
+    snapshot record (exact integers, then one float conversion)."""
+    facts = {r["raw_seq_id"]: r for r in snap["requests"]}
+    raw = request["raw_seq_id"]
+    waiting = list(snap["arrived_waiting_order"])
+    if raw in waiting:
+        return dict(decode_utility=0.0, preemption_penalty=0.0,
+                    prefill_token_utility=(
+                        1 / (c["b_max"] * (1 + waiting.index(raw)) ** 2)
+                        if request["prefill_eligible"] else 0.0))
+    later_range = 1 if waiting else 0
+    for sid in reversed(snap["running_order"]):
+        f = facts[sid]
+        weight = 1 + later_range
+        if sid == raw:
+            break
+        span = (min(f["prompt_tokens_remaining"], c["c_max"], c["b_max"])
+                if f["prefill_eligible"] else int(f["decode_eligible"]))
+        later_range += span * weight + weight * f["preemption_eligible"]
+    return dict(
+        decode_utility=float(weight) if request["decode_eligible"] else 0.0,
+        prefill_token_utility=(float(weight) if request["prefill_eligible"]
+                               else 0.0),
+        preemption_penalty=(float(weight) if request["preemption_eligible"]
+                            else 0.0))
+
+
+RUNNING_ORDER_FORMULA = (
+    "waiting j (position in arrived_waiting_order): prefill token "
+    "1 / (b_max * (1 + j) ** 2), decode and penalty 0; W = 1 if any arrived "
+    "waiting request else 0; resident i: m_i = min(remaining, c_max, b_max) "
+    "if prefill-eligible, else 1 if decode-eligible, else 0; a_i = 1 + W + "
+    "sum over later residents j of (m_j * a_j + gamma_j), exact integers "
+    "then float; decode, prefill token, and penalty a_i where eligible, "
+    "else 0")
 
 
 def check_lp_decision(tag, before, record, policy, resident_limit, c):

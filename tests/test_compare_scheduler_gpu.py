@@ -1404,6 +1404,371 @@ class QueueGrowthTest(unittest.TestCase):
                 self.assertEqual(caught.exception.code, 2)
 
 
+RUNNING = driver.RUNNING_ORDER_POLICIES
+
+
+def _native_cache_accepts(pool, max_model_len):
+    """Native ``BaseLLMEngine._init_cache`` on a CPU stub."""
+    from sarathi.engine.base_llm_engine import BaseLLMEngine
+    stub = SimpleNamespace(
+        cache_config=SimpleNamespace(block_size=driver.BLOCK_SIZE,
+                                     gpu_memory_utilization=0.5,
+                                     num_gpu_blocks=None),
+        model_config=SimpleNamespace(max_model_len=max_model_len),
+        _run_workers=lambda method, **kw: [pool])
+    try:
+        BaseLLMEngine._init_cache(stub)
+    except ValueError:
+        return False
+    return True
+
+
+def _diagnostic_problem(spec):
+    """The running-order problem of one constructed diagnostic state."""
+    import compare_coefficient_policies_cpu as batch
+    import functools
+    snap = lsm.map_scheduler_state(
+        batch.build_state(spec, "lp"), snapshot_time=time.monotonic(),
+        b_max=spec["b_max"], c_max=spec["c_max"], s_max=spec["s_max"],
+        coefficient_policy=functools.partial(
+            lsm.running_order_utility, c_max=spec["c_max"],
+            b_max=spec["b_max"]),
+        rank_profile=lsm.vllm_oriented_ranks,
+        numerical_policy=lrs.NumericalPolicy(**driver.NUMERICAL_POLICY_FIELDS))
+    assert isinstance(snap, lsm.StateSnapshot), snap
+    return snap.lp_problem
+
+
+class RunningOrderTest(unittest.TestCase):
+    """The running-order policy's CPU-only methods, the 96-request cases,
+    the reference capture policy, failure recording, and the exact
+    numerical checks of the running-order batch."""
+
+    def test_cpu_only_methods_cases_and_hook(self):
+        self.assertTrue(set(RUNNING) <= set(driver.CPU_POLICIES))
+        self.assertFalse(set(RUNNING) & set(driver.POLICIES))
+        self.assertIn(driver.RUNNING_ORDER_INTEGER_POLICY,
+                      driver.INTEGER_POLICIES)
+        for case in driver.RUNNING_ORDER_QUEUE_CASES:
+            self.assertNotIn(case, driver.GPU_CASES + driver.QUEUE_GROWTH_CASES)
+        rejected = [["--policy", p] for p in RUNNING] + [
+            ["--policy", driver.RECIPROCAL_SQUARE_POLICY, "--case", c]
+            for c in driver.RUNNING_ORDER_QUEUE_CASES]
+        for argv in rejected:
+            with self.subTest(argv=argv), \
+                    contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as caught:
+                    driver.parse_args(argv + ["--model-path", "m",
+                                              "--output-dir", "o"])
+                self.assertEqual(caught.exception.code, 2)
+        for policy in RUNNING:
+            with self.subTest(policy=policy):
+                runtime = CpuRuntime(policy, 8, ANCHOR)
+                driver.select_coefficient_policy(runtime.scheduler, policy,
+                                                 ANCHOR)
+                bound = runtime.scheduler._coefficient_policy()
+                self.assertIs(bound.func, lsm.running_order_utility)
+                self.assertEqual(bound.keywords, dict(c_max=128, b_max=128))
+                self.assertEqual("_schedule" in vars(runtime.scheduler),
+                                 policy == driver.RUNNING_ORDER_INTEGER_POLICY)
+                self.assertIn("running_order_utility", driver.run_parameters(
+                    policy, 8, ANCHOR)["coefficient_policy"])
+        self.assertEqual(driver.decision_calls(
+            driver.RUNNING_ORDER_INTEGER_POLICY), driver.INTEGER_CALLS)
+
+    def test_queue96_inputs_and_native_capacity(self):
+        import compare_coefficient_policies_cpu as batch
+        for case, pool, context in (("queue96_burst", 128, 256),
+                                    ("queue96_burst_pool12", 12, 192)):
+            with self.subTest(case=case):
+                checks = batch.queue_input_checks(case)
+                self.assertTrue(checks["passed"], checks)
+                c = driver.case_inputs(case)
+                prompts = list(c["prompts"].values())
+                self.assertEqual(len(prompts), 96)
+                self.assertEqual(prompts[0], list(range(1000, 1008)))
+                self.assertEqual(prompts[95], list(range(25320, 25448)))
+                self.assertEqual((c["max_tokens"]["R00"],
+                                  c["max_tokens"]["R95"]), (2, 8))
+                flat = [t for p in prompts for t in p]
+                self.assertEqual(len(flat), len(set(flat)))
+                self.assertLess(max(flat), 32000)
+                self.assertEqual(
+                    (c["num_gpu_blocks"], c["max_model_len"],
+                     c["resident_limits"], c["token_budget"], c["b_max"],
+                     c["c_max"], c["s_max"], c["max_decisions"],
+                     set(c["arrivals"].values())),
+                    (pool, context, (8,), 128, 128, 128, 8, 768, {0}))
+                self.assertEqual(driver.check_native_capacity(c),
+                                 context // 16)
+                self.assertTrue(_native_cache_accepts(pool, context))
+        # The existing 48-request inputs are those of the same generator.
+        self.assertEqual(driver.QUEUE_GROWTH_INPUTS["queue48_burst_pool12"],
+                         driver._queue_growth(48, False, 12, max_model_len=192))
+
+    def test_running_order_rollouts_and_coefficient_check(self):
+        import compare_coefficient_policies_cpu as batch
+        for method in RUNNING:
+            with self.subTest(method=method):
+                summary, trace = _queue_run(method)
+                self.assertTrue(summary["validation_passed"], summary["failure"])
+                self.assertEqual(summary["workload_outcome"], driver.DRAINED)
+                records, coverage = batch.decision_comparisons(
+                    trace, method, batch.running_order_decision)
+                self.assertTrue(coverage["complete"], coverage)
+                self.assertEqual(coverage["optimal"], len(trace["decisions"]))
+                for r in records:
+                    self.assertFalse([f for f in r["supplement"]["findings"]
+                                      if f.startswith(batch.CONTRADICTIONS)])
+                # Decision 0: six waiting requests, no residents.
+                first = trace["decisions"][0]["lp_events"][0]["result"][
+                    "lp_problem"]["requests"]
+                self.assertEqual([r["prefill_token_utility"] for r in first],
+                                 [1 / 128, 1 / 512, 1 / 1152, 1 / 2048,
+                                  1 / 3200, 1 / 4608])
+        native = driver.expected_coefficients
+
+        def reciprocal(policy, snap, request, c):
+            return native(driver.RECIPROCAL_SQUARE_POLICY, snap, request, c)
+        with mock.patch.object(driver, "expected_coefficients", reciprocal):
+            with self.assertRaisesRegex(driver.CheckFailure,
+                                        "decision 0: coefficients of"):
+                _run(driver.RUNNING_ORDER_POLICY, 8, ANCHOR)
+
+    def test_reference_capture_policy_is_explicit_and_precedes_decisions(self):
+        _, plain, _ = _run("adapted_vllm", 8, ANCHOR)
+        lengths = [8, 16, 17, 32, 64, 128]
+        for policy, expected in (
+                (None, [(1.0 / (1 + k) ** 2) / lengths[k] for k in range(6)]),
+                (driver.running_order_policy,
+                 [1 / (128 * (1 + k) ** 2) for k in range(6)])):
+            with self.subTest(policy=policy):
+                runtime = CpuRuntime("adapted_vllm", 8, ANCHOR)
+                records = driver.capture_reference_problems(runtime, ANCHOR,
+                                                            policy)
+                _, trace, _ = _run("adapted_vllm", 8, ANCHOR, runtime)
+                self.assertEqual([_emitted(d) for d in trace["decisions"]],
+                                 [_emitted(d) for d in plain["decisions"]])
+                self.assertEqual(len(records), len(trace["decisions"]))
+                # Each problem is the state before its own decision.
+                for record, d in zip(records, trace["decisions"]):
+                    p = record["result"]
+                    self.assertEqual((p["resident_count"], p["m_free"],
+                                      len(p["requests"])),
+                                     (len(d["before"]["running"]),
+                                      d["before"]["free_blocks"],
+                                      len(d["before"]["running"])
+                                      + len(d["before"]["waiting"])))
+                # Per-token value of each waiting request at decision 0:
+                # reciprocal-square w / q, or running-order
+                # 1 / (128 (1 + j)^2).
+                first = records[0]["result"]["requests"]
+                self.assertEqual([r["prefill_token_utility"] for r in first],
+                                 expected)
+
+    def test_failures_are_recorded_and_not_executed(self):
+        import compare_coefficient_policies_cpu as batch
+        native, calls = eip.solve_integer_plan, []
+
+        def limit_second(problem):
+            calls.append(problem.problem_id)
+            if len(calls) == 2:
+                return eip.IntegerSolveFailure(
+                    problem.problem_id, eip.STAGE_INTEGER_SOLVER,
+                    "solver_limit", "injected", 1, "time limit",
+                    incumbent_objective=0.5, dual_bound=0.75)
+            return native(problem)
+        _, trace = _queue_run(driver.RUNNING_ORDER_POLICY)
+        with mock.patch.object(eip, "solve_integer_plan", limit_second):
+            records, coverage = batch.decision_comparisons(
+                trace, driver.RUNNING_ORDER_POLICY,
+                batch.running_order_decision)
+        self.assertEqual((coverage["time_limits"], coverage["complete"]),
+                         (1, True))
+        self.assertIn("integer_not_optimal",
+                      records[1]["supplement"]["findings"])
+        self.assertNotIn("integer", records[1]["supplement"]["candidates"])
+        # An integer-driven rollout stops before mutation, with no fallback.
+        del calls[:]
+        with mock.patch.object(eip, "solve_integer_plan", limit_second), \
+                mock.patch.object(lrs, "solve_and_extract") as lp:
+            summary, trace = _queue_run(driver.RUNNING_ORDER_INTEGER_POLICY)
+        lp.assert_not_called()
+        self.assertEqual((summary["validation_passed"],
+                          summary["failure"]["category"],
+                          len(trace["decisions"]),
+                          trace["decisions"][1]["central_ops"]),
+                         (False, "solver_limit", 2, []))
+        # A failed LP solve in a diagnostic is recorded and never executed;
+        # the integer plan still runs on its own build.
+        spec = batch.RUNNING_ORDER_DIAGNOSTICS["earlier_decode_vs_later_prefill"]
+        failure = lrs.Failure("injected", "solver", "solver_failure",
+                              "solver_failure", "injected")
+        with mock.patch.object(lrs, "solve_and_extract", return_value=failure):
+            record = batch.run_running_order_diagnostic("injected", spec)
+        self.assertIn("lp_failure", record["findings"])
+        self.assertIsNone(record["executed"]["lp"])
+        self.assertEqual(record["block_counts"]["lp"]["after"],
+                         record["block_counts"]["lp"]["before"])
+        self.assertEqual(record["executed"]["integer"]["outputs"][
+            "preempted_seq_ids"], [1])
+
+    def test_exact_checks_detect_contradictions_and_hidden_differences(self):
+        import compare_coefficient_policies_cpu as batch
+        specs = batch.RUNNING_ORDER_DIAGNOSTICS
+        problem = _diagnostic_problem(specs["numerical_stress_r8"])
+        # A claimed optimum beaten by another feasible plan.
+        check = batch.running_order_check(problem, {
+            "integer": ({"1": "prefill:128"}, None),
+            "other": ({"0": "prefill:128"}, None)}, enumerate_small=False)
+        self.assertIn("counterexample:other", check["findings"])
+        self.assertEqual(check["numerics"]["weights"]["0"],
+                         1_254_970_340_000_000)
+        self.assertTrue(check["numerics"]["ulp_exceeds_unit_margin"])
+        # A strict exact difference that the relative comparison tolerance
+        # calls a tie: residents 5 and 6 differ by 33800 - 260 at an
+        # objective near 1.6e17.
+        check = batch.running_order_check(problem, {
+            "integer": ({"0": "prefill:127", "5": "prefill:1"}, None),
+            "other": ({"0": "prefill:127", "6": "prefill:1"}, None)},
+            enumerate_small=False)
+        pair = check["pairs"][0]
+        self.assertEqual((pair["exact_integer_minus_other"]["exact"],
+                          pair["existing_tolerance_calls_equal"],
+                          pair["other_vector_vs_integer"]),
+                         ("33540/1", True, "worse"))
+        self.assertIn("tolerance_hides_difference:other", check["findings"])
+        self.assertNotIn("counterexample:other", check["findings"])
+        # A recorded coefficient that differs from the intended weight.
+        changed = dataclasses.replace(problem, requests=tuple(
+            dataclasses.replace(r, prefill_token_utility=2.5)
+            if r.request_id == "7" else r for r in problem.requests))
+        check = batch.running_order_check(changed, {}, enumerate_small=False)
+        self.assertEqual(check["numerics"]["recorded_mismatches"], ["7"])
+        self.assertIn("recorded_mismatch", check["findings"])
+        # Small weights: no scale flags.
+        small = batch.running_order_check(
+            _diagnostic_problem(specs["numerical_stress_r1"]), {})
+        self.assertEqual(small["findings"], [])
+        self.assertEqual(small["numerics"]["exact_margins"], [1])
+
+    def test_bounded_enumeration_resident_priority(self):
+        # Deterministic small native states. Every legal useful plan is
+        # enumerated by the planner test oracle and valued exactly from the
+        # recorded coefficients: a lexicographically larger resident
+        # progress vector always has larger utility, and the integer
+        # optimum attains the largest vector and utility.
+        import random
+        from fractions import Fraction
+
+        import compare_coefficient_policies_cpu as batch
+        import test_lp_relaxation_scheduler as oracle
+        rng = random.Random(20261026)
+        checked = 0
+        for _ in range(40):
+            residents = []
+            for _ in range(rng.randint(0, 3)):
+                prompt = rng.choice((16, 17, 32))
+                if rng.random() < 0.5:
+                    residents.append((prompt, rng.randint(1, prompt - 1), 0))
+                else:
+                    residents.append((prompt, prompt, rng.randint(0, 1)))
+            waiting = [rng.choice((4, 16, 20))
+                       for _ in range(rng.randint(0 if residents else 1, 2))]
+            used = sum(-(-p // 16) for p, _, _ in residents)
+            cap = rng.choice((2, 3, 4))
+            spec = dict(residents=residents, waiting=waiting,
+                        pool=max(2, used + rng.choice((0, 1, 2))),
+                        max_model_len=64,
+                        limit=max(1, len(residents) + rng.choice((0, 1))),
+                        b_max=cap, c_max=cap, s_max=rng.choice((1, 2, 3)),
+                        budget=cap)
+            problem = _diagnostic_problem(spec)
+            order = sorted((r for r in problem.requests if r.resident),
+                           key=lambda r: r.service_rank)
+
+            def valued(choice):
+                by_id = dict(zip((r.request_id for r in problem.requests),
+                                 choice))
+                vector = tuple(
+                    0 if by_id[r.request_id] is None
+                    else -1 if by_id[r.request_id][0] == "preempt"
+                    else 1 if by_id[r.request_id][0] == "decode"
+                    else by_id[r.request_id][1] for r in order)
+                value = sum(
+                    (Fraction(r.prefill_token_utility) * c[1]
+                     if c[0] == "prefill" else Fraction(r.decode_utility)
+                     if c[0] == "decode" else -Fraction(r.preemption_penalty))
+                    for r, c in zip(problem.requests, choice) if c is not None)
+                return vector, value
+            plans = []
+            for choice in oracle.oracle_enumerate(problem):
+                legal, useful, _ = oracle.oracle_simulate(problem, choice)
+                if legal and useful:
+                    plans.append(valued(choice))
+            integer = eip.solve_integer_plan(problem)
+            if not plans:
+                self.assertIsInstance(integer, eip.IntegerSolveFailure)
+                continue
+            groups = {}
+            for vector, value in plans:
+                low, high = groups.get(vector, (value, value))
+                groups[vector] = (min(low, value), max(high, value))
+            ordered = [groups[v] for v in sorted(groups)]
+            for (_, high), (low, _) in zip(ordered, ordered[1:]):
+                self.assertLess(high, low, spec)
+            self.assertIsInstance(integer, eip.IntegerOptimum, spec)
+            vector, value = valued(oracle.plan_choice(integer.plan, problem))
+            self.assertEqual(vector, max(groups), spec)
+            # Valued, like the plans, from the recorded float coefficients.
+            self.assertEqual(value, max(v for _, v in plans), spec)
+            check = batch.running_order_check(
+                problem, {"integer": (eip.plan_actions(integer.plan), None)})
+            self.assertEqual(tuple(check["candidates"]["integer"][
+                "progress_vector"]), vector, spec)
+            self.assertFalse([f for f in check["findings"]
+                              if f.startswith(batch.CONTRADICTIONS)], spec)
+            checked += 1
+        self.assertGreater(checked, 30)
+
+    def test_batch_status_reports_failures(self):
+        import compare_coefficient_policies_cpu as batch
+        workloads = ((driver.TWO_REQUEST, 1),)
+        diagnostics = {k: batch.RUNNING_ORDER_DIAGNOSTICS[k]
+                       for k in ("earlier_decode_vs_later_prefill",)}
+        native, calls = eip.solve_integer_plan, []
+
+        def fail_ilp_rollout(problem):
+            calls.append(problem.problem_id)
+            if len(calls) == 2:
+                return eip.IntegerSolveFailure(
+                    problem.problem_id, eip.STAGE_INTEGER_SOLVER,
+                    "solver_failure", "injected")
+            return native(problem)
+        for inject, code in ((False, 0), (True, 1)):
+            with self.subTest(inject=inject), \
+                    tempfile.TemporaryDirectory() as tmp, \
+                    mock.patch.object(batch, "RUNNING_ORDER_WORKLOADS",
+                                      workloads), \
+                    mock.patch.object(batch, "RUNNING_ORDER_METHODS",
+                                      (driver.RUNNING_ORDER_INTEGER_POLICY,)), \
+                    mock.patch.object(batch, "RUNNING_ORDER_DIAGNOSTICS",
+                                      diagnostics), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                del calls[:]
+                with mock.patch.object(eip, "solve_integer_plan",
+                                       fail_ilp_rollout if inject else native):
+                    self.assertEqual(batch.running_order_main(Path(tmp)), code)
+                status = json.loads((Path(tmp) / "run_record.json").read_text())[
+                    "status"]
+                self.assertEqual(status["result"], "PASS" if code == 0
+                                 else "FAIL")
+                self.assertEqual(bool(status["problems"]), inject)
+                if inject:
+                    self.assertIn("rollout failure solver_failure",
+                                  status["problems"][0])
+
+
 class CpuEntrypointTest(unittest.TestCase):
     def test_help_loads_no_engine_worker_ray_or_torch(self):
         code = (
