@@ -115,7 +115,7 @@ Older review recommendations and “awaiting review” handoffs remain historica
 records, not new user acceptance. Full Phase F acceptance is not inferred.
 
 The immediate bounded assignments are in
-[the undergraduate task document](docs/handoffs/tasks_for_stella.md).
+[task document](docs/handoffs/tasks_for_stella.md).
 General recovery/overhead criteria (Q11), coefficient defaults (D-01–D-04),
 discarded-work penalties (κ), and repeated-lost-work concerns (F02) remain
 open. PH1 can choose poor whole victims or waiting work and can admit then
