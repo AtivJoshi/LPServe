@@ -1,10 +1,12 @@
 # LPServe Project Guide
 
+**Current-state refresh:** 2026-11-01, source/evidence review at `35e0eab`; no experiments rerun. Earlier provenance below is historical.
+
 **Guide provenance:** Current-target wording updated on 2026-10-05 after read-only review at committed HEAD `14a15356e64e175f5def042d582412b40af4de2d` and user acceptance of the bounded single-request dummy-weight GPU milestone. The CPU milestone was accepted after review at `4f553b4`. Earlier guide updates inspected `78d663a` (2026-10-04) and `67a3362` (2026-09-20). The Phase C architecture audit remains pinned to `c3e0143`; later implementation and documentation commits do not repin that historical audit. Inspect current Git state before relying on this snapshot.
 
 ## Project purpose
 
-This repository is the working implementation and experiment base for a research prototype of an LP-relaxation scheduler for continuous-batching LLM inference. The scheduler is to be implemented natively in the LPServe/SLAI-derived serving framework and compared with existing policies in that same framework. The first target is **Primal Heuristic 1**: the myopic ILP's continuous relaxation followed by deterministic, feasibility-preserving integer extraction.
+This repository is the working implementation and experiment base for a research prototype of an LP-relaxation scheduler for continuous-batching LLM inference. The scheduler is implemented natively in the LPServe/SLAI-derived serving framework and has bounded comparisons with reference policies in that framework. The first implementation uses **Primal Heuristic 1**: the myopic ILP's continuous relaxation followed by deterministic, feasibility-preserving integer extraction.
 
 **Research goals clarified 2026-10-16.** The immediate research priority is a
 runnable framework for observing coefficient update policies and comparing them
@@ -32,7 +34,7 @@ those behaviors are correct or repaired.
 | `docs/lpserve_scheduler_architecture_summary.md` | Compact implementation-facing digest of the Phase C architecture audit. Read it before the full audit when quick orientation to scheduler, engine, sequence, and block-management behavior is needed. | Normative LP-scheduler requirements, new evidence beyond the full audit, or authority over the full audit when they conflict. |
 | `docs/lpserve_scheduler_architecture.md` | Descriptive, code-grounded Phase C audit of the existing LPServe/SLAI-derived framework at commit `c3e014363dd50e1830d7c85c3d043eab69fdc9e5`. It records request state, queues, allocation, execution/replay, metrics, defects, gaps, and exact evidence labels. | A proposed LP-scheduler specification, proof about later revisions, or runtime validation of every inspected path. |
 | `docs/lp_scheduler_design.md` | Normative implementation specification for the proposed scheduler across Phases D, E, and F. It defines responsibilities, interfaces, invariants, validation gates, explicit **OPEN** decisions, and **BLOCKER** boundaries. | Permission to fill OPEN items with convenient defaults or to bypass blockers. It does not turn a design requirement into verified implementation. |
-| `docs/project_status.md` | Chronological project state and acceptance record. It records Phase D acceptance and preserves Phase A--C history. | Mathematical, architectural, or design authority. It may lag newer artifacts and must not override them. |
+| `docs/project_status.md` | Chronological project state and acceptance record. It records scoped acceptance, later implementation/experiment milestones, and Phase A--C history. | Mathematical, architectural, or design authority. It may lag newer artifacts and must not override them. |
 | `docs/handoffs/` | Provenance-bearing implementation and review handoffs retained as supporting evidence. | Normative requirements, mathematical authority, or current status by itself. |
 | `docs/experiment_reference.md` | Durable evidence and configuration record for the controlled Phase B baseline runs. | Performance conclusions, scheduler equivalence, or validation of the proposed LP scheduler. |
 | `docs/unity_setup.md` | Commit-pinned, validated Unity environment and operational setup for the Phase A smoke baseline. | A benchmark result or a guarantee that the same instructions work unchanged at later commits or in other environments. |
@@ -72,13 +74,59 @@ The planned sequence is:
 7. Phase G — perform integrated correctness validation.
 8. Phase H — attribute timing and run controlled performance comparisons.
 
-The Phase C architecture audit and the Phase D–F normative design artifacts exist. The standalone Phase D mathematical layer remains accepted for its scoped MVP. The read-only mapper, native executor, and live `LPScheduler(BaseScheduler)` are implemented. The bounded single-stage CPU integration milestone was accepted on 2026-10-05 after source review and review of provenance-bearing Unity evidence at implementation commit `276e5f4`. The handoff records five mathematical, seven mapper, nine executor, and thirteen live-scheduler tests passing, including native replay/completion for the exercised paths. See `docs/project_status.md` and `docs/handoffs/lp_scheduler_integration_handoff.md` for revision and environment boundaries.
+The corrected myopic ILP, its continuous relaxation, and PH1 whole-action
+extraction are implemented. The read-only mapper, native executor, live
+single-stage scheduler, admission checks, and configuration migration are
+connected. Source was reviewed on 2026-11-01 at `35e0eab` on `main`.
+The corrected CPU evidence is in the
+[integration handoff](docs/handoffs/lp_scheduler_integration_handoff.md#corrected-connected-cpu-framework-2026-10-13-awaiting-review).
+It records 138 focused tests and bounded enumeration at `9a6ca3c` plus
+retained changes; later fixes have separate evidence. Contention and
+preemption GPU regressions at `82609eb` passed their bounded dummy-weight
+cases. These records do not validate every path at current HEAD.
 
-Supported execution includes waiting admission, resident prefill, and decode with prompt-first mixed output. Runtime preemption, ignore controls, pipeline execution, and overlapping state-changing calls remain unsupported. Direct configuration and registry construction are implemented. Python `EngineArgs` construction (`LLMEngine.from_engine_args(scheduler_type="lp", ...)` with nine required `lp_*` fields) is implemented and CPU-validated with mocked model/engine boundaries (`docs/handoffs/lp_engine_args_handoff.md`); real engine initialization through it, benchmark configuration, and command-line parsing remain deferred. LP scheduling requires the repository root on Python's import path. A single-request dummy-weight GPU run now establishes the exercised admission, partial-prefill, decode/block-growth, completion/free, and final idle path. Its accepted evidence is in `docs/handoffs/lp_scheduler_gpu_handoff.md`, tested at `a3be58a` plus the exact script later committed as `54bcd72`. A bounded two-request greedy mixed-batch GPU check (`docs/handoffs/lp_scheduler_mixed_gpu_handoff.md`) passed, and its prior review recommended acceptance; no explicit acceptance is recorded. A three-request contention workload (two action slots, all three finish) passed its CPU case and one dummy-weight GPU run on 2026-10-06 and awaits user review (`docs/handoffs/lp_scheduler_contention_handoff.md`); it does not establish identical central/worker physical block IDs, which can diverge after inherited set-order frees. General sampler correctness, generation quality, general mixed-batch correctness, independent GPU-worker block-table equality, arbitrary-workload completion, fairness, and performance remain unverified. Neither bounded milestone is full Phase F acceptance. Utilities, capacities, reserve, and decode-charge values remain scoped provisional inputs.
+The current path uses actual zero-or-one-block decode demand, the admission
+watermark, a useful-execution row, resident capacity, separate service/victim
+ranks, and declared execution order. It has no independent planning reserve
+or locking extraction. Native recomputation preemption is supported. Ignore
+controls, overlapping state-changing calls, and pipeline execution remain
+unsupported. `EngineArgs` supports LP construction; bounded comparison GPU
+runs exercise real engine initialization. This does not establish general
+benchmark/CLI coverage.
 
-**Corrected framework (2026-10-12).** The myopic ILP and Primal Heuristic 1 were amended in `docs/math/main-llm-serving.tex` (committed at `b1addc8` and `69e2180`) following decisions R01–R21 in `docs/lp_scheduler_architecture_discussion_phase_F.4.md`, and `docs/lp_scheduler_design.md` and the research context were aligned with them. The current milestone is to implement and CPU-validate that correction (design §15.7). Until then, the code follows the superseded contracts: planning reserve, conservative decode charge, locking extraction, and `order_key`-only ordering. The preceding statements about reserve and decode-charge inputs therefore describe existing code and earlier evidence only; the design's amended requirements govern new work. Q11, adapted-policy recovery and overhead evaluation, is OPEN in research-context §21.
+The adapted reference is implemented in LPServe and pinned to upstream vLLM
+v0.31.0 commit `db9527a`. It is distinct from the inherited `VLLMScheduler`
+and is not whole-engine vLLM equivalence. Its
+[handoff](docs/handoffs/adapted_vllm_reference_handoff.md#gpu-validation-run-2026-10-18)
+records CPU checks and passing mixed/preemption GPU cases at `9b9273a`.
+The [comparison handoff](docs/handoffs/scheduler_comparison_handoff.md)
+records uniform, rank-based, geometric, reciprocal-square, and running-order
+studies, including failed runs and later corrections. The corrected
+12-block/context-192 reciprocal-square GPU case drained in 118 decisions;
+the reference drained in 117. Decision counts are not latency or throughput.
 
-**Qualification (2026-10-12).** The statement above that runtime preemption remains unsupported is outdated. Native runtime preemption is implemented in the inspected Mac source (`lpserve_plan_execution.py` at `69e2180`) and described in the design's revision-specific records (§13, native preemption execution, 2026-10-10). The corrected extraction, resource, and ordering contracts remain unimplemented and unvalidated.
+The user accepted the experimental running-order policy and bounded CPU batch
+at `35e0eab`; see the
+[acceptance record](docs/handoffs/scheduler_comparison_handoff.md#acceptance-and-subsequent-analysis-2026-10-26).
+All 60 rollouts drained and all 2,793 decisions had integer comparisons.
+There is no running-order GPU validation. Its waiting priorities remain soft;
+the strict waiting-order extension is proposed and unimplemented.
+Older review recommendations and “awaiting review” handoffs remain historical
+records, not new user acceptance. Full Phase F acceptance is not inferred.
+
+The immediate bounded assignments are in
+[the undergraduate task document](docs/handoffs/tasks_for_stella.md).
+General recovery/overhead criteria (Q11), coefficient defaults (D-01–D-04),
+discarded-work penalties (κ), and repeated-lost-work concerns (F02) remain
+open. PH1 can choose poor whole victims or waiting work and can admit then
+evict. Running-order coefficients can become numerically too large.
+Admission validity does not guarantee completion. Native recomputation can
+reset output limits, sampler/output defects remain inherited, and physical
+block IDs can differ between managers. General fairness, restart freedom,
+generation quality, performance, and reference equivalence are unverified.
+The manuscript warning about downstream PH2, dual, MPC, and equivalence
+sections still applies. Offline dual reporting does not approve those sections
+or implement a new scheduler.
 
 **Future TP/PP extension approved (2026-10-18; not implemented).** Read
 [design §19](docs/lp_scheduler_design.md#19-approved-future-tp-and-pp-extension)
@@ -130,6 +178,24 @@ approved resolution is recorded.
 
 ## Work / research-design sessions
 
+ChatGPT normally supports research discussion, mathematics, task preparation,
+and review. Claude normally implements and executes tasks. Claude Desktop
+may separately review mathematics. The user normally handles synchronization.
+Use one writer per file and reread saved changes before editing. These roles
+do not restrict an explicitly assigned documentation-maintenance task.
+
+Every implementation task must critically examine its proposed plan before
+implementing it. Report contradictions, counterexamples, and unintended
+consequences, including problems in an approved plan. Approval is not proof
+of correctness. Continue unaffected work, but stop an affected choice that
+would change mathematics, resolve an OPEN decision, or bypass a BLOCKER.
+
+An implementation agent already on an allocated Unity GPU node must use that
+node and the existing repository Python environment directly. Do not invoke
+`srun`, request another allocation, submit jobs, or SSH elsewhere unless
+explicitly requested. Report the exact environment failure instead of
+changing nodes or rebuilding the environment.
+
 Begin with this guide, then read only the detailed sources needed for the question:
 
 1. Read the relevant formulation and Primal Heuristic 1 material in `docs/math/main-llm-serving.tex`.
@@ -157,7 +223,7 @@ are no longer mandatory.
 ## Documentation maintenance
 
 - Keep repository-relative paths and commit/environment provenance exact.
-- Update `docs/project_status.md` only after a phase's acceptance evidence has been observed; it records chronology and handoffs, not specifications.
+- Update `docs/project_status.md` for material implementation, observed evidence, review, and explicit acceptance. Label each separately; recommendations do not establish acceptance. It records chronology, not specifications.
 - Record controlled run configuration and evidence in `docs/experiment_reference.md` or a clearly scoped successor; do not overwrite historical provenance.
 - Keep `docs/lpserve_scheduler_architecture.md` commit-pinned. Record later behavior in a revisioned audit or dated addendum after reinspection.
 - Update `docs/lp_scheduler_design.md` when a design decision is explicitly approved or a contract changes, including rationale, affected interfaces, tests, and experiment metadata where applicable.

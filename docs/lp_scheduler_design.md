@@ -6,7 +6,7 @@
 **Design date:** 2026-09-04  
 **Implementation target:** Primal Heuristic 1, LP relaxation followed by deterministic integer extraction
 
-**Corrected-framework amendment:** 2026-10-12; requirements awaiting implementation (§2.1)
+**Corrected-framework amendment:** 2026-10-12; implemented for the scoped single-stage path (status refreshed 2026-11-01; §2.1)
 
 **Future parallelism extension approved:** 2026-10-18; design recorded in §19, implementation and validation pending. The existing single-stage contract remains in force until that extension is implemented and checked.
 
@@ -99,8 +99,8 @@ The Phase C architecture audit and this design's code baseline are pinned to com
 mathematical correction in `docs/math/main-llm-serving.tex` (`subsec:myopic_ilp`,
 committed at `b1addc8`; `subsec:lp_relaxation`, committed at `69e2180`) and with
 decisions R01–R21 in `docs/lp_scheduler_architecture_discussion_phase_F.4.md`.
-Amended passages are marked as amended and implementation pending. They are
-requirements, not implemented behavior. At `69e2180` the code still implements
+Amended passages retain their decision dates. They are normative requirements;
+implementation and validation have separate evidence below. At `69e2180` the code still implemented
 the superseded contracts: the conservative one-block decode charge, the planning
 reserve, indicator locking with dominant and safety preemption, `order_key`-only
 ordering, head-of-queue idle detection, utility validation that checks finiteness but
@@ -111,6 +111,21 @@ no pre-registration admission check. Evidence paragraphs that cite those contrac
 remain revision-specific historical evidence; they do not validate the amended
 requirements. Manuscript sections after `subsec:lp_relaxation` are unrevised (see
 the red revision boundary there) and are not normative for this design.
+
+**Implementation status (2026-11-01; source review at `35e0eab`).** The
+corrected planner, mapper, executor, live scheduler, request-admission check,
+and obsolete-argument rejection are implemented. The
+[corrected CPU handoff](handoffs/lp_scheduler_integration_handoff.md#corrected-connected-cpu-framework-2026-10-13-awaiting-review)
+records the §15.7 checks at `9a6ca3c` plus retained changes and later fixes.
+[Project status](project_status.md) indexes subsequent GPU and policy evidence.
+This refresh removes obsolete “implementation pending” tags from the corrected
+single-stage requirements; it changes no requirement and grants no broader
+acceptance. Earlier scoped configurations and evidence retain their original
+revision boundaries. F01/F03/F04 closure was left to review in that handoff;
+this refresh does not silently close them. F02 and Q11 remain OPEN.
+The running-order policy and bounded CPU batch have a separate explicit
+[acceptance record](handoffs/scheduler_comparison_handoff.md#acceptance-and-subsequent-analysis-2026-10-26).
+TP/PP (§19) remains approved future work, unimplemented and unvalidated.
 
 ### 2.2 Terminology bridge
 
@@ -186,7 +201,7 @@ excludes future and finished requests, and preserves every remaining owned
 request exactly once. It MUST NOT assume `waiting ∪ running` is universally
 complete or inherit SLAI auxiliary ownership; see the architecture reference.
 
-*(amended 2026-10-12; implementation pending)* Partition $U_t$ by allocation state into the resident set
+*(amended 2026-10-12)* Partition $U_t$ by allocation state into the resident set
 $\mathcal R_t$ (allocated, owned by `running`, including residents omitted from
 the next forward pass) and the waiting set $\mathcal Q_t$ (arrived and
 unallocated, owned by `waiting`, including recomputation-preempted requests).
@@ -280,7 +295,7 @@ The continuous relaxation MUST relax $x_i$. Leaving $x_i$ integral would produce
 | $\beta_i(t)$ | Utility per prefill token | OPEN scale |
 | $\gamma_i(t)$ | Preemption penalty coefficient | OPEN scale |
 
-Utility coefficients MUST be supplied explicitly. *(amended 2026-10-12; implementation pending)* The mathematical source requires them to be finite and nonnegative on a common utility scale. They may depend on state but are fixed during each decision (R17). Their values, formulas, and normalization remain OPEN (D-01–D-04).
+Utility coefficients MUST be supplied explicitly. *(amended 2026-10-12)* The mathematical source requires them to be finite and nonnegative on a common utility scale. They may depend on state but are fixed during each decision (R17). Their values, formulas, and normalization remain OPEN (D-01–D-04).
 
 ### 5.3 System parameters
 
@@ -359,7 +374,7 @@ $$
 Resident decode/partial prefill adds no resident; legal preemption removes one;
 admission consumes one regardless of chunk size.
 
-*(amended 2026-10-12; implementation pending)* Under R08 the resident limit is also an LP constraint:
+*(amended 2026-10-12)* Under R08 the resident limit is also an LP constraint:
 
 $$
 |\mathcal R_t|-\sum_{i\in\mathcal R_t}z_i+\sum_{i\in\mathcal Q_t}I_i^P\le N_{\max},
@@ -464,7 +479,7 @@ $$
 
 The integer domains are those in Section 5. For $i\notin\mathcal Z_t$, $z_i=0$.
 
-*(amended 2026-10-12; implementation pending)* This is the committed `subsec:myopic_ilp` formulation. The independent
+*(amended 2026-10-12)* This is the committed `subsec:myopic_ilp` formulation. The independent
 reserve $W_t$ is removed and no final-state reserve is imposed. When $h=0$ the
 watermark rows are implied by actual memory and MAY be omitted. Useful execution
 applies only after input and admission validation to a nonempty arrived
@@ -516,7 +531,7 @@ It is never directly executable; it only guides extraction (§10).
 
 ### 7.3 Coupling structure and fractional solutions
 
-*(amended 2026-10-12; implementation pending)* Token volume, action width, actual memory, the decode prerequisite,
+*(amended 2026-10-12)* Token volume, action width, actual memory, the decode prerequisite,
 resident capacity, useful execution, and the per-admission watermark rows couple
 requests through shared totals. Eligibility, linkage, mutual exclusion, and
 preemption support are request-local. The former three-global-constraint
@@ -535,7 +550,7 @@ reformulation is approved to change this.
 
 ### 8.1 Free memory and admission watermark
 
-*(amended 2026-10-12; implementation pending)* $F=M_t^{\mathrm{free}}$ is the block manager's current free
+*(amended 2026-10-12)* $F=M_t^{\mathrm{free}}$ is the block manager's current free
 physical-block count at the read-only snapshot boundary. $h$ is the shared
 block manager's admission watermark, `watermark_blocks`
 $=\lfloor\texttt{watermark}\cdot T\rfloor$ for total pool $T$ (default
@@ -594,7 +609,7 @@ $$
 
 normally zero or one.
 
-*(amended 2026-10-12; implementation pending)* D-09 is decided: $c_i^D$ is this exact demand and MUST be zero or one for
+*(amended 2026-10-12)* D-09 is decided: $c_i^D$ is this exact demand and MUST be zero or one for
 a decode-eligible resident. A gap outside $\{0,1\}$ is an unsupported-state
 mapping error, never a clamped demand. The conservative one-block charge
 (`conservative_one_block_v1`) is retired for the corrected path. The inherited
@@ -630,7 +645,7 @@ c_i^Z(t)
 $$
 
 This is the audited non-sharing manager's recovery from `free(seq)`.
-*(amended 2026-10-12; implementation pending)* Safety repair is retired (§10). A legal victim with $c_i^Z=0$ is not
+*(amended 2026-10-12)* Safety repair is retired (§10). A legal victim with $c_i^Z=0$ is not
 excluded, because it can release a resident place.
 
 ### 8.5 Planning feasibility is not execution feasibility
@@ -672,7 +687,7 @@ unsupported live IDs are mapping failures. This scoped rule MUST be revisited
 if request-ID generation changes or a scheduling universe spans independent
 ID generators.
 
-*(amended 2026-10-12; implementation pending)* Under D-16, `order_key` remains the stable request identity, the canonical
+*(amended 2026-10-12)* Under D-16, `order_key` remains the stable request identity, the canonical
 LP variable and vector order, and the final tie-break. It MUST NOT determine
 policy preference: extraction comparisons, victim emission, and execution
 order use LP values and ranks first (§§10, 13).
@@ -735,7 +750,7 @@ other category is non-success and cannot reach extraction. A rejected vector
 may retain diagnostics but MUST NOT yield fabricated, silently rounded, or
 all-zero actions.
 
-*(amended 2026-10-12; user decision R21; implementation pending)* Status `2` is
+*(amended 2026-10-12; user decision R21)* Status `2` is
 reported as **solver-reported LP infeasibility**, a distinct non-success outcome
 that retains the raw status, message, and other available diagnostics. It is a
 numerical solver report, not an exact mathematical certificate. The statement
@@ -783,7 +798,7 @@ A successful extraction returns, for every request ID in ascending `order_key`:
 - binary preemption decision $\hat z_i$;
 - canonical prefill indicator $\hat I_i^P$.
 
-The plan MUST also expose *(amended 2026-10-12; implementation pending)*:
+The plan MUST also expose *(amended 2026-10-12)*:
 
 - the declared victim order (victim rank, then identity) and execution order
   (prefills, zero-demand decodes, then one-block decodes; service rank, then
@@ -835,7 +850,7 @@ messages. Python implementation surfaces use responsibility-based terminology.
 
 ## 10. Whole-action extraction
 
-*(amended 2026-10-12; implementation pending)* This section replaces the former
+*(amended 2026-10-12)* This section replaces the former
 indicator classification, integral/fractional partition, residual locking,
 dominant preemption, safety repair, positive-support-only packing, and
 fractional-count requirements. It specifies the committed `alg:lp_rounding` and
@@ -1001,7 +1016,7 @@ $C_{\max}>0$ with $U_i=\min(P_i^{\mathrm{rem}},C_{\max})$; unavailable actions
 have zero upper bounds; $c_i^Z$ is zero or absent outside $\mathcal Z_t$; and
 every required OPEN policy is explicit. LPServe-derived counts cannot be
 negative; the numerical policy defines other admissible lower bounds.
-*(amended 2026-10-12; implementation pending)* Also: utility coefficients are finite and nonnegative; $c_i^D\in\{0,1\}$
+*(amended 2026-10-12)* Also: utility coefficients are finite and nonnegative; $c_i^D\in\{0,1\}$
 for decode-eligible residents; $h\ge0$ and $N_{\max}>0$ are integers;
 $\mathcal R_t$ and $\mathcal Q_t$ partition $U_t$ consistently with ownership
 and allocation, with $|\mathcal R_t|\le N_{\max}$; and every required rank is
@@ -1054,7 +1069,7 @@ normalized objective after projection. The two tolerances MUST NOT be conflated.
 
 ### 11.3 Integer-plan algebraic invariants
 
-Every successful plan MUST satisfy exactly *(amended 2026-10-12; implementation pending)*, with
+Every successful plan MUST satisfy exactly *(amended 2026-10-12)*, with
 $\hat H=F+\sum_{i\in\mathcal R_t}c_i^Z\hat z_i-\sum_ia_i^P\hat I_i^P$:
 
 $$
@@ -1126,8 +1141,8 @@ incoherent state and never combines incompatible instants.
 | Request ID $i$ | Decimal string of the verified non-negative integer `Sequence.seq_id`; raw integer retained in the immutable snapshot | Resolved for the single-scheduler MVP by D-16 |
 | `order_key` | `(raw_seq_id,)`, using the current engine's monotone integer counter assignment; stable identity, canonical variable order, and final tie-break only | D-16, amended 2026-10-12 |
 | $U_t$ | Deduplicated arrived, non-finished sequences owned by the LP scheduler's inherited `waiting` or `running` collection | Resolved for the single-stage MVP by D-08 |
-| $\mathcal R_t$, $\mathcal Q_t$ | Members of $U_t$ owned by `running` and by `waiting` | Amended 2026-10-12; implementation pending |
-| $\pi_i^E$, $\pi_i^Z$ | Built from the same captured queue state. Initial vLLM-oriented profile: service rank is current `running` position (including partial prefills), then arrived `waiting` position; victim rank is reverse `running` position | Approved R16; implementation pending |
+| $\mathcal R_t$, $\mathcal Q_t$ | Members of $U_t$ owned by `running` and by `waiting` | Amended 2026-10-12 |
+| $\pi_i^E$, $\pi_i^Z$ | Built from the same captured queue state. Initial vLLM-oriented profile: service rank is current `running` position (including partial prefills), then arrived `waiting` position; victim rank is reverse `running` position | Approved R16 |
 | $\mathcal Z_t$ | Owned resident, allocated, native-status-eligible requests on the selected native preemption path | MVP compatibility mode inherits known limitations; pipeline predicate OPEN |
 | $P_i^{\mathrm{rem}}$ | `get_prompt_len() - get_num_prompt_tokens_processed()` | Resolved |
 | Prefill eligibility | Positive remainder plus legal ownership/status/allocation path | Exact status policy must be documented |
@@ -1141,7 +1156,7 @@ incoherent state and never combines incompatible instants.
 | $h$ | `block_manager.watermark_blocks` | Amended 2026-10-12; replaces $W_t$, which is removed (D-10) |
 | $a_i^P$, resident partial prefill | Zero after resident ownership and block-table allocation are verified | Resolved |
 | $a_i^P$, admission/recompute | `len(seq.logical_token_blocks)` | Resolved |
-| $c_i^D$ | Exact logical/physical gap in $\{0,1\}$; another gap is a mapping failure | Decided (D-09, 2026-10-12); implementation pending |
+| $c_i^D$ | Exact logical/physical gap in $\{0,1\}$; another gap is a mapping failure | Decided (D-09, 2026-10-12) |
 | $c_i^Z$ | Current physical block-table length | Resolved for legal candidate |
 | $\alpha_i,\beta_i,\gamma_i$ | Finite, nonnegative values constructed from the same captured state by the coefficient data path below, fixed for the decision | Data path amended 2026-10-12; formulas, scales, and $\kappa$ OPEN |
 
@@ -1160,8 +1175,7 @@ also be nonnegative. This externally supplied mapping remains a validated
 payload where applicable, for example for explicit fixtures, but it is not the
 sole route for coefficients; state-dependent policies use the data path below.
 
-**Coefficient and rank data path (2026-10-12; P10 step 6; implementation
-pending).** Within the existing read-only mapping responsibility, one
+**Coefficient and rank data path (2026-10-12; P10 step 6).** Within the existing read-only mapping responsibility, one
 scheduling decision proceeds as follows:
 
 1. *Capture once.* Read and validate the live resource, request, and queue
@@ -1316,7 +1330,7 @@ force an unrelated scheduled action to hide that failure. After mutation
 begins, D-20 supplies fail-stop behavior without rollback or recovery.
 
 **Amended execution order and queue transitions (2026-10-12; R07, R16, D-21
-amended; implementation pending).** Before any mutation, the executor builds the
+amended).** Before any mutation, the executor builds the
 complete declared order and prevalidates it:
 
 1. preempt and emit the selected victims in ascending victim rank, then
@@ -1533,7 +1547,7 @@ universe, it returns a `MappingFailure`. The mapper may still filter future
 requests out of a mixed nonempty snapshot, as before, without validating them
 further.
 
-*(amended 2026-10-12; implementation pending)* Under R14, ordinary idle is classified by the absence of any arrived
+*(amended 2026-10-12)* Under R14, ordinary idle is classified by the absence of any arrived
 unfinished request in `running` or `waiting`, not by the waiting head: a
 future-arrival head MUST NOT hide later arrived work. The head-based check
 described above is the current behavior at `69e2180` and is superseded.
@@ -1546,7 +1560,7 @@ with zero mutation. The top-level scheduler applies D-17: it raises its
 dedicated failure exception and produces no `SchedulerOutputs`. It MUST NOT
 retry unchanged state, force an unrelated action, invoke another policy, or
 change the accepted mathematical layer to conceal the outcome.
-*(amended 2026-10-12; implementation pending)* Progress now comes from the useful-execution row and the constructor
+*(amended 2026-10-12)* Progress now comes from the useful-execution row and the constructor
 (§10); `no_progress` remains a defensive rejection of an erroneous empty or
 preempt-only plan.
 
@@ -1626,7 +1640,7 @@ and `LPSchedulingError`.
   `BaseScheduler` owns `_iteration_id`, `num_running_batches`, and
   completion bookkeeping.
 
-**Configuration migration (2026-10-12; D-30; implementation pending).** Exact
+**Configuration migration (2026-10-12; D-30).** Exact
 decode demand is mandatory, and $h$ is read from the shared block manager. The
 `memory_reserve` and `decode_memory_policy_id` fields of `LPSchedulerConfig` and
 the `lp_memory_reserve` and `lp_decode_memory_policy_id` `EngineArgs` fields are
@@ -1639,8 +1653,7 @@ direct-construction behavior is preserved. Historical scripts and records keep
 their version-specific configuration and are not rewritten. The configuration
 descriptions and scoped values above describe the interface at `69e2180`.
 
-**Initial request-admission validation (approved R13; D-29; implementation
-pending).** For LP scheduling only, a new request is checked after
+**Initial request-admission validation (approved R13; D-29).** For LP scheduling only, a new request is checked after
 tokenization and `Sequence` construction (to reuse the allocator's initial-size
 calculation) but before registration with the engine sequence manager, workers,
 scheduler, or arrival metrics. It is rejected with an explicit request error
@@ -1716,7 +1729,7 @@ the arrived universe is nonempty, a validated plan with no prefill or decode
 action is a `no_progress` precommit failure and follows D-17. An empty output
 MUST NOT be used to represent or suppress that failure.
 
-*(amended 2026-10-12; implementation pending)* The required outcome distinctions are: ordinary idle (no arrived
+*(amended 2026-10-12)* The required outcome distinctions are: ordinary idle (no arrived
 unfinished work; no LP path is entered); initial admission impossibility (a
 request error before registration); solver-reported LP infeasibility;
 exhaustive absence of legal useful integer work; solver or numerical failure;
@@ -1941,9 +1954,10 @@ The absence of a failure in a GPU run is not evidence that an unexercised invari
 
 ### 15.7 Corrected-framework CPU milestone checks
 
-*(added 2026-10-12 from P10 step 9; none has been run.)* These checks are
-required before the corrected CPU milestone is claimed. They are future
-requirements, not evidence.
+*(added 2026-10-12 from P10 step 9; status refreshed 2026-11-01.)* These
+remain the required checks. The corrected CPU handoff linked in §2.1 records
+executed coverage and limitations at its tested revision. This checklist is
+a requirement, not independent evidence or validation of later changes.
 
 - *Pure mathematical:* each amended row; $h=0$ and $h>0$; multiple admissions
   sharing one watermark; omitted residents; zero free blocks with a zero-demand
@@ -2131,24 +2145,24 @@ generation quality and changes no mathematical, execution, or failure contract.
 |---|---|---|
 | D-08 | **RESOLVED for the single-stage MVP** — the LP scheduler inherits `BaseScheduler` directly. Inherited `waiting` exclusively owns unallocated unfinished requests; inherited `running` exclusively owns all allocated resident unfinished requests, including residents not selected for the next forward pass. Auxiliary structures are non-owning indexes only. Mapping occurs at the quiescent pre-mutation boundary with no batch in flight. This avoids SLAI-specific ownership and preserves base unfinished-request and completion behavior while making ownership and allocation cross-checkable. | §§4.1–4.4, 6.4, 12.2–12.5; focused test §15.3; D-24 and §19 govern the future extension |
 | D-11 | **RESOLVED** — `scipy.optimize.linprog`/HiGHS behind a project-owned adapter; SciPy must become an explicit reproducible dependency before Phase D execution, and its exact version is not selected here. | §9.3; tests §15.1; diagnostics §14.5 |
-| D-09 | **RESOLVED 2026-10-12 (R07); implementation pending** — $c_i^D$ is the exact logical/physical gap in $\{0,1\}$; another gap is an unsupported-state mapping error. The free-block-before-decode gate is the decode prerequisite row, and zero-demand decodes execute before one-block decodes. *Formerly OPEN* between the exact gap and the conservative one-block charge (`conservative_one_block_v1`, retired for the corrected path). | §§7.1, 8.3, 12.3, 13; §15.7 |
-| D-10 | **RESOLVED 2026-10-12 (R10, R12); implementation pending** — the independent planning reserve $W_t$ is removed. Its intended protection is replaced by the admission-watermark rows $H\ge hI_i^P$ ($i\in\mathcal Q_t$), with $h$ read from the shared block manager and the rows omitted when $h=0$. No final-state reserve is imposed. *Formerly OPEN.* | §§5.3, 7.1, 8.1, 12.3; D-30 |
+| D-09 | **RESOLVED 2026-10-12 (R07)** — $c_i^D$ is the exact logical/physical gap in $\{0,1\}$; another gap is an unsupported-state mapping error. The free-block-before-decode gate is the decode prerequisite row, and zero-demand decodes execute before one-block decodes. *Formerly OPEN* between the exact gap and the conservative one-block charge (`conservative_one_block_v1`, retired for the corrected path). | §§7.1, 8.3, 12.3, 13; §15.7 |
+| D-10 | **RESOLVED 2026-10-12 (R10, R12)** — the independent planning reserve $W_t$ is removed. Its intended protection is replaced by the admission-watermark rows $H\ge hI_i^P$ ($i\in\mathcal Q_t$), with $h$ read from the shared block manager and the rows omitted when $h=0$. No final-state reserve is imposed. *Formerly OPEN.* | §§5.3, 7.1, 8.1, 12.3; D-30 |
 | D-12 | **RESOLVED** — optimal-only: only normalized SciPy `status == 0` may enter validation; only its validated candidate may extract. *Amended 2026-10-12 (R21):* status 2 is reported as solver-reported LP infeasibility, a distinct non-success outcome that retains diagnostics and is not an exact certificate. | §9.3, §11.2, §14.1, §15.1 |
 | D-13 | **PARTIAL** — reference: `highs-ds`, explicit `presolve=True`, no project `time_limit`/`maxiter`, and no explicit crossover or undocumented thread/parallel/random-seed controls. Performance/control/basis remainder is **OPEN**. | §9.3; §10.8; §15.1–15.2 |
 | D-14 | **SUPERSEDED for extraction 2026-10-12** — $\varepsilon_{\mathrm{int}}=10^{-6}$ remains the configured value but has no classification, locking, or decision role in the corrected path; any remaining use is diagnostic only. No classification subsystem is added. *Formerly RESOLVED:* absolute $\varepsilon_{\mathrm{int}}$ for validated indicators only. | §§10.4, 10.8 |
 | D-15 | **RESOLVED** — absolute $\varepsilon_{\mathrm{feas}}=10^{-7}$, independent validation, narrow projection, and revalidation only. *Amended 2026-10-12:* validation covers every amended row; the prospective-locking compatibility check is removed; tolerance and projection rules are unchanged. | §11.2; §15.1 |
-| D-16 | **AMENDED 2026-10-12 (R06, R16); implementation pending** — `order_key` remains the stable identity, canonical variable order, and final tie-break. Policy preference uses immutable per-decision service and victim ranks (smaller first): execution candidates by descending LP execution value, service rank, identity; victims by descending LP preemption value, victim rank, identity; emitted victims by victim rank, identity; execution groups by service rank, identity. Initial vLLM-oriented profile: service = current running order then arrived waiting order; victim = reverse running order. *Formerly:* ascending immutable lexicographic `order_key` with exact extraction ties. The current engine's unique non-negative integer `Sequence.seq_id` is its verified monotone admission identity; Phase E uses `order_key=(raw_seq_id,)` and the accepted decimal-string request ID. Unsupported live ID shapes fail mapping. Revisit this rule if ID generation changes or one scheduling universe spans independent generators. | §§9–10, 12.3; tests §§15.2–15.3 |
+| D-16 | **AMENDED 2026-10-12 (R06, R16)** — `order_key` remains the stable identity, canonical variable order, and final tie-break. Policy preference uses immutable per-decision service and victim ranks (smaller first): execution candidates by descending LP execution value, service rank, identity; victims by descending LP preemption value, victim rank, identity; emitted victims by victim rank, identity; execution groups by service rank, identity. Initial vLLM-oriented profile: service = current running order then arrived waiting order; victim = reverse running order. *Formerly:* ascending immutable lexicographic `order_key` with exact extraction ties. The current engine's unique non-negative integer `Sequence.seq_id` is its verified monotone admission identity; Phase E uses `order_key=(raw_seq_id,)` and the accepted decimal-string request ID. Unsupported live ID shapes fail mapping. Revisit this rule if ID generation changes or one scheduling universe spans independent generators. | §§9–10, 12.3; tests §§15.2–15.3 |
 | D-17 | **RESOLVED for the MVP** — every mapping, solver, relaxed-validation, extraction, integer-plan-validation, or fresh-prevalidation failure detected before mutation is fail-stop. The layer returns its immutable structured failure without a plan; the live LP scheduler raises a dedicated exception carrying its immutable diagnostics, produces no `SchedulerOutputs`, and ends the run. It performs no automatic retry or re-planning, empty/all-zero substitution, alternate-policy fallback, patching, or execution. D-18 governs a valid empty plan; D-20 governs failures after mutation begins. Implemented by `LPSchedulingError` (§13, live scheduler integration). | §§13, 14.1–14.3; focused tests §15.4 |
 | D-18 | **RESOLVED for the single-stage MVP** — ordinary future-only or completely empty scheduling is handled by the live `LPScheduler` before mapper invocation: when `running` is empty and `waiting` is empty or its head has `arrival_time > now`, the scheduler returns an ordinary empty `SchedulerOutputs` without mapping, LP construction, solving, extraction, precommit validation, or execution. This inherits the audited schedulers' waiting-order and future-request-validity assumptions and adds no separate validation subsystem. It also inherits `BaseScheduler.schedule()` bookkeeping: `_iteration_id` advances and supplies the output ID, while waiting/running ownership, sequence status and progress, block state, and `num_running_batches` remain unchanged. The mapper accepts only a nonempty arrived universe; an empty arrived universe reaching direct mapping is a `MappingFailure`. Future requests may still be filtered from a mixed nonempty snapshot. *Amended 2026-10-12 (R14):* idle is classified by the absence of any arrived unfinished request, not by the waiting head; useful execution is an LP row (D-26), and `no_progress` is a defensive guard. If the arrived universe is nonempty and a successfully validated plan contains no positive prefill or decode action, including an all-zero or preempt-only plan, precommit validation returns `no_progress` before execution mutation and the top-level scheduler applies D-17. No retry, forced action, alternate policy, or mathematical-layer change is added. | §§12.1, 13, 14.2, 15.4; D-20 covers failures after execution mutation |
 | D-19 | **RESOLVED for the single-stage MVP; simplification approved 2026-10-04** — the same engine receives no overlapping state-changing public calls; mapping begins with one pipeline stage and zero running batches; and mapping through execution is synchronous within one scheduler decision call. This contract supplies state stability. The snapshot ID (the scheduler iteration number, §9.2) associates the problem and plan but is not a lock or proof of unchanged state. Phase F checks problem/plan identity and fully validates the complete plan against current state immediately before mutation, including combined native memory feasibility in execution order. It does not separately compare live fields with the earlier snapshot or rebuild the mapper for comparison. Identity mismatch or failed prevalidation is a zero-mutation precommit failure followed by the D-17 fail-stop response. The separate comparison's detection of unexpected contract-violating state changes is relinquished. No new lock, version, reservation, or layer-local retry subsystem is required. Pipeline mode and concurrent public calls remain unsupported. | §§12.2, 12.6, 13, 14.2–14.3; focused tests §§15.3–15.4; D-24 and §19 govern the future extension |
 | D-20 | **RESOLVED for the single-stage MVP** — Phase F fully prevalidates before mutation and then uses native LPServe operations. Any exception after the first mutation propagates and terminates the run; potentially divergent scheduler, engine, sequence-manager, and worker state is not reused. The MVP adds no rollback, retry, alternate-policy fallback, partial output, recovery, or transaction mechanism. Known control-only output shapes, including preempt-only plans, are rejected before mutation under D-17 rather than sent through this destructive path. | §§13, 14.4, 16.3, 16.5; focused tests §15.4; D-24 and §19 govern the future extension |
-| D-21 | **RESOLVED for the single-stage MVP (approved 2026-10-05)** — execute and emit all selected prefills first, then all selected decodes, each ascending by existing `order_key`; central native operations and emitted metadata share this order. Built as a separate ordered action list; the accepted plan, its selected actions, and chunk sizes are unchanged. Rationale: matches prompt-first physical input packing and gives a deterministic within-group order. Inherited mixed-batch/sampler limitations remain under §16.4 and D-25. *Extended 2026-10-10:* all selected victims are preempted before any scheduled action, ascending by `order_key`, and `preempted_seq_ids` uses that order; native front insertion leaves them in `waiting` in reverse call order (§13, native preemption execution). *Amended 2026-10-12 (R07, R16); implementation pending:* victims by victim rank, then identity; then prefills, zero-demand decodes, and one-block decodes, each by service rank, then identity; admissions appended in that order; retained residents keep their relative positions (§13, amended execution order). | §13; focused test `tests/test_lpserve_plan_execution.py` (`test_mixed_output_is_prompt_first_in_native_execution_order`) |
-| D-26 | **RESOLVED 2026-10-12 (R01, R14); implementation pending** — the LP includes $\sum_i(I_i^P+y_i)\ge1$ for every validated nonempty arrived universe; preemption alone does not count; a state without a legal useful integer plan is reported, not given an invented action. Admission validity does not guarantee completion. | §§7.1, 10, 14.2 |
-| D-27 | **RESOLVED 2026-10-12 (R08); implementation pending** — resident capacity is an LP row counting all retained residents, including omitted ones; the precommit resident check remains. | §§6.4, 7.1, 13 |
-| D-28 | **RESOLVED 2026-10-12 (R15, R16, P10, user clarification under R15); implementation pending** — one-pass LP-guided whole-action constructor without an integral fast path; first legal action accepted regardless of utility; strict improvement for later additions with new victims, guarded numerically by $\tau$ from the existing objective tolerances; the two-pass alternative is not adopted; limitations of §10.6 accepted. | §10; §15.7 |
-| D-29 | **RESOLVED 2026-10-12 (R13); implementation pending** — LP-only rejection of provably inadmissible new requests before engine, worker, scheduler, or metric registration; registered or recomputation-expanded violations keep pre-mutation fail-stop. | §§13, 14.1 |
-| D-30 | **RESOLVED 2026-10-12 (P10 step 8); implementation pending** — remove reserve and decode-policy configuration fields and their `lp_*` `EngineArgs` counterparts; reject obsolete supplied arguments, including an explicit zero reserve, with a migration error; no compatibility translation. | §13 |
-| D-31 | **RESOLVED 2026-10-12 (user decision, R21); implementation pending** — SciPy/HiGHS status 2 is solver-reported LP infeasibility with raw status and diagnostics retained; it is not an exact certificate and is distinct from exhaustive no-useful-work; no certificate checker or extra solve. | §§9.3, 10.5, 14.1 |
+| D-21 | **RESOLVED for the single-stage MVP (approved 2026-10-05)** — execute and emit all selected prefills first, then all selected decodes, each ascending by existing `order_key`; central native operations and emitted metadata share this order. Built as a separate ordered action list; the accepted plan, its selected actions, and chunk sizes are unchanged. Rationale: matches prompt-first physical input packing and gives a deterministic within-group order. Inherited mixed-batch/sampler limitations remain under §16.4 and D-25. *Extended 2026-10-10:* all selected victims are preempted before any scheduled action, ascending by `order_key`, and `preempted_seq_ids` uses that order; native front insertion leaves them in `waiting` in reverse call order (§13, native preemption execution). *Amended 2026-10-12 (R07, R16):* victims by victim rank, then identity; then prefills, zero-demand decodes, and one-block decodes, each by service rank, then identity; admissions appended in that order; retained residents keep their relative positions (§13, amended execution order). | §13; focused test `tests/test_lpserve_plan_execution.py` (`test_mixed_output_is_prompt_first_in_native_execution_order`) |
+| D-26 | **RESOLVED 2026-10-12 (R01, R14)** — the LP includes $\sum_i(I_i^P+y_i)\ge1$ for every validated nonempty arrived universe; preemption alone does not count; a state without a legal useful integer plan is reported, not given an invented action. Admission validity does not guarantee completion. | §§7.1, 10, 14.2 |
+| D-27 | **RESOLVED 2026-10-12 (R08)** — resident capacity is an LP row counting all retained residents, including omitted ones; the precommit resident check remains. | §§6.4, 7.1, 13 |
+| D-28 | **RESOLVED 2026-10-12 (R15, R16, P10, user clarification under R15)** — one-pass LP-guided whole-action constructor without an integral fast path; first legal action accepted regardless of utility; strict improvement for later additions with new victims, guarded numerically by $\tau$ from the existing objective tolerances; the two-pass alternative is not adopted; limitations of §10.6 accepted. | §10; §15.7 |
+| D-29 | **RESOLVED 2026-10-12 (R13)** — LP-only rejection of provably inadmissible new requests before engine, worker, scheduler, or metric registration; registered or recomputation-expanded violations keep pre-mutation fail-stop. | §§13, 14.1 |
+| D-30 | **RESOLVED 2026-10-12 (P10 step 8)** — remove reserve and decode-policy configuration fields and their `lp_*` `EngineArgs` counterparts; reject obsolete supplied arguments, including an explicit zero reserve, with a migration error; no compatibility translation. | §13 |
+| D-31 | **RESOLVED 2026-10-12 (user decision, R21)** — SciPy/HiGHS status 2 is solver-reported LP infeasibility with raw status and diagnostics retained; it is not an exact certificate and is distinct from exhaustive no-useful-work; no certificate checker or extra solve. | §§9.3, 10.5, 14.1 |
 | D-25 | **RESOLVED** — MVP compatibility mode reuses existing LPServe/SLAI behavior, including native recomputation preemption, without repairing inherited framework defects. Material inherited limitations are documented; only issues that block the selected MVP path require action. | §§2.4, 4.4, 13, 16 |
 
 | D-24 | **DESIGN RESOLVED 2026-10-18; implementation and validation pending** — fixed TP, overlapping PP, and combined TP+PP for LP and the adapted-vLLM reference; the inherited execution and preemption mechanisms remain the compatibility basis. No blanket ban on in-flight victims and no stronger LP-only preemption guarantees. Formerly OPEN; source-sensitive mechanics must be checked during implementation. | §19; especially §§19.1–19.4, 19.9 |

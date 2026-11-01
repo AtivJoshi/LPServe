@@ -1411,9 +1411,12 @@ Answers to the batch questions:
    pool 12 at 48 requests, and 6 and 4 at 96, against 0 for the reference
    and 3 and 9 for the control. Examples are ILP decisions 16→17 and 55→56
    at 96 requests: admit, then the request admitted is evicted under
-   `lp_decode_prerequisite`. In memory_pressure, all 5 preemptions are the
-   control's own, driven by the prerequisite (5 reference states are
-   `decode_prerequisite` contract differences).
+   `lp_decode_prerequisite`. In memory_pressure, the 5 preemptions match
+   the control's: 4 decisions involve `lp_decode_prerequisite`, and 1
+   (decision 2) requires a block for actual decode demand. Decision 3
+   involves both `admission_charges` and `lp_decode_prerequisite`. These
+   direct causes are separate from the same-state reference comparison,
+   where 5 reference proposals violate the LP's `decode_prerequisite`.
 3. **Earlier large victims no longer win in the integer objective.** Every
    ILP victim was at the tail of the running order. The LP evicted a
    non-tail resident once per pool-12 case, at decision 2. The relaxation
@@ -1498,3 +1501,26 @@ unchanged and is not imported differently. No GPU run was made.
 **Not established:** GPU execution of the new methods, general
 equivalence with the reference, fairness, starvation, generation quality,
 latency, throughput, and production readiness.
+
+## Acceptance and subsequent analysis (2026-10-26)
+
+The user accepted `running_order_utility` as implemented at
+`35e0eab63628d8fb89bf2fa600d5b086ddac9edc` and reviewed against the Unity
+evidence above. This accepts the experimental policy and bounded CPU batch;
+the current resident coefficients are retained unchanged. The 171 passing
+tests, 60 completed rollouts, and 2,793 decision comparisons remain evidence
+for their recorded revision, environment, and inputs. No new checks or GPU
+runs are claimed by this acceptance note.
+
+The canonical [policy decision and theoretical analysis](../LP%20Scheduler%20Research%20Context.md#running-order-policy-record-2026-10-26)
+records the accepted formulas, the exact-integer priority argument,
+coefficient-growth bounds, and the explicit reference divergences. It also
+records the proposed strict waiting-order extension, which is not implemented
+or experimentally validated. The implemented waiting policy remains soft;
+no complete reference-equivalence claim is accepted. The additional
+watermark-timing example is source-based analysis, not a new experiment.
+
+This acceptance changes no formulation, extraction, numerical setting,
+admission rule, or runtime contract. It selects no universal utility default,
+does not close general Q11 recovery/overhead questions, and does not authorize
+implementation or experiments for the theoretical extension.

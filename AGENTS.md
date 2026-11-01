@@ -31,6 +31,20 @@ Do not reconstruct project context from `README.md`, modern vLLM, another Sarath
 - If an existing framework design, normative requirement, or prior decision appears to add complexity unnecessary for the supported MVP, flag it explicitly in the active user-facing chat before implementing the affected mechanism. Identify the exact source or decision, current evidence, added complexity, smallest alternative, guarantees or future scope that would be lost, and required authoritative-document changes. Do not silently override the contract, weaken correctness or mathematics, resolve an OPEN item implicitly, or bypass a BLOCKER; continue unaffected work when possible and pause only the affected choice pending an approved recorded resolution.
 - Follow the MVP compatibility policy in `docs/lp_scheduler_design.md` §16. Existing LPServe/SLAI limitations may be inherited and documented rather than repaired; do not claim that inherited behavior is correct or fixed.
 
+## Coordination and critical review
+
+ChatGPT normally supports research discussion, mathematics, task preparation,
+and review. Claude normally implements and executes tasks. Claude Desktop
+may separately review mathematics. The user normally handles synchronization.
+Use one writer per file and reread saved changes before editing. These roles
+do not restrict an explicitly assigned documentation-maintenance task.
+
+Every implementation task must critically examine its proposed plan before
+implementing it. Report contradictions, counterexamples, and unintended
+consequences, including problems in an approved plan. Approval is not proof
+of correctness. Continue unaffected work, but stop an affected choice that
+would change mathematics, resolve an OPEN decision, or bypass a BLOCKER.
+
 ## MVP-first planning and minimal implementation
 
 - Prioritize the shortest path to a basic runnable LP scheduler. Do not broaden a task into repairs for pre-existing serving-framework behavior, exhaustive edge-case design, or premature optimization unless that issue prevents the selected MVP path from running.

@@ -2,28 +2,77 @@
 
 ## Current phase
 
-**Phase D accepted; mapper, native executor, and live scheduler implemented. Bounded CPU integration milestone accepted on 2026-10-05 after review at `4f553b4`. The bounded single-request dummy-weight GPU milestone was also accepted after review at `14a1535`; full Phase F acceptance is not claimed.**
+**Current snapshot (2026-11-01; source/evidence review at `35e0eab`, `main`).**
+The corrected ILP/LP and PH1, immutable mapping, native preemption executor,
+live single-stage scheduler, request-admission checks, and configuration
+migration are implemented. The adapted pinned reference and coefficient
+comparison tools are implemented. Retained evidence is summarized below;
+no experiment was rerun for this refresh. Full Phase F acceptance, general
+completion/fairness, generation quality, performance, and TP/PP support are
+not established. The [student assignments](handoffs/tasks_for_stella.md)
+are bounded CPU/offline work, not mathematical redesign.
 
-The pure, framework-independent LP-relaxation mathematical layer is implemented
-in `lp_relaxation_scheduler.py` and accepted for the scoped MVP. It constructs
-and solves the documented continuous relaxation with SciPy/HiGHS, independently
-validates the relaxed solution, performs deterministic feasible integer
-extraction, validates the resulting plan, and returns structured success or
-failure without importing LPServe runtime objects.
+## Later implementation and experiment milestones
 
-Phase E read-only state mapping is implemented in `lpserve_state_mapping.py`,
-with focused tests in `tests/test_lpserve_state_mapping.py`. It constructs
-immutable mathematical-layer inputs without scheduler or serving-state
-mutation. Retained Unity CPU test evidence and its revision limits are recorded
-below. Native execution and live `LPScheduler` integration now support the
-scoped single-stage prefill/decode path, with CPU replay/completion evidence.
-The subsequent GPU milestone establishes only the exercised single-request
-execution path. A bounded two-request mixed-batch GPU check and a three-request
-contention workload also passed (records below). General sampler correctness,
-generation quality, general mixed-batch behavior, and performance remain
-unverified.
+- **2026-10-13: corrected connected CPU framework.** The
+  [integration handoff](handoffs/lp_scheduler_integration_handoff.md#corrected-connected-cpu-framework-2026-10-13-awaiting-review)
+  records 138 focused tests and 150 enumerated states (10,348 integer plans)
+  at `9a6ca3c` plus retained changes on Unity `gpu048`, CPU only. Later
+  review-finding fixes and the rank-based demonstration have separate records.
+  Contention and preemption dummy-weight GPU regressions passed at `82609eb`
+  on `gpu051`; see their existing handoffs. This is implementation and
+  observed bounded validation, not an inferred acceptance of every obligation.
+- **2026-10-18: adapted pinned reference.** The
+  [reference handoff](handoffs/adapted_vllm_reference_handoff.md)
+  records adaptation of upstream vLLM v0.31.0 (`db9527a`), CPU checks,
+  corrections, and passing mixed/preemption GPU cases at `9b9273a` on
+  `gpu049`. LPServe's full-context allocation and inherited limitations
+  remain; whole-engine vLLM equivalence is not claimed.
+- **2026-10-18–24: coefficient comparisons.** The
+  [comparison handoff](handoffs/scheduler_comparison_handoff.md)
+  records uniform, rank-based, geometric coordinated, and reciprocal-square
+  studies. Uniform/rank-based runs can repeatedly prefill without output
+  within the observation bound. Geometric and reciprocal-square runs drain
+  the recorded cases but still depart from the reference and integer optima.
+  These are bounded observations, not fairness or performance guarantees.
+- **2026-10-24: failed and corrected constrained GPU runs.** Initial
+  12-block/context-256 runs failed before any decision: native initialization
+  required 16 blocks. The user approved context 192 for this case only.
+  [Fresh CPU and GPU evidence](handoffs/scheduler_comparison_handoff.md#correction-2026-10-24-constrained-case-at-context-192-and-gpu-confirmation)
+  at `7cdf386` plus retained changes on `gpu052` records reciprocal-square
+  LP/reference completion in 118/117 decisions, 5/6 preemptions, and 226/102
+  repeated-prefill tokens. Every GPU decision has a same-state integer
+  comparison. The failed attempts remain evidence, not successful validation.
+- **2026-10-26: running-order CPU study.** The acceptance record below
+  covers the experimental policy and bounded CPU batch. Soft waiting order,
+  fractional extraction losses, admit-then-evict sequences, and coefficient
+  growth remain limitations. Strict waiting priorities are only proposed.
+- **Future TP/PP.** [Design §19](lp_scheduler_design.md#19-approved-future-tp-and-pp-extension)
+  records the 2026-10-18 approval. Implementation, mathematical alignment,
+  and bounded CPU/GPU validation remain future work. Q11, D-01–D-04, κ,
+  and F02 remain OPEN; this refresh selects no research policy.
 
-## Current repository and provenance
+Historical records below retain their dates, revisions, and acceptance states.
+An assistant recommendation is not user acceptance.
+
+
+## Running-order coefficient policy accepted (2026-10-26)
+
+The user accepted `running_order_utility` at implementation revision
+`35e0eab63628d8fb89bf2fa600d5b086ddac9edc`, retaining its resident
+coefficients unchanged. Acceptance covers the experimental policy and the
+bounded Unity CPU batch: 171 tests passed, all 60 rollouts drained, and all
+2,793 decisions had integer comparisons. See the
+[evidence and acceptance handoff](handoffs/scheduler_comparison_handoff.md#acceptance-and-subsequent-analysis-2026-10-26)
+and the [policy and theoretical record](LP%20Scheduler%20Research%20Context.md#running-order-policy-record-2026-10-26).
+
+The strict waiting-order extension is theoretical and unimplemented. This
+acceptance establishes neither complete reference equivalence nor GPU support
+for the new policy, and leaves general recovery criteria, overhead evaluation,
+and other unselected research choices open. Historical milestone records
+below keep their original revision and validation boundaries.
+
+## Historical repository and provenance (2026-09-20)
 
 | Field | Recorded value |
 |---|---|

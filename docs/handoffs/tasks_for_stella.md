@@ -1,0 +1,235 @@
+# Undergraduate tasks: fixed comparisons and offline reports
+
+## Scope and current state
+
+Work in LPServe. Use AI to implement this fixed specification, inspect results,
+and prepare reports. Complete Tasks 1–3 in order. Do not choose new mathematics,
+coefficient policies, or research directions. First read [PROJECT_GUIDE.md](../../PROJECT_GUIDE.md)
+and [AGENTS.md](../../AGENTS.md). This task was prepared against `main` at
+`35e0eab`; record the revision you actually use.
+
+The current scheduler solves the continuous relaxation of a one-step integer
+linear program (ILP). PH1 turns that fractional proposal into whole actions.
+A read-only mapper supplies the problem. An executor checks current state and
+performs native admission, prefill, decode, and recomputation preemption.
+Prefill processes prompt tokens. Decode produces an output-token event.
+Preemption frees a whole cache and later repeats prefill. The supported runtime
+is synchronous and single-stage.
+
+The [manuscript](../math/main-llm-serving.tex) defines mathematics; the
+[design](../lp_scheduler_design.md) defines implementation requirements.
+Code shows what exists. Handoffs and saved outputs show what was tested.
+[Project status](../project_status.md) records acceptance and chronology.
+Downstream manuscript sections still need mathematical review. Do not use them
+to replace the current formulation.
+
+## Evidence already available
+
+The corrected CPU framework and bounded GPU paths have retained evidence.
+The adapted reference follows pinned vLLM v0.31.0 service preferences inside
+LPServe; it is not whole-engine vLLM equivalence.
+The [comparison handoff](scheduler_comparison_handoff.md) records uniform,
+rank-based, geometric, reciprocal-square, and running-order studies.
+Earlier uniform/rank-based runs repeatedly prefilled prompts without output
+within their bounds. Later policies drained the recorded cases, but PH1 can
+still lose utility through whole-victim and waiting-work choices.
+
+At the corrected constrained 48-request case, reciprocal-square PH1 and the
+reference completed in 118 and 117 decisions, with 226 and 102 repeated-prefill
+tokens. Earlier GPU attempts failed before scheduling because context 256
+needed 16 blocks but the pool had 12. The approved context-192 correction
+passed CPU and GPU checks. The ample CPU case took 40 reciprocal-square PH1
+decisions and 42 running-order PH1 decisions. These counts measure scheduling
+steps, not latency or throughput.
+
+The running-order policy and bounded CPU batch are explicitly accepted:
+60 rollouts drained and 2,793 decisions had integer comparisons. It has no
+GPU validation. It still has soft waiting priorities and numerical scale
+limits. Strict waiting priorities and TP/PP support are unimplemented future
+work. See the [acceptance record](scheduler_comparison_handoff.md#acceptance-and-subsequent-analysis-2026-10-26).
+
+## Task 1: Compare five fixed settings with PH1
+
+### Coefficients used in this comparison
+
+At each decision, recompute coefficients from one captured state, then hold
+them fixed during solving and extraction. Write the objective as
+$\sum_i(\beta_i x_i+\alpha_i y_i-\gamma_i z_i)$: prefill-token reward,
+decode reward, and preemption penalty. Ineligible terms are zero.
+
+**Reciprocal-square** (`reciprocal_square_rank_utility`). Let $r_i$ be the
+zero-based position in running order followed by arrived waiting order, and
+$q_i=\min(P_i^{\rm rem},C_{\max},B_{\max})$ for prefill-eligible work. Then
+
+$$
+w_i=(1+r_i)^{-2},\qquad
+(\alpha_i,\beta_i,\gamma_i)=(w_i,w_i/q_i,w_i)
+$$
+
+for eligible actions. A full available prefill chunk and one decode earn
+$w_i$. Settings 2–4 below multiply only the stated terms.
+
+**Running-order** (`running_order_utility`). Waiting position $j$ gets
+$\beta_j=1/[B_{\max}(1+j)^2]$ and $\alpha_j=\gamma_j=0$.
+Set $W=1$ if any arrived request waits, otherwise 0. For each resident,
+$m_i=q_i$ for prefill, 1 for decode, or 0 otherwise. Compute backward:
+
+$$
+a_i=1+W+\sum_{k>i}(m_k a_k+\gamma_k).
+$$
+
+Assign $\alpha_i=\beta_i=\gamma_i=a_i$ where eligible. In exact arithmetic,
+earlier residents dominate later work in the integer objective; PH1 need
+not preserve that preference. Waiting order stays soft. Large weights lose
+floating-point precision. See the [policy record](../LP%20Scheduler%20Research%20Context.md#running-order-policy-record-2026-10-26).
+
+Compare exactly these settings:
+
+1. Existing reciprocal-square policy: `lp_reciprocal_square`.
+2. That policy with decode rewards multiplied by four.
+3. That policy with preemption penalties multiplied by four.
+4. That policy with both terms multiplied by four.
+5. Existing `running_order_utility`: `lp_running_order`, unchanged.
+
+Keep prefill rewards unchanged in settings 1–4. Preserve eligibility and zero
+coefficients. Do not tune the multiplier after seeing results or compare raw
+objective values between policies.
+
+Use two existing synthetic workloads: fixed sets of requests used to observe
+scheduler behavior. They contain token IDs, rather than a collection of user
+conversations. Both submit the same 48 requests, named `R00` through `R47`,
+at virtual time zero. “Burst” means that all requests arrive together.
+Prompt lengths repeat `[8,16,17,32,64,128]` tokens; output limits repeat
+`[2,4,8]` tokens. These mix short and long requests.
+
+| Case name in the code | What it tests |
+| --- | --- |
+| `queue48_burst` | Ample memory: 128 cache blocks. Observe which requests receive service when memory pressure is low. Maximum context length is 256 tokens. |
+| `queue48_burst_pool12` | Constrained memory: only 12 cache blocks for the same requests. Observe preemption and repeated prefill when requests compete for memory. Maximum context length is 192 tokens. |
+
+A cache block holds 16 token positions for one request. Both cases allow at
+most 8 resident requests, 128 processed tokens per decision (`b_max`),
+128 tokens per prefill chunk (`c_max`), and 8 execution actions per decision
+(`s_max`). Stop after at most 384 decisions. A decision is one scheduler step
+that selects a batch of actions; it can serve several requests.
+
+Use CPU execution: simulate these cache capacities without running a model
+on a GPU. Reuse the exact definitions in
+[`QUEUE_GROWTH_INPUTS`](../../scripts/compare_scheduler_gpu.py).
+Keep token IDs, lengths, output limits, arrivals, capacities, numerical
+settings, and solver settings unchanged.
+
+For every PH1 decision, retain an ILP comparison for the exact same saved state
+and coefficients. A separate ILP rollout soon reaches different states and
+cannot replace this comparison. Reuse matching baseline and running-order
+records after checking inputs, coefficients, revisions, and completeness.
+The [running-order CPU evidence](../../validation_output/scheduler_comparison/20261026T045354Z_running_order/cpu_comparison/)
+contains both controls on both cases. Explain any rerun.
+
+Report completion or bounded unfinished outcomes, decisions, preemptions,
+repeated-prefill tokens, and service order. Report PH1 differences from integer
+optima and explain three representative decisions. Retain complete experiment
+and solver records. Stop after the fixed comparison; propose no winning policy.
+
+## Task 2: Reproduce known PH1 failure cases
+
+This task explains four problems already observed in experiments. A saved
+**trace** records the state before each scheduler step, the LP solution,
+the whole actions selected by PH1, and the state after execution. Start from
+these records; do not search for new failure cases.
+
+**How to read the numbers.** Each run numbers its decisions from zero.
+“Decision 20” means the trace entry with `index: 20`, the 21st scheduler
+step in that particular run. It is not request 20, a time measurement, or
+an instruction to run 20 experiments. “Decisions 20 and 34” identifies two
+separate steps showing the same problem. Different runs reach different
+states, so always identify the workload, coefficient policy, and trace too.
+
+Prepare four short case studies:
+
+1. **PH1 evicts a poor choice of request.** In the reciprocal-square PH1
+   run of `queue48_burst_pool12`, inspect decisions 20 and 34 in the
+   [saved constrained-case trace](../../validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_comparison/rollouts/queue48_burst_pool12/lp_reciprocal_square/decision_trace.json.gz).
+   The LP can propose preempting only a fraction of a request. Real execution
+   must evict a whole request. PH1 evicts a request holding four blocks,
+   while the integer optimum evicts a one-block request and achieves higher
+   utility. Explain how the fractional proposal leads to that choice.
+2. **PH1 chooses poorer waiting work.** In the reciprocal-square PH1 run
+   of `queue48_burst`, inspect decision 0 in the
+   [saved ample-memory trace](../../validation_output/scheduler_comparison/20261024T210104Z_queue_growth/cpu_comparison/rollouts/queue48_burst/lp_reciprocal_square/decision_trace.json.gz).
+   The LP shares one available action between two waiting requests using
+   fractional admission indicators. PH1 must choose whole admissions and
+   returns lower utility than the integer optimum. Explain the lost work
+   opportunity under the same coefficients and constraints.
+3. **A request is admitted, then evicted next.** In the running-order ILP
+   run of `queue96_burst_pool12`, inspect decisions 16 and 17 in the
+   [saved 96-request trace](../../validation_output/scheduler_comparison/20261026T045354Z_running_order/cpu_comparison/rollouts/queue96_burst_pool12_limit8/ilp_running_order/decision_trace.json.gz).
+   This is the larger, 96-request version of the constrained workload.
+   Follow the same request across both steps: it is admitted at 16 and
+   evicted at 17. This example occurs even with integer optimization, so it
+   must not be attributed solely to PH1 extraction. Explain the role of
+   the current decode prerequisite.
+4. **Prefill repeats without producing output.** Inspect the eight-step
+   [uniform-policy two-request trace](../../validation_output/scheduler_comparison/20261024T182347Z/cpu_comparison/rollouts/two_request_limit1/lp_uniform/decision_trace.json).
+   Two requests compete for one resident slot. Repeated preemption and
+   readmission repeat prompt processing, but neither request produces an
+   output token within the eight-decision bound. Show the sequence rather
+   than one isolated step. This is bounded noncompletion, not a proof that
+   the requests would never finish.
+
+For each case, show starting state, coefficients, LP proposal, PH1 plan,
+integer optimum where available, executed actions, and resulting state.
+Label fields that do not apply: the integer-driven sequence in case 3 has
+no PH1 execution plan. Label unavailable integer results explicitly; any
+new comparison must use the original state and coefficients.
+
+Create offline replay fixtures where practical: small saved inputs and a
+script that reloads them and checks the recorded behavior. Preserve multiple
+steps for cases 3–4. Use the [comparison handoff](scheduler_comparison_handoff.md)
+for the original explanations and evidence boundaries. Stop once the four
+cases are reproducible and explained. Do not redesign extraction or invent
+mathematical counterexamples.
+
+## Task 3: Report LP dual prices offline
+
+Load saved problems and solve the unchanged current continuous LP. A dual
+multiplier measures sensitivity to a constraint bound. Report every constraint's
+name, slack, and multiplier, including variable bounds, `useful_execution`,
+`actual_memory`, `decode_prerequisite`, and conditional admission-watermark
+rows. State when a conditional row is absent.
+
+Reuse the current matrix, bounds, solver method, and options. Document the
+solver's minimization sign convention and any conversion to maximization.
+Include bound contributions when checking primal/dual objective agreement.
+Retain status and residuals; do not invent prices for unsuccessful solves.
+Check small examples and representative saved decisions, including positive
+watermark states. Report mismatches. Stop at the offline report; do not change
+live scheduling or implement a Lagrangian scheduler or subgradient method.
+
+## Relevant Python files
+
+- [`lp_relaxation_scheduler.py`](../../lp_relaxation_scheduler.py) builds, solves, validates, and extracts the current LP; `_build_lp` supplies named rows.
+- [`lpserve_state_mapping.py`](../../lpserve_state_mapping.py) captures state and supplies the existing coefficient policies.
+- [`lpserve_plan_execution.py`](../../lpserve_plan_execution.py) validates and executes whole plans through native actions.
+- [`lp_scheduler.py`](../../sarathi/core/scheduler/lp_scheduler.py) connects mapping, planning, and execution in the live scheduler.
+- [`adapted_vllm_scheduler.py`](../../sarathi/core/scheduler/adapted_vllm_scheduler.py) implements the pinned adapted reference.
+- [`compare_scheduler_gpu.py`](../../scripts/compare_scheduler_gpu.py) defines cases and shared checks, with a reusable CPU runtime path.
+- [`compare_coefficient_policies_cpu.py`](../../scripts/compare_coefficient_policies_cpu.py) runs CPU batches and compares saved decisions.
+- [`exact_integer_plan.py`](../../scripts/exact_integer_plan.py) loads saved problems and computes validated integer comparisons.
+- [`test_compare_scheduler_gpu.py`](../../tests/test_compare_scheduler_gpu.py) supplies native CPU replay with synthetic samples.
+
+## Common rules and delivery
+
+The multiplier variants and dual report need small offline additions; existing
+commands do not expose them. Preserve formulation, PH1, execution rules, and
+numerical settings. Critically check the plan and report contradictions before
+affected work. Stop for missing evidence, changed contracts, or research choices;
+report unexpected outcomes instead of changing inputs.
+
+Deliver a short report per task, replay/report scripts, fixtures, and complete
+records of revisions, file hashes or diffs, environments, commands, solver
+options/statuses, failures, and unfinished outcomes. CPU replay is not GPU
+validation. Claude already on an allocated Unity GPU node must use that node
+and its existing repository environment directly; do not use `srun`, request
+allocations, submit jobs, SSH elsewhere, or rebuild a failing environment.
+Report the exact environment problem. No commits or synchronization are included.

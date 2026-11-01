@@ -1278,14 +1278,18 @@ Several choices should remain explicit rather than being buried inside implement
 
 ## Q11 — Adapted-policy recovery and overhead evaluation (OPEN, deferred)
 
-**Status:** OPEN and deliberately deferred by the user on 2026-10-12. This
-section is its primary durable record; the design and the discussion record
-link here. Deferral is not rejection and establishes no policy fidelity. Q11 is
-not a prerequisite for the corrected framework, but it is a prerequisite for any
-quantified claim of policy recovery, fidelity, or scheduling overhead.
+**Status:** General recovery criteria and overhead evaluation remain OPEN.
+The user deferred Q11 on 2026-10-12; later scoped comparisons and the
+2026-10-26 policy acceptance are recorded below and in the linked handoff.
+Those results do not establish general policy fidelity or measured overhead.
+This section remains Q11's primary durable record. Q11 is not a prerequisite
+for the corrected framework; broader recovery and performance claims require
+explicit criteria and appropriate evidence.
 
 Target: the adapted vLLM v0.31.0 reference described in §16, within LPServe's
-full-context framework. The following remain pending; none is selected:
+full-context framework. The following list records the questions pending at
+the 2026-10-12 deferral. Later scoped selections do not resolve the list as a
+whole:
 
 - definitions of corresponding logical states and of service and preemption
   traces when policies use different chunks and batches;
@@ -1303,7 +1307,273 @@ full-context framework. The following remain pending; none is selected:
 - separation of scheduler decision time from model execution time and from
   effects of changed batch composition.
 
-No recovery or performance experiment is authorized by this entry.
+The historical deferral granted no experiment authorization. This record
+authorizes no additional recovery or performance experiment.
+
+### Running-order policy record (2026-10-26)
+
+**Decision and scope.** The user accepted the Unity-tested
+`running_order_utility` policy at implementation revision
+`35e0eab63628d8fb89bf2fa600d5b086ddac9edc`, with its resident coefficients
+unchanged. Acceptance covers this experimental policy and its bounded CPU
+comparison, not a universal default, full reference recovery, or production
+readiness. The [comparison handoff](handoffs/scheduler_comparison_handoff.md#addendum-2026-10-26-running-order-coefficient-policy-cpu-only)
+holds the executed evidence. The stricter waiting-order extension below is
+recorded as a theoretical improvement; it is not implemented or tested.
+No extraction, feasibility, admission, or runtime contract is changed.
+
+This is the research record for the policy construction, subsequent analysis,
+and remaining differences. The manuscript remains the mathematical source of
+truth for the ILP and LP extraction. These notes choose coefficients within
+that formulation; they do not amend it or complete the manuscript's unrevised
+reference-recovery sections. General Q11 recovery criteria and overhead
+evaluation, D-01--D-04 beyond this scoped policy, and the discarded-work
+coefficient $\kappa$ remain OPEN.
+
+#### Accepted coefficients and why they were chosen
+
+Use one immutable capture. All coefficients are finite, nonnegative, and fixed
+through the decision. Running order includes resident partial prefills;
+there is no global decode-before-prefill preference. Let $B=B_{\max}$.
+
+For waiting request $j=0,\ldots,N-1$, in current arrived waiting order:
+
+$$
+\beta_j=\frac{1}{B(1+j)^2},\qquad \alpha_j=\gamma_j=0.
+$$
+
+An ineligible action has coefficient zero. These are per-token rewards,
+independent of the waiting request's own prompt length. All waiting execution
+together earns at most 1. Set $W=1$ when any arrived request is waiting,
+otherwise $W=0$. This is a utility bound, not a memory reserve.
+
+For resident $i=0,\ldots,R-1$, define its maximum executable progress:
+
+$$
+m_i=
+\begin{cases}
+\min(P_i^{\mathrm{rem}},C_{\max},B), & \text{prefill eligible},\\
+1, & \text{decode eligible},\\
+0, & \text{otherwise}.
+\end{cases}
+$$
+
+Compute backward from the running tail:
+
+$$
+a_i=1+W+\sum_{k>i}(m_k a_k+\gamma_k).
+$$
+
+Set $\alpha_i=\beta_i=a_i$ for eligible execution actions, and
+$\gamma_i=a_i$ for an eligible victim; set ineligible terms to zero.
+The implementation computes the resident recurrence with exact integers,
+then converts to float. Nonfinite conversion is a mapping failure; there
+is no clipping, capping, or rescaling.
+
+Earlier equal per-token policies could reward readmitting a long prompt more
+than continuing decode, causing voluntary replacement cycles. Normalizing
+each request by its available chunk bounded its total reward, but made
+short chunks more valuable per token. Simply removing that normalization
+while adding quadratic eviction penalties was also insufficient: an earlier
+decode worth 1 that requires a later victim costing $1/4$ loses to eight
+tokens of that later resident's prefill worth $8/4=2$. The accepted
+recurrence coordinates service rewards and eviction costs to address that
+trade. In this two-resident example its weights are 10 and 1: decoding the
+head and evicting the tail earns 9, versus 8 for prefilling the tail.
+
+The policy uses running position, not decoded-token count, as its primary
+preference. Decoded count is not running position, omits completed prompt
+work, and its native counter resets after preemption. Adding a completed-work
+penalty would express a separate preference; no such term was selected.
+
+#### Exact-integer priority argument
+
+For a resident, define progress as its prefill token count, 1 for decode,
+0 for idle, and -1 for preemption. The maximum change in utility from all
+later residents and waiting work is at most
+
+$$
+W+\sum_{k>i}(m_k a_k+\gamma_k)=a_i-1.
+$$
+
+A one-unit improvement in an earlier resident's integer progress therefore
+outweighs every possible lower-priority change. The exact ILP maximizes the
+resident progress vector in running order, comparing the first differing
+resident first. It protects an earlier idle resident as well as earlier
+execution. This is a statement about integer optima in exact arithmetic,
+not fractional LP solutions, numerical optimality, or the constructor.
+
+The objective does not reward unused free memory. An earlier large victim can
+nevertheless be attractive under weaker coefficients because one eviction
+can fund several actions or replace several later victims. The accepted
+dominance construction prevents that trade from defeating preservation of
+an earlier resident when a feasible alternative retains it and preserves
+the higher-priority resident decisions. It does not require releasing the
+fewest blocks or accounting for future recomputation.
+
+#### Theoretical extension for strict waiting priorities
+
+**Not implemented or experimentally validated.** Keep the accepted resident
+coefficients. For each waiting request, let $q_j$ be its maximum executable
+prefill chunk, $\min(P_j^{\mathrm{rem}},C_{\max},B)$, or zero if ineligible.
+Construct positive integer weights backward:
+
+$$
+b_j=1+\sum_{k>j}q_k b_k.
+$$
+
+For $N\ge1$, assign an eligible waiting prefill the normalized coefficient
+
+$$
+\beta_j^{\mathrm{strict}}=\frac{b_j}{B b_0},
+\qquad \alpha_j=\gamma_j=0.
+$$
+
+The normalization keeps all waiting reward at most 1, so the existing
+resident dominance argument still holds. At the same captured state, the
+exact ILP's optimal resident decisions remain unchanged. Among plans with
+that resident vector, one token of an earlier waiting request outweighs all
+possible later waiting work. This eliminates the ample-memory admission
+inversions caused by a later long chunk outbidding an earlier short one,
+provided the earlier work is feasible under the higher-priority decisions.
+
+It does not enforce a stop at a memory-blocked waiting head: if its progress
+must be zero, the objective next rewards a later request. Nor does it require
+the reference's post-preemption admission ban. Zero rewards can create ties
+but do not force exclusion; the current constructor can accept zero-reward
+work. These are limitations of a coefficient-only reduction, not reasons to
+tune positive weights further.
+
+This extension adds no decode-versus-prefill bonus or prompt-length
+normalization. Changed admission order can still change future states,
+completion, utilization, and repeated work. For example, using the final
+resident slots for earlier short requests can leave token budget unused.
+No claim of unchanged aggregate outcomes, fairness, or restart freedom follows.
+
+#### Coefficient growth
+
+These are bounds for the constructions above, not lower bounds for every
+possible reference-oriented policy. Let $Q=\min(C_{\max},B)\ge1$.
+For $R\ge1$, when all residents are eligible victims,
+
+$$
+a_0=(1+W)\prod_{k=1}^{R-1}(m_k+2),
+\qquad
+a_{\max}=O((Q+2)^{R-1}).
+$$
+
+The worst-case rate is attained when the later residents all have $m_k=Q$.
+For all-decode residents it is proportional to $3^{R-1}$. The accepted
+waiting coefficients have maximum $1/B$, minimum $1/(BN^2)$, and
+coefficient ratio $N^2$, when all $N\ge1$ waiting requests are eligible.
+
+For the strict waiting extension,
+
+$$
+b_0=\prod_{k=1}^{N-1}(q_k+1),
+\qquad b_{\max}=O((Q+1)^{N-1}).
+$$
+
+Its largest normalized waiting coefficient remains $1/B$; the smallest can
+be $1/[B(Q+1)^{N-1}]$. With $R,N\ge1$, the ratio of the largest to
+smallest positive coefficient is bounded by
+
+$$
+O\!\left(B(Q+2)^{R-1}(Q+1)^{N-1}\right).
+$$
+
+Multiplying all coefficients by a common positive constant leaves the exact
+ILP optima unchanged. Thus coefficient separation matters as well as absolute
+magnitude. Scaling the smallest positive coefficient to 1 gives the same
+bound for the largest coefficient. For the strict extension, exact representations
+need $O(\log B+R\log(Q+2)+N\log(Q+1))$ bits per coefficient under a common
+integer scaling. This is a representation bound, not a solver-time bound.
+
+Numerical scaling is set aside for the theoretical question, but remains a
+practical qualification: the CPU stress state with eight 128-token partial
+prefills has head weight $2\cdot130^7=1{,}254{,}970{,}340{,}000{,}000$.
+Returning the expected plan there does not establish resolution of small
+utility differences. No numerical settings were changed.
+
+#### Explicit differences from the pinned reference
+
+The target is the adapted pinned reference in §16.1, within LPServe's
+full-context allocation model. The following distinguish coefficients,
+procedural rules, resource contracts, and approximation:
+
+| Situation | Reference behavior | Coefficient-driven behavior |
+|---|---|---|
+| An earlier waiting request is feasible, but a later chunk offers more total reward | Admit in waiting order | The accepted soft waiting policy may choose later work; the theoretical strict extension addresses this preference. |
+| Waiting head cannot fit, but a later request can | Stop waiting admission | Both coefficient constructions can admit the later request. Strict order among feasible choices is not a stop rule. |
+| Any preemption occurred and waiting work could still fit | Skip all waiting admissions in that decision | Adding waiting work can strictly improve utility without changing resident progress. This difference is accepted for the present comparison. |
+| Attempted running request cannot fit after later victims are exhausted | Evict that request itself and stop the running pass | The ILP can retain it idle if earlier useful work remains feasible; a positive penalty discourages an unnecessary eviction. |
+| Decode needs no new block and zero blocks are free | Permit that decode | The ILP's decode prerequisite can require eviction, omission, or infeasibility. This is a model convention, not a physical allocation charge. |
+| Reference proposal exceeds the ILP action or chunk cap | Use the reference's own budget and limits | The ILP cannot select the same proposal. This difference disappears when the caps do not restrict the proposal. |
+| Only preemptions are proposed | The reference can construct a control-only proposal; the adapted runtime reports it unsupported | The ILP requires useful execution and cannot return that proposal as a valid schedule. |
+| Admission watermark is positive and selected decodes consume blocks | Check admission after accounting for running decodes | The ILP checks its watermark before decodes and permits them to consume those blocks; it can admit more at this boundary. |
+| Fractional admission or eviction affects the constructor | Follow the reference's procedural order | LP support precedes rank in extraction, so whole actions can differ from the integer optimum. This is separate from exact-ILP expressiveness. |
+
+The watermark row is a source-based analytical observation at `35e0eab`,
+not an executed comparison result. For example, with free blocks $F=3$,
+selected decode demand $D=1$, admission charge $A=2$, and watermark
+$h=1$, the ILP has $H=F-A=1\ge\max(D,h)$. The reference would check
+$F-D-A=0<h$ and reject that admission. See the
+[reference running/admission passes](../sarathi/core/scheduler/adapted_vllm_scheduler.py)
+and the [ILP memory and watermark rows](../lp_relaxation_scheduler.py).
+No correction to either contract is selected.
+
+For a feasible reference plan $P$, if adding a later admission leaves
+resident decisions unchanged and yields another feasible plan $P'$, then
+$U(P')=U(P)+\beta_j x_j$. Positive $\beta_j$ strictly favors $P'$;
+zero creates a tie rather than forcing $P$. Likewise, an unnecessary
+eviction with positive penalty is strictly worse than keeping that request
+idle. Arbitrarily large coefficients elsewhere do not reverse these
+comparisons. Coefficients also cannot make a reference proposal feasible
+when the ILP excludes it.
+
+**Qualified theoretical claim:** in exact arithmetic, the accepted resident
+construction and the proposed strict waiting construction encode ordered
+service and victim preferences within the ILP. They do not establish complete
+reference-policy equivalence. Any formal recovery theorem must state its
+feasibility assumptions and procedural exclusions. This is not a recovery
+guarantee for LP relaxation followed by extraction, and it does not assert
+equivalence to upstream allocation trajectories or whole-engine behavior.
+
+#### Observations and remaining scope
+
+The accepted batch had 171 passing CPU tests, 60 validated and drained
+rollouts, 13 diagnostics, and an integer comparison for every one of 2,793
+decisions. Where the reference proposal was ILP-feasible in the recorded
+reference states, the integer optimum gave residents the same progress.
+Every victim in the integer-driven rollouts was at the running tail.
+These are bounded observations; the dominance argument supplies the separate
+exact-arithmetic statement above.
+
+The new LP lost utility relative to its same-state integer optimum in
+44 of 697 decisions. Two lost resident priority through a fractional eviction
+of a four-block resident converted into a whole non-tail eviction; the other
+losses concerned waiting work. The full-context admission charge and action
+cap can also produce fractional admissions that extraction chooses poorly.
+Do not attribute every LP-bound gap to extraction: the fractional optimum
+can exceed the best integer utility even when extraction attains that utility.
+
+Waiting order improved in ample-memory runs, but remains different under
+pressure even for the exact ILP. In the 48-request constrained run, the
+reference waited at R05 (eight blocks required, two free); the integer
+policy admitted one-block R06 and evicted it on the next decision to fund
+actual decode demand. Other recorded admit/evict sequences involved the
+decode prerequisite. Fewer evictions or less repeated work does not imply
+closer FCFS order. All requests completed within the recorded bounds, but
+short replacement cycles and differing service delays remained.
+
+Native preemption's output-counter reset, overgeneration, and other inherited
+runtime limitations were not repaired. Decoded tokens, discarded prompt
+progress, repeated prefill, and allocation counts remain distinct quantities.
+The acceptance does not establish GPU execution of the new policy, cache or
+attention correctness, generation quality, fairness, eventual completion
+outside these runs, latency, throughput, or a general recovery criterion.
+No new experiment, implementation of strict waiting weights, extraction
+change, or admission-rule change is authorized by this record.
 
 ## LP feasibility versus native execution (source-review limitation)
 
@@ -1478,16 +1748,23 @@ The implementation is based on the following design principles:
 - design the software directly around `LPServe`'s scheduler and block-manager architecture;
 - establish focused evidence for the supported MVP path before optimizing solver overhead.
 
-The immediate objective is to establish a clean `LPServe` baseline, understand the SLAI-derived scheduler architecture sufficiently for the selected MVP, and then implement the mathematical scheduler natively inside the `LPServe` fork as soon as possible.
+**Current milestone (refreshed 2026-11-01; source review at `35e0eab`).**
+The corrected single-stage framework, connected mapper/executor, admission
+checks, and configuration migration are implemented. The
+[integration handoff](handoffs/lp_scheduler_integration_handoff.md#corrected-connected-cpu-framework-2026-10-13-awaiting-review)
+records the corrected CPU checks and later fixes; subsequent GPU/reference
+and coefficient studies are indexed in [project status](project_status.md).
+Earlier “pending implementation” wording described the 2026-10-12 boundary.
+Historical tests validate their recorded code and workloads, not all of HEAD.
 
-**Current milestone (2026-10-12).** The next milestone is the corrected CPU
-framework (discussion Q12/P10). The mathematical correction and this
-documentation alignment are recorded. Implementing the planning, mapping,
-execution, admission, and configuration changes, and passing design §15.7,
-remain pending. Historical CPU and GPU evidence applies only to its original
-code and workloads. A GPU regression requires separate authorization after the
-CPU checks pass. Recovery and performance experiments remain deferred under
-Q11.
+The running-order policy and bounded CPU batch are accepted as recorded in
+[§21](#running-order-policy-record-2026-10-26). There is no running-order GPU
+validation. Its strict waiting-order extension remains proposed and
+unimplemented. The immediate student work is the fixed CPU comparison,
+evidence replay, and offline dual reporting in
+[the task document](handoffs/tasks_for_stella.md). It changes no formulation
+or PH1 contract. Q11 recovery/overhead criteria and downstream manuscript
+review remain open; no new proof or policy is selected here.
 
 ---
 

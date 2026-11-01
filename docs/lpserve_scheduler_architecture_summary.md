@@ -10,21 +10,16 @@ The intended implementation boundary is: a read-only Phase E mapper observes LPS
 
 **Design alignment (2026-10-04):** The implementation guidance below follows the current design, including MVP compatibility decision D-25, state-stability decision D-19, and failure decision D-20. This alignment does not repin the Phase C audit, change its defect evidence, or establish an implemented executor or live scheduler.
 
-**Implementation status (2026-10-05):** The native LP executor and live
-single-stage scheduler now exist; the bounded CPU integration milestone was
-accepted after review at `4f553b4`, using Unity evidence tested at `276e5f4`.
-See `docs/project_status.md` and the integration handoff for the exercised
-replay/completion paths and provenance. A subsequent bounded single-request
-dummy-weight GPU milestone was accepted after review at `14a1535`; its exact
-script and run evidence are in `docs/handoffs/lp_scheduler_gpu_handoff.md`.
-A bounded two-request greedy mixed-batch GPU check passed
-(`docs/handoffs/lp_scheduler_mixed_gpu_handoff.md`); its prior review
-recommended acceptance. A three-request contention workload passed its CPU
-case and one GPU run and awaits review
-(`docs/handoffs/lp_scheduler_contention_handoff.md`). General mixed-batch
-correctness, general sampler correctness, generation quality, and identical
-central/worker physical block IDs remain unverified.
-This status note does not repin or extend the historical Phase C audit.
+**Implementation status (refreshed 2026-11-01).** Source review at `35e0eab`
+confirms the corrected single-stage planner, mapper, native preemption
+executor, and live scheduler. The adapted pinned reference and comparison
+tools also exist. [Project status](project_status.md) indexes the corrected
+CPU milestone, later bounded GPU runs (including failures and corrections),
+and the accepted running-order CPU batch. Running-order GPU validation and
+TP/PP implementation remain absent. This status note does not repin the
+Phase C audit or establish general correctness, sampler quality, performance,
+or equality of central/worker physical block IDs. Read current code and the
+design before applying this historical digest to new work.
 
 ## 2. High-level execution flow
 
