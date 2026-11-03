@@ -8,8 +8,10 @@ manager replaying copies, with synthetic samples.
 """
 
 import functools
+import json
 import math
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from types import MappingProxyType, SimpleNamespace
@@ -301,6 +303,24 @@ class MetricsTest(unittest.TestCase):
         self.assertEqual(m["events_after_cutoff"],
                          [dict(name="after_cutoff", time=1.2)])
 
+    def test_exact_due_times_at_nonzero_epoch_are_on_time(self):
+        arrival = 10_000.0
+        first = arrival + 0.100
+        second = first + 0.040
+        row = _row("equal", "tight", [first, second], finish=second,
+                   arrival=arrival)
+        request, = pilot.latency_metrics([row], second)["per_request"]
+        self.assertFalse(request["ttft_miss"])
+        self.assertEqual(request["ttft_excess"], 0.0)
+        self.assertEqual(request["gap_misses"], [False])
+        self.assertEqual(request["gap_excess"], [0.0])
+
+    def test_decision_cap_censors_at_the_observed_boundary(self):
+        clock = _clock(_FakeSeq(0))
+        trial = dict(clock=clock, cutoff=5.0, observation_cutoff=0.02)
+        request, = pilot.trial_metrics(trial)["per_request"]
+        self.assertEqual(request["ttft_status"], "unresolved")
+
     def test_tbt_gaps_open_gaps_and_p99(self):
         rows = [
             _row("a", "tight", [0.1, 0.13, 0.20, 0.24], finish=0.24),
@@ -463,6 +483,30 @@ class LiveCpuTest(unittest.TestCase):
         self.assertEqual(trials[0]["final_central"]["running"], [])
         self.assertEqual(pilot.trial_record(trials[0])["failed_step"]["index"],
                          0)
+
+    def test_cli_fails_at_cutoff_and_preserves_trace(self):
+        case = dict(pilot.CASES["ample"], cutoff_seconds=0.0)
+        with tempfile.TemporaryDirectory() as out, mock.patch.dict(
+                pilot.CASES, {"ample": case}):
+            status = pilot.main(["--cpu", "--case", "ample", "--single",
+                                 "timed", "--output-dir", out])
+            raw = json.loads((Path(out) / "trials/single_timed.json").read_text())
+            summary = json.loads((Path(out) / "summary.json").read_text())
+        self.assertEqual(status, 1)
+        self.assertFalse(summary["validation_passed"])
+        self.assertEqual(raw["stop_reason"], "cutoff")
+
+    def test_cli_preserves_raw_trace_when_analysis_fails(self):
+        with tempfile.TemporaryDirectory() as out, mock.patch.object(
+                pilot, "analyze_trial", side_effect=CheckFailure("bad trace")):
+            status = pilot.main(["--cpu", "--case", "ample", "--single",
+                                 "timed", "--output-dir", out])
+            raw = json.loads((Path(out) / "trials/single_timed.json").read_text())
+            summary = json.loads((Path(out) / "summary.json").read_text())
+        self.assertEqual(status, 1)
+        self.assertEqual(summary["failure"]["message"], "bad trace")
+        self.assertEqual(raw["stop_reason"], "drained")
+        self.assertTrue(raw["steps"])
 
     def test_cutoff_stops_with_unfinished_work_visible(self):
         case = dict(pilot.CASES["ample"], cutoff_seconds=0.0)

@@ -138,6 +138,7 @@ Resolve only what the active MVP needs. If a missing input matters to that path,
 ## Local and Unity environments
 
 - Use local development for documentation, source inspection, implementation, and CPU/unit tests when appropriate.
+- Codex must not rerun code on macOS just to check results from Unity. If a local rerun is essential, ask for the user's explicit permission first.
 - Use the validated Unity setup in `docs/unity_setup.md` for GPU and serving validation unless an explicit task establishes and records another environment.
 - On Unity, obtain an allocation only when one is needed; never initialize models, run CUDA validation, or benchmark on a login node.
 - When Claude or another implementation agent starts inside an allocated Unity GPU node, use that node and the repository's existing Python environment directly. Do not invoke `srun`, create another allocation, submit a job, or SSH elsewhere unless explicitly requested. Load required modules and activate the existing environment in the shell used for execution. Do not assume activation persists across separate tool shells.

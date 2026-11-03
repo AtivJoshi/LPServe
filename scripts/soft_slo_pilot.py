@@ -477,14 +477,15 @@ def run_trial(engine, case_name, policy, label, prompts, worker_state):
             if now >= cutoff:
                 trial["stop_reason"] = "cutoff"
                 break
+            if index >= case["max_decisions"]:
+                trial["stop_reason"] = "decision_cap"
+                trial["observation_cutoff"] = now
+                break
             pending = [r["arrival_time"] for r in clock.requests.values()
                        if r["finish_time"] is None]
             if min(pending) > now:  # nothing arrived: idle without a call
                 time.sleep(min(min(pending), cutoff) - now)
                 continue
-            if index >= case["max_decisions"]:
-                trial["stop_reason"] = "decision_cap"
-                break
             recorder.begin()
             engine.validation_sampler_outputs = None
             started = time.monotonic()
@@ -538,8 +539,11 @@ def run_trial(engine, case_name, policy, label, prompts, worker_state):
     except BaseException as err:  # keep the original failure visible
         trial.setdefault("probe_failure", repr(err))
     if trial["failure"] is None and trial["stop_reason"] == "drained":
-        fc, fw = trial["final_central"], trial["final_worker"]
         try:
+            check("probe_failure" not in trial,
+                  f"{label}: final state probe failed: "
+                  f"{trial.get('probe_failure')}")
+            fc, fw = trial["final_central"], trial["final_worker"]
             check(fc["waiting"] == [] and fc["running"] == []
                   and fc["seqs"] == {} and fc["block_tables"] == {}
                   and fc["free_blocks"] == case["num_gpu_blocks"]
@@ -772,27 +776,31 @@ def latency_metrics(requests, cutoff):
                    ttft_target=r["ttft_target"], tbt_target=r["tbt_target"],
                    events_within_cutoff=len(within),
                    finished_by_cutoff=finished)
+        due = r["arrival_time"] + r["ttft_target"]
         if within:
-            ttft = within[0] - r["arrival_time"]
-            row.update(ttft_status="observed", ttft=ttft,
-                       ttft_miss=ttft > r["ttft_target"],
-                       ttft_excess=max(0.0, ttft - r["ttft_target"]))
+            row.update(ttft_status="observed",
+                       ttft=within[0] - r["arrival_time"],
+                       ttft_miss=within[0] > due,
+                       ttft_excess=max(0.0, within[0] - due))
         else:
-            due = r["arrival_time"] + r["ttft_target"]
             if due <= cutoff:
                 row.update(ttft_status="known_miss_missing",
                            ttft_miss=True,
                            ttft_excess_lower_bound=cutoff - due)
             else:
                 row.update(ttft_status="unresolved", ttft_miss=None)
-        gaps = [b - a for a, b in zip(within, within[1:])]
-        row.update(gaps=gaps, gap_misses=[g > r["tbt_target"] for g in gaps],
-                   gap_excess=[max(0.0, g - r["tbt_target"]) for g in gaps])
+        gaps, gap_misses, gap_excess = [], [], []
+        for previous, current in zip(within, within[1:]):
+            due = previous + r["tbt_target"]
+            gaps.append(current - previous)
+            gap_misses.append(current > due)
+            gap_excess.append(max(0.0, current - due))
+        row.update(gaps=gaps, gap_misses=gap_misses, gap_excess=gap_excess)
         if within and not finished:
-            open_gap = cutoff - within[-1]
+            due = within[-1] + r["tbt_target"]
             row["open_gap"] = dict(
-                elapsed=open_gap, overdue=open_gap > r["tbt_target"],
-                excess_lower_bound=max(0.0, open_gap - r["tbt_target"]))
+                elapsed=cutoff - within[-1], overdue=cutoff > due,
+                excess_lower_bound=max(0.0, cutoff - due))
         per_request.append(row)
     by_class = {}
     for cls in sorted({r["slo_class"] for r in per_request}):
@@ -844,7 +852,7 @@ def trial_metrics(trial):
                  tbt_target=r["tbt_target"], event_times=list(r["event_times"]),
                  finish_time=r["finish_time"])
             for r in clock.requests.values()]
-    return latency_metrics(rows, trial["cutoff"])
+    return latency_metrics(rows, trial.get("observation_cutoff", trial["cutoff"]))
 
 
 # ---------------------------------------------------------------------------
@@ -1196,6 +1204,7 @@ def trial_record(trial):
         label=trial["label"], case=trial["case"], policy=trial["policy"],
         cohort=trial["cohort"], t0=trial.get("t0"),
         cutoff=trial.get("cutoff"),
+        observation_cutoff=trial.get("observation_cutoff", trial.get("cutoff")),
         registration_start=trial.get("registration_start"),
         registration_end=trial.get("registration_end"),
         stop_reason=trial["stop_reason"], failure=trial["failure"],
@@ -1250,14 +1259,25 @@ def summarize_pair(analyses):
         decisions=len(decisions))
 
 
-def run_session(engine, case_name, prompts, labels, worker_state):
-    """Run the trials in ``labels`` ([(label, policy, measured)]) on one
-    engine; stop at the first trial that fails or does not drain."""
+def finished_in_window(trial):
+    """Every registered request finished by the measurement cutoff."""
+    requests = trial["clock"].requests
+    return (trial["stop_reason"] == "drained" and bool(requests)
+            and all(r["finish_time"] is not None
+                    and r["finish_time"] <= trial["cutoff"]
+                    for r in requests.values()))
+
+
+def run_session(engine, case_name, prompts, labels, worker_state, *,
+                save_trial=None):
+    """Run trials on one engine, saving each raw trace before analysis."""
     trials, analyses, metrics = [], {}, {}
-    for label, policy, measured in labels:
+    for label, policy, _ in labels:
         trial = run_trial(engine, case_name, policy, label, prompts,
                           worker_state)
         trials.append(trial)
+        if save_trial is not None:
+            save_trial(trial)
         print(f"{label}: {trial['stop_reason']} decisions "
               f"{len(trial['steps'])} failure "
               f"{trial['failure'] and trial['failure']['message']}",
@@ -1266,7 +1286,7 @@ def run_session(engine, case_name, prompts, labels, worker_state):
             break
         analyses[label] = analyze_trial(trial)
         metrics[label] = trial_metrics(trial)
-        if trial["stop_reason"] != "drained":
+        if not finished_in_window(trial):
             break
     return trials, analyses, metrics
 
@@ -1303,7 +1323,13 @@ def main(argv=None):
                    cpu=args.cpu, smoke=args.smoke, settings=settings_record(),
                    provenance=provenance_record(), failure=None)
     engine = None
-    trials = []
+
+    def save_trial(trial):
+        trial_dir = out_dir / "trials"
+        trial_dir.mkdir(exist_ok=True)
+        (trial_dir / f"{trial['label']}.json").write_text(
+            json.dumps(trial_record(trial), indent=1))
+
     try:
         summary["flip_example"] = to_jsonable(flip_example())
         if args.cpu:
@@ -1370,9 +1396,9 @@ def main(argv=None):
                          for i, p in enumerate(MEASURED_ORDER)])
         trials, analyses, metrics = run_session(
             engine, args.case, prompts, labels,
-            functools.partial(_worker_state, engine))
-        measured = {k: v for k, v in analyses.items()
-                    if not k.startswith(("warmup", "smoke", "single"))}
+            functools.partial(_worker_state, engine), save_trial=save_trial)
+        measured = {label: analyses[label] for label, _, include in labels
+                    if include and label in analyses}
         summary.update(
             trials={t["label"]: dict(stop_reason=t["stop_reason"],
                                      decisions=len(t["steps"]),
@@ -1383,9 +1409,17 @@ def main(argv=None):
         first = next((t for t in trials if t["label"] in measured), None)
         if first is not None:
             summary["same_state_exact"] = to_jsonable(same_state_exact(first))
-        summary["validation_passed"] = (
-            len(trials) == len(labels)
-            and all(t["failure"] is None for t in trials))
+        check(len(trials) == len(labels)
+              and all(t["failure"] is None and finished_in_window(t)
+                      for t in trials),
+              "at least one trial failed or did not finish within cutoff")
+        if args.case == "ample" and not (args.smoke or args.single):
+            gates = summary["gates"]
+            check(gates["contended_decisions"] > 0
+                  and gates["action_differences"] > 0
+                  and gates["preemptions"] == 0,
+                  f"ample comparison did not meet its gates: {gates}")
+        summary["validation_passed"] = True
     except BaseException as err:
         summary["failure"] = dict(type=type(err).__name__, message=str(err),
                                   traceback=traceback.format_exc())
@@ -1395,11 +1429,6 @@ def main(argv=None):
     finally:
         cleanup = dict(engine_constructed=engine is not None)
         try:
-            trial_dir = out_dir / "trials"
-            trial_dir.mkdir(exist_ok=True)
-            for t in trials:
-                (trial_dir / f"{t['label']}.json").write_text(
-                    json.dumps(trial_record(t), indent=1))
             (out_dir / "summary.json").write_text(
                 json.dumps(to_jsonable(summary), indent=1))
         finally:
