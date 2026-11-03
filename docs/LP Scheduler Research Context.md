@@ -31,6 +31,10 @@ obtaining similar observed behavior, and obtaining similar performance.
 
 ## 2.1 Immediate goal: observe and compare coefficient policies
 
+The active milestone is the [PH1 soft SLO study](handoffs/ph1_soft_slo_milestone.md).
+It uses the current formulation to study how timing-aware coefficients affect
+first-token and streaming latency.
+
 Build a correct, runnable framework for observing and monitoring how explicit
 coefficient update policies behave and comparing them with reference
 schedulers. The immediate task is to support that study; finding the best
@@ -1707,6 +1711,15 @@ exactly. Do not claim an approximation ratio.
 The manuscript sections after `subsec:lp_relaxation` require a separate
 mathematical assignment before they can be relied on for the amended
 formulation (§3.1).
+
+After the [PH1 soft SLO study](handoffs/ph1_soft_slo_milestone.md), revisit
+Primal Heuristic 2 (PH2) and the Lagrangian method. A tentative direction is to
+share one routine that selects executable batches, including preemption victims,
+so both methods can be studied without maintaining two separate schedulers.
+If we pursue the Lagrangian method, start by obtaining resource prices from a
+linear program (LP). Measure that cost before deciding whether to approximate
+the prices or update them less often. Which constraints to price and how to
+choose victims remain open.
 
 ## Solver overhead
 
