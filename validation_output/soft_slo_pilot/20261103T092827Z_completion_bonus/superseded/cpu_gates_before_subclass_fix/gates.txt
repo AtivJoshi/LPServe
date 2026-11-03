@@ -1,0 +1,25 @@
+host=gpu052 job=66576498 head=58303fd952db12844c61fc1d77f2bcfb66d35fd1 python=/home/atjoshi_umass_edu/LPServe/env/bin/python Python 3.10.8
+## 01_py_compile: python -B -m py_compile lp_relaxation_scheduler.py lpserve_state_mapping.py scripts/exact_integer_plan.py scripts/soft_slo_pilot.py scripts/prompt_completion_study.py tests/test_soft_slo_pilot.py
+exit=0 
+## 02_diff_check: git diff --check
+exit=0 
+## 03_whitespace_new: zsh -c ! grep -nE '[[:space:]]+$' scripts/prompt_completion_study.py
+exit=0 
+## 04_test_soft_slo_pilot: python -B -m unittest tests.test_soft_slo_pilot -v
+exit=0 Ran 31 tests in 3.809s OK 
+## 05_test_lp_relaxation_scheduler: python -B -m unittest tests.test_lp_relaxation_scheduler
+exit=0 Ran 38 tests in 0.559s OK 
+## 05_test_lp_scheduler: python -B -m unittest tests.test_lp_scheduler
+exit=0 Ran 24 tests in 0.136s OK 
+## 05_test_lpserve_plan_execution: python -B -m unittest tests.test_lpserve_plan_execution
+exit=0 Ran 16 tests in 0.081s OK 
+## 05_test_lpserve_state_mapping: python -B -m unittest tests.test_lpserve_state_mapping
+exit=0 Ran 24 tests in 0.034s OK 
+## 05_test_lp_engine_args: python -B -m unittest tests.test_lp_engine_args
+exit=0 Ran 11 tests in 0.033s OK 
+## 05_test_exact_integer_plan: python -B -m unittest tests.test_exact_integer_plan
+exit=0 Ran 8 tests in 0.212s OK 
+## 05_test_compare_scheduler_gpu: python -B -m unittest tests.test_compare_scheduler_gpu
+exit=1 Ran 52 tests in 23.464s FAILED (failures=21, errors=3) 
+## 05_test_check_lp_scheduler_ordering: python -B -m unittest tests.test_check_lp_scheduler_ordering
+exit=1 Ran 5 tests in 0.033s FAILED (failures=1) 

@@ -108,6 +108,23 @@ class RequestInput:
 
 
 @dataclass(frozen=True)
+class CompletionBonusRequestInput(RequestInput):
+    """A ``RequestInput`` with the experimental, opt-in prompt-completion
+    bonus. A positive ``completion_bonus`` is earned when the selected chunk
+    equals ``prompt_tokens_remaining``; it requires a prefill-eligible
+    request whose remainder fits one decision (at most C_max and B_max).
+    Zero (and a plain ``RequestInput``) leaves the LP unchanged. Not part of
+    the normative formulation."""
+
+    completion_bonus: float = 0.0
+
+
+def _completion_bonus(r):
+    """The experimental completion bonus of a request (0 when absent)."""
+    return getattr(r, "completion_bonus", 0.0)
+
+
+@dataclass(frozen=True)
 class LPProblem:
     requests: tuple
     legal_preemption_ids: frozenset
@@ -516,6 +533,21 @@ def _validate_problem_or_raise(problem):
     )
     for r in problem.requests:
         _check_request(r, problem.c_max, legal)
+        bonus = _completion_bonus(r)
+        _require(
+            _is_real(bonus) and bonus >= 0, "malformed_value",
+            f"request {r.request_id!r}: completion_bonus must be a finite "
+            "non-negative number",
+        )
+        if bonus > 0:
+            _require(
+                r.prefill_eligible
+                and r.prompt_tokens_remaining <= r.prefill_upper_bound
+                and r.prompt_tokens_remaining <= problem.b_max,
+                "inconsistent_bounds",
+                f"request {r.request_id!r}: a completion bonus requires a "
+                "prefill-eligible remainder that fits one decision",
+            )
     keys = [r.order_key for r in problem.requests]
     _require(
         len(set(keys)) == len(keys), "duplicate_order_key",
@@ -655,7 +687,41 @@ def _build_lp(problem):
         row[2 * n + i] = 1.0
         row[3 * n + i] = 1.0
         add(f"mutual_exclusion[{rid}]", row, 1.0)
+
+    # Experimental completion bonus: one indicator f_j per bonus request,
+    # appended after the 4n columns, with x >= R f and x <= R - 1 + f.
+    done = _completion_requests(problem)
+    if done:
+        k = len(done)
+        c = np.concatenate(
+            [c, [-float(_completion_bonus(reqs[i])) for i in done]])
+        bounds += [(0.0, 1.0)] * k
+        rows[:] = [np.concatenate([row, np.zeros(k)]) for row in rows]
+        for j, i in enumerate(done):
+            rid = reqs[i].request_id
+            remainder = float(reqs[i].prompt_tokens_remaining)
+            row = np.zeros(4 * n + k)  # R f - x <= 0
+            row[4 * n + j] = remainder
+            row[i] = -1.0
+            add(f"completion_lower[{rid}]", row, 0.0)
+            row = np.zeros(4 * n + k)  # x - f <= R - 1
+            row[i] = 1.0
+            row[4 * n + j] = -1.0
+            add(f"completion_upper[{rid}]", row, remainder - 1.0)
     return c, np.array(rows), np.array(rhs), bounds, labels
+
+
+def _completion_requests(problem):
+    """Indices of requests with a positive completion bonus (none unless
+    the experimental bonus is supplied)."""
+    return [i for i, r in enumerate(problem.requests)
+            if _completion_bonus(r) > 0]
+
+
+def _derived_completion(problem, x):
+    """Completion indicators 1{x_i = R_i} of an integer assignment."""
+    return [1.0 if x[i] == problem.requests[i].prompt_tokens_remaining
+            else 0.0 for i in _completion_requests(problem)]
 
 
 def _objective_agrees(reported, recomputed, policy):
@@ -803,10 +869,12 @@ def _split(vector, n):
     )
 
 
-def _residuals(problem, x, y, ind, z):
+def _residuals(problem, x, y, ind, z, f=None):
     """Recompute every constraint residual (lhs - rhs, feasible when <= 0)
     directly from project data, independently of the LP matrix.
 
+    ``f`` holds the experimental completion indicators, one per
+    ``_completion_requests`` entry; ``None`` derives them from ``x``.
     Raises ``_NumericalError`` when the arithmetic is not finite.
     """
     reqs = problem.requests
@@ -855,6 +923,16 @@ def _residuals(problem, x, y, ind, z):
             [x[i], -prod(r.prefill_upper_bound, ind[i])], "prefill linkage")
         res[f"mutual_exclusion[{rid}]"] = _checked_sum(
             [ind[i], y[i], z[i], -1.0], "mutual exclusion")
+    done = _completion_requests(problem)
+    if done:
+        f = _derived_completion(problem, x) if f is None else list(f)
+        for j, i in enumerate(done):
+            rid = reqs[i].request_id
+            remainder = reqs[i].prompt_tokens_remaining
+            res[f"completion_lower[{rid}]"] = _checked_sum(
+                [prod(remainder, f[j]), -x[i]], "completion")
+            res[f"completion_upper[{rid}]"] = _checked_sum(
+                [x[i], -f[j], -float(remainder - 1)], "completion")
     return res
 
 
@@ -874,8 +952,11 @@ def _project(value, upper, eps):
     return value, False
 
 
-def _objective_max(problem, x, y, z):
-    """Maximization objective with checked stable summation."""
+def _objective_max(problem, x, y, z, f=None):
+    """Maximization objective with checked stable summation.
+
+    Experimental completion bonuses use ``f`` (relaxed indicators) or, when
+    ``None``, completion derived from the selected chunk ``x_i = R_i``."""
     terms = []
     for i, r in enumerate(problem.requests):
         terms.append(_checked_product(
@@ -885,6 +966,13 @@ def _objective_max(problem, x, y, z):
         if r.preemption_eligible:
             terms.append(-_checked_product(
                 float(r.preemption_penalty), z[i], "objective"))
+    done = _completion_requests(problem)
+    if done:
+        f = _derived_completion(problem, x) if f is None else list(f)
+        for j, i in enumerate(done):
+            terms.append(_checked_product(
+                float(_completion_bonus(problem.requests[i])), f[j],
+                "objective"))
     return _checked_sum(terms, "objective")
 
 
@@ -909,10 +997,12 @@ def validate_relaxed_solution(problem, raw_vector):
             "malformed_vector",
             "raw vector is not a sequence of numbers representable as floats",
         )
-    if len(raw) != 4 * n or not all(math.isfinite(v) for v in raw):
+    done = _completion_requests(problem)
+    length = 4 * n + len(done)
+    if len(raw) != length or not all(math.isfinite(v) for v in raw):
         return bad(
             "malformed_vector",
-            f"raw vector must be finite with length {4 * n}, got {len(raw)}",
+            f"raw vector must be finite with length {length}, got {len(raw)}",
         )
 
     uppers = (
@@ -920,26 +1010,32 @@ def validate_relaxed_solution(problem, raw_vector):
         + [1.0 if r.decode_eligible else 0.0 for r in reqs]
         + [1.0 if r.prefill_eligible else 0.0 for r in reqs]
         + [1.0 if r.preemption_eligible else 0.0 for r in reqs]
+        + [1.0] * len(done)
     )
     normalized = []
     projection_count = 0
     for k, (value, upper) in enumerate(zip(raw, uppers)):
         projected = _project(value, upper, eps)
         if projected is None:
-            block = ("x", "y", "prefill_indicator", "z")[k // n]
+            if k < 4 * n:
+                block = ("x", "y", "prefill_indicator", "z")[k // n]
+                rid = reqs[k % n].request_id
+            else:
+                block, rid = "completion", reqs[done[k - 4 * n]].request_id
             return bad(
                 "bound_violation",
-                f"{block} of request {reqs[k % n].request_id!r} = {value!r} "
+                f"{block} of request {rid!r} = {value!r} "
                 f"is outside its bounds beyond tolerance {eps}",
             )
         normalized.append(projected[0])
         projection_count += projected[1]
 
     try:
-        raw_res = _residuals(problem, *_split(raw, n))
-        norm_res = _residuals(problem, *_split(normalized, n))
+        raw_res = _residuals(problem, *_split(raw, n), raw[4 * n:])
+        norm_res = _residuals(problem, *_split(normalized, n),
+                              normalized[4 * n:])
         x, y, ind, z = _split(normalized, n)
-        objective = _objective_max(problem, x, y, z)
+        objective = _objective_max(problem, x, y, z, normalized[4 * n:])
     except _NumericalError as err:
         return bad(CATEGORY_NONFINITE, str(err))
     for label, res in (("raw", raw_res), ("normalized", norm_res)):
@@ -1116,6 +1212,10 @@ def extract_integer_plan(problem, relaxed):
                 reward = _checked_product(
                     float(r.prefill_token_utility), chunk, "trial reward"
                 )
+                bonus = _completion_bonus(r)
+                if bonus > 0 and chunk == r.prompt_tokens_remaining:
+                    reward = _checked_sum(
+                        [reward, float(bonus)], "trial reward")
             new_victims = []
             for k in victim_list:
                 if trial.legal(problem):

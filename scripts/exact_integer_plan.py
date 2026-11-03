@@ -97,15 +97,22 @@ def _maybe_int(value):
     return int(value) if isinstance(value, (int, np.integer)) else None
 
 
-def solve_integer_plan(problem):
+def solve_integer_plan(problem, *, bound_overrides=None):
     """Solve the ILP of ``problem`` once; ``IntegerOptimum`` or
-    ``IntegerSolveFailure``. Never raises for solver or numerical outcomes."""
+    ``IntegerSolveFailure``. Never raises for solver or numerical outcomes.
+
+    ``bound_overrides`` (offline experiments only) maps a column index of
+    ``lrs._build_lp``'s canonical vector to replacement ``(lower, upper)``
+    bounds, for example to require one request to finish its prompt; every
+    row is unchanged and the result is still validated in full."""
     pid = getattr(problem, "problem_id", None)
     canonical = lrs.validate_problem(problem)
     if isinstance(canonical, lrs.Failure):
         return IntegerSolveFailure(pid, canonical.stage, canonical.category,
                                    canonical.reason)
     c, rows, rhs, bounds, _ = lrs._build_lp(canonical)
+    for column, replacement in (bound_overrides or {}).items():
+        bounds[column] = replacement
     if not (np.all(np.isfinite(c)) and np.all(np.isfinite(rows))
             and np.all(np.isfinite(rhs))):
         return IntegerSolveFailure(pid, STAGE_INTEGER_SOLVER,
@@ -163,12 +170,21 @@ def solve_integer_plan(problem):
     n = len(canonical.requests)
     ints = [int(round(v)) for v in vector]
     x_i, y_i, ind_i, z_i = (ints[0:n], ints[n:2 * n], ints[2 * n:3 * n],
-                            ints[3 * n:])
+                            ints[3 * n:4 * n])
+    # Completion indicators exist only for a positive completion bonus.
+    f_i = ints[4 * n:]
     if any(ind != (1 if xv > 0 else 0) for ind, xv in zip(ind_i, x_i)):
         return fail(STAGE_INTEGER_CONVERSION, "inconsistent_indicator",
                     f"indicators {ind_i} differ from 1{{x > 0}} for {x_i}")
+    done = lrs._completion_requests(canonical)
+    derived = [1 if x_i[i] == canonical.requests[i].prompt_tokens_remaining
+               else 0 for i in done]
+    if f_i != derived:
+        return fail(STAGE_INTEGER_CONVERSION, "inconsistent_completion",
+                    f"completion indicators {f_i} differ from 1{{x = R}} "
+                    f"{derived}")
     residuals = lrs._residuals(canonical, *[[float(v) for v in part] for part
-                                            in (x_i, y_i, ind_i, z_i)])
+                                            in (x_i, y_i, ind_i, z_i, f_i)])
     violated = sorted(k for k, v in residuals.items() if v > 0)
     if violated:
         return fail(STAGE_INTEGER_CONVERSION, "integer_infeasible_point",
@@ -240,8 +256,10 @@ def problem_from_record(record):
     ``order_key``, frozenset legal victims, and the ``NumericalPolicy``.
     Callers validate the result and check that it serializes back to the
     same record."""
-    requests = tuple(lrs.RequestInput(**dict(r, order_key=tuple(r["order_key"])))
-                     for r in record["requests"])
+    requests = tuple(
+        (lrs.CompletionBonusRequestInput if "completion_bonus" in r
+         else lrs.RequestInput)(**dict(r, order_key=tuple(r["order_key"])))
+        for r in record["requests"])
     return lrs.LPProblem(**dict(
         record, requests=requests,
         legal_preemption_ids=frozenset(record["legal_preemption_ids"]),

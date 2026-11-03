@@ -1,0 +1,10 @@
+## offline: python -B scripts/prompt_completion_study.py --evidence validation_output/soft_slo_pilot/20261103T090031Z_registration_order --output validation_output/soft_slo_pilot/20261103T092827Z_completion_bonus/offline/study.json
+exit=0
+## cpu_ample_bonus: python -B scripts/soft_slo_pilot.py --cpu --case ample --registration-order tight_first --comparison bonus --output-dir validation_output/soft_slo_pilot/20261103T092827Z_completion_bonus/cpu_ample_bonus
+exit=0
+## gpu_smoke: python -B scripts/soft_slo_pilot.py --case ample --smoke --model-path /home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6 --output-dir validation_output/soft_slo_pilot/20261103T092827Z_completion_bonus/gpu_smoke
+exit=0
+## gpu_ample_bonus: python -B scripts/soft_slo_pilot.py --case ample --registration-order tight_first --comparison bonus --model-path /home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6 --output-dir validation_output/soft_slo_pilot/20261103T092827Z_completion_bonus/gpu_ample_bonus
+exit=0
+## gpu_incumbents_bonus: python -B scripts/soft_slo_pilot.py --case ample_incumbents --registration-order tight_first --comparison bonus --model-path /home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6 --output-dir validation_output/soft_slo_pilot/20261103T092827Z_completion_bonus/gpu_incumbents_bonus
+exit=0

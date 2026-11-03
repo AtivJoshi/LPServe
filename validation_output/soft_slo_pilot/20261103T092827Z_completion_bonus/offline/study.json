@@ -1,0 +1,1691 @@
+{
+ "evidence": "validation_output/soft_slo_pilot/20261103T090031Z_registration_order",
+ "target": "tight33",
+ "disabled_replay": {
+  "ph1_decisions_reproduced": 216,
+  "exact_objectives_reproduced": 76
+ },
+ "completion_bonus": 1.5,
+ "snapshots": 30,
+ "exact_flips": 30,
+ "ph1_finishes_with_bonus": 30,
+ "finishing_cost_min": 1.0017863604434143,
+ "finishing_cost_max": 1.343172354712927,
+ "proceed_to_live": true,
+ "rows": [
+  {
+   "decision": 3,
+   "snapshot_time": 2198521.363121376,
+   "target_boost": 1.8361832272261382,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_objective": 2.9130736212867,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.615773996314965,
+   "finishing_cost": 1.297299624971735,
+   "displaced_work": {
+    "relaxed33": {
+     "action": "prefill:16",
+     "value": 1.4120610766733686
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.11476145170163364
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 25,
+   "target_prefill_token_utility": 0.11476145170163364,
+   "bonus_offered": {
+    "relaxed17": 1.5,
+    "tight33": 1.5
+   },
+   "bonus_exact_actions": {
+    "relaxed17": "prefill:16",
+    "tight33": "prefill:1"
+   },
+   "bonus_exact_objective": 4.460155861770424,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "relaxed17": "prefill:16",
+    "tight33": "prefill:1"
+   },
+   "bonus_ph1_objective": 4.460155861770424,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "relaxed_first",
+   "trial": "trial0_timed"
+  },
+  {
+   "decision": 4,
+   "snapshot_time": 2198521.383955227,
+   "target_boost": 2.044521740265191,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "relaxed17": "prefill:16",
+    "tight17": "decode"
+   },
+   "exact_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_objective": 2.915873905767997,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.628815933514852,
+   "finishing_cost": 1.287057972253145,
+   "displaced_work": {
+    "relaxed33": {
+     "action": "prefill:16",
+     "value": 1.4148405810197193
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.12778260876657443
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 22,
+   "target_prefill_token_utility": 0.12778260876657443,
+   "bonus_offered": {
+    "relaxed17": 1.5,
+    "tight33": 1.5
+   },
+   "bonus_exact_actions": {
+    "relaxed17": "prefill:16",
+    "tight33": "prefill:1"
+   },
+   "bonus_exact_objective": 4.542623189848382,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "relaxed17": "prefill:16",
+    "tight33": "prefill:1"
+   },
+   "bonus_ph1_objective": 4.542623189848382,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "relaxed_first",
+   "trial": "trial0_timed"
+  },
+  {
+   "decision": 5,
+   "snapshot_time": 2198521.404674384,
+   "target_boost": 2.25171330627054,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_objective": 2.984892428976794,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.641720074263867,
+   "finishing_cost": 1.343172354712927,
+   "displaced_work": {
+    "relaxed33": {
+     "action": "prefill:16",
+     "value": 1.4839044363548357
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.14073208164190876
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 22,
+   "target_prefill_token_utility": 0.14073208164190876,
+   "bonus_offered": {
+    "tight33": 1.5
+   },
+   "bonus_exact_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "bonus_exact_objective": 3.141720074263867,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "bonus_ph1_objective": 3.141720074263867,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "relaxed_first",
+   "trial": "trial0_timed"
+  },
+  {
+   "decision": 6,
+   "snapshot_time": 2198521.425037369,
+   "target_boost": 2.455343159474433,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "relaxed17": "decode",
+    "tight17": "decode"
+   },
+   "exact_actions": {
+    "relaxed17": "decode",
+    "tight17": "decode"
+   },
+   "exact_objective": 2.986312719310323,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.654657279292587,
+   "finishing_cost": 1.331655440017736,
+   "displaced_work": {
+    "relaxed17": {
+     "action": "decode",
+     "value": 1.4851143874848882
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.15345894746715205
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 22,
+   "target_prefill_token_utility": 0.15345894746715205,
+   "bonus_offered": {
+    "relaxed33": 1.5,
+    "tight33": 1.5
+   },
+   "bonus_exact_actions": {
+    "relaxed33": "prefill:1",
+    "tight33": "prefill:1"
+   },
+   "bonus_exact_objective": 3.246278596681077,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "relaxed33": "prefill:1",
+    "tight33": "prefill:1"
+   },
+   "bonus_ph1_objective": 3.246278596681077,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "relaxed_first",
+   "trial": "trial0_timed"
+  },
+  {
+   "decision": 7,
+   "snapshot_time": 2198521.443746179,
+   "target_boost": 2.6424312569200996,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "relaxed17": "decode",
+    "tight17": "decode"
+   },
+   "exact_actions": {
+    "relaxed17": "decode",
+    "tight17": "decode"
+   },
+   "exact_objective": 2.6680734896411495,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.6662070712540298,
+   "finishing_cost": 1.0018664183871198,
+   "displaced_work": {
+    "relaxed17": {
+     "action": "decode",
+     "value": 1.167018371944626
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.16515195355750623
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 22,
+   "target_prefill_token_utility": 0.16515195355750623,
+   "bonus_offered": {
+    "relaxed33": 1.5,
+    "tight33": 1.5
+   },
+   "bonus_exact_actions": {
+    "relaxed33": "prefill:1",
+    "tight33": "prefill:1"
+   },
+   "bonus_exact_objective": 3.261869271468216,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "relaxed33": "prefill:1",
+    "tight33": "prefill:1"
+   },
+   "bonus_ph1_objective": 3.261869271468216,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "relaxed_first",
+   "trial": "trial0_timed"
+  },
+  {
+   "decision": 3,
+   "snapshot_time": 2198524.066397795,
+   "target_boost": 1.8371675280854107,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_objective": 2.9133731765362123,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.6158069700817577,
+   "finishing_cost": 1.2975662064544546,
+   "displaced_work": {
+    "relaxed33": {
+     "action": "prefill:16",
+     "value": 1.4123891769597927
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.11482297050533817
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 25,
+   "target_prefill_token_utility": 0.11482297050533817,
+   "bonus_offered": {
+    "relaxed17": 1.5,
+    "tight33": 1.5
+   },
+   "bonus_exact_actions": {
+    "relaxed17": "prefill:16",
+    "tight33": "prefill:1"
+   },
+   "bonus_exact_objective": 4.460545480860553,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "relaxed17": "prefill:16",
+    "tight33": "prefill:1"
+   },
+   "bonus_ph1_objective": 4.460545480860553,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "relaxed_first",
+   "trial": "trial3_timed"
+  },
+  {
+   "decision": 4,
+   "snapshot_time": 2198524.086772908,
+   "target_boost": 2.04091865811497,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "relaxed17": "prefill:16",
+    "tight17": "decode"
+   },
+   "exact_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_objective": 2.9146826223470272,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.6286004848429,
+   "finishing_cost": 1.2860821375041271,
+   "displaced_work": {
+    "relaxed33": {
+     "action": "prefill:16",
+     "value": 1.4136395536363124
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.12755741613218563
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 22,
+   "target_prefill_token_utility": 0.12755741613218563,
+   "bonus_offered": {
+    "relaxed17": 1.5,
+    "tight33": 1.5
+   },
+   "bonus_exact_actions": {
+    "relaxed17": "prefill:16",
+    "tight33": "prefill:1"
+   },
+   "bonus_exact_objective": 4.541196969830587,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "relaxed17": "prefill:16",
+    "tight33": "prefill:1"
+   },
+   "bonus_ph1_objective": 4.541196969830587,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "relaxed_first",
+   "trial": "trial3_timed"
+  },
+  {
+   "decision": 5,
+   "snapshot_time": 2198524.107422139,
+   "target_boost": 2.2474109685048465,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_objective": 2.983485371309022,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.6414782330743036,
+   "finishing_cost": 1.3420071382347185,
+   "displaced_work": {
+    "relaxed33": {
+     "action": "prefill:16",
+     "value": 1.4824703237662713
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.1404631855315529
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 22,
+   "target_prefill_token_utility": 0.1404631855315529,
+   "bonus_offered": {
+    "tight33": 1.5
+   },
+   "bonus_exact_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "bonus_exact_objective": 3.1414782330743036,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "bonus_ph1_objective": 3.1414782330743036,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "relaxed_first",
+   "trial": "trial3_timed"
+  },
+  {
+   "decision": 6,
+   "snapshot_time": 2198524.127994893,
+   "target_boost": 2.4531385093927387,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "relaxed17": "decode",
+    "tight17": "decode"
+   },
+   "exact_actions": {
+    "relaxed17": "decode",
+    "tight17": "decode"
+   },
+   "exact_objective": 2.985355727157245,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.6542973798699676,
+   "finishing_cost": 1.3310583472872772,
+   "displaced_work": {
+    "relaxed17": {
+     "action": "decode",
+     "value": 1.4843795041243235
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.15332115683704617
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 22,
+   "target_prefill_token_utility": 0.15332115683704617,
+   "bonus_offered": {
+    "relaxed33": 1.5,
+    "tight33": 1.5
+   },
+   "bonus_exact_actions": {
+    "relaxed33": "prefill:1",
+    "tight33": "prefill:1"
+   },
+   "bonus_exact_objective": 3.246094875840936,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "relaxed33": "prefill:1",
+    "tight33": "prefill:1"
+   },
+   "bonus_ph1_objective": 3.246094875840936,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "relaxed_first",
+   "trial": "trial3_timed"
+  },
+  {
+   "decision": 7,
+   "snapshot_time": 2198524.146240699,
+   "target_boost": 2.6355965692549947,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "relaxed17": "decode",
+    "tight17": "decode"
+   },
+   "exact_actions": {
+    "relaxed17": "decode",
+    "tight17": "decode"
+   },
+   "exact_objective": 2.6680454413096113,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.6657588670263066,
+   "finishing_cost": 1.0022865742833047,
+   "displaced_work": {
+    "relaxed17": {
+     "action": "decode",
+     "value": 1.1670113598617415
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.16472478557843717
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 22,
+   "target_prefill_token_utility": 0.16472478557843717,
+   "bonus_offered": {
+    "relaxed33": 1.5,
+    "tight33": 1.5
+   },
+   "bonus_exact_actions": {
+    "relaxed33": "prefill:1",
+    "tight33": "prefill:1"
+   },
+   "bonus_exact_objective": 3.2612997141627904,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "relaxed33": "prefill:1",
+    "tight33": "prefill:1"
+   },
+   "bonus_ph1_objective": 3.2612997141627904,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "relaxed_first",
+   "trial": "trial3_timed"
+  },
+  {
+   "decision": 3,
+   "snapshot_time": 2198520.431050872,
+   "target_boost": 1.8358158577233554,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_objective": 2.9129644128493966,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.615764283784665,
+   "finishing_cost": 1.2972001290647315,
+   "displaced_work": {
+    "relaxed33": {
+     "action": "prefill:16",
+     "value": 1.411938620172441
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.11473849110770971
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 25,
+   "target_prefill_token_utility": 0.11473849110770971,
+   "bonus_offered": {
+    "relaxed17": 1.5,
+    "tight33": 1.5
+   },
+   "bonus_exact_actions": {
+    "relaxed17": "prefill:16",
+    "tight33": "prefill:1"
+   },
+   "bonus_exact_objective": 4.460010444675572,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "relaxed17": "prefill:16",
+    "tight33": "prefill:1"
+   },
+   "bonus_ph1_objective": 4.460010444675572,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "relaxed_first",
+   "trial": "warmup1_timed"
+  },
+  {
+   "decision": 4,
+   "snapshot_time": 2198520.45179048,
+   "target_boost": 2.0432119375094775,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "relaxed17": "prefill:16",
+    "tight17": "decode"
+   },
+   "exact_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_objective": 2.9154127528580527,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.6287095188512466,
+   "finishing_cost": 1.286703234006806,
+   "displaced_work": {
+    "relaxed33": {
+     "action": "prefill:16",
+     "value": 1.4144039801011483
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.12770074609434234
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 22,
+   "target_prefill_token_utility": 0.12770074609434234,
+   "bonus_offered": {
+    "relaxed17": 1.5,
+    "tight33": 1.5
+   },
+   "bonus_exact_actions": {
+    "relaxed17": "prefill:16",
+    "tight33": "prefill:1"
+   },
+   "bonus_exact_objective": 4.542104726257579,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "relaxed17": "prefill:16",
+    "tight33": "prefill:1"
+   },
+   "bonus_ph1_objective": 4.542104726257579,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "relaxed_first",
+   "trial": "warmup1_timed"
+  },
+  {
+   "decision": 5,
+   "snapshot_time": 2198520.472262301,
+   "target_boost": 2.2479301482439045,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_objective": 2.983656428878506,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.6415086794644593,
+   "finishing_cost": 1.3421477494140466,
+   "displaced_work": {
+    "relaxed33": {
+     "action": "prefill:16",
+     "value": 1.4826433836792905
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.14049563426524403
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 22,
+   "target_prefill_token_utility": 0.14049563426524403,
+   "bonus_offered": {
+    "tight33": 1.5
+   },
+   "bonus_exact_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "bonus_exact_objective": 3.1415086794644593,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "bonus_ph1_objective": 3.1415086794644593,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "relaxed_first",
+   "trial": "warmup1_timed"
+  },
+  {
+   "decision": 6,
+   "snapshot_time": 2198520.492983461,
+   "target_boost": 2.4551417469978336,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "relaxed17": "decode",
+    "tight17": "decode"
+   },
+   "exact_actions": {
+    "relaxed17": "decode",
+    "tight17": "decode"
+   },
+   "exact_objective": 2.986099096418669,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.6544982056133448,
+   "finishing_cost": 1.331600890805324,
+   "displaced_work": {
+    "relaxed17": {
+     "action": "decode",
+     "value": 1.4850472499926886
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.1534463591873646
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 22,
+   "target_prefill_token_utility": 0.1534463591873646,
+   "bonus_offered": {
+    "relaxed33": 1.5,
+    "tight33": 1.5
+   },
+   "bonus_exact_actions": {
+    "relaxed33": "prefill:1",
+    "tight33": "prefill:1"
+   },
+   "bonus_exact_objective": 3.246261812308027,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "relaxed33": "prefill:1",
+    "tight33": "prefill:1"
+   },
+   "bonus_ph1_objective": 3.246261812308027,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "relaxed_first",
+   "trial": "warmup1_timed"
+  },
+  {
+   "decision": 7,
+   "snapshot_time": 2198520.511840095,
+   "target_boost": 2.643708086200059,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "relaxed17": "decode",
+    "tight17": "decode"
+   },
+   "exact_actions": {
+    "relaxed17": "decode",
+    "tight17": "decode"
+   },
+   "exact_objective": 2.6680724651863175,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.6662861047429032,
+   "finishing_cost": 1.0017863604434143,
+   "displaced_work": {
+    "relaxed17": {
+     "action": "decode",
+     "value": 1.167018115830918
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.16523175538750368
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 22,
+   "target_prefill_token_utility": 0.16523175538750368,
+   "bonus_offered": {
+    "relaxed33": 1.5,
+    "tight33": 1.5
+   },
+   "bonus_exact_actions": {
+    "relaxed33": "prefill:1",
+    "tight33": "prefill:1"
+   },
+   "bonus_exact_objective": 3.2619756739082124,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "relaxed33": "prefill:1",
+    "tight33": "prefill:1"
+   },
+   "bonus_ph1_objective": 3.2619756739082124,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "relaxed_first",
+   "trial": "warmup1_timed"
+  },
+  {
+   "decision": 3,
+   "snapshot_time": 2198567.16158786,
+   "target_boost": 1.8315843889489771,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_objective": 2.911509103359034,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.615454997087363,
+   "finishing_cost": 1.2960541062716708,
+   "displaced_work": {
+    "relaxed33": {
+     "action": "prefill:16",
+     "value": 1.4105281305809816
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.11447402430931107
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 25,
+   "target_prefill_token_utility": 0.11447402430931107,
+   "bonus_offered": {
+    "relaxed17": 1.5,
+    "tight33": 1.5
+   },
+   "bonus_exact_actions": {
+    "relaxed17": "prefill:16",
+    "tight33": "prefill:1"
+   },
+   "bonus_exact_objective": 4.458335488285714,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "relaxed17": "prefill:16",
+    "tight33": "prefill:1"
+   },
+   "bonus_ph1_objective": 4.458335488285714,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "tight_first",
+   "trial": "trial0_timed"
+  },
+  {
+   "decision": 4,
+   "snapshot_time": 2198567.181963685,
+   "target_boost": 2.0353426389396194,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "tight17": "decode",
+    "relaxed17": "prefill:16"
+   },
+   "exact_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_objective": 2.912806673254818,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.6282347076106816,
+   "finishing_cost": 1.2845719656441363,
+   "displaced_work": {
+    "relaxed33": {
+     "action": "prefill:16",
+     "value": 1.4117808805778622
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.1272089149337262
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 22,
+   "target_prefill_token_utility": 0.1272089149337262,
+   "bonus_offered": {
+    "relaxed17": 1.5,
+    "tight33": 1.5
+   },
+   "bonus_exact_actions": {
+    "relaxed17": "prefill:16",
+    "tight33": "prefill:1"
+   },
+   "bonus_exact_objective": 4.538989795573677,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "relaxed17": "prefill:16",
+    "tight33": "prefill:1"
+   },
+   "bonus_ph1_objective": 4.538989795573677,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "tight_first",
+   "trial": "trial0_timed"
+  },
+  {
+   "decision": 5,
+   "snapshot_time": 2198567.202305849,
+   "target_boost": 2.238764281012118,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_objective": 2.980604643902431,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.6409393168636597,
+   "finishing_cost": 1.3396653270387713,
+   "displaced_work": {
+    "relaxed33": {
+     "action": "prefill:16",
+     "value": 1.4795880946020286
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.1399227675632574
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 22,
+   "target_prefill_token_utility": 0.1399227675632574,
+   "bonus_offered": {
+    "tight33": 1.5
+   },
+   "bonus_exact_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "bonus_exact_objective": 3.1409393168636597,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "bonus_ph1_objective": 3.1409393168636597,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "tight_first",
+   "trial": "trial0_timed"
+  },
+  {
+   "decision": 6,
+   "snapshot_time": 2198567.222627521,
+   "target_boost": 2.4419809995219115,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "tight17": "decode",
+    "relaxed17": "decode"
+   },
+   "exact_actions": {
+    "tight17": "decode",
+    "relaxed17": "decode"
+   },
+   "exact_objective": 2.981673856669416,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.6536373349721543,
+   "finishing_cost": 1.3280365216972618,
+   "displaced_work": {
+    "relaxed17": {
+     "action": "decode",
+     "value": 1.4806603341673812
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.15262381247011947
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 22,
+   "target_prefill_token_utility": 0.15262381247011947,
+   "bonus_offered": {
+    "tight33": 1.5,
+    "relaxed33": 1.5
+   },
+   "bonus_exact_actions": {
+    "tight33": "prefill:1",
+    "relaxed33": "prefill:1"
+   },
+   "bonus_exact_objective": 3.2451650833517003,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "tight33": "prefill:1",
+    "relaxed33": "prefill:1"
+   },
+   "bonus_ph1_objective": 3.2451650833517003,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "tight_first",
+   "trial": "trial0_timed"
+  },
+  {
+   "decision": 7,
+   "snapshot_time": 2198567.240999339,
+   "target_boost": 2.625699180737138,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "tight17": "decode",
+    "relaxed17": "decode"
+   },
+   "exact_actions": {
+    "tight17": "decode",
+    "relaxed17": "decode"
+   },
+   "exact_objective": 2.6680538076907396,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.665146555029787,
+   "finishing_cost": 1.0029072526609526,
+   "displaced_work": {
+    "relaxed17": {
+     "action": "decode",
+     "value": 1.1670134514570236
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.16410619879607113
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 22,
+   "target_prefill_token_utility": 0.16410619879607113,
+   "bonus_offered": {
+    "tight33": 1.5,
+    "relaxed33": 1.5
+   },
+   "bonus_exact_actions": {
+    "tight33": "prefill:1",
+    "relaxed33": "prefill:1"
+   },
+   "bonus_exact_objective": 3.2604749317863027,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "tight33": "prefill:1",
+    "relaxed33": "prefill:1"
+   },
+   "bonus_ph1_objective": 3.2604749317863027,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "tight_first",
+   "trial": "trial0_timed"
+  },
+  {
+   "decision": 3,
+   "snapshot_time": 2198569.85134478,
+   "target_boost": 1.8266489986330272,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_objective": 2.909950877291461,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.61523343923036,
+   "finishing_cost": 1.294717438061101,
+   "displaced_work": {
+    "relaxed33": {
+     "action": "prefill:16",
+     "value": 1.408883000475665
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.1141655624145642
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 25,
+   "target_prefill_token_utility": 0.1141655624145642,
+   "bonus_offered": {
+    "relaxed17": 1.5,
+    "tight33": 1.5
+   },
+   "bonus_exact_actions": {
+    "relaxed17": "prefill:16",
+    "tight33": "prefill:1"
+   },
+   "bonus_exact_objective": 4.4563818962856505,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "relaxed17": "prefill:16",
+    "tight33": "prefill:1"
+   },
+   "bonus_ph1_objective": 4.4563818962856505,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "tight_first",
+   "trial": "trial3_timed"
+  },
+  {
+   "decision": 4,
+   "snapshot_time": 2198569.871714996,
+   "target_boost": 2.0303511597216133,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "tight17": "decode",
+    "relaxed17": "prefill:16"
+   },
+   "exact_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_objective": 2.911114057339728,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.6278939506504684,
+   "finishing_cost": 1.2832201066892597,
+   "displaced_work": {
+    "relaxed33": {
+     "action": "prefill:16",
+     "value": 1.4101170541718602
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.12689694748260083
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 22,
+   "target_prefill_token_utility": 0.12689694748260083,
+   "bonus_offered": {
+    "relaxed17": 1.5,
+    "tight33": 1.5
+   },
+   "bonus_exact_actions": {
+    "relaxed17": "prefill:16",
+    "tight33": "prefill:1"
+   },
+   "bonus_exact_objective": 4.53701400171655,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "relaxed17": "prefill:16",
+    "tight33": "prefill:1"
+   },
+   "bonus_ph1_objective": 4.53701400171655,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "tight_first",
+   "trial": "trial3_timed"
+  },
+  {
+   "decision": 5,
+   "snapshot_time": 2198569.892084592,
+   "target_boost": 2.234047118201852,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_objective": 2.9790119767499466,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.6406242146389558,
+   "finishing_cost": 1.3383877621109908,
+   "displaced_work": {
+    "relaxed33": {
+     "action": "prefill:16",
+     "value": 1.4780157069986064
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.13962794488761576
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 22,
+   "target_prefill_token_utility": 0.13962794488761576,
+   "bonus_offered": {
+    "tight33": 1.5
+   },
+   "bonus_exact_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "bonus_exact_objective": 3.140624214638956,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "bonus_ph1_objective": 3.140624214638956,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "tight_first",
+   "trial": "trial3_timed"
+  },
+  {
+   "decision": 6,
+   "snapshot_time": 2198569.912369228,
+   "target_boost": 2.436893477663398,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "tight17": "decode",
+    "relaxed17": "decode"
+   },
+   "exact_actions": {
+    "tight17": "decode",
+    "relaxed17": "decode"
+   },
+   "exact_objective": 2.979981787906339,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.6533231367124244,
+   "finishing_cost": 1.3266586511939145,
+   "displaced_work": {
+    "relaxed17": {
+     "action": "decode",
+     "value": 1.4789644935478767
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.15230584235396238
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 22,
+   "target_prefill_token_utility": 0.15230584235396238,
+   "bonus_offered": {
+    "tight33": 1.5,
+    "relaxed33": 1.5
+   },
+   "bonus_exact_actions": {
+    "tight33": "prefill:1",
+    "relaxed33": "prefill:1"
+   },
+   "bonus_exact_objective": 3.244741123196824,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "tight33": "prefill:1",
+    "relaxed33": "prefill:1"
+   },
+   "bonus_ph1_objective": 3.244741123196824,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "tight_first",
+   "trial": "trial3_timed"
+  },
+  {
+   "decision": 7,
+   "snapshot_time": 2198569.930702146,
+   "target_boost": 2.6202226594090465,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "tight17": "decode",
+    "relaxed17": "decode"
+   },
+   "exact_actions": {
+    "tight17": "decode",
+    "relaxed17": "decode"
+   },
+   "exact_objective": 2.6681579295545816,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.6648823638446628,
+   "finishing_cost": 1.0032755657099188,
+   "displaced_work": {
+    "relaxed17": {
+     "action": "decode",
+     "value": 1.1670394819229841
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.1637639162130654
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 22,
+   "target_prefill_token_utility": 0.1637639162130654,
+   "bonus_offered": {
+    "tight33": 1.5,
+    "relaxed33": 1.5
+   },
+   "bonus_exact_actions": {
+    "tight33": "prefill:1",
+    "relaxed33": "prefill:1"
+   },
+   "bonus_exact_objective": 3.2600185550089615,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "tight33": "prefill:1",
+    "relaxed33": "prefill:1"
+   },
+   "bonus_ph1_objective": 3.2600185550089615,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "tight_first",
+   "trial": "trial3_timed"
+  },
+  {
+   "decision": 3,
+   "snapshot_time": 2198566.225882339,
+   "target_boost": 1.8310034066438676,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_objective": 2.9112849184932807,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.6153881615959107,
+   "finishing_cost": 1.29589675689737,
+   "displaced_work": {
+    "relaxed33": {
+     "action": "prefill:16",
+     "value": 1.4103344698126117
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.11443771291524173
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 25,
+   "target_prefill_token_utility": 0.11443771291524173,
+   "bonus_offered": {
+    "relaxed17": 1.5,
+    "tight33": 1.5
+   },
+   "bonus_exact_actions": {
+    "relaxed17": "prefill:16",
+    "tight33": "prefill:1"
+   },
+   "bonus_exact_objective": 4.458105516123275,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "relaxed17": "prefill:16",
+    "tight33": "prefill:1"
+   },
+   "bonus_ph1_objective": 4.458105516123275,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "tight_first",
+   "trial": "warmup1_timed"
+  },
+  {
+   "decision": 4,
+   "snapshot_time": 2198566.246306017,
+   "target_boost": 2.035240188799799,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "tight17": "decode",
+    "relaxed17": "prefill:16"
+   },
+   "exact_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_objective": 2.912738006065289,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.628193787334021,
+   "finishing_cost": 1.2845442187312681,
+   "displaced_work": {
+    "relaxed33": {
+     "action": "prefill:16",
+     "value": 1.4117467305312554
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.12720251179998743
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 22,
+   "target_prefill_token_utility": 0.12720251179998743,
+   "bonus_offered": {
+    "relaxed17": 1.5,
+    "tight33": 1.5
+   },
+   "bonus_exact_actions": {
+    "relaxed17": "prefill:16",
+    "tight33": "prefill:1"
+   },
+   "bonus_exact_objective": 4.538949242393331,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "relaxed17": "prefill:16",
+    "tight33": "prefill:1"
+   },
+   "bonus_ph1_objective": 4.538949242393331,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "tight_first",
+   "trial": "warmup1_timed"
+  },
+  {
+   "decision": 5,
+   "snapshot_time": 2198566.266673168,
+   "target_boost": 2.238911700062454,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_actions": {
+    "tight17": "decode",
+    "relaxed33": "prefill:16"
+   },
+   "exact_objective": 2.980608963686973,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.6409037106554023,
+   "finishing_cost": 1.3397052530315707,
+   "displaced_work": {
+    "relaxed33": {
+     "action": "prefill:16",
+     "value": 1.4796372342854738
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.13993198125390338
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 22,
+   "target_prefill_token_utility": 0.13993198125390338,
+   "bonus_offered": {
+    "tight33": 1.5
+   },
+   "bonus_exact_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "bonus_exact_objective": 3.1409037106554023,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "bonus_ph1_objective": 3.1409037106554023,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "tight_first",
+   "trial": "warmup1_timed"
+  },
+  {
+   "decision": 6,
+   "snapshot_time": 2198566.286996443,
+   "target_boost": 2.4421444466337565,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "tight17": "decode",
+    "relaxed17": "decode"
+   },
+   "exact_actions": {
+    "tight17": "decode",
+    "relaxed17": "decode"
+   },
+   "exact_objective": 2.981715836034467,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.6536350474110804,
+   "finishing_cost": 1.3280807886233865,
+   "displaced_work": {
+    "relaxed17": {
+     "action": "decode",
+     "value": 1.4807148165379962
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.15263402791460978
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 22,
+   "target_prefill_token_utility": 0.15263402791460978,
+   "bonus_offered": {
+    "tight33": 1.5,
+    "relaxed33": 1.5
+   },
+   "bonus_exact_actions": {
+    "tight33": "prefill:1",
+    "relaxed33": "prefill:1"
+   },
+   "bonus_exact_objective": 3.245178703944354,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "tight33": "prefill:1",
+    "relaxed33": "prefill:1"
+   },
+   "bonus_ph1_objective": 3.245178703944354,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "tight_first",
+   "trial": "warmup1_timed"
+  },
+  {
+   "decision": 7,
+   "snapshot_time": 2198566.305342051,
+   "target_boost": 2.625600530393422,
+   "reproduces_recorded": true,
+   "ph1_actions": {
+    "tight17": "decode",
+    "relaxed17": "decode"
+   },
+   "exact_actions": {
+    "tight17": "decode",
+    "relaxed17": "decode"
+   },
+   "exact_objective": 2.668146939948201,
+   "exact_leaves_target_waiting": true,
+   "forced_actions": {
+    "tight17": "decode",
+    "tight33": "prefill:1"
+   },
+   "forced_objective": 1.665210238576401,
+   "finishing_cost": 1.0029367013718002,
+   "displaced_work": {
+    "relaxed17": {
+     "action": "decode",
+     "value": 1.167036734521389
+    }
+   },
+   "added_work": {
+    "tight33": {
+     "action": "prefill:1",
+     "value": 0.16410003314958888
+    }
+   },
+   "ready_to_decode_next": true,
+   "free_blocks_after_forced": 22,
+   "target_prefill_token_utility": 0.16410003314958888,
+   "bonus_offered": {
+    "tight33": 1.5,
+    "relaxed33": 1.5
+   },
+   "bonus_exact_actions": {
+    "tight33": "prefill:1",
+    "relaxed33": "prefill:1"
+   },
+   "bonus_exact_objective": 3.260466710924326,
+   "bonus_exact_finishes_target": true,
+   "bonus_ph1_actions": {
+    "tight33": "prefill:1",
+    "relaxed33": "prefill:1"
+   },
+   "bonus_ph1_objective": 3.260466710924326,
+   "bonus_ph1_finishes_target": true,
+   "bonus_flips_exact": true,
+   "order": "tight_first",
+   "trial": "warmup1_timed"
+  }
+ ]
+}

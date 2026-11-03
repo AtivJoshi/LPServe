@@ -79,6 +79,15 @@ class RequestUtility:
 
 
 @dataclass(frozen=True)
+class CompletionBonusUtility(RequestUtility):
+    """A utility triple plus the experimental, opt-in prompt-completion
+    bonus; see ``lp_relaxation_scheduler.CompletionBonusRequestInput``.
+    Plain ``RequestUtility`` values keep the existing problem unchanged."""
+
+    completion_bonus: float = 0.0
+
+
+@dataclass(frozen=True)
 class CapturedRequest:
     """Frozen, primitive-only facts about one included request.
 
@@ -695,6 +704,38 @@ def soft_slo_untimed_utility(captured, request, *, b_max, c_max):
     )
 
 
+def soft_slo_timed_completion_utility(captured, request, *, timing,
+                                      batch_forecast, b_max, c_max,
+                                      completion_bonus):
+    """Experimental opt-in variant of ``soft_slo_timed_utility``: the same
+    timed terms plus ``completion_bonus`` for finishing the whole remaining
+    prompt in this decision, offered only to a prefill-eligible request
+    with no visible token yet (``timing`` ``last_visible is None``) whose
+    remainder fits one decision (``R <= min(b_max, c_max)``). The bonus is
+    earned only by a chunk equal to ``R``. A scoped research input, not a
+    selected policy or a change to the normative formulation."""
+    _require(
+        _is_real(completion_bonus) and completion_bonus >= 0,
+        f"completion bonus must be finite and non-negative, got "
+        f"{completion_bonus!r}",
+    )
+    utility = soft_slo_timed_utility(
+        captured, request, timing=timing, batch_forecast=batch_forecast,
+        b_max=b_max, c_max=c_max,
+    )
+    eligible = (
+        request.prefill_eligible
+        and timing[request.raw_seq_id].last_visible is None
+        and request.prompt_tokens_remaining <= min(b_max, c_max)
+    )
+    return CompletionBonusUtility(
+        decode_utility=utility.decode_utility,
+        prefill_token_utility=utility.prefill_token_utility,
+        preemption_penalty=utility.preemption_penalty,
+        completion_bonus=float(completion_bonus) if eligible else 0.0,
+    )
+
+
 def construct_coefficients(captured, policy):
     """Pure coefficient construction for one decision.
 
@@ -1109,12 +1150,14 @@ def _coefficients(captured, policy):
             isinstance(utility, RequestUtility),
             f"coefficient for raw_seq_id {raw_id} must be a RequestUtility",
         )
+        bonus = isinstance(utility, CompletionBonusUtility)
         values = (
             utility.decode_utility, utility.prefill_token_utility,
             utility.preemption_penalty,
-        )
+        ) + ((utility.completion_bonus,) if bonus else ())
         for name, value in zip(
-            ("decode_utility", "prefill_token_utility", "preemption_penalty"),
+            ("decode_utility", "prefill_token_utility", "preemption_penalty",
+             "completion_bonus"),
             values,
         ):
             _require(
@@ -1122,7 +1165,8 @@ def _coefficients(captured, policy):
                 f"coefficient {name} for raw_seq_id {raw_id} must be a "
                 f"finite non-negative number, got {value!r}",
             )
-        copies.append(RequestUtility(*values))
+        copies.append((CompletionBonusUtility if bonus else RequestUtility)(
+            *values))
     return tuple(copies)
 
 
@@ -1153,7 +1197,10 @@ def _build(captured, ranks, coefficients, b_max, c_max, s_max,
             service_rank=service, victim_rank=victim, utility=utility,
         )
         states.append(state)
-        inputs.append(lrs.RequestInput(
+        bonus = getattr(utility, "completion_bonus", None)
+        extra = {} if bonus is None else dict(completion_bonus=bonus)
+        inputs.append((lrs.RequestInput if bonus is None
+                       else lrs.CompletionBonusRequestInput)(
             request_id=state.request_id,
             order_key=state.order_key,
             resident=state.ownership == OWNERSHIP_RUNNING,
@@ -1173,6 +1220,7 @@ def _build(captured, ranks, coefficients, b_max, c_max, s_max,
             preemption_penalty=utility.preemption_penalty,
             service_rank=service,
             victim_rank=victim,
+            **extra,
         ))
 
     problem = lrs.LPProblem(

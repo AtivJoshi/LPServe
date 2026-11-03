@@ -1,0 +1,799 @@
+diff --git a/lp_relaxation_scheduler.py b/lp_relaxation_scheduler.py
+index c8fdea2..7b184e4 100644
+--- a/lp_relaxation_scheduler.py
++++ b/lp_relaxation_scheduler.py
+@@ -105,6 +105,12 @@ class RequestInput:
+     preemption_penalty: float
+     service_rank: Optional[Rank]
+     victim_rank: Optional[Rank]
++    # Experimental, opt-in prompt-completion bonus (0 disables it and leaves
++    # the LP unchanged). A positive value earns the bonus when the selected
++    # chunk equals ``prompt_tokens_remaining``; it requires a prefill-
++    # eligible request whose remainder fits one decision (at most C_max and
++    # B_max). Not part of the normative formulation.
++    completion_bonus: float = 0.0
+ 
+ 
+ @dataclass(frozen=True)
+@@ -391,6 +397,7 @@ def _check_request(r, c_max, legal_ids):
+         )
+     for name in (
+         "decode_utility", "prefill_token_utility", "preemption_penalty",
++        "completion_bonus",
+     ):
+         value = getattr(r, name)
+         _require(
+@@ -516,6 +523,15 @@ def _validate_problem_or_raise(problem):
+     )
+     for r in problem.requests:
+         _check_request(r, problem.c_max, legal)
++        if r.completion_bonus > 0:
++            _require(
++                r.prefill_eligible
++                and r.prompt_tokens_remaining <= r.prefill_upper_bound
++                and r.prompt_tokens_remaining <= problem.b_max,
++                "inconsistent_bounds",
++                f"request {r.request_id!r}: a completion bonus requires a "
++                "prefill-eligible remainder that fits one decision",
++            )
+     keys = [r.order_key for r in problem.requests]
+     _require(
+         len(set(keys)) == len(keys), "duplicate_order_key",
+@@ -655,9 +671,43 @@ def _build_lp(problem):
+         row[2 * n + i] = 1.0
+         row[3 * n + i] = 1.0
+         add(f"mutual_exclusion[{rid}]", row, 1.0)
++
++    # Experimental completion bonus: one indicator f_j per bonus request,
++    # appended after the 4n columns, with x >= R f and x <= R - 1 + f.
++    done = _completion_requests(problem)
++    if done:
++        k = len(done)
++        c = np.concatenate(
++            [c, [-float(reqs[i].completion_bonus) for i in done]])
++        bounds += [(0.0, 1.0)] * k
++        rows[:] = [np.concatenate([row, np.zeros(k)]) for row in rows]
++        for j, i in enumerate(done):
++            rid = reqs[i].request_id
++            remainder = float(reqs[i].prompt_tokens_remaining)
++            row = np.zeros(4 * n + k)  # R f - x <= 0
++            row[4 * n + j] = remainder
++            row[i] = -1.0
++            add(f"completion_lower[{rid}]", row, 0.0)
++            row = np.zeros(4 * n + k)  # x - f <= R - 1
++            row[i] = 1.0
++            row[4 * n + j] = -1.0
++            add(f"completion_upper[{rid}]", row, remainder - 1.0)
+     return c, np.array(rows), np.array(rhs), bounds, labels
+ 
+ 
++def _completion_requests(problem):
++    """Indices of requests with a positive completion bonus (none unless
++    the experimental bonus is supplied)."""
++    return [i for i, r in enumerate(problem.requests)
++            if r.completion_bonus > 0]
++
++
++def _derived_completion(problem, x):
++    """Completion indicators 1{x_i = R_i} of an integer assignment."""
++    return [1.0 if x[i] == problem.requests[i].prompt_tokens_remaining
++            else 0.0 for i in _completion_requests(problem)]
++
++
+ def _objective_agrees(reported, recomputed, policy):
+     allowance = policy.objective_abs_tol + policy.objective_rel_tol * max(
+         1.0, abs(reported), abs(recomputed)
+@@ -803,10 +853,12 @@ def _split(vector, n):
+     )
+ 
+ 
+-def _residuals(problem, x, y, ind, z):
++def _residuals(problem, x, y, ind, z, f=None):
+     """Recompute every constraint residual (lhs - rhs, feasible when <= 0)
+     directly from project data, independently of the LP matrix.
+ 
++    ``f`` holds the experimental completion indicators, one per
++    ``_completion_requests`` entry; ``None`` derives them from ``x``.
+     Raises ``_NumericalError`` when the arithmetic is not finite.
+     """
+     reqs = problem.requests
+@@ -855,6 +907,16 @@ def _residuals(problem, x, y, ind, z):
+             [x[i], -prod(r.prefill_upper_bound, ind[i])], "prefill linkage")
+         res[f"mutual_exclusion[{rid}]"] = _checked_sum(
+             [ind[i], y[i], z[i], -1.0], "mutual exclusion")
++    done = _completion_requests(problem)
++    if done:
++        f = _derived_completion(problem, x) if f is None else list(f)
++        for j, i in enumerate(done):
++            rid = reqs[i].request_id
++            remainder = reqs[i].prompt_tokens_remaining
++            res[f"completion_lower[{rid}]"] = _checked_sum(
++                [prod(remainder, f[j]), -x[i]], "completion")
++            res[f"completion_upper[{rid}]"] = _checked_sum(
++                [x[i], -f[j], -float(remainder - 1)], "completion")
+     return res
+ 
+ 
+@@ -874,8 +936,11 @@ def _project(value, upper, eps):
+     return value, False
+ 
+ 
+-def _objective_max(problem, x, y, z):
+-    """Maximization objective with checked stable summation."""
++def _objective_max(problem, x, y, z, f=None):
++    """Maximization objective with checked stable summation.
++
++    Experimental completion bonuses use ``f`` (relaxed indicators) or, when
++    ``None``, completion derived from the selected chunk ``x_i = R_i``."""
+     terms = []
+     for i, r in enumerate(problem.requests):
+         terms.append(_checked_product(
+@@ -885,6 +950,13 @@ def _objective_max(problem, x, y, z):
+         if r.preemption_eligible:
+             terms.append(-_checked_product(
+                 float(r.preemption_penalty), z[i], "objective"))
++    done = _completion_requests(problem)
++    if done:
++        f = _derived_completion(problem, x) if f is None else list(f)
++        for j, i in enumerate(done):
++            terms.append(_checked_product(
++                float(problem.requests[i].completion_bonus), f[j],
++                "objective"))
+     return _checked_sum(terms, "objective")
+ 
+ 
+@@ -909,10 +981,12 @@ def validate_relaxed_solution(problem, raw_vector):
+             "malformed_vector",
+             "raw vector is not a sequence of numbers representable as floats",
+         )
+-    if len(raw) != 4 * n or not all(math.isfinite(v) for v in raw):
++    done = _completion_requests(problem)
++    length = 4 * n + len(done)
++    if len(raw) != length or not all(math.isfinite(v) for v in raw):
+         return bad(
+             "malformed_vector",
+-            f"raw vector must be finite with length {4 * n}, got {len(raw)}",
++            f"raw vector must be finite with length {length}, got {len(raw)}",
+         )
+ 
+     uppers = (
+@@ -920,26 +994,32 @@ def validate_relaxed_solution(problem, raw_vector):
+         + [1.0 if r.decode_eligible else 0.0 for r in reqs]
+         + [1.0 if r.prefill_eligible else 0.0 for r in reqs]
+         + [1.0 if r.preemption_eligible else 0.0 for r in reqs]
++        + [1.0] * len(done)
+     )
+     normalized = []
+     projection_count = 0
+     for k, (value, upper) in enumerate(zip(raw, uppers)):
+         projected = _project(value, upper, eps)
+         if projected is None:
+-            block = ("x", "y", "prefill_indicator", "z")[k // n]
++            if k < 4 * n:
++                block = ("x", "y", "prefill_indicator", "z")[k // n]
++                rid = reqs[k % n].request_id
++            else:
++                block, rid = "completion", reqs[done[k - 4 * n]].request_id
+             return bad(
+                 "bound_violation",
+-                f"{block} of request {reqs[k % n].request_id!r} = {value!r} "
++                f"{block} of request {rid!r} = {value!r} "
+                 f"is outside its bounds beyond tolerance {eps}",
+             )
+         normalized.append(projected[0])
+         projection_count += projected[1]
+ 
+     try:
+-        raw_res = _residuals(problem, *_split(raw, n))
+-        norm_res = _residuals(problem, *_split(normalized, n))
++        raw_res = _residuals(problem, *_split(raw, n), raw[4 * n:])
++        norm_res = _residuals(problem, *_split(normalized, n),
++                              normalized[4 * n:])
+         x, y, ind, z = _split(normalized, n)
+-        objective = _objective_max(problem, x, y, z)
++        objective = _objective_max(problem, x, y, z, normalized[4 * n:])
+     except _NumericalError as err:
+         return bad(CATEGORY_NONFINITE, str(err))
+     for label, res in (("raw", raw_res), ("normalized", norm_res)):
+@@ -1116,6 +1196,9 @@ def extract_integer_plan(problem, relaxed):
+                 reward = _checked_product(
+                     float(r.prefill_token_utility), chunk, "trial reward"
+                 )
++                if r.completion_bonus > 0 and chunk == r.prompt_tokens_remaining:
++                    reward = _checked_sum(
++                        [reward, float(r.completion_bonus)], "trial reward")
+             new_victims = []
+             for k in victim_list:
+                 if trial.legal(problem):
+diff --git a/lpserve_state_mapping.py b/lpserve_state_mapping.py
+index 735fd2f..337035a 100644
+--- a/lpserve_state_mapping.py
++++ b/lpserve_state_mapping.py
+@@ -76,6 +76,9 @@ class RequestUtility:
+     decode_utility: float
+     prefill_token_utility: float
+     preemption_penalty: float
++    # Experimental, opt-in prompt-completion bonus (0 disables it); see
++    # ``lp_relaxation_scheduler.RequestInput.completion_bonus``.
++    completion_bonus: float = 0.0
+ 
+ 
+ @dataclass(frozen=True)
+@@ -695,6 +698,38 @@ def soft_slo_untimed_utility(captured, request, *, b_max, c_max):
+     )
+ 
+ 
++def soft_slo_timed_completion_utility(captured, request, *, timing,
++                                      batch_forecast, b_max, c_max,
++                                      completion_bonus):
++    """Experimental opt-in variant of ``soft_slo_timed_utility``: the same
++    timed terms plus ``completion_bonus`` for finishing the whole remaining
++    prompt in this decision, offered only to a prefill-eligible request
++    with no visible token yet (``timing`` ``last_visible is None``) whose
++    remainder fits one decision (``R <= min(b_max, c_max)``). The bonus is
++    earned only by a chunk equal to ``R``. A scoped research input, not a
++    selected policy or a change to the normative formulation."""
++    _require(
++        _is_real(completion_bonus) and completion_bonus >= 0,
++        f"completion bonus must be finite and non-negative, got "
++        f"{completion_bonus!r}",
++    )
++    utility = soft_slo_timed_utility(
++        captured, request, timing=timing, batch_forecast=batch_forecast,
++        b_max=b_max, c_max=c_max,
++    )
++    eligible = (
++        request.prefill_eligible
++        and timing[request.raw_seq_id].last_visible is None
++        and request.prompt_tokens_remaining <= min(b_max, c_max)
++    )
++    return RequestUtility(
++        decode_utility=utility.decode_utility,
++        prefill_token_utility=utility.prefill_token_utility,
++        preemption_penalty=utility.preemption_penalty,
++        completion_bonus=float(completion_bonus) if eligible else 0.0,
++    )
++
++
+ def construct_coefficients(captured, policy):
+     """Pure coefficient construction for one decision.
+ 
+@@ -1111,10 +1146,11 @@ def _coefficients(captured, policy):
+         )
+         values = (
+             utility.decode_utility, utility.prefill_token_utility,
+-            utility.preemption_penalty,
++            utility.preemption_penalty, utility.completion_bonus,
+         )
+         for name, value in zip(
+-            ("decode_utility", "prefill_token_utility", "preemption_penalty"),
++            ("decode_utility", "prefill_token_utility", "preemption_penalty",
++             "completion_bonus"),
+             values,
+         ):
+             _require(
+@@ -1171,6 +1207,7 @@ def _build(captured, ranks, coefficients, b_max, c_max, s_max,
+             decode_utility=utility.decode_utility,
+             prefill_token_utility=utility.prefill_token_utility,
+             preemption_penalty=utility.preemption_penalty,
++            completion_bonus=utility.completion_bonus,
+             service_rank=service,
+             victim_rank=victim,
+         ))
+diff --git a/scripts/exact_integer_plan.py b/scripts/exact_integer_plan.py
+index 2709a96..9278cbb 100644
+--- a/scripts/exact_integer_plan.py
++++ b/scripts/exact_integer_plan.py
+@@ -97,15 +97,22 @@ def _maybe_int(value):
+     return int(value) if isinstance(value, (int, np.integer)) else None
+ 
+ 
+-def solve_integer_plan(problem):
++def solve_integer_plan(problem, *, bound_overrides=None):
+     """Solve the ILP of ``problem`` once; ``IntegerOptimum`` or
+-    ``IntegerSolveFailure``. Never raises for solver or numerical outcomes."""
++    ``IntegerSolveFailure``. Never raises for solver or numerical outcomes.
++
++    ``bound_overrides`` (offline experiments only) maps a column index of
++    ``lrs._build_lp``'s canonical vector to replacement ``(lower, upper)``
++    bounds, for example to require one request to finish its prompt; every
++    row is unchanged and the result is still validated in full."""
+     pid = getattr(problem, "problem_id", None)
+     canonical = lrs.validate_problem(problem)
+     if isinstance(canonical, lrs.Failure):
+         return IntegerSolveFailure(pid, canonical.stage, canonical.category,
+                                    canonical.reason)
+     c, rows, rhs, bounds, _ = lrs._build_lp(canonical)
++    for column, replacement in (bound_overrides or {}).items():
++        bounds[column] = replacement
+     if not (np.all(np.isfinite(c)) and np.all(np.isfinite(rows))
+             and np.all(np.isfinite(rhs))):
+         return IntegerSolveFailure(pid, STAGE_INTEGER_SOLVER,
+@@ -163,12 +170,21 @@ def solve_integer_plan(problem):
+     n = len(canonical.requests)
+     ints = [int(round(v)) for v in vector]
+     x_i, y_i, ind_i, z_i = (ints[0:n], ints[n:2 * n], ints[2 * n:3 * n],
+-                            ints[3 * n:])
++                            ints[3 * n:4 * n])
++    # Completion indicators exist only for a positive completion bonus.
++    f_i = ints[4 * n:]
+     if any(ind != (1 if xv > 0 else 0) for ind, xv in zip(ind_i, x_i)):
+         return fail(STAGE_INTEGER_CONVERSION, "inconsistent_indicator",
+                     f"indicators {ind_i} differ from 1{{x > 0}} for {x_i}")
++    done = lrs._completion_requests(canonical)
++    derived = [1 if x_i[i] == canonical.requests[i].prompt_tokens_remaining
++               else 0 for i in done]
++    if f_i != derived:
++        return fail(STAGE_INTEGER_CONVERSION, "inconsistent_completion",
++                    f"completion indicators {f_i} differ from 1{{x = R}} "
++                    f"{derived}")
+     residuals = lrs._residuals(canonical, *[[float(v) for v in part] for part
+-                                            in (x_i, y_i, ind_i, z_i)])
++                                            in (x_i, y_i, ind_i, z_i, f_i)])
+     violated = sorted(k for k, v in residuals.items() if v > 0)
+     if violated:
+         return fail(STAGE_INTEGER_CONVERSION, "integer_infeasible_point",
+diff --git a/scripts/soft_slo_pilot.py b/scripts/soft_slo_pilot.py
+index bdea003..de5a299 100644
+--- a/scripts/soft_slo_pilot.py
++++ b/scripts/soft_slo_pilot.py
+@@ -104,6 +104,15 @@ SLO_CLASSES = {
+ PRIORITY = 1
+ BATCH_FORECAST_SECONDS = 0.020
+ POLICIES = ("timed", "untimed")
++# Experimental prompt-completion arm (opt-in through --comparison bonus):
++# the timed policy plus this bonus, frozen before live runs, for finishing
++# the whole remaining prompt in one decision before the first visible
++# token. Same value for both classes; an untimed decode earns 1.
++BONUS_POLICY = "timed_bonus"
++COMPLETION_BONUS = 1.5
++# Policy pairs of a comparison; the first is the incumbent arm.
++COMPARISONS = {"timed_untimed": ("timed", "untimed"),
++               "bonus": ("timed", BONUS_POLICY)}
+ # Registration finishes before the arrival epoch t0 = start + this lead.
+ REGISTRATION_LEAD_SECONDS = 0.5
+ NUMERICAL_POLICY_FIELDS = dict(
+@@ -152,12 +161,38 @@ CASES = {
+         ),
+         num_gpu_blocks=8, max_model_len=64, b_max=32, c_max=16, s_max=2,
+         resident_limit=2, cutoff_seconds=5.0, max_decisions=100),
++    # "ample" with two relaxed incumbents released 100 ms earlier (8-token
++    # prompts, 20 outputs each) so both are generating when the main cohort
++    # arrives; the main cohort keeps its prompts, output limits, and
++    # 20 ms spacing. Six resident slots so residency does not bind; B, C,
++    # S, cache, and targets as in "ample". Frozen before measurement.
++    "ample_incumbents": dict(
++        requests=(
++            _request("relaxed8a", "relaxed", 8, 0.000, 20, 5000),
++            _request("relaxed8b", "relaxed", 8, 0.000, 20, 6000),
++            _request("relaxed17", "relaxed", 17, 0.100, 6, 1000),
++            _request("tight17", "tight", 17, 0.100, 6, 2000),
++            _request("relaxed33", "relaxed", 33, 0.120, 6, 3000),
++            _request("tight33", "tight", 33, 0.120, 6, 4000),
++        ),
++        num_gpu_blocks=32, max_model_len=64, b_max=17, c_max=16, s_max=2,
++        resident_limit=6, cutoff_seconds=5.0, max_decisions=100),
+ }
++INCUMBENTS = ("relaxed8a", "relaxed8b")
+ # Measured trial order after the warm-ups: both adjacent orders occur.
+ WARMUP_ORDER = ("untimed", "timed")
+ MEASURED_ORDER = ("timed", "untimed", "untimed", "timed")
+ 
+ 
++def trial_labels(comparison):
++    """Warm-ups (second arm, first arm), then first, second, second,
++    first: the pattern of ``WARMUP_ORDER``/``MEASURED_ORDER``."""
++    a, b = COMPARISONS[comparison]
++    return ([(f"warmup{i}_{p}", p, False) for i, p in enumerate((b, a))]
++            + [(f"trial{i}_{p}", p, True)
++               for i, p in enumerate((a, b, b, a))])
++
++
+ def settings_record():
+     record = dict(
+         model=MODEL_NAME, load_format=LOAD_FORMAT, dtype=DTYPE,
+@@ -176,7 +211,12 @@ def settings_record():
+                   "boost = 1 + clamp((T - slack)/T, 0, 2); slack = due - "
+                   "snapshot_time - (1 + ceil(R/K)) * forecast; K = "
+                   "min(b_max, c_max)",
+-            untimed="decode 1, prefill token 1/K, penalty 1"),
++            untimed="decode 1, prefill token 1/K, penalty 1",
++            timed_bonus="timed plus completion_bonus for x = R before the "
++                        "first visible token when R <= min(b_max, c_max); "
++                        "LP: x >= R f, x <= R - 1 + f"),
++        completion_bonus=COMPLETION_BONUS, comparisons=COMPARISONS,
++        incumbents=INCUMBENTS,
+         miss_rule="latency strictly above target",
+         p99_rule="nearest rank: sorted gaps[ceil(0.99 n) - 1]",
+     )
+@@ -211,6 +251,11 @@ def coefficient_policy(policy, case, timing):
+             lsm.soft_slo_timed_utility, timing=timing,
+             batch_forecast=BATCH_FORECAST_SECONDS, b_max=case["b_max"],
+             c_max=case["c_max"])
++    if policy == BONUS_POLICY:
++        return functools.partial(
++            lsm.soft_slo_timed_completion_utility, timing=timing,
++            batch_forecast=BATCH_FORECAST_SECONDS, b_max=case["b_max"],
++            c_max=case["c_max"], completion_bonus=COMPLETION_BONUS)
+     check(policy == "untimed", f"unknown policy {policy!r}")
+     return functools.partial(lsm.soft_slo_untimed_utility,
+                              b_max=case["b_max"], c_max=case["c_max"])
+@@ -631,13 +676,16 @@ def _contention(problem):
+                 or tokens > problem.b_max)
+ 
+ 
+-def analyze_trial(trial):
+-    """Check every decision of a trial and derive its diagnostics."""
++def analyze_trial(trial, other=None):
++    """Check every decision of a trial and derive its diagnostics.
++    ``other`` is the counterfactual policy (default: the timed/untimed
++    counterpart)."""
+     import lp_relaxation_scheduler as lrs
+     import lpserve_state_mapping as lsm
+     case = CASES[trial["case"]]
+     policy, clock = trial["policy"], trial["clock"]
+-    other = "untimed" if policy == "timed" else "timed"
++    if other is None:
++        other = "untimed" if policy == "timed" else "timed"
+     decisions, finished_before = [], set()
+     by_request = {sid: dict(prefill_tokens=0, preemptions=0)
+                   for sid in clock.requests}
+@@ -701,6 +749,14 @@ def analyze_trial(trial):
+             counterfactual_actions={str(k): v for k, v in
+                                     sorted(other_actions.items())},
+             action_difference=actions != other_actions,
++            # Requests offered the experimental bonus, and those whose
++            # selected chunk finished the prompt (bonus earned).
++            bonus_offered=[int(r.request_id) for r in problem.requests
++                           if r.completion_bonus > 0],
++            bonus_earned=[int(r.request_id) for r, d in
++                          zip(problem.requests, plan.decisions)
++                          if r.completion_bonus > 0
++                          and d.prefill_tokens == r.prompt_tokens_remaining],
+             contention=_contention(problem),
+             forecasts={str(k): v for k, v in forecasts.items()},
+             events=[(e["seq_id"], e["index"], e["token_id"])
+@@ -954,8 +1010,8 @@ def flip_example():
+     return out
+ 
+ 
+-def same_state_exact(trial, limit=None):
+-    """PH1 and the exact integer optimum under both policies on the
++def same_state_exact(trial, limit=None, policies=POLICIES):
++    """PH1 and the exact integer optimum under each of ``policies`` on the
+     retained snapshots of ``trial`` (identical capture and timing)."""
+     import exact_integer_plan as eip
+     import lp_relaxation_scheduler as lrs
+@@ -964,7 +1020,7 @@ def same_state_exact(trial, limit=None):
+     for step in trial["steps"][:limit]:
+         snap, timing = step["record"]["snapshots"][0], step["record"]["hooks"][0]
+         row = dict(decision=step["index"])
+-        for policy in POLICIES:
++        for policy in policies:
+             problem = problem_under(snap, policy, case, timing)
+             ph1 = lrs.solve_and_extract(problem)
+             exact = eip.solve_integer_plan(problem)
+@@ -1281,11 +1337,41 @@ def summarize_pair(analyses):
+         contended_decisions=sum(d["contention"]["contended"]
+                                 for d in decisions),
+         action_differences=sum(d["action_difference"] for d in decisions),
++        bonus_earned_decisions=sum(bool(d["bonus_earned"])
++                                   for d in decisions),
+         preemptions=sum(w["preemptions"] for a in analyses.values()
+                         for w in a["work"].values()),
+         decisions=len(decisions))
+ 
+ 
++def incumbent_overlap(trial):
++    """Trace check that every incumbent stream emitted a token before the
++    main cohort's first arrival and at least one more token between that
++    arrival and the last main-cohort first token (it was generating while
++    the main cohort waited for first tokens)."""
++    reqs = {r["name"]: r for r in trial["clock"].requests.values()}
++    main = [r for n, r in reqs.items() if n not in INCUMBENTS]
++    arrival = min(r["arrival_time"] for r in main)
++    last_first = max((r["event_times"][0] for r in main if r["event_times"]),
++                     default=None)
++    out = dict(main_arrival=arrival, last_main_first_token=last_first,
++               streams={})
++    for name in INCUMBENTS:
++        times = reqs[name]["event_times"]
++        out["streams"][name] = dict(
++            first_token=times[0] if times else None,
++            last_token=times[-1] if times else None,
++            tokens_before_main_arrival=sum(t < arrival for t in times),
++            tokens_during_main_first_tokens=(
++                sum(arrival <= t <= last_first for t in times)
++                if last_first is not None else 0))
++    out["overlaps"] = last_first is not None and all(
++        v["tokens_before_main_arrival"] > 0
++        and v["tokens_during_main_first_tokens"] > 0
++        for v in out["streams"].values())
++    return out
++
++
+ def finished_in_window(trial):
+     """Every registered request finished by the measurement cutoff."""
+     requests = trial["clock"].requests
+@@ -1296,9 +1382,13 @@ def finished_in_window(trial):
+ 
+ 
+ def run_session(engine, case_name, prompts, labels, worker_state, *,
+-                save_trial=None, registration_order="relaxed_first"):
+-    """Run trials on one engine, saving each raw trace before analysis."""
++                save_trial=None, registration_order="relaxed_first",
++                comparison="timed_untimed"):
++    """Run trials on one engine, saving each raw trace before analysis.
++    Each trial's counterfactual is the other policy of ``comparison``."""
+     trials, analyses, metrics = [], {}, {}
++    pair = COMPARISONS[comparison]
++    other = {pair[0]: pair[1], pair[1]: pair[0]}
+     for label, policy, _ in labels:
+         trial = run_trial(engine, case_name, policy, label, prompts,
+                           worker_state, registration_order)
+@@ -1311,7 +1401,7 @@ def run_session(engine, case_name, prompts, labels, worker_state, *,
+               flush=True)
+         if trial["failure"] is not None:
+             break
+-        analyses[label] = analyze_trial(trial)
++        analyses[label] = analyze_trial(trial, other.get(policy))
+         metrics[label] = trial_metrics(trial)
+         if not finished_in_window(trial):
+             break
+@@ -1332,6 +1422,9 @@ def parse_args(argv=None):
+     parser.add_argument("--registration-order", choices=REGISTRATION_ORDERS,
+                         default="relaxed_first",
+                         help="class order within equal-arrival groups")
++    parser.add_argument("--comparison", choices=sorted(COMPARISONS),
++                        default="timed_untimed",
++                        help="policy pair of the warm-up/measured trials")
+     return parser, parser.parse_args(argv)
+ 
+ 
+@@ -1422,14 +1515,12 @@ def main(argv=None):
+         elif args.single:
+             labels = [(f"single_{args.single}", args.single, False)]
+         else:
+-            labels = ([(f"warmup{i}_{p}", p, False)
+-                       for i, p in enumerate(WARMUP_ORDER)]
+-                      + [(f"trial{i}_{p}", p, True)
+-                         for i, p in enumerate(MEASURED_ORDER)])
++            labels = trial_labels(args.comparison)
+         trials, analyses, metrics = run_session(
+             engine, args.case, prompts, labels,
+             functools.partial(_worker_state, engine), save_trial=save_trial,
+-            registration_order=args.registration_order)
++            registration_order=args.registration_order,
++            comparison=args.comparison)
+         measured = {label: analyses[label] for label, _, include in labels
+                     if include and label in analyses}
+         summary.update(
+@@ -1441,17 +1532,28 @@ def main(argv=None):
+             gates=summarize_pair(measured))
+         first = next((t for t in trials if t["label"] in measured), None)
+         if first is not None:
+-            summary["same_state_exact"] = to_jsonable(same_state_exact(first))
++            summary["same_state_exact"] = to_jsonable(same_state_exact(
++                first, policies=COMPARISONS[args.comparison]))
++        if args.case == "ample_incumbents":
++            summary["incumbent_overlap"] = {
++                t["label"]: incumbent_overlap(t) for t in trials}
+         check(len(trials) == len(labels)
+               and all(t["failure"] is None and finished_in_window(t)
+                       for t in trials),
+               "at least one trial failed or did not finish within cutoff")
+-        if args.case == "ample" and not (args.smoke or args.single):
++        if args.case.startswith("ample") and not (args.smoke or args.single):
+             gates = summary["gates"]
++            # The bonus arm's action differences are an outcome, not a gate.
+             check(gates["contended_decisions"] > 0
+-                  and gates["action_differences"] > 0
++                  and (args.comparison != "timed_untimed"
++                       or gates["action_differences"] > 0)
+                   and gates["preemptions"] == 0,
+                   f"ample comparison did not meet its gates: {gates}")
++        if args.case == "ample_incumbents":
++            check(all(o["overlaps"] for o in
++                      summary["incumbent_overlap"].values()),
++                  "incumbent streams do not overlap the main cohort: "
++                  f"{summary['incumbent_overlap']}")
+         summary["validation_passed"] = True
+     except BaseException as err:
+         summary["failure"] = dict(type=type(err).__name__, message=str(err),
+diff --git a/tests/test_soft_slo_pilot.py b/tests/test_soft_slo_pilot.py
+index e648721..c50b413 100644
+--- a/tests/test_soft_slo_pilot.py
++++ b/tests/test_soft_slo_pilot.py
+@@ -12,6 +12,7 @@ import json
+ import math
+ import sys
+ import tempfile
++import time
+ import unittest
+ from pathlib import Path
+ from types import MappingProxyType, SimpleNamespace
+@@ -113,8 +114,10 @@ class PolicyTest(unittest.TestCase):
+                               _resident(1, remaining=5, output_len=0)], 1.0)
+         out = lsm.construct_coefficients(captured, functools.partial(
+             lsm.soft_slo_untimed_utility, b_max=17, c_max=16))
+-        self.assertEqual(tuple(out[0].__dict__.values()), (1.0, 0.0, 1.0))
+-        self.assertEqual(tuple(out[1].__dict__.values()), (0.0, 1 / 16, 1.0))
++        # The fourth value is the default-off completion bonus.
++        self.assertEqual(tuple(out[0].__dict__.values()), (1.0, 0.0, 1.0, 0.0))
++        self.assertEqual(tuple(out[1].__dict__.values()),
++                         (0.0, 1 / 16, 1.0, 0.0))
+ 
+     def test_rebuild_keeps_the_tbt_clock_and_counts_rebuild_work(self):
+         # After recomputation: output list empty, 33 tokens to rebuild,
+@@ -562,5 +565,171 @@ class LiveCpuTest(unittest.TestCase):
+         self.assertEqual(len(trials[0]["final_central"]["waiting"]), 4)
+ 
+ 
++def _input(rid, *, remaining=0, resident=True, decode=False, beta=0.0,
++           alpha=0.0, bonus=0.0, c_max=16):
++    prefill = remaining > 0
++    return lrs.RequestInput(
++        request_id=str(rid), order_key=(rid,), resident=resident,
++        prompt_tokens_remaining=remaining,
++        prefill_upper_bound=min(remaining, c_max) if prefill else 0,
++        prefill_eligible=prefill, decode_eligible=decode,
++        preemption_eligible=False, prefill_fixed_charge=0 if resident else 1,
++        decode_demand=0, preemption_recovery=0, decode_utility=alpha,
++        prefill_token_utility=beta, preemption_penalty=0.0,
++        service_rank=rid, victim_rank=None, completion_bonus=bonus)
++
++
++def _problem(*requests, s_max=1, b_max=17, c_max=16):
++    return lrs.LPProblem(
++        requests=tuple(requests), legal_preemption_ids=frozenset(),
++        b_max=b_max, c_max=c_max, s_max=s_max, resident_limit=4,
++        resident_count=sum(r.resident for r in requests), m_free=20,
++        admission_watermark=0, problem_id="b",
++        numerical_policy=lrs.NumericalPolicy())
++
++
++class CompletionBonusTest(unittest.TestCase):
++    """The opt-in prompt-completion bonus in the LP, PH1, plan validation,
++    the exact solver, and the coefficient policy."""
++
++    def _pair(self, bonus):
++        # One decode slot: a decode worth 1.2 versus finishing a one-token
++        # prompt worth 0.15 (+ bonus).
++        return _problem(_input(0, decode=True, alpha=1.2),
++                        _input(1, remaining=1, beta=0.15, bonus=bonus))
++
++    def test_disabled_bonus_leaves_the_lp_unchanged(self):
++        c, rows, rhs, bounds, labels = lrs._build_lp(self._pair(0.0))
++        self.assertEqual(c.size, 8)
++        self.assertFalse(any(l.startswith("completion") for l in labels))
++        c, rows, rhs, bounds, labels = lrs._build_lp(self._pair(1.5))
++        self.assertEqual((c.size, c[-1], bounds[-1]), (9, -1.5, (0.0, 1.0)))
++        self.assertEqual(labels[-2:], ["completion_lower[1]",
++                                       "completion_upper[1]"])
++        # x >= R f and x <= R - 1 + f with R = 1.
++        self.assertEqual(list(rows[-2][[1, 8]]), [-1.0, 1.0])
++        self.assertEqual((list(rows[-1][[1, 8]]), rhs[-1]), ([1.0, -1.0], 0.0))
++
++    def test_bonus_flips_ph1_and_exact_and_scores_derived_completion(self):
++        import exact_integer_plan as eip
++        for bonus, winner in ((0.0, {"0": "decode"}),
++                              (1.5, {"1": "prefill:1"})):
++            problem = self._pair(bonus)
++            ph1 = lrs.solve_and_extract(problem)
++            exact = eip.solve_integer_plan(problem)
++            self.assertIsInstance(ph1, lrs.SchedulingSuccess)
++            self.assertIsInstance(exact, eip.IntegerOptimum)
++            self.assertEqual(eip.plan_actions(ph1.plan), winner)
++            self.assertEqual(eip.plan_actions(exact.plan), winner)
++            expected = 1.2 if bonus == 0 else 0.15 + 1.5
++            self.assertAlmostEqual(ph1.plan.objective, expected)
++            self.assertAlmostEqual(exact.plan.objective, expected)
++        # A remainder that cannot finish in one decision (R > B_max) is
++        # rejected; a partial chunk of an attainable one earns no bonus.
++        partial = _problem(_input(1, remaining=3, beta=0.1, bonus=1.5),
++                           b_max=2, c_max=16)
++        self.assertIsInstance(lrs.validate_problem(partial), lrs.Failure)
++        fits = _problem(_input(1, remaining=3, beta=0.1, bonus=1.5))
++        self.assertAlmostEqual(lrs._objective_max(fits, [2], [0], [0]), 0.2)
++        self.assertAlmostEqual(lrs._objective_max(fits, [3], [0], [0]), 1.8)
++
++    def test_bonus_requires_an_attainable_prefill(self):
++        for bad in (_input(0, decode=True, alpha=1.0, bonus=1.5),
++                    _input(1, remaining=20, beta=0.1, bonus=1.5),
++                    _input(1, remaining=1, beta=0.1, bonus=-1.0)):
++            out = lrs.validate_problem(_problem(bad))
++            self.assertIsInstance(out, lrs.Failure)
++
++    def test_policy_offers_the_bonus_only_before_the_first_token(self):
++        waiting = lsm.CapturedRequest(**dict(
++            _resident(0, remaining=16, output_len=0).__dict__))
++        long = _resident(1, remaining=17, output_len=0)
++        visible = _resident(2, remaining=5, output_len=0)
++        decode = _resident(3, remaining=0, output_len=1)
++        captured = _captured([waiting, long, visible, decode], 0.10)
++        timing = {0: _timing(0, "relaxed"), 1: _timing(1, "tight"),
++                  2: _timing(2, "tight", 0.05), 3: _timing(3, "tight", 0.05)}
++        out = lsm.construct_coefficients(captured, pilot.coefficient_policy(
++            pilot.BONUS_POLICY, pilot.CASES["ample"], timing))
++        self.assertEqual([u.completion_bonus for u in out],
++                         [1.5, 0.0, 0.0, 0.0])
++        timed = lsm.construct_coefficients(captured, pilot.coefficient_policy(
++            "timed", pilot.CASES["ample"], timing))
++        for u, t in zip(out, timed):
++            self.assertEqual((u.decode_utility, u.prefill_token_utility,
++                              u.preemption_penalty),
++                             (t.decode_utility, t.prefill_token_utility,
++                              t.preemption_penalty))
++            self.assertEqual(t.completion_bonus, 0.0)
++
++    def test_trial_labels_and_incumbent_overlap(self):
++        self.assertEqual(
++            [p for _, p, _ in pilot.trial_labels("timed_untimed")],
++            list(pilot.WARMUP_ORDER + pilot.MEASURED_ORDER))
++        self.assertEqual([p for _, p, _ in pilot.trial_labels("bonus")],
++                         ["timed_bonus", "timed", "timed", "timed_bonus",
++                          "timed_bonus", "timed"])
++        # relaxed8b stops before the main cohort arrives: no overlap.
++        requests = {
++            0: dict(name="relaxed8a", arrival_time=0.0,
++                    event_times=[0.05, 0.15]),
++            1: dict(name="relaxed8b", arrival_time=0.0,
++                    event_times=[0.05, 0.08]),
++            2: dict(name="tight17", arrival_time=0.1, event_times=[0.2]),
++        }
++        trial = dict(clock=SimpleNamespace(requests=requests))
++        self.assertFalse(pilot.incumbent_overlap(trial)["overlaps"])
++        requests[1]["event_times"].append(0.18)
++        self.assertTrue(pilot.incumbent_overlap(trial)["overlaps"])
++
++
++class CompletionBonusLiveCpuTest(unittest.TestCase):
++    """Bonus sessions on the CPU engine; the CPU worker is slowed to about
++    GPU step time so the incumbent workload overlaps as it does on GPU."""
++
++    def setUp(self):
++        patcher = mock.patch.object(pilot, "REGISTRATION_LEAD_SECONDS", 0.05)
++        patcher.start()
++        self.addCleanup(patcher.stop)
++
++    def _session(self, case, step_seconds=0.0):
++        engine = pilot.build_cpu_engine(case)
++        if step_seconds:
++            native = engine._run_workers
++
++            def slowed(method, *args, **kwargs):
++                if method == "execute_model":
++                    time.sleep(step_seconds)
++                return native(method, *args, **kwargs)
++            engine._run_workers = slowed
++        prompts = pilot.prompt_ids(pilot.CASES[case])
++        return pilot.run_session(
++            engine, case, prompts, [("t", "timed", True),
++                                    ("b", pilot.BONUS_POLICY, True)],
++            functools.partial(pilot._worker_state, engine),
++            registration_order="tight_first", comparison="bonus")
++
++    def test_bonus_plans_pass_native_prevalidation_and_drain(self):
++        trials, analyses, _ = self._session("ample")
++        self.assertTrue(all(pilot.finished_in_window(t) for t in trials))
++        gates = pilot.summarize_pair({"b": analyses["b"]})
++        self.assertGreater(gates["bonus_earned_decisions"], 0)
++        self.assertEqual(gates["preemptions"], 0)
++        self.assertEqual(pilot.summarize_pair(
++            {"t": analyses["t"]})["bonus_earned_decisions"], 0)
++        # Every bonus decision was executed natively (analysis rechecks the
++        # emitted order against the validated plan).
++        for d in analyses["b"]["decisions"]:
++            for rid in d["bonus_earned"]:
++                self.assertTrue(d["actions"][str(rid)].startswith("prefill"))
++
++    def test_incumbent_workload_overlaps_at_gpu_step_time(self):
++        trials, analyses, _ = self._session("ample_incumbents", 0.018)
++        for trial in trials:
++            self.assertTrue(pilot.finished_in_window(trial))
++            self.assertTrue(pilot.incumbent_overlap(trial)["overlaps"])
++        self.assertEqual(pilot.summarize_pair(analyses)["preemptions"], 0)
++
++
+ if __name__ == "__main__":
+     unittest.main()

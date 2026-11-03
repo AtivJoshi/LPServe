@@ -1,0 +1,22 @@
+gpu_ample_bonus same-state on trial0_timed rows 19
+   timed statuses [('SchedulingSuccess', 'IntegerOptimum')] action mismatches 1 max|extraction_loss| 6.21e-11 attributions ['identical_actions', 'tied_optimum_different_actions']
+   timed_bonus statuses [('SchedulingSuccess', 'IntegerOptimum')] action mismatches 0 max|extraction_loss| 0.00e+00 attributions ['identical_actions']
+   TBT miss trial1_timed_bonus tight17 gap 3 41.6 ms target 40.0
+   TBT miss trial2_timed_bonus tight17 gap 3 41.4 ms target 40.0
+gpu_incumbents_bonus same-state on trial0_timed rows 38
+   timed statuses [('SchedulingSuccess', 'IntegerOptimum')] action mismatches 1 max|extraction_loss| 6.21e-11 attributions ['identical_actions', 'tied_optimum_different_actions']
+   timed_bonus statuses [('SchedulingSuccess', 'IntegerOptimum')] action mismatches 0 max|extraction_loss| 0.00e+00 attributions ['identical_actions']
+   TBT miss warmup0_timed_bonus tight17 gap 3 40.1 ms target 40.0
+   TBT miss warmup0_timed_bonus tight33 gap 2 40.1 ms target 40.0
+ d0 +22.1ms {'tight17': 'prefill:16', 'relaxed17': 'prefill:1'} | timed: {'tight17': 'prefill:16', 'relaxed17': 'prefill:1'} bonus_earned [] events []
+ d1 +42.5ms {'tight17': 'prefill:1', 'relaxed17': 'prefill:16'} | timed: {'tight17': 'prefill:1', 'tight33': 'prefill:16'} bonus_earned ['tight17', 'relaxed17'] events []
+ d2 +63.9ms {'tight17': 'decode', 'tight33': 'prefill:16'} | timed: {'tight17': 'decode', 'tight33': 'prefill:16'} bonus_earned [] events ['tight17']
+ d3 +84.6ms {'tight17': 'decode', 'tight33': 'prefill:16'} | timed: {'tight17': 'decode', 'tight33': 'prefill:16'} bonus_earned [] events ['tight17']
+ d4 +103.4ms {'tight17': 'decode', 'tight33': 'prefill:1'} | timed: {'tight17': 'decode', 'relaxed33': 'prefill:16'} bonus_earned ['tight33'] events ['tight17']
+ d5 +124.3ms {'tight33': 'decode', 'relaxed33': 'prefill:16'} | timed: {'tight33': 'decode', 'relaxed33': 'prefill:16'} bonus_earned [] events ['tight33']
+ d6 +145.0ms {'tight17': 'decode', 'relaxed33': 'prefill:16'} | timed: {'tight17': 'decode', 'relaxed33': 'prefill:16'} bonus_earned [] events ['tight17']
+ d7 +163.6ms {'tight33': 'decode', 'relaxed33': 'prefill:1'} | timed: {'relaxed17': 'decode', 'tight33': 'decode'} bonus_earned ['relaxed33'] events ['tight33']
+trial0_timed R=1 reached at decision {'tight17': 6, 'tight33': 8, 'relaxed17': 9, 'relaxed33': 11} | prompt done at {'relaxed8a': 0, 'relaxed8b': 0, 'tight17': 24, 'tight33': 24, 'relaxed17': 31, 'relaxed33': 31}
+   last token (decision, ms after t0): {'relaxed8a': (23, 462.4), 'relaxed8b': (23, 462.4), 'tight17': (30, 592.1), 'tight33': (30, 592.1), 'relaxed17': (37, 720.1), 'relaxed33': (37, 720.1)}
+trial1_timed_bonus R=1 reached at decision {'tight17': 6, 'tight33': 8, 'relaxed17': 13, 'relaxed33': 15} | prompt done at {'relaxed8a': 0, 'relaxed8b': 0, 'tight17': 7, 'tight33': 9, 'relaxed17': 17, 'relaxed33': 20}
+   last token (decision, ms after t0): {'relaxed8a': (37, 720.2), 'relaxed8b': (37, 720.2), 'tight17': (18, 370.0), 'tight33': (20, 407.7), 'relaxed17': (30, 592.8), 'relaxed33': (31, 611.0)}

@@ -12,6 +12,7 @@ import json
 import math
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from types import MappingProxyType, SimpleNamespace
@@ -560,6 +561,173 @@ class LiveCpuTest(unittest.TestCase):
         self.assertEqual((ttft["unresolved"], ttft["observed"]), (2, 0))
         self.assertEqual(ttft["miss_rate_bounds"], [0.0, 1.0])
         self.assertEqual(len(trials[0]["final_central"]["waiting"]), 4)
+
+
+def _input(rid, *, remaining=0, resident=True, decode=False, beta=0.0,
+           alpha=0.0, bonus=0.0, c_max=16):
+    prefill = remaining > 0
+    return lrs.CompletionBonusRequestInput(
+        request_id=str(rid), order_key=(rid,), resident=resident,
+        prompt_tokens_remaining=remaining,
+        prefill_upper_bound=min(remaining, c_max) if prefill else 0,
+        prefill_eligible=prefill, decode_eligible=decode,
+        preemption_eligible=False, prefill_fixed_charge=0 if resident else 1,
+        decode_demand=0, preemption_recovery=0, decode_utility=alpha,
+        prefill_token_utility=beta, preemption_penalty=0.0,
+        service_rank=rid, victim_rank=None, completion_bonus=bonus)
+
+
+def _problem(*requests, s_max=1, b_max=17, c_max=16):
+    return lrs.LPProblem(
+        requests=tuple(requests), legal_preemption_ids=frozenset(),
+        b_max=b_max, c_max=c_max, s_max=s_max, resident_limit=4,
+        resident_count=sum(r.resident for r in requests), m_free=20,
+        admission_watermark=0, problem_id="b",
+        numerical_policy=lrs.NumericalPolicy())
+
+
+class CompletionBonusTest(unittest.TestCase):
+    """The opt-in prompt-completion bonus in the LP, PH1, plan validation,
+    the exact solver, and the coefficient policy."""
+
+    def _pair(self, bonus):
+        # One decode slot: a decode worth 1.2 versus finishing a one-token
+        # prompt worth 0.15 (+ bonus).
+        return _problem(_input(0, decode=True, alpha=1.2),
+                        _input(1, remaining=1, beta=0.15, bonus=bonus))
+
+    def test_disabled_bonus_leaves_the_lp_unchanged(self):
+        c, rows, rhs, bounds, labels = lrs._build_lp(self._pair(0.0))
+        self.assertEqual(c.size, 8)
+        self.assertFalse(any(l.startswith("completion") for l in labels))
+        c, rows, rhs, bounds, labels = lrs._build_lp(self._pair(1.5))
+        self.assertEqual((c.size, c[-1], bounds[-1]), (9, -1.5, (0.0, 1.0)))
+        self.assertEqual(labels[-2:], ["completion_lower[1]",
+                                       "completion_upper[1]"])
+        # x >= R f and x <= R - 1 + f with R = 1.
+        self.assertEqual(list(rows[-2][[1, 8]]), [-1.0, 1.0])
+        self.assertEqual((list(rows[-1][[1, 8]]), rhs[-1]), ([1.0, -1.0], 0.0))
+
+    def test_bonus_flips_ph1_and_exact_and_scores_derived_completion(self):
+        import exact_integer_plan as eip
+        for bonus, winner in ((0.0, {"0": "decode"}),
+                              (1.5, {"1": "prefill:1"})):
+            problem = self._pair(bonus)
+            ph1 = lrs.solve_and_extract(problem)
+            exact = eip.solve_integer_plan(problem)
+            self.assertIsInstance(ph1, lrs.SchedulingSuccess)
+            self.assertIsInstance(exact, eip.IntegerOptimum)
+            self.assertEqual(eip.plan_actions(ph1.plan), winner)
+            self.assertEqual(eip.plan_actions(exact.plan), winner)
+            expected = 1.2 if bonus == 0 else 0.15 + 1.5
+            self.assertAlmostEqual(ph1.plan.objective, expected)
+            self.assertAlmostEqual(exact.plan.objective, expected)
+        # A remainder that cannot finish in one decision (R > B_max) is
+        # rejected; a partial chunk of an attainable one earns no bonus.
+        partial = _problem(_input(1, remaining=3, beta=0.1, bonus=1.5),
+                           b_max=2, c_max=16)
+        self.assertIsInstance(lrs.validate_problem(partial), lrs.Failure)
+        fits = _problem(_input(1, remaining=3, beta=0.1, bonus=1.5))
+        self.assertAlmostEqual(lrs._objective_max(fits, [2], [0], [0]), 0.2)
+        self.assertAlmostEqual(lrs._objective_max(fits, [3], [0], [0]), 1.8)
+
+    def test_bonus_requires_an_attainable_prefill(self):
+        for bad in (_input(0, decode=True, alpha=1.0, bonus=1.5),
+                    _input(1, remaining=20, beta=0.1, bonus=1.5),
+                    _input(1, remaining=1, beta=0.1, bonus=-1.0)):
+            out = lrs.validate_problem(_problem(bad))
+            self.assertIsInstance(out, lrs.Failure)
+
+    def test_policy_offers_the_bonus_only_before_the_first_token(self):
+        waiting = lsm.CapturedRequest(**dict(
+            _resident(0, remaining=16, output_len=0).__dict__))
+        long = _resident(1, remaining=17, output_len=0)
+        visible = _resident(2, remaining=5, output_len=0)
+        decode = _resident(3, remaining=0, output_len=1)
+        captured = _captured([waiting, long, visible, decode], 0.10)
+        timing = {0: _timing(0, "relaxed"), 1: _timing(1, "tight"),
+                  2: _timing(2, "tight", 0.05), 3: _timing(3, "tight", 0.05)}
+        out = lsm.construct_coefficients(captured, pilot.coefficient_policy(
+            pilot.BONUS_POLICY, pilot.CASES["ample"], timing))
+        self.assertEqual([u.completion_bonus for u in out],
+                         [1.5, 0.0, 0.0, 0.0])
+        timed = lsm.construct_coefficients(captured, pilot.coefficient_policy(
+            "timed", pilot.CASES["ample"], timing))
+        for u, t in zip(out, timed):
+            self.assertEqual((u.decode_utility, u.prefill_token_utility,
+                              u.preemption_penalty),
+                             (t.decode_utility, t.prefill_token_utility,
+                              t.preemption_penalty))
+            self.assertIs(type(t), lsm.RequestUtility)
+            self.assertIsInstance(u, lsm.CompletionBonusUtility)
+
+    def test_trial_labels_and_incumbent_overlap(self):
+        self.assertEqual(
+            [p for _, p, _ in pilot.trial_labels("timed_untimed")],
+            list(pilot.WARMUP_ORDER + pilot.MEASURED_ORDER))
+        self.assertEqual([p for _, p, _ in pilot.trial_labels("bonus")],
+                         ["timed_bonus", "timed", "timed", "timed_bonus",
+                          "timed_bonus", "timed"])
+        # relaxed8b stops before the main cohort arrives: no overlap.
+        requests = {
+            0: dict(name="relaxed8a", arrival_time=0.0,
+                    event_times=[0.05, 0.15]),
+            1: dict(name="relaxed8b", arrival_time=0.0,
+                    event_times=[0.05, 0.08]),
+            2: dict(name="tight17", arrival_time=0.1, event_times=[0.2]),
+        }
+        trial = dict(clock=SimpleNamespace(requests=requests))
+        self.assertFalse(pilot.incumbent_overlap(trial)["overlaps"])
+        requests[1]["event_times"].append(0.18)
+        self.assertTrue(pilot.incumbent_overlap(trial)["overlaps"])
+
+
+class CompletionBonusLiveCpuTest(unittest.TestCase):
+    """Bonus sessions on the CPU engine; the CPU worker is slowed to about
+    GPU step time so the incumbent workload overlaps as it does on GPU."""
+
+    def setUp(self):
+        patcher = mock.patch.object(pilot, "REGISTRATION_LEAD_SECONDS", 0.05)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def _session(self, case, step_seconds=0.0):
+        engine = pilot.build_cpu_engine(case)
+        if step_seconds:
+            native = engine._run_workers
+
+            def slowed(method, *args, **kwargs):
+                if method == "execute_model":
+                    time.sleep(step_seconds)
+                return native(method, *args, **kwargs)
+            engine._run_workers = slowed
+        prompts = pilot.prompt_ids(pilot.CASES[case])
+        return pilot.run_session(
+            engine, case, prompts, [("t", "timed", True),
+                                    ("b", pilot.BONUS_POLICY, True)],
+            functools.partial(pilot._worker_state, engine),
+            registration_order="tight_first", comparison="bonus")
+
+    def test_bonus_plans_pass_native_prevalidation_and_drain(self):
+        trials, analyses, _ = self._session("ample")
+        self.assertTrue(all(pilot.finished_in_window(t) for t in trials))
+        gates = pilot.summarize_pair({"b": analyses["b"]})
+        self.assertGreater(gates["bonus_earned_decisions"], 0)
+        self.assertEqual(gates["preemptions"], 0)
+        self.assertEqual(pilot.summarize_pair(
+            {"t": analyses["t"]})["bonus_earned_decisions"], 0)
+        # Every bonus decision was executed natively (analysis rechecks the
+        # emitted order against the validated plan).
+        for d in analyses["b"]["decisions"]:
+            for rid in d["bonus_earned"]:
+                self.assertTrue(d["actions"][str(rid)].startswith("prefill"))
+
+    def test_incumbent_workload_overlaps_at_gpu_step_time(self):
+        trials, analyses, _ = self._session("ample_incumbents", 0.018)
+        for trial in trials:
+            self.assertTrue(pilot.finished_in_window(trial))
+            self.assertTrue(pilot.incumbent_overlap(trial)["overlaps"])
+        self.assertEqual(pilot.summarize_pair(analyses)["preemptions"], 0)
 
 
 if __name__ == "__main__":

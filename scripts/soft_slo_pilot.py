@@ -104,6 +104,15 @@ SLO_CLASSES = {
 PRIORITY = 1
 BATCH_FORECAST_SECONDS = 0.020
 POLICIES = ("timed", "untimed")
+# Experimental prompt-completion arm (opt-in through --comparison bonus):
+# the timed policy plus this bonus, frozen before live runs, for finishing
+# the whole remaining prompt in one decision before the first visible
+# token. Same value for both classes; an untimed decode earns 1.
+BONUS_POLICY = "timed_bonus"
+COMPLETION_BONUS = 1.5
+# Policy pairs of a comparison; the first is the incumbent arm.
+COMPARISONS = {"timed_untimed": ("timed", "untimed"),
+               "bonus": ("timed", BONUS_POLICY)}
 # Registration finishes before the arrival epoch t0 = start + this lead.
 REGISTRATION_LEAD_SECONDS = 0.5
 NUMERICAL_POLICY_FIELDS = dict(
@@ -152,10 +161,36 @@ CASES = {
         ),
         num_gpu_blocks=8, max_model_len=64, b_max=32, c_max=16, s_max=2,
         resident_limit=2, cutoff_seconds=5.0, max_decisions=100),
+    # "ample" with two relaxed incumbents released 100 ms earlier (8-token
+    # prompts, 20 outputs each) so both are generating when the main cohort
+    # arrives; the main cohort keeps its prompts, output limits, and
+    # 20 ms spacing. Six resident slots so residency does not bind; B, C,
+    # S, cache, and targets as in "ample". Frozen before measurement.
+    "ample_incumbents": dict(
+        requests=(
+            _request("relaxed8a", "relaxed", 8, 0.000, 20, 5000),
+            _request("relaxed8b", "relaxed", 8, 0.000, 20, 6000),
+            _request("relaxed17", "relaxed", 17, 0.100, 6, 1000),
+            _request("tight17", "tight", 17, 0.100, 6, 2000),
+            _request("relaxed33", "relaxed", 33, 0.120, 6, 3000),
+            _request("tight33", "tight", 33, 0.120, 6, 4000),
+        ),
+        num_gpu_blocks=32, max_model_len=64, b_max=17, c_max=16, s_max=2,
+        resident_limit=6, cutoff_seconds=5.0, max_decisions=100),
 }
+INCUMBENTS = ("relaxed8a", "relaxed8b")
 # Measured trial order after the warm-ups: both adjacent orders occur.
 WARMUP_ORDER = ("untimed", "timed")
 MEASURED_ORDER = ("timed", "untimed", "untimed", "timed")
+
+
+def trial_labels(comparison):
+    """Warm-ups (second arm, first arm), then first, second, second,
+    first: the pattern of ``WARMUP_ORDER``/``MEASURED_ORDER``."""
+    a, b = COMPARISONS[comparison]
+    return ([(f"warmup{i}_{p}", p, False) for i, p in enumerate((b, a))]
+            + [(f"trial{i}_{p}", p, True)
+               for i, p in enumerate((a, b, b, a))])
 
 
 def settings_record():
@@ -176,7 +211,12 @@ def settings_record():
                   "boost = 1 + clamp((T - slack)/T, 0, 2); slack = due - "
                   "snapshot_time - (1 + ceil(R/K)) * forecast; K = "
                   "min(b_max, c_max)",
-            untimed="decode 1, prefill token 1/K, penalty 1"),
+            untimed="decode 1, prefill token 1/K, penalty 1",
+            timed_bonus="timed plus completion_bonus for x = R before the "
+                        "first visible token when R <= min(b_max, c_max); "
+                        "LP: x >= R f, x <= R - 1 + f"),
+        completion_bonus=COMPLETION_BONUS, comparisons=COMPARISONS,
+        incumbents=INCUMBENTS,
         miss_rule="latency strictly above target",
         p99_rule="nearest rank: sorted gaps[ceil(0.99 n) - 1]",
     )
@@ -211,6 +251,11 @@ def coefficient_policy(policy, case, timing):
             lsm.soft_slo_timed_utility, timing=timing,
             batch_forecast=BATCH_FORECAST_SECONDS, b_max=case["b_max"],
             c_max=case["c_max"])
+    if policy == BONUS_POLICY:
+        return functools.partial(
+            lsm.soft_slo_timed_completion_utility, timing=timing,
+            batch_forecast=BATCH_FORECAST_SECONDS, b_max=case["b_max"],
+            c_max=case["c_max"], completion_bonus=COMPLETION_BONUS)
     check(policy == "untimed", f"unknown policy {policy!r}")
     return functools.partial(lsm.soft_slo_untimed_utility,
                              b_max=case["b_max"], c_max=case["c_max"])
@@ -631,13 +676,16 @@ def _contention(problem):
                 or tokens > problem.b_max)
 
 
-def analyze_trial(trial):
-    """Check every decision of a trial and derive its diagnostics."""
+def analyze_trial(trial, other=None):
+    """Check every decision of a trial and derive its diagnostics.
+    ``other`` is the counterfactual policy (default: the timed/untimed
+    counterpart)."""
     import lp_relaxation_scheduler as lrs
     import lpserve_state_mapping as lsm
     case = CASES[trial["case"]]
     policy, clock = trial["policy"], trial["clock"]
-    other = "untimed" if policy == "timed" else "timed"
+    if other is None:
+        other = "untimed" if policy == "timed" else "timed"
     decisions, finished_before = [], set()
     by_request = {sid: dict(prefill_tokens=0, preemptions=0)
                   for sid in clock.requests}
@@ -701,6 +749,14 @@ def analyze_trial(trial):
             counterfactual_actions={str(k): v for k, v in
                                     sorted(other_actions.items())},
             action_difference=actions != other_actions,
+            # Requests offered the experimental bonus, and those whose
+            # selected chunk finished the prompt (bonus earned).
+            bonus_offered=[int(r.request_id) for r in problem.requests
+                           if lrs._completion_bonus(r) > 0],
+            bonus_earned=[int(r.request_id) for r, d in
+                          zip(problem.requests, plan.decisions)
+                          if lrs._completion_bonus(r) > 0
+                          and d.prefill_tokens == r.prompt_tokens_remaining],
             contention=_contention(problem),
             forecasts={str(k): v for k, v in forecasts.items()},
             events=[(e["seq_id"], e["index"], e["token_id"])
@@ -954,8 +1010,8 @@ def flip_example():
     return out
 
 
-def same_state_exact(trial, limit=None):
-    """PH1 and the exact integer optimum under both policies on the
+def same_state_exact(trial, limit=None, policies=POLICIES):
+    """PH1 and the exact integer optimum under each of ``policies`` on the
     retained snapshots of ``trial`` (identical capture and timing)."""
     import exact_integer_plan as eip
     import lp_relaxation_scheduler as lrs
@@ -964,7 +1020,7 @@ def same_state_exact(trial, limit=None):
     for step in trial["steps"][:limit]:
         snap, timing = step["record"]["snapshots"][0], step["record"]["hooks"][0]
         row = dict(decision=step["index"])
-        for policy in POLICIES:
+        for policy in policies:
             problem = problem_under(snap, policy, case, timing)
             ph1 = lrs.solve_and_extract(problem)
             exact = eip.solve_integer_plan(problem)
@@ -1281,9 +1337,39 @@ def summarize_pair(analyses):
         contended_decisions=sum(d["contention"]["contended"]
                                 for d in decisions),
         action_differences=sum(d["action_difference"] for d in decisions),
+        bonus_earned_decisions=sum(bool(d["bonus_earned"])
+                                   for d in decisions),
         preemptions=sum(w["preemptions"] for a in analyses.values()
                         for w in a["work"].values()),
         decisions=len(decisions))
+
+
+def incumbent_overlap(trial):
+    """Trace check that every incumbent stream emitted a token before the
+    main cohort's first arrival and at least one more token between that
+    arrival and the last main-cohort first token (it was generating while
+    the main cohort waited for first tokens)."""
+    reqs = {r["name"]: r for r in trial["clock"].requests.values()}
+    main = [r for n, r in reqs.items() if n not in INCUMBENTS]
+    arrival = min(r["arrival_time"] for r in main)
+    last_first = max((r["event_times"][0] for r in main if r["event_times"]),
+                     default=None)
+    out = dict(main_arrival=arrival, last_main_first_token=last_first,
+               streams={})
+    for name in INCUMBENTS:
+        times = reqs[name]["event_times"]
+        out["streams"][name] = dict(
+            first_token=times[0] if times else None,
+            last_token=times[-1] if times else None,
+            tokens_before_main_arrival=sum(t < arrival for t in times),
+            tokens_during_main_first_tokens=(
+                sum(arrival <= t <= last_first for t in times)
+                if last_first is not None else 0))
+    out["overlaps"] = last_first is not None and all(
+        v["tokens_before_main_arrival"] > 0
+        and v["tokens_during_main_first_tokens"] > 0
+        for v in out["streams"].values())
+    return out
 
 
 def finished_in_window(trial):
@@ -1296,9 +1382,13 @@ def finished_in_window(trial):
 
 
 def run_session(engine, case_name, prompts, labels, worker_state, *,
-                save_trial=None, registration_order="relaxed_first"):
-    """Run trials on one engine, saving each raw trace before analysis."""
+                save_trial=None, registration_order="relaxed_first",
+                comparison="timed_untimed"):
+    """Run trials on one engine, saving each raw trace before analysis.
+    Each trial's counterfactual is the other policy of ``comparison``."""
     trials, analyses, metrics = [], {}, {}
+    pair = COMPARISONS[comparison]
+    other = {pair[0]: pair[1], pair[1]: pair[0]}
     for label, policy, _ in labels:
         trial = run_trial(engine, case_name, policy, label, prompts,
                           worker_state, registration_order)
@@ -1311,7 +1401,7 @@ def run_session(engine, case_name, prompts, labels, worker_state, *,
               flush=True)
         if trial["failure"] is not None:
             break
-        analyses[label] = analyze_trial(trial)
+        analyses[label] = analyze_trial(trial, other.get(policy))
         metrics[label] = trial_metrics(trial)
         if not finished_in_window(trial):
             break
@@ -1332,6 +1422,9 @@ def parse_args(argv=None):
     parser.add_argument("--registration-order", choices=REGISTRATION_ORDERS,
                         default="relaxed_first",
                         help="class order within equal-arrival groups")
+    parser.add_argument("--comparison", choices=sorted(COMPARISONS),
+                        default="timed_untimed",
+                        help="policy pair of the warm-up/measured trials")
     return parser, parser.parse_args(argv)
 
 
@@ -1422,14 +1515,12 @@ def main(argv=None):
         elif args.single:
             labels = [(f"single_{args.single}", args.single, False)]
         else:
-            labels = ([(f"warmup{i}_{p}", p, False)
-                       for i, p in enumerate(WARMUP_ORDER)]
-                      + [(f"trial{i}_{p}", p, True)
-                         for i, p in enumerate(MEASURED_ORDER)])
+            labels = trial_labels(args.comparison)
         trials, analyses, metrics = run_session(
             engine, args.case, prompts, labels,
             functools.partial(_worker_state, engine), save_trial=save_trial,
-            registration_order=args.registration_order)
+            registration_order=args.registration_order,
+            comparison=args.comparison)
         measured = {label: analyses[label] for label, _, include in labels
                     if include and label in analyses}
         summary.update(
@@ -1441,17 +1532,28 @@ def main(argv=None):
             gates=summarize_pair(measured))
         first = next((t for t in trials if t["label"] in measured), None)
         if first is not None:
-            summary["same_state_exact"] = to_jsonable(same_state_exact(first))
+            summary["same_state_exact"] = to_jsonable(same_state_exact(
+                first, policies=COMPARISONS[args.comparison]))
+        if args.case == "ample_incumbents":
+            summary["incumbent_overlap"] = {
+                t["label"]: incumbent_overlap(t) for t in trials}
         check(len(trials) == len(labels)
               and all(t["failure"] is None and finished_in_window(t)
                       for t in trials),
               "at least one trial failed or did not finish within cutoff")
-        if args.case == "ample" and not (args.smoke or args.single):
+        if args.case.startswith("ample") and not (args.smoke or args.single):
             gates = summary["gates"]
+            # The bonus arm's action differences are an outcome, not a gate.
             check(gates["contended_decisions"] > 0
-                  and gates["action_differences"] > 0
+                  and (args.comparison != "timed_untimed"
+                       or gates["action_differences"] > 0)
                   and gates["preemptions"] == 0,
                   f"ample comparison did not meet its gates: {gates}")
+        if args.case == "ample_incumbents":
+            check(all(o["overlaps"] for o in
+                      summary["incumbent_overlap"].values()),
+                  "incumbent streams do not overlap the main cohort: "
+                  f"{summary['incumbent_overlap']}")
         summary["validation_passed"] = True
     except BaseException as err:
         summary["failure"] = dict(type=type(err).__name__, message=str(err),
