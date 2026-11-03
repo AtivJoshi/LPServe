@@ -1,0 +1,1092 @@
+{
+ "validation_passed": true,
+ "argv": [
+  "scripts/soft_slo_pilot.py",
+  "--cpu",
+  "--case",
+  "pressure_control",
+  "--single",
+  "timed",
+  "--output-dir",
+  "validation_output/soft_slo_pilot/20261103T080911Z/cpu_pressure_control"
+ ],
+ "case": "pressure_control",
+ "cpu": true,
+ "smoke": false,
+ "settings": {
+  "model": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+  "load_format": "auto",
+  "dtype": "float16",
+  "attention_backend": "flash_attention",
+  "tensor_parallel_size": 1,
+  "pipeline_parallel_size": 1,
+  "block_size": 16,
+  "gpu_memory_utilization": 0.5,
+  "seed": 42,
+  "temperature": 0.0,
+  "ignore_eos": true,
+  "stop": null,
+  "slo_classes": {
+   "tight": {
+    "ttft_target": 0.1,
+    "tbt_target": 0.04
+   },
+   "relaxed": {
+    "ttft_target": 0.3,
+    "tbt_target": 0.12
+   }
+  },
+  "priority": 1,
+  "batch_forecast_seconds": 0.02,
+  "registration_lead_seconds": 0.5,
+  "numerical_policy": {
+   "policy_id": "lp_relaxation_mvp_v1",
+   "feasibility_tol": 1e-07,
+   "integrality_tol": 1e-06,
+   "objective_abs_tol": 1e-09,
+   "objective_rel_tol": 1e-09
+  },
+  "cases": {
+   "ample": {
+    "requests": [
+     {
+      "name": "relaxed17",
+      "slo_class": "relaxed",
+      "prompt_len": 17,
+      "arrival_offset": 0.0,
+      "max_tokens": 6,
+      "prompt_start": 1000
+     },
+     {
+      "name": "tight17",
+      "slo_class": "tight",
+      "prompt_len": 17,
+      "arrival_offset": 0.0,
+      "max_tokens": 6,
+      "prompt_start": 2000
+     },
+     {
+      "name": "relaxed33",
+      "slo_class": "relaxed",
+      "prompt_len": 33,
+      "arrival_offset": 0.02,
+      "max_tokens": 6,
+      "prompt_start": 3000
+     },
+     {
+      "name": "tight33",
+      "slo_class": "tight",
+      "prompt_len": 33,
+      "arrival_offset": 0.02,
+      "max_tokens": 6,
+      "prompt_start": 4000
+     }
+    ],
+    "num_gpu_blocks": 32,
+    "max_model_len": 64,
+    "b_max": 17,
+    "c_max": 16,
+    "s_max": 2,
+    "resident_limit": 4,
+    "cutoff_seconds": 5.0,
+    "max_decisions": 100
+   },
+   "pressure": {
+    "requests": [
+     {
+      "name": "relaxed31",
+      "slo_class": "relaxed",
+      "prompt_len": 31,
+      "arrival_offset": 0.0,
+      "max_tokens": 3,
+      "prompt_start": 1000
+     },
+     {
+      "name": "tight32",
+      "slo_class": "tight",
+      "prompt_len": 32,
+      "arrival_offset": 0.0,
+      "max_tokens": 3,
+      "prompt_start": 2000
+     }
+    ],
+    "num_gpu_blocks": 5,
+    "max_model_len": 64,
+    "b_max": 32,
+    "c_max": 16,
+    "s_max": 2,
+    "resident_limit": 2,
+    "cutoff_seconds": 5.0,
+    "max_decisions": 100
+   },
+   "pressure_control": {
+    "requests": [
+     {
+      "name": "relaxed31",
+      "slo_class": "relaxed",
+      "prompt_len": 31,
+      "arrival_offset": 0.0,
+      "max_tokens": 5,
+      "prompt_start": 1000
+     },
+     {
+      "name": "tight32",
+      "slo_class": "tight",
+      "prompt_len": 32,
+      "arrival_offset": 0.0,
+      "max_tokens": 5,
+      "prompt_start": 2000
+     }
+    ],
+    "num_gpu_blocks": 8,
+    "max_model_len": 64,
+    "b_max": 32,
+    "c_max": 16,
+    "s_max": 2,
+    "resident_limit": 2,
+    "cutoff_seconds": 5.0,
+    "max_decisions": 100
+   }
+  },
+  "warmup_order": [
+   "untimed",
+   "timed"
+  ],
+  "measured_order": [
+   "timed",
+   "untimed",
+   "untimed",
+   "timed"
+  ],
+  "policies": {
+   "timed": "decode boost, prefill token boost/K, penalty 1; boost = 1 + clamp((T - slack)/T, 0, 2); slack = due - snapshot_time - (1 + ceil(R/K)) * forecast; K = min(b_max, c_max)",
+   "untimed": "decode 1, prefill token 1/K, penalty 1"
+  },
+  "miss_rule": "latency strictly above target",
+  "p99_rule": "nearest rank: sorted gaps[ceil(0.99 n) - 1]",
+  "sha256": "8018a00220180d70064b9f54c6e225369a9540500047391cb0a7f8f383a1022a"
+ },
+ "provenance": {
+  "git_head": "bcd6c93df574f2bcd4dfe4a1d5f8c1ea6907d267",
+  "git_branch": "main",
+  "git_status_short": " M lpserve_state_mapping.py\n?? scripts/soft_slo_pilot.py\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/cpu_ample.command\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/cpu_ample.console.txt\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/cpu_ample/cleanup.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/cpu_ample/summary.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/cpu_ample/trials/trial0_timed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/cpu_ample/trials/trial1_untimed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/cpu_ample/trials/trial2_untimed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/cpu_ample/trials/trial3_timed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/cpu_ample/trials/warmup0_untimed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/cpu_ample/trials/warmup1_timed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/cpu_gates/gates.txt\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/cpu_gates/run_gates.sh\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/cpu_pressure.command\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/cpu_pressure.console.txt\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/cpu_pressure/cleanup.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/cpu_pressure/summary.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/cpu_pressure/trials/trial0_timed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/cpu_pressure/trials/trial1_untimed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/cpu_pressure/trials/trial2_untimed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/cpu_pressure/trials/trial3_timed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/cpu_pressure/trials/warmup0_untimed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/cpu_pressure/trials/warmup1_timed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_ample.command\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_ample.console.txt\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_ample/cleanup.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_ample/metrics_store/config.yml\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_ample/summary.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_ample/trials/trial0_timed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_ample/trials/trial1_untimed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_ample/trials/trial2_untimed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_ample/trials/trial3_timed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_ample/trials/warmup0_untimed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_ample/trials/warmup1_timed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_ample_metrics_table.txt\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_pressure.command\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_pressure.console.txt\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_pressure/cleanup.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_pressure/metrics_store/config.yml\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_pressure/summary.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_pressure/trials/trial0_timed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_pressure/trials/trial1_untimed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_pressure/trials/trial2_untimed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_pressure/trials/trial3_timed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_pressure/trials/warmup0_untimed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_pressure/trials/warmup1_timed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_pressure_control.command\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_pressure_control.console.txt\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_pressure_control/cleanup.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_pressure_control/metrics_store/config.yml\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_pressure_control/summary.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_pressure_control/trials/single_timed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_pressure_witness.txt\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_smoke.command\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_smoke.console.txt\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_smoke/cleanup.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_smoke/metrics_store/config.yml\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_smoke/summary.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/gpu_smoke/trials/smoke_untimed.json\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/modules.txt\n?? validation_output/soft_slo_pilot/20261103T080057Z_superseded_preliminary/nvidia_smi_before.txt\n?? validation_output/soft_slo_pilot/20261103T080911Z/cpu_ample.console.txt\n?? validation_output/soft_slo_pilot/20261103T080911Z/cpu_ample/cleanup.json\n?? validation_output/soft_slo_pilot/20261103T080911Z/cpu_ample/summary.json\n?? validation_output/soft_slo_pilot/20261103T080911Z/cpu_ample/trials/trial0_timed.json\n?? validation_output/soft_slo_pilot/20261103T080911Z/cpu_ample/trials/trial1_untimed.json\n?? validation_output/soft_slo_pilot/20261103T080911Z/cpu_ample/trials/trial2_untimed.json\n?? validation_output/soft_slo_pilot/20261103T080911Z/cpu_ample/trials/trial3_timed.json\n?? validation_output/soft_slo_pilot/20261103T080911Z/cpu_ample/trials/warmup0_untimed.json\n?? validation_output/soft_slo_pilot/20261103T080911Z/cpu_ample/trials/warmup1_timed.json\n?? validation_output/soft_slo_pilot/20261103T080911Z/cpu_gates/gates.txt\n?? validation_output/soft_slo_pilot/20261103T080911Z/cpu_gates/run_gates.sh\n?? validation_output/soft_slo_pilot/20261103T080911Z/cpu_pressure.console.txt\n?? validation_output/soft_slo_pilot/20261103T080911Z/cpu_pressure/cleanup.json\n?? validation_output/soft_slo_pilot/20261103T080911Z/cpu_pressure/summary.json\n?? validation_output/soft_slo_pilot/20261103T080911Z/cpu_pressure/trials/trial0_timed.json\n?? validation_output/soft_slo_pilot/20261103T080911Z/cpu_pressure/trials/trial1_untimed.json\n?? validation_output/soft_slo_pilot/20261103T080911Z/cpu_pressure/trials/trial2_untimed.json\n?? validation_output/soft_slo_pilot/20261103T080911Z/cpu_pressure/trials/trial3_timed.json\n?? validation_output/soft_slo_pilot/20261103T080911Z/cpu_pressure/trials/warmup0_untimed.json\n?? validation_output/soft_slo_pilot/20261103T080911Z/cpu_pressure/trials/warmup1_timed.json\n?? validation_output/soft_slo_pilot/20261103T080911Z/cpu_pressure_control.console.txt\n?? validation_output/soft_slo_pilot/20261103T080911Z/modules.txt\n?? validation_output/soft_slo_pilot/20261103T080911Z/nvidia_smi_before.txt\n?? validation_output/soft_slo_pilot/20261103T080911Z/provenance/head.txt\n?? validation_output/soft_slo_pilot/20261103T080911Z/provenance/sha256.txt\n?? validation_output/soft_slo_pilot/20261103T080911Z/provenance/soft_slo_pilot.py\n?? validation_output/soft_slo_pilot/20261103T080911Z/provenance/status.txt\n?? validation_output/soft_slo_pilot/20261103T080911Z/provenance/tracked.diff\n?? validation_output/soft_slo_pilot/20261103T080911Z/run_pilot.sh\n?? validation_output/soft_slo_pilot/20261103T080911Z/runs.txt\n",
+  "git_diff_head_sha256": "b911783f0fb7f3d81e2d585c733a117d7de3441a7758a5209022b4619fedcb9e",
+  "file_sha256": {
+   "scripts/soft_slo_pilot.py": "95f9d5b45e87ca6a8ae2db42976f8f9e576c59f2ff02eba8603d5cf5afe63dfd",
+   "tests/test_soft_slo_pilot.py": "e1f3177cc9243513c7f41bea6240a408f71f2271b0066b00b65d97e07796b5bf",
+   "lpserve_state_mapping.py": "389fec0b40fa6716aef2dc858d868a85c842ce47d701d3ff77575cc49cc2e181",
+   "lp_relaxation_scheduler.py": "da5fd1d8839ddab320d12616c77eabef8706d08c229cf41fdbb140e80e73fe18",
+   "lpserve_plan_execution.py": "21c20dc1ca28712461393cdf0eb7466566fbb34c76f03d209a38ceee6972fd74",
+   "sarathi/core/scheduler/lp_scheduler.py": "85720a9ba576354fe908c807698c67d7783aa18350ad21e084d60e3cc4350233",
+   "scripts/exact_integer_plan.py": "a56237cf3bb1c211f025fa174e3795fa20002681de30eee2b1f08e547d217f6c",
+   "scripts/check_adapted_vllm_gpu.py": "cdf6b7f4cb302664b775975b78f2bcae155ef37691c8662d63bcb6015797c25b",
+   "scripts/check_lp_scheduler_gpu.py": "18b145d0689f1beaae933671955251dcae8fd9f3696ff371246a3845d6224dd8",
+   "scripts/check_lp_scheduler_preemption_gpu.py": "517fef8b8bbd035c5b77e11c906585fc8b047b390e798a3d84e581c3beec09e5",
+   "sarathi/engine/base_llm_engine.py": "5f2db9ce5c8ed736ab1a97f66455d6bd19aa519e3bf4ce7d07467242be9c8afd",
+   "sarathi/core/sequence_manager/base_sequence_manager.py": "1705241edd761aabde072332a806772eb90e1f245db608b183e5bcec29a6a103",
+   "sarathi/core/datatypes/sequence.py": "a10a34fbab78d8aaa7e0e2c18aa11641d0b33534a23092ccfcbe9715d39523b4"
+  },
+  "loaded_modules": "uri/main:GCCcore/12.2.0:binutils/.2.39-GCCcore-12.2.0:bzip2/.1.0.8-GCCcore-12.2.0:zlib/.1.2.12-GCCcore-12.2.0:libreadline/.8.2-GCCcore-12.2.0:ncurses/.6.3-GCCcore-12.2.0:Tcl/.8.6.12-GCCcore-12.2.0:SQLite/.3.39.4-GCCcore-12.2.0:XZ/.5.2.7-GCCcore-12.2.0:GMP/.6.2.1-GCCcore-12.2.0:libffi/3.4.4-GCCcore-12.2.0:OpenSSL/1.1:Python/3.10.8-GCCcore-12.2.0:CUDA/12.1.1"
+ },
+ "failure": null,
+ "flip_example": {
+  "timed": {
+   "prefill_token_utility": {
+    "0": 0.08333333333333334,
+    "1": 0.125
+   },
+   "full_prefill_reward": {
+    "0": 1.3333333333333335,
+    "1": 1.5
+   },
+   "ph1_actions": {
+    "1": "prefill:12"
+   },
+   "exact_actions": {
+    "1": "prefill:12"
+   },
+   "ph1_objective": 1.5,
+   "exact_objective": 1.5,
+   "forecasts": {
+    "0": {
+     "raw_seq_id": 0,
+     "target_kind": "ttft",
+     "target": 0.3,
+     "due": 0.3,
+     "remaining_prefill_tokens": 16,
+     "nominal_chunk": 16,
+     "estimated_batches": 2,
+     "batch_forecast": 0.02,
+     "slack": 0.19999999999999998,
+     "boost": 1.3333333333333335,
+     "boost_region": "interior"
+    },
+    "1": {
+     "raw_seq_id": 1,
+     "target_kind": "ttft",
+     "target": 0.1,
+     "due": 0.1,
+     "remaining_prefill_tokens": 12,
+     "nominal_chunk": 16,
+     "estimated_batches": 2,
+     "batch_forecast": 0.02,
+     "slack": 6.938893903907228e-18,
+     "boost": 2.0,
+     "boost_region": "interior"
+    }
+   }
+  },
+  "untimed": {
+   "prefill_token_utility": {
+    "0": 0.0625,
+    "1": 0.0625
+   },
+   "full_prefill_reward": {
+    "0": 1.0,
+    "1": 0.75
+   },
+   "ph1_actions": {
+    "0": "prefill:16"
+   },
+   "exact_actions": {
+    "0": "prefill:16"
+   },
+   "ph1_objective": 1.0,
+   "exact_objective": 1.0,
+   "forecasts": null
+  }
+ },
+ "environment": {
+  "hostname": "gpu051",
+  "python": "/home/atjoshi_umass_edu/LPServe/env/bin/python",
+  "slurm_job_id": "66571617"
+ },
+ "prompts": {
+  "relaxed31": [
+   1000,
+   1001,
+   1002,
+   1003,
+   1004,
+   1005,
+   1006,
+   1007,
+   1008,
+   1009,
+   1010,
+   1011,
+   1012,
+   1013,
+   1014,
+   1015,
+   1016,
+   1017,
+   1018,
+   1019,
+   1020,
+   1021,
+   1022,
+   1023,
+   1024,
+   1025,
+   1026,
+   1027,
+   1028,
+   1029,
+   1030
+  ],
+  "tight32": [
+   2000,
+   2001,
+   2002,
+   2003,
+   2004,
+   2005,
+   2006,
+   2007,
+   2008,
+   2009,
+   2010,
+   2011,
+   2012,
+   2013,
+   2014,
+   2015,
+   2016,
+   2017,
+   2018,
+   2019,
+   2020,
+   2021,
+   2022,
+   2023,
+   2024,
+   2025,
+   2026,
+   2027,
+   2028,
+   2029,
+   2030,
+   2031
+  ]
+ },
+ "cohort_fit": {
+  "max_blocks_without_preemption": 6,
+  "pool": 8,
+  "max_context": 37,
+  "max_model_len": 64
+ },
+ "trials": {
+  "single_timed": {
+   "stop_reason": "drained",
+   "decisions": 7,
+   "failure": null
+  }
+ },
+ "analyses": {
+  "single_timed": {
+   "decisions": [
+    {
+     "index": 0,
+     "snapshot_time": 2319869.677766834,
+     "batch_seconds": 0.002344137988984585,
+     "free_blocks": 8,
+     "resident": [],
+     "waiting": [
+      0,
+      1
+     ],
+     "actions": {
+      "0": "prefill:16",
+      "1": "prefill:16"
+     },
+     "counterfactual_policy": "untimed",
+     "counterfactual_actions": {
+      "0": "prefill:16",
+      "1": "prefill:16"
+     },
+     "action_difference": false,
+     "contention": {
+      "eligible_actions": 2,
+      "eligible_tokens": 32,
+      "action_contention": false,
+      "token_contention": false,
+      "contended": false
+     },
+     "forecasts": {
+      "0": {
+       "raw_seq_id": 0,
+       "target_kind": "ttft",
+       "target": 0.3,
+       "due": 2319869.977188406,
+       "remaining_prefill_tokens": 31,
+       "nominal_chunk": 16,
+       "estimated_batches": 3,
+       "batch_forecast": 0.02,
+       "slack": 0.23942157212644816,
+       "boost": 1.2019280929118394,
+       "boost_region": "interior"
+      },
+      "1": {
+       "raw_seq_id": 1,
+       "target_kind": "ttft",
+       "target": 0.1,
+       "due": 2319869.7771884063,
+       "remaining_prefill_tokens": 32,
+       "nominal_chunk": 16,
+       "estimated_batches": 3,
+       "batch_forecast": 0.02,
+       "slack": 0.03942157240584493,
+       "boost": 1.6057842759415508,
+       "boost_region": "interior"
+      }
+     },
+     "events": []
+    },
+    {
+     "index": 1,
+     "snapshot_time": 2319869.680118103,
+     "batch_seconds": 0.0014490699395537376,
+     "free_blocks": 4,
+     "resident": [
+      0,
+      1
+     ],
+     "waiting": [],
+     "actions": {
+      "0": "prefill:15",
+      "1": "prefill:16"
+     },
+     "counterfactual_policy": "untimed",
+     "counterfactual_actions": {
+      "0": "prefill:15",
+      "1": "prefill:16"
+     },
+     "action_difference": false,
+     "contention": {
+      "eligible_actions": 2,
+      "eligible_tokens": 31,
+      "action_contention": false,
+      "token_contention": false,
+      "contended": false
+     },
+     "forecasts": {
+      "0": {
+       "raw_seq_id": 0,
+       "target_kind": "ttft",
+       "target": 0.3,
+       "due": 2319869.977188406,
+       "remaining_prefill_tokens": 15,
+       "nominal_chunk": 16,
+       "estimated_batches": 2,
+       "batch_forecast": 0.02,
+       "slack": 0.25707030300050976,
+       "boost": 1.1430989899983008,
+       "boost_region": "interior"
+      },
+      "1": {
+       "raw_seq_id": 1,
+       "target_kind": "ttft",
+       "target": 0.1,
+       "due": 2319869.7771884063,
+       "remaining_prefill_tokens": 16,
+       "nominal_chunk": 16,
+       "estimated_batches": 2,
+       "batch_forecast": 0.02,
+       "slack": 0.05707030327990651,
+       "boost": 1.4292969672009348,
+       "boost_region": "interior"
+      }
+     },
+     "events": []
+    },
+    {
+     "index": 2,
+     "snapshot_time": 2319869.681587784,
+     "batch_seconds": 0.001491905190050602,
+     "free_blocks": 4,
+     "resident": [
+      0,
+      1
+     ],
+     "waiting": [],
+     "actions": {
+      "0": "decode",
+      "1": "decode"
+     },
+     "counterfactual_policy": "untimed",
+     "counterfactual_actions": {
+      "0": "decode",
+      "1": "decode"
+     },
+     "action_difference": false,
+     "contention": {
+      "eligible_actions": 2,
+      "eligible_tokens": 2,
+      "action_contention": false,
+      "token_contention": false,
+      "contended": false
+     },
+     "forecasts": {
+      "0": {
+       "raw_seq_id": 0,
+       "target_kind": "ttft",
+       "target": 0.3,
+       "due": 2319869.977188406,
+       "remaining_prefill_tokens": 0,
+       "nominal_chunk": 16,
+       "estimated_batches": 1,
+       "batch_forecast": 0.02,
+       "slack": 0.27560062196105717,
+       "boost": 1.0813312601298093,
+       "boost_region": "interior"
+      },
+      "1": {
+       "raw_seq_id": 1,
+       "target_kind": "ttft",
+       "target": 0.1,
+       "due": 2319869.7771884063,
+       "remaining_prefill_tokens": 0,
+       "nominal_chunk": 16,
+       "estimated_batches": 1,
+       "batch_forecast": 0.02,
+       "slack": 0.07560062224045395,
+       "boost": 1.2439937775954606,
+       "boost_region": "interior"
+      }
+     },
+     "events": [
+      [
+       0,
+       1,
+       300
+      ],
+      [
+       1,
+       1,
+       301
+      ]
+     ]
+    },
+    {
+     "index": 3,
+     "snapshot_time": 2319869.683106899,
+     "batch_seconds": 0.0014267158694565296,
+     "free_blocks": 4,
+     "resident": [
+      0,
+      1
+     ],
+     "waiting": [],
+     "actions": {
+      "0": "decode",
+      "1": "decode"
+     },
+     "counterfactual_policy": "untimed",
+     "counterfactual_actions": {
+      "0": "decode",
+      "1": "decode"
+     },
+     "action_difference": false,
+     "contention": {
+      "eligible_actions": 2,
+      "eligible_tokens": 2,
+      "action_contention": false,
+      "token_contention": false,
+      "contended": false
+     },
+     "forecasts": {
+      "0": {
+       "raw_seq_id": 0,
+       "target_kind": "tbt",
+       "target": 0.12,
+       "due": 2319869.803076784,
+       "remaining_prefill_tokens": 0,
+       "nominal_chunk": 16,
+       "estimated_batches": 1,
+       "batch_forecast": 0.02,
+       "slack": 0.09996988533064723,
+       "boost": 1.1669176222446065,
+       "boost_region": "interior"
+      },
+      "1": {
+       "raw_seq_id": 1,
+       "target_kind": "tbt",
+       "target": 0.04,
+       "due": 2319869.723076784,
+       "remaining_prefill_tokens": 0,
+       "nominal_chunk": 16,
+       "estimated_batches": 1,
+       "batch_forecast": 0.02,
+       "slack": 0.019969885256141424,
+       "boost": 1.5007528685964644,
+       "boost_region": "interior"
+      }
+     },
+     "events": [
+      [
+       0,
+       2,
+       400
+      ],
+      [
+       1,
+       2,
+       401
+      ]
+     ]
+    },
+    {
+     "index": 4,
+     "snapshot_time": 2319869.684560095,
+     "batch_seconds": 0.0014141462743282318,
+     "free_blocks": 3,
+     "resident": [
+      0,
+      1
+     ],
+     "waiting": [],
+     "actions": {
+      "0": "decode",
+      "1": "decode"
+     },
+     "counterfactual_policy": "untimed",
+     "counterfactual_actions": {
+      "0": "decode",
+      "1": "decode"
+     },
+     "action_difference": false,
+     "contention": {
+      "eligible_actions": 2,
+      "eligible_tokens": 2,
+      "action_contention": false,
+      "token_contention": false,
+      "contended": false
+     },
+     "forecasts": {
+      "0": {
+       "raw_seq_id": 0,
+       "target_kind": "tbt",
+       "target": 0.12,
+       "due": 2319869.80453028,
+       "remaining_prefill_tokens": 0,
+       "nominal_chunk": 16,
+       "estimated_batches": 1,
+       "batch_forecast": 0.02,
+       "slack": 0.09997018521651625,
+       "boost": 1.1669151231956978,
+       "boost_region": "interior"
+      },
+      "1": {
+       "raw_seq_id": 1,
+       "target_kind": "tbt",
+       "target": 0.04,
+       "due": 2319869.72453028,
+       "remaining_prefill_tokens": 0,
+       "nominal_chunk": 16,
+       "estimated_batches": 1,
+       "batch_forecast": 0.02,
+       "slack": 0.01997018514201045,
+       "boost": 1.5007453714497387,
+       "boost_region": "interior"
+      }
+     },
+     "events": [
+      [
+       0,
+       3,
+       500
+      ],
+      [
+       1,
+       3,
+       501
+      ]
+     ]
+    },
+    {
+     "index": 5,
+     "snapshot_time": 2319869.686007362,
+     "batch_seconds": 0.0014175521209836006,
+     "free_blocks": 2,
+     "resident": [
+      0,
+      1
+     ],
+     "waiting": [],
+     "actions": {
+      "0": "decode",
+      "1": "decode"
+     },
+     "counterfactual_policy": "untimed",
+     "counterfactual_actions": {
+      "0": "decode",
+      "1": "decode"
+     },
+     "action_difference": false,
+     "contention": {
+      "eligible_actions": 2,
+      "eligible_tokens": 2,
+      "action_contention": false,
+      "token_contention": false,
+      "contended": false
+     },
+     "forecasts": {
+      "0": {
+       "raw_seq_id": 0,
+       "target_kind": "tbt",
+       "target": 0.12,
+       "due": 2319869.805971117,
+       "remaining_prefill_tokens": 0,
+       "nominal_chunk": 16,
+       "estimated_batches": 1,
+       "batch_forecast": 0.02,
+       "slack": 0.09996375536546111,
+       "boost": 1.1669687052878241,
+       "boost_region": "interior"
+      },
+      "1": {
+       "raw_seq_id": 1,
+       "target_kind": "tbt",
+       "target": 0.04,
+       "due": 2319869.725971117,
+       "remaining_prefill_tokens": 0,
+       "nominal_chunk": 16,
+       "estimated_batches": 1,
+       "batch_forecast": 0.02,
+       "slack": 0.019963755290955305,
+       "boost": 1.5009061177261174,
+       "boost_region": "interior"
+      }
+     },
+     "events": [
+      [
+       0,
+       4,
+       600
+      ],
+      [
+       1,
+       4,
+       601
+      ]
+     ]
+    },
+    {
+     "index": 6,
+     "snapshot_time": 2319869.687445886,
+     "batch_seconds": 0.001433536410331726,
+     "free_blocks": 2,
+     "resident": [
+      0,
+      1
+     ],
+     "waiting": [],
+     "actions": {
+      "0": "decode",
+      "1": "decode"
+     },
+     "counterfactual_policy": "untimed",
+     "counterfactual_actions": {
+      "0": "decode",
+      "1": "decode"
+     },
+     "action_difference": false,
+     "contention": {
+      "eligible_actions": 2,
+      "eligible_tokens": 2,
+      "action_contention": false,
+      "token_contention": false,
+      "contended": false
+     },
+     "forecasts": {
+      "0": {
+       "raw_seq_id": 0,
+       "target_kind": "tbt",
+       "target": 0.12,
+       "due": 2319869.80741553,
+       "remaining_prefill_tokens": 0,
+       "nominal_chunk": 16,
+       "estimated_batches": 1,
+       "batch_forecast": 0.02,
+       "slack": 0.0999696441181004,
+       "boost": 1.1669196323491633,
+       "boost_region": "interior"
+      },
+      "1": {
+       "raw_seq_id": 1,
+       "target_kind": "tbt",
+       "target": 0.04,
+       "due": 2319869.72741553,
+       "remaining_prefill_tokens": 0,
+       "nominal_chunk": 16,
+       "estimated_batches": 1,
+       "batch_forecast": 0.02,
+       "slack": 0.0199696440435946,
+       "boost": 1.500758898910135,
+       "boost_region": "interior"
+      }
+     },
+     "events": [
+      [
+       0,
+       5,
+       700
+      ],
+      [
+       1,
+       5,
+       701
+      ]
+     ]
+    }
+   ],
+   "forecast_errors": {
+    "next_token": [
+     {
+      "decision": 0,
+      "seq_id": 0,
+      "forecast_seconds": 0.06,
+      "observed_seconds": 0.005309950094670057,
+      "error_seconds": -0.05469004990532994,
+      "forecast_batches": 3,
+      "observed_batches": 3
+     },
+     {
+      "decision": 0,
+      "seq_id": 1,
+      "forecast_seconds": 0.06,
+      "observed_seconds": 0.005309950094670057,
+      "error_seconds": -0.05469004990532994,
+      "forecast_batches": 3,
+      "observed_batches": 3
+     },
+     {
+      "decision": 1,
+      "seq_id": 0,
+      "forecast_seconds": 0.04,
+      "observed_seconds": 0.0029586809687316418,
+      "error_seconds": -0.03704131903126836,
+      "forecast_batches": 2,
+      "observed_batches": 2
+     },
+     {
+      "decision": 1,
+      "seq_id": 1,
+      "forecast_seconds": 0.04,
+      "observed_seconds": 0.0029586809687316418,
+      "error_seconds": -0.03704131903126836,
+      "forecast_batches": 2,
+      "observed_batches": 2
+     },
+     {
+      "decision": 2,
+      "seq_id": 0,
+      "forecast_seconds": 0.02,
+      "observed_seconds": 0.001488999929279089,
+      "error_seconds": -0.01851100007072091,
+      "forecast_batches": 1,
+      "observed_batches": 1
+     },
+     {
+      "decision": 2,
+      "seq_id": 1,
+      "forecast_seconds": 0.02,
+      "observed_seconds": 0.001488999929279089,
+      "error_seconds": -0.01851100007072091,
+      "forecast_batches": 1,
+      "observed_batches": 1
+     },
+     {
+      "decision": 3,
+      "seq_id": 0,
+      "forecast_seconds": 0.02,
+      "observed_seconds": 0.001423381268978119,
+      "error_seconds": -0.01857661873102188,
+      "forecast_batches": 1,
+      "observed_batches": 1
+     },
+     {
+      "decision": 3,
+      "seq_id": 1,
+      "forecast_seconds": 0.02,
+      "observed_seconds": 0.001423381268978119,
+      "error_seconds": -0.01857661873102188,
+      "forecast_batches": 1,
+      "observed_batches": 1
+     },
+     {
+      "decision": 4,
+      "seq_id": 0,
+      "forecast_seconds": 0.02,
+      "observed_seconds": 0.0014110221527516842,
+      "error_seconds": -0.018588977847248316,
+      "forecast_batches": 1,
+      "observed_batches": 1
+     },
+     {
+      "decision": 4,
+      "seq_id": 1,
+      "forecast_seconds": 0.02,
+      "observed_seconds": 0.0014110221527516842,
+      "error_seconds": -0.018588977847248316,
+      "forecast_batches": 1,
+      "observed_batches": 1
+     },
+     {
+      "decision": 5,
+      "seq_id": 0,
+      "forecast_seconds": 0.02,
+      "observed_seconds": 0.001408168114721775,
+      "error_seconds": -0.018591831885278225,
+      "forecast_batches": 1,
+      "observed_batches": 1
+     },
+     {
+      "decision": 5,
+      "seq_id": 1,
+      "forecast_seconds": 0.02,
+      "observed_seconds": 0.001408168114721775,
+      "error_seconds": -0.018591831885278225,
+      "forecast_batches": 1,
+      "observed_batches": 1
+     },
+     {
+      "decision": 6,
+      "seq_id": 0,
+      "forecast_seconds": 0.02,
+      "observed_seconds": 0.0014305212534964085,
+      "error_seconds": -0.018569478746503592,
+      "forecast_batches": 1,
+      "observed_batches": 1
+     },
+     {
+      "decision": 6,
+      "seq_id": 1,
+      "forecast_seconds": 0.02,
+      "observed_seconds": 0.0014305212534964085,
+      "error_seconds": -0.018569478746503592,
+      "forecast_batches": 1,
+      "observed_batches": 1
+     }
+    ],
+    "batch_error_seconds": [
+     -0.017655862011015416,
+     -0.018550930060446263,
+     -0.0185080948099494,
+     -0.01857328413054347,
+     -0.01858585372567177,
+     -0.0185824478790164,
+     -0.018566463589668274
+    ],
+    "mean_batch_seconds": 0.0015681519705270017
+   },
+   "boost_regions": {
+    "ttft:interior": 6,
+    "tbt:interior": 8
+   },
+   "work": {
+    "relaxed31": {
+     "prefill_tokens": 31,
+     "repeated_prefill_tokens": 0,
+     "preemptions": 0,
+     "visible_tokens": 5,
+     "requested": 5,
+     "extra_outputs": 0,
+     "finished": true
+    },
+    "tight32": {
+     "prefill_tokens": 32,
+     "repeated_prefill_tokens": 0,
+     "preemptions": 0,
+     "visible_tokens": 5,
+     "requested": 5,
+     "extra_outputs": 0,
+     "finished": true
+    }
+   }
+  }
+ },
+ "metrics": {
+  "single_timed": {
+   "cutoff": 2319874.677188406,
+   "per_request": [
+    {
+     "name": "relaxed31",
+     "slo_class": "relaxed",
+     "ttft_target": 0.3,
+     "tbt_target": 0.12,
+     "events_within_cutoff": 5,
+     "finished_by_cutoff": true,
+     "ttft_status": "observed",
+     "ttft": 0.005888377781957388,
+     "ttft_miss": false,
+     "ttft_excess": 0.0,
+     "gaps": [
+      0.0014534960500895977,
+      0.0014408370479941368,
+      0.001444412861019373,
+      0.0014608772471547127
+     ],
+     "gap_misses": [
+      false,
+      false,
+      false,
+      false
+     ],
+     "gap_excess": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "name": "tight32",
+     "slo_class": "tight",
+     "ttft_target": 0.1,
+     "tbt_target": 0.04,
+     "events_within_cutoff": 5,
+     "finished_by_cutoff": true,
+     "ttft_status": "observed",
+     "ttft": 0.005888377781957388,
+     "ttft_miss": false,
+     "ttft_excess": 0.0,
+     "gaps": [
+      0.0014534960500895977,
+      0.0014408370479941368,
+      0.001444412861019373,
+      0.0014608772471547127
+     ],
+     "gap_misses": [
+      false,
+      false,
+      false,
+      false
+     ],
+     "gap_excess": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ]
+    }
+   ],
+   "by_class": {
+    "relaxed": {
+     "ttft": {
+      "cohort": 1,
+      "observed": 1,
+      "median": 0.005888377781957388,
+      "miss_rate": 0.0,
+      "miss_rate_bounds": null,
+      "mean_excess_observed": 0.0,
+      "known_missing_misses": 0,
+      "unresolved": 0,
+      "censored_excess_lower_bounds": []
+     },
+     "tbt": {
+      "observed_gaps": 4,
+      "miss_rate": 0.0,
+      "mean_excess": 0.0,
+      "p99": 0.0014608772471547127,
+      "streams_with_observed_gap": 1,
+      "streams_without_observed_gap": 0,
+      "share_streams_with_late_gap": 0.0,
+      "overdue_open_gaps": []
+     }
+    },
+    "tight": {
+     "ttft": {
+      "cohort": 1,
+      "observed": 1,
+      "median": 0.005888377781957388,
+      "miss_rate": 0.0,
+      "miss_rate_bounds": null,
+      "mean_excess_observed": 0.0,
+      "known_missing_misses": 0,
+      "unresolved": 0,
+      "censored_excess_lower_bounds": []
+     },
+     "tbt": {
+      "observed_gaps": 4,
+      "miss_rate": 0.0,
+      "mean_excess": 0.0,
+      "p99": 0.0014608772471547127,
+      "streams_with_observed_gap": 1,
+      "streams_without_observed_gap": 0,
+      "share_streams_with_late_gap": 0.0,
+      "overdue_open_gaps": []
+     }
+    }
+   },
+   "events_after_cutoff": []
+  }
+ },
+ "gates": {
+  "contended_decisions": 0,
+  "action_differences": 0,
+  "preemptions": 0,
+  "decisions": 0
+ }
+}

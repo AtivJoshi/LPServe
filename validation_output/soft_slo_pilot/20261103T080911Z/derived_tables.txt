@@ -1,0 +1,62 @@
+cpu_ample: validation_passed=True code_matches_frozen=True head=bcd6c93 settings_sha=8018a0022018 gates={'contended_decisions': 12, 'action_differences': 12, 'preemptions': 0, 'decisions': 72}
+cpu_pressure: validation_passed=True code_matches_frozen=True head=bcd6c93 settings_sha=8018a0022018 gates={'contended_decisions': 0, 'action_differences': 0, 'preemptions': 4, 'decisions': 44}
+cpu_pressure_control: validation_passed=True code_matches_frozen=True head=bcd6c93 settings_sha=8018a0022018 gates={'contended_decisions': 0, 'action_differences': 0, 'preemptions': 0, 'decisions': 0}
+gpu_ample: validation_passed=True code_matches_frozen=True head=bcd6c93 settings_sha=8018a0022018 gates={'contended_decisions': 44, 'action_differences': 18, 'preemptions': 0, 'decisions': 72}
+gpu_pressure: validation_passed=True code_matches_frozen=True head=bcd6c93 settings_sha=8018a0022018 gates={'contended_decisions': 0, 'action_differences': 0, 'preemptions': 4, 'decisions': 44}
+gpu_pressure_control: validation_passed=True code_matches_frozen=True head=bcd6c93 settings_sha=8018a0022018 gates={'contended_decisions': 0, 'action_differences': 0, 'preemptions': 0, 'decisions': 0}
+gpu_smoke: validation_passed=True code_matches_frozen=True head=bcd6c93 settings_sha=4dc53ca94d69 gates={'contended_decisions': 0, 'action_differences': 0, 'preemptions': 0, 'decisions': 0}
+
+GPU identity: NVIDIA A16 cuda:0 0, NVIDIA A16, GPU-c1783933-ac1a-85f1-4c50-56eb59884cf1, 595.91.07, 15356 MiB load_format auto torch.float16 params 1100048384
+weights match file: {'model.layers.0.input_layernorm.weight': True, 'model.norm.weight': True} cache [15613] -> 32 fit {'max_blocks_without_preemption': 10, 'pool': 32, 'max_context': 39, 'max_model_len': 64} init s 31.0
+
+GPU ample metrics (ms)
+trial            class    TTFT obs  med   miss  mexcess | TBT gaps miss mexc  p99  late-share noGap overdueOpen | afterCutoff
+warmup0_untimed  relaxed  2/2   162.4   0.0    0.0 |  10 0.00  0.0  22.2 0.00 0 0 | 0
+warmup0_untimed  tight    2/2   182.8   1.0   82.8 |  10 0.00  0.0  20.8 0.00 0 0 | 0
+warmup1_timed    relaxed  2/2   200.3   0.0    0.0 |  10 0.00  0.0  25.1 0.00 0 0 | 0
+warmup1_timed    tight    2/2   122.7   0.5   40.6 |  10 0.00  0.0  20.9 0.00 0 0 | 0
+trial0_timed     relaxed  2/2   201.2   0.0    0.0 |  10 0.00  0.0  19.2 0.00 0 0 | 0
+trial0_timed     tight    2/2   123.0   0.5   40.9 |  10 0.00  0.0  21.0 0.00 0 0 | 0
+trial1_untimed   relaxed  2/2   140.9   0.0    0.0 |  10 0.00  0.0  20.3 0.00 0 0 | 0
+trial1_untimed   tight    2/2   160.5   1.0   60.5 |  10 0.00  0.0  20.5 0.00 0 0 | 0
+trial2_untimed   relaxed  2/2   141.3   0.0    0.0 |  10 0.00  0.0  20.5 0.00 0 0 | 0
+trial2_untimed   tight    2/2   161.0   1.0   61.0 |  10 0.00  0.0  20.6 0.00 0 0 | 0
+trial3_timed     relaxed  2/2   201.0   0.0    0.0 |  10 0.00  0.0  18.9 0.00 0 0 | 0
+trial3_timed     tight    2/2   123.3   0.5   40.9 |  10 0.00  0.0  20.9 0.00 0 0 | 0
+per-request TTFT ms:
+  warmup0_untimed {'relaxed17': '84.6', 'tight17': '125.4', 'relaxed33': '240.2', 'tight33': '240.2'}
+  warmup1_timed {'relaxed17': '145.2', 'tight17': '64.1', 'relaxed33': '255.4', 'tight33': '181.3'}
+  trial0_timed {'relaxed17': '145.5', 'tight17': '64.2', 'relaxed33': '256.9', 'tight33': '181.7'}
+  trial1_untimed {'relaxed17': '64.4', 'tight17': '103.5', 'relaxed33': '217.5', 'tight33': '217.5'}
+  trial2_untimed {'relaxed17': '64.6', 'tight17': '104.0', 'relaxed33': '218.0', 'tight33': '218.0'}
+  trial3_timed {'relaxed17': '145.8', 'tight17': '64.7', 'relaxed33': '256.1', 'tight33': '181.8'}
+
+Diagnostics:
+ warmup0_untimed  decisions=17 contended=10 diffs=6 boost={'ttft:interior': 26, 'tbt:interior': 20, 'ttft:cap': 4} next-token err ms mean 29.3 [-3.0, 138.4] batch ms mean 20.64 err max 21.2
+ warmup1_timed    decisions=19 contended=12 diffs=3 boost={'ttft:interior': 32, 'tbt:interior': 20} next-token err ms mean 35.4 [-2.9, 172.9] batch ms mean 19.69 err max 5.1
+ trial0_timed     decisions=19 contended=12 diffs=3 boost={'ttft:interior': 32, 'tbt:interior': 20} next-token err ms mean 35.5 [-2.8, 174.3] batch ms mean 19.31 err max 2.1
+ trial1_untimed   decisions=17 contended=10 diffs=6 boost={'ttft:interior': 27, 'tbt:interior': 20, 'ttft:cap': 3} next-token err ms mean 27.7 [-2.9, 134.8] batch ms mean 19.28 err max 2.0
+ trial2_untimed   decisions=17 contended=10 diffs=6 boost={'ttft:interior': 27, 'tbt:interior': 20, 'ttft:cap': 3} next-token err ms mean 27.8 [-3.0, 135.2] batch ms mean 19.32 err max 2.2
+ trial3_timed     decisions=19 contended=12 diffs=3 boost={'ttft:interior': 32, 'tbt:interior': 20} next-token err ms mean 35.2 [-3.1, 173.4] batch ms mean 19.24 err max 2.2
+
+Same-state PH1 vs exact (38 solves on trial0_timed snapshots): statuses [('SchedulingSuccess', 'IntegerOptimum')]; action mismatches 6; max |extraction_loss| 6.21e-11; max relaxation_gap 6.21e-11
+flip example: {'timed': ({'0': 1.3333333333333335, '1': 1.5}, {'1': 'prefill:12'}, {'1': 'prefill:12'}), 'untimed': ({'0': 1.0, '1': 0.75}, {'0': 'prefill:16'}, {'0': 'prefill:16'})}
+
+Pressure witness (GPU):
+ gpu_pressure/trial0_timed: preempted [(4, 'relaxed31')] tokens {'relaxed31': [29893, 29889, 13, 29966, 29989], 'tight32': [29872, 310, 278]} gaps_ms {'relaxed31': [18.2, 93.4, 17.8, 18.2], 'tight32': [18.2, 18.7]} work {'relaxed31': (33, 2), 'tight32': (0, 0)}
+   rebuild d5 scheduled [[4, 16]] last_visible-t0 0.0812
+   rebuild d6 scheduled [[4, 16]] last_visible-t0 0.0812
+   rebuild d7 scheduled [[4, 1]] last_visible-t0 0.0812
+ gpu_pressure/trial1_untimed: preempted [(4, 'relaxed31')] tokens {'relaxed31': [29893, 29889, 13, 29966, 29989], 'tight32': [29872, 310, 278]} gaps_ms {'relaxed31': [18.6, 92.7, 18.2, 18.3], 'tight32': [18.6, 18.6]} work {'relaxed31': (33, 2), 'tight32': (0, 0)}
+   rebuild d5 scheduled [[6, 16]] last_visible-t0 0.0813
+   rebuild d6 scheduled [[6, 16]] last_visible-t0 0.0813
+   rebuild d7 scheduled [[6, 1]] last_visible-t0 0.0813
+ gpu_pressure/trial2_untimed: preempted [(4, 'relaxed31')] tokens {'relaxed31': [29893, 29889, 13, 29966, 29989], 'tight32': [29872, 310, 278]} gaps_ms {'relaxed31': [18.1, 91.5, 17.7, 17.9], 'tight32': [18.1, 18.1]} work {'relaxed31': (33, 2), 'tight32': (0, 0)}
+   rebuild d5 scheduled [[8, 16]] last_visible-t0 0.0804
+   rebuild d6 scheduled [[8, 16]] last_visible-t0 0.0804
+   rebuild d7 scheduled [[8, 1]] last_visible-t0 0.0804
+ gpu_pressure/trial3_timed: preempted [(4, 'relaxed31')] tokens {'relaxed31': [29893, 29889, 13, 29966, 29989], 'tight32': [29872, 310, 278]} gaps_ms {'relaxed31': [18.1, 92.3, 17.8, 17.7], 'tight32': [18.1, 18.2]} work {'relaxed31': (33, 2), 'tight32': (0, 0)}
+   rebuild d5 scheduled [[10, 16]] last_visible-t0 0.0802
+   rebuild d6 scheduled [[10, 16]] last_visible-t0 0.0802
+   rebuild d7 scheduled [[10, 1]] last_visible-t0 0.0802
+ gpu_pressure_control/single_timed: preempted [] tokens {'relaxed31': [29893, 29889, 13, 29966, 29989], 'tight32': [29872, 310, 278, 29871, 29896]} gaps_ms {'relaxed31': [18.9, 18.5, 19.2, 18.6], 'tight32': [18.9, 18.5, 19.2, 18.6]} work {'relaxed31': (0, 0), 'tight32': (0, 0)}

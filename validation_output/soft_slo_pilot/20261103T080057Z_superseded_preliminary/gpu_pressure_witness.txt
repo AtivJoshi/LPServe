@@ -1,0 +1,39 @@
+gates {'contended_decisions': 0, 'action_differences': 0, 'preemptions': 4, 'decisions': 44} fit {'max_blocks_without_preemption': 6, 'pool': 5, 'max_context': 35, 'max_model_len': 64} cache [15612] 5
+trial0_timed
+ d 0  22.7ms free=5 res=[] wait=[4, 5] act={'4': 'prefill:16', '5': 'prefill:16'} f={'4': ('ttft', 1.2, 31), '5': ('ttft', 1.6, 32)} ev=[]
+ d 1  20.8ms free=1 res=[4, 5] wait=[] act={'4': 'prefill:15', '5': 'prefill:16'} f={'4': ('ttft', 1.21, 15), '5': ('ttft', 1.63, 16)} ev=[]
+ d 2  18.8ms free=1 res=[4, 5] wait=[] act={'4': 'decode', '5': 'decode'} f={'4': ('ttft', 1.21, 0), '5': ('ttft', 1.64, 0)} ev=[[4, 1], [5, 1]]
+ d 3  18.4ms free=1 res=[4, 5] wait=[] act={'4': 'decode', '5': 'decode'} f={'4': ('tbt', 1.17, 0), '5': ('tbt', 1.5, 0)} ev=[[4, 2], [5, 2]]
+ d 4  18.3ms free=0 res=[4, 5] wait=[] act={'4': 'preempt', '5': 'decode'} f={'4': ('tbt', 1.17, 0), '5': ('tbt', 1.5, 0)} ev=[[5, 3]]
+ d 5  19.4ms free=5 res=[] wait=[4] act={'4': 'prefill:16'} f={'4': ('tbt', 1.82, 33)} ev=[]
+ d 6  19.2ms free=2 res=[4] wait=[] act={'4': 'prefill:16'} f={'4': ('tbt', 1.82, 17)} ev=[]
+ d 7  17.7ms free=2 res=[4] wait=[] act={'4': 'prefill:1'} f={'4': ('tbt', 1.81, 1)} ev=[]
+ d 8  18.2ms free=2 res=[4] wait=[] act={'4': 'decode'} f={'4': ('tbt', 1.79, 0)} ev=[[4, 3]]
+ d 9  18.2ms free=2 res=[4] wait=[] act={'4': 'decode'} f={'4': ('tbt', 1.17, 0)} ev=[[4, 4]]
+ d10  18.0ms free=2 res=[4] wait=[] act={'4': 'decode'} f={'4': ('tbt', 1.17, 0)} ev=[[4, 5]]
+ work {'relaxed31': {'prefill_tokens': 64, 'repeated_prefill_tokens': 33, 'preemptions': 1, 'visible_tokens': 5, 'requested': 3, 'extra_outputs': 2, 'finished': True}, 'tight32': {'prefill_tokens': 32, 'repeated_prefill_tokens': 0, 'preemptions': 0, 'visible_tokens': 3, 'requested': 3, 'extra_outputs': 0, 'finished': True}}
+ victim 4 gaps ms [18.5, 92.9, 18.2, 18.0] tokens [29893, 29889, 13, 29966, 29989]
+ last_visible by decision [(0, None), (1, None), (2, None), (3, 0.0628), (4, 0.0812), (5, 0.0812), (6, 0.0812), (7, 0.0812), (8, 0.0812), (9, 0.1742), (10, 0.1924)]
+   relaxed31 ttft ms 62.8 gaps ms [18.5, 92.9, 18.2, 18.0] late [False, False, False, False]
+   tight32 ttft ms 62.8 gaps ms [18.5, 18.4] late [False, False]
+trial1_untimed
+ d 0  22.5ms free=5 res=[] wait=[6, 7] act={'6': 'prefill:16', '7': 'prefill:16'} f={'6': ('ttft', 1.2, 31), '7': ('ttft', 1.6, 32)} ev=[]
+ d 1  21.5ms free=1 res=[6, 7] wait=[] act={'6': 'prefill:15', '7': 'prefill:16'} f={'6': ('ttft', 1.21, 15), '7': ('ttft', 1.63, 16)} ev=[]
+ d 2  18.7ms free=1 res=[6, 7] wait=[] act={'6': 'decode', '7': 'decode'} f={'6': ('ttft', 1.21, 0), '7': ('ttft', 1.64, 0)} ev=[[6, 1], [7, 1]]
+ d 3  18.1ms free=1 res=[6, 7] wait=[] act={'6': 'decode', '7': 'decode'} f={'6': ('tbt', 1.17, 0), '7': ('tbt', 1.5, 0)} ev=[[6, 2], [7, 2]]
+ d 4  18.5ms free=0 res=[6, 7] wait=[] act={'6': 'preempt', '7': 'decode'} f={'6': ('tbt', 1.17, 0), '7': ('tbt', 1.5, 0)} ev=[[7, 3]]
+ d 5  19.3ms free=5 res=[] wait=[6] act={'6': 'prefill:16'} f={'6': ('tbt', 1.82, 33)} ev=[]
+ d 6  19.0ms free=2 res=[6] wait=[] act={'6': 'prefill:16'} f={'6': ('tbt', 1.82, 17)} ev=[]
+ d 7  18.2ms free=2 res=[6] wait=[] act={'6': 'prefill:1'} f={'6': ('tbt', 1.81, 1)} ev=[]
+ d 8  18.1ms free=2 res=[6] wait=[] act={'6': 'decode'} f={'6': ('tbt', 1.79, 0)} ev=[[6, 3]]
+ d 9  17.8ms free=2 res=[6] wait=[] act={'6': 'decode'} f={'6': ('tbt', 1.17, 0)} ev=[[6, 4]]
+ d10  18.3ms free=2 res=[6] wait=[] act={'6': 'decode'} f={'6': ('tbt', 1.17, 0)} ev=[[6, 5]]
+ work {'relaxed31': {'prefill_tokens': 64, 'repeated_prefill_tokens': 33, 'preemptions': 1, 'visible_tokens': 5, 'requested': 3, 'extra_outputs': 2, 'finished': True}, 'tight32': {'prefill_tokens': 32, 'repeated_prefill_tokens': 0, 'preemptions': 0, 'visible_tokens': 3, 'requested': 3, 'extra_outputs': 0, 'finished': True}}
+ victim 6 gaps ms [18.1, 93.2, 17.8, 18.4] tokens [29893, 29889, 13, 29966, 29989]
+ last_visible by decision [(0, None), (1, None), (2, None), (3, 0.0631), (4, 0.0812), (5, 0.0812), (6, 0.0812), (7, 0.0812), (8, 0.0812), (9, 0.1744), (10, 0.1922)]
+   relaxed31 ttft ms 63.1 gaps ms [18.1, 93.2, 17.8, 18.4] late [False, False, False, False]
+   tight32 ttft ms 63.1 gaps ms [18.1, 18.5] late [False, False]
+continuity control (no preemption, pool 8):
+  gpu_pressure_control/single_timed: preemptions=0 tokens={'relaxed31': [29893, 29889, 13, 29966, 29989], 'tight32': [29872, 310, 278, 29871, 29896]}
+  gpu_pressure/trial0_timed: preemptions=1 tokens={'relaxed31': [29893, 29889, 13, 29966, 29989], 'tight32': [29872, 310, 278]}
+  gpu_pressure/trial1_untimed: preemptions=1 tokens={'relaxed31': [29893, 29889, 13, 29966, 29989], 'tight32': [29872, 310, 278]}

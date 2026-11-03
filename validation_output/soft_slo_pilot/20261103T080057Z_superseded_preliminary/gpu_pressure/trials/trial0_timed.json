@@ -1,0 +1,3918 @@
+{
+ "label": "trial0_timed",
+ "case": "pressure",
+ "policy": "timed",
+ "cohort": [
+  {
+   "seq_id": 4,
+   "name": "relaxed31",
+   "slo_class": "relaxed",
+   "ttft_target": 0.3,
+   "tbt_target": 0.12,
+   "priority": 1,
+   "prompt_len": 31,
+   "max_tokens": 3,
+   "arrival_time": 2319608.666719723
+  },
+  {
+   "seq_id": 5,
+   "name": "tight32",
+   "slo_class": "tight",
+   "ttft_target": 0.1,
+   "tbt_target": 0.04,
+   "priority": 1,
+   "prompt_len": 32,
+   "max_tokens": 3,
+   "arrival_time": 2319608.666719723
+  }
+ ],
+ "t0": 2319608.666719723,
+ "cutoff": 2319613.666719723,
+ "registration_start": 2319608.166719723,
+ "registration_end": 2319608.168361175,
+ "stop_reason": "drained",
+ "failure": null,
+ "probe_failure": null,
+ "failed_step": null,
+ "steps": [
+  {
+   "index": 0,
+   "started": 2319608.667107392,
+   "returned": 2319608.689816082,
+   "timing_inputs": [
+    {
+     "4": {
+      "raw_seq_id": 4,
+      "slo_class": "relaxed",
+      "ttft_target": 0.3,
+      "tbt_target": 0.12,
+      "priority": 1,
+      "arrival_time": 2319608.666719723,
+      "last_visible": null
+     },
+     "5": {
+      "raw_seq_id": 5,
+      "slo_class": "tight",
+      "ttft_target": 0.1,
+      "tbt_target": 0.04,
+      "priority": 1,
+      "arrival_time": 2319608.666719723,
+      "last_visible": null
+     }
+    }
+   ],
+   "snapshots": [
+    {
+     "snapshot_id": "22",
+     "snapshot_time": 2319608.667131869,
+     "scheduler_iteration_id": 22,
+     "num_pipeline_stages": 1,
+     "num_running_batches": 0,
+     "resident_count": 0,
+     "resident_limit": 2,
+     "max_model_len": 64,
+     "block_size": 16,
+     "total_blocks": 5,
+     "free_physical_blocks": 5,
+     "watermark_blocks": 0,
+     "requests": [
+      {
+       "raw_seq_id": 4,
+       "request_id": "4",
+       "order_key": [
+        4
+       ],
+       "ownership": "waiting",
+       "queue_position": 0,
+       "status": "WAITING",
+       "arrival_time": 2319608.666719723,
+       "prompt_len": 31,
+       "prompt_tokens_processed": 0,
+       "prompt_tokens_remaining": 31,
+       "prompt_processing_finished": false,
+       "output_len": 0,
+       "context_len": 31,
+       "logical_block_count": 2,
+       "physical_block_count": 0,
+       "prefill_eligible": true,
+       "decode_eligible": false,
+       "preemption_eligible": false,
+       "prefill_fixed_charge": 2,
+       "decode_demand": 0,
+       "preemption_recovery": 0,
+       "service_rank": 0,
+       "victim_rank": null,
+       "utility": {
+        "decode_utility": 0.0,
+        "prefill_token_utility": 0.07508586380863562,
+        "preemption_penalty": 0.0
+       }
+      },
+      {
+       "raw_seq_id": 5,
+       "request_id": "5",
+       "order_key": [
+        5
+       ],
+       "ownership": "waiting",
+       "queue_position": 1,
+       "status": "WAITING",
+       "arrival_time": 2319608.666719723,
+       "prompt_len": 32,
+       "prompt_tokens_processed": 0,
+       "prompt_tokens_remaining": 32,
+       "prompt_processing_finished": false,
+       "output_len": 0,
+       "context_len": 32,
+       "logical_block_count": 2,
+       "physical_block_count": 0,
+       "prefill_eligible": true,
+       "decode_eligible": false,
+       "preemption_eligible": false,
+       "prefill_fixed_charge": 2,
+       "decode_demand": 0,
+       "preemption_recovery": 0,
+       "service_rank": 1,
+       "victim_rank": null,
+       "utility": {
+        "decode_utility": 0.0,
+        "prefill_token_utility": 0.10025759125128389,
+        "preemption_penalty": 0.0
+       }
+      }
+     ],
+     "running_order": [],
+     "arrived_waiting_order": [
+      4,
+      5
+     ],
+     "numerical_policy": {
+      "policy_id": "lp_relaxation_mvp_v1",
+      "feasibility_tol": 1e-07,
+      "integrality_tol": 1e-06,
+      "objective_abs_tol": 1e-09,
+      "objective_rel_tol": 1e-09
+     },
+     "lp_problem": {
+      "requests": [
+       {
+        "request_id": "4",
+        "order_key": [
+         4
+        ],
+        "resident": false,
+        "prompt_tokens_remaining": 31,
+        "prefill_upper_bound": 16,
+        "prefill_eligible": true,
+        "decode_eligible": false,
+        "preemption_eligible": false,
+        "prefill_fixed_charge": 2,
+        "decode_demand": 0,
+        "preemption_recovery": 0,
+        "decode_utility": 0.0,
+        "prefill_token_utility": 0.07508586380863562,
+        "preemption_penalty": 0.0,
+        "service_rank": 0,
+        "victim_rank": null
+       },
+       {
+        "request_id": "5",
+        "order_key": [
+         5
+        ],
+        "resident": false,
+        "prompt_tokens_remaining": 32,
+        "prefill_upper_bound": 16,
+        "prefill_eligible": true,
+        "decode_eligible": false,
+        "preemption_eligible": false,
+        "prefill_fixed_charge": 2,
+        "decode_demand": 0,
+        "preemption_recovery": 0,
+        "decode_utility": 0.0,
+        "prefill_token_utility": 0.10025759125128389,
+        "preemption_penalty": 0.0,
+        "service_rank": 1,
+        "victim_rank": null
+       }
+      ],
+      "legal_preemption_ids": [],
+      "b_max": 32,
+      "c_max": 16,
+      "s_max": 2,
+      "resident_limit": 2,
+      "resident_count": 0,
+      "m_free": 5,
+      "admission_watermark": 0,
+      "problem_id": "22",
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      }
+     }
+    }
+   ],
+   "results": [
+    {
+     "problem_id": "22",
+     "plan": {
+      "problem_id": "22",
+      "decisions": [
+       {
+        "request_id": "4",
+        "order_key": [
+         4
+        ],
+        "prefill_tokens": 16,
+        "decode": 0,
+        "preempt": 0,
+        "prefill_indicator": 1
+       },
+       {
+        "request_id": "5",
+        "order_key": [
+         5
+        ],
+        "prefill_tokens": 16,
+        "decode": 0,
+        "preempt": 0,
+        "prefill_indicator": 1
+       }
+      ],
+      "victim_order": [],
+      "execution_order": [
+       "4",
+       "5"
+      ],
+      "token_use": 32,
+      "action_count": 2,
+      "resident_count_after": 2,
+      "free_blocks_before_decodes": 1,
+      "decode_demand": 0,
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      },
+      "objective": 2.805495280958712,
+      "extraction": {
+       "candidate_order": [
+        "4",
+        "5"
+       ],
+       "victim_candidate_order": [],
+       "accepted_order": [
+        "4",
+        "5"
+       ],
+       "trial_count": 2,
+       "failed_trial_count": 0,
+       "declined_optional_trial_count": 0,
+       "skipped_candidate_count": 0,
+       "fractional_request_count": 0
+      }
+     },
+     "relaxed": {
+      "decisions": [
+       {
+        "request_id": "4",
+        "x": 16.0,
+        "y": 0.0,
+        "prefill_indicator": 1.0,
+        "z": 0.0
+       },
+       {
+        "request_id": "5",
+        "x": 16.0,
+        "y": 0.0,
+        "prefill_indicator": 1.0,
+        "z": 0.0
+       }
+      ],
+      "raw_vector": [
+       16.0,
+       16.0,
+       0.0,
+       0.0,
+       1.0,
+       1.0,
+       0.0,
+       0.0
+      ],
+      "projection_count": 0,
+      "worst_raw_violation": 0.0,
+      "worst_normalized_violation": 0.0,
+      "normalized_objective": 2.805495280958712
+     },
+     "solver": {
+      "category": "optimal_candidate",
+      "reason": "optimal candidate",
+      "diagnostics": {
+       "solver": "scipy.optimize.linprog",
+       "scipy_version": "1.15.3",
+       "method": "highs-ds",
+       "options": [
+        [
+         "presolve",
+         true
+        ]
+       ],
+       "raw_status": 0,
+       "raw_success": true,
+       "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+       "iterations": 0,
+       "vector_present": true,
+       "vector_length": 8,
+       "expected_vector_length": 8
+      },
+      "raw_vector": [
+       16.0,
+       16.0,
+       0.0,
+       0.0,
+       1.0,
+       1.0,
+       0.0,
+       0.0
+      ],
+      "reported_objective_min": -2.805495280958712,
+      "recomputed_objective_min": -2.805495280958712
+     }
+    }
+   ],
+   "executions": [
+    {
+     "id": 22,
+     "scheduled": [
+      [
+       4,
+       16
+      ],
+      [
+       5,
+       16
+      ]
+     ],
+     "ignored_seq_ids": [],
+     "preempted_seq_ids": []
+    }
+   ],
+   "scheduled": [
+    [
+     4,
+     16
+    ],
+    [
+     5,
+     16
+    ]
+   ],
+   "preempted": [],
+   "sampler": [
+    [
+     4,
+     601
+    ],
+    [
+     5,
+     344
+    ]
+   ],
+   "request_outputs": [
+    [
+     4,
+     [],
+     false
+    ],
+    [
+     5,
+     [],
+     false
+    ]
+   ],
+   "events": []
+  },
+  {
+   "index": 1,
+   "started": 2319608.689850124,
+   "returned": 2319608.710657027,
+   "timing_inputs": [
+    {
+     "4": {
+      "raw_seq_id": 4,
+      "slo_class": "relaxed",
+      "ttft_target": 0.3,
+      "tbt_target": 0.12,
+      "priority": 1,
+      "arrival_time": 2319608.666719723,
+      "last_visible": null
+     },
+     "5": {
+      "raw_seq_id": 5,
+      "slo_class": "tight",
+      "ttft_target": 0.1,
+      "tbt_target": 0.04,
+      "priority": 1,
+      "arrival_time": 2319608.666719723,
+      "last_visible": null
+     }
+    }
+   ],
+   "snapshots": [
+    {
+     "snapshot_id": "23",
+     "snapshot_time": 2319608.689856153,
+     "scheduler_iteration_id": 23,
+     "num_pipeline_stages": 1,
+     "num_running_batches": 0,
+     "resident_count": 2,
+     "resident_limit": 2,
+     "max_model_len": 64,
+     "block_size": 16,
+     "total_blocks": 5,
+     "free_physical_blocks": 1,
+     "watermark_blocks": 0,
+     "requests": [
+      {
+       "raw_seq_id": 4,
+       "request_id": "4",
+       "order_key": [
+        4
+       ],
+       "ownership": "running",
+       "queue_position": 0,
+       "status": "PAUSED",
+       "arrival_time": 2319608.666719723,
+       "prompt_len": 31,
+       "prompt_tokens_processed": 16,
+       "prompt_tokens_remaining": 15,
+       "prompt_processing_finished": false,
+       "output_len": 0,
+       "context_len": 31,
+       "logical_block_count": 2,
+       "physical_block_count": 2,
+       "prefill_eligible": true,
+       "decode_eligible": false,
+       "preemption_eligible": true,
+       "prefill_fixed_charge": 0,
+       "decode_demand": 0,
+       "preemption_recovery": 2,
+       "service_rank": 0,
+       "victim_rank": 1,
+       "utility": {
+        "decode_utility": 0.0,
+        "prefill_token_utility": 0.07565342294595515,
+        "preemption_penalty": 1.0
+       }
+      },
+      {
+       "raw_seq_id": 5,
+       "request_id": "5",
+       "order_key": [
+        5
+       ],
+       "ownership": "running",
+       "queue_position": 1,
+       "status": "PAUSED",
+       "arrival_time": 2319608.666719723,
+       "prompt_len": 32,
+       "prompt_tokens_processed": 16,
+       "prompt_tokens_remaining": 16,
+       "prompt_processing_finished": false,
+       "output_len": 0,
+       "context_len": 32,
+       "logical_block_count": 2,
+       "physical_block_count": 2,
+       "prefill_eligible": true,
+       "decode_eligible": false,
+       "preemption_eligible": true,
+       "prefill_fixed_charge": 0,
+       "decode_demand": 0,
+       "preemption_recovery": 2,
+       "service_rank": 1,
+       "victim_rank": 0,
+       "utility": {
+        "decode_utility": 0.0,
+        "prefill_token_utility": 0.10196026866324247,
+        "preemption_penalty": 1.0
+       }
+      }
+     ],
+     "running_order": [
+      4,
+      5
+     ],
+     "arrived_waiting_order": [],
+     "numerical_policy": {
+      "policy_id": "lp_relaxation_mvp_v1",
+      "feasibility_tol": 1e-07,
+      "integrality_tol": 1e-06,
+      "objective_abs_tol": 1e-09,
+      "objective_rel_tol": 1e-09
+     },
+     "lp_problem": {
+      "requests": [
+       {
+        "request_id": "4",
+        "order_key": [
+         4
+        ],
+        "resident": true,
+        "prompt_tokens_remaining": 15,
+        "prefill_upper_bound": 15,
+        "prefill_eligible": true,
+        "decode_eligible": false,
+        "preemption_eligible": true,
+        "prefill_fixed_charge": 0,
+        "decode_demand": 0,
+        "preemption_recovery": 2,
+        "decode_utility": 0.0,
+        "prefill_token_utility": 0.07565342294595515,
+        "preemption_penalty": 1.0,
+        "service_rank": 0,
+        "victim_rank": 1
+       },
+       {
+        "request_id": "5",
+        "order_key": [
+         5
+        ],
+        "resident": true,
+        "prompt_tokens_remaining": 16,
+        "prefill_upper_bound": 16,
+        "prefill_eligible": true,
+        "decode_eligible": false,
+        "preemption_eligible": true,
+        "prefill_fixed_charge": 0,
+        "decode_demand": 0,
+        "preemption_recovery": 2,
+        "decode_utility": 0.0,
+        "prefill_token_utility": 0.10196026866324247,
+        "preemption_penalty": 1.0,
+        "service_rank": 1,
+        "victim_rank": 0
+       }
+      ],
+      "legal_preemption_ids": [
+       "4",
+       "5"
+      ],
+      "b_max": 32,
+      "c_max": 16,
+      "s_max": 2,
+      "resident_limit": 2,
+      "resident_count": 2,
+      "m_free": 1,
+      "admission_watermark": 0,
+      "problem_id": "23",
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      }
+     }
+    }
+   ],
+   "results": [
+    {
+     "problem_id": "23",
+     "plan": {
+      "problem_id": "23",
+      "decisions": [
+       {
+        "request_id": "4",
+        "order_key": [
+         4
+        ],
+        "prefill_tokens": 15,
+        "decode": 0,
+        "preempt": 0,
+        "prefill_indicator": 1
+       },
+       {
+        "request_id": "5",
+        "order_key": [
+         5
+        ],
+        "prefill_tokens": 16,
+        "decode": 0,
+        "preempt": 0,
+        "prefill_indicator": 1
+       }
+      ],
+      "victim_order": [],
+      "execution_order": [
+       "4",
+       "5"
+      ],
+      "token_use": 31,
+      "action_count": 2,
+      "resident_count_after": 2,
+      "free_blocks_before_decodes": 1,
+      "decode_demand": 0,
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      },
+      "objective": 2.766165642801207,
+      "extraction": {
+       "candidate_order": [
+        "4",
+        "5"
+       ],
+       "victim_candidate_order": [
+        "5",
+        "4"
+       ],
+       "accepted_order": [
+        "4",
+        "5"
+       ],
+       "trial_count": 2,
+       "failed_trial_count": 0,
+       "declined_optional_trial_count": 0,
+       "skipped_candidate_count": 0,
+       "fractional_request_count": 0
+      }
+     },
+     "relaxed": {
+      "decisions": [
+       {
+        "request_id": "4",
+        "x": 15.0,
+        "y": 0.0,
+        "prefill_indicator": 1.0,
+        "z": 0.0
+       },
+       {
+        "request_id": "5",
+        "x": 16.0,
+        "y": 0.0,
+        "prefill_indicator": 1.0,
+        "z": 0.0
+       }
+      ],
+      "raw_vector": [
+       15.0,
+       16.0,
+       0.0,
+       0.0,
+       1.0,
+       1.0,
+       0.0,
+       0.0
+      ],
+      "projection_count": 0,
+      "worst_raw_violation": 0.0,
+      "worst_normalized_violation": 0.0,
+      "normalized_objective": 2.766165642801207
+     },
+     "solver": {
+      "category": "optimal_candidate",
+      "reason": "optimal candidate",
+      "diagnostics": {
+       "solver": "scipy.optimize.linprog",
+       "scipy_version": "1.15.3",
+       "method": "highs-ds",
+       "options": [
+        [
+         "presolve",
+         true
+        ]
+       ],
+       "raw_status": 0,
+       "raw_success": true,
+       "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+       "iterations": 0,
+       "vector_present": true,
+       "vector_length": 8,
+       "expected_vector_length": 8
+      },
+      "raw_vector": [
+       15.0,
+       16.0,
+       0.0,
+       0.0,
+       1.0,
+       1.0,
+       0.0,
+       0.0
+      ],
+      "reported_objective_min": -2.766165642801207,
+      "recomputed_objective_min": -2.766165642801207
+     }
+    }
+   ],
+   "executions": [
+    {
+     "id": 23,
+     "scheduled": [
+      [
+       4,
+       15
+      ],
+      [
+       5,
+       16
+      ]
+     ],
+     "ignored_seq_ids": [],
+     "preempted_seq_ids": []
+    }
+   ],
+   "scheduled": [
+    [
+     4,
+     15
+    ],
+    [
+     5,
+     16
+    ]
+   ],
+   "preempted": [],
+   "sampler": [
+    [
+     4,
+     29893
+    ],
+    [
+     5,
+     29872
+    ]
+   ],
+   "request_outputs": [
+    [
+     4,
+     [],
+     false
+    ],
+    [
+     5,
+     [],
+     false
+    ]
+   ],
+   "events": []
+  },
+  {
+   "index": 2,
+   "started": 2319608.710682786,
+   "returned": 2319608.729484306,
+   "timing_inputs": [
+    {
+     "4": {
+      "raw_seq_id": 4,
+      "slo_class": "relaxed",
+      "ttft_target": 0.3,
+      "tbt_target": 0.12,
+      "priority": 1,
+      "arrival_time": 2319608.666719723,
+      "last_visible": null
+     },
+     "5": {
+      "raw_seq_id": 5,
+      "slo_class": "tight",
+      "ttft_target": 0.1,
+      "tbt_target": 0.04,
+      "priority": 1,
+      "arrival_time": 2319608.666719723,
+      "last_visible": null
+     }
+    }
+   ],
+   "snapshots": [
+    {
+     "snapshot_id": "24",
+     "snapshot_time": 2319608.710688926,
+     "scheduler_iteration_id": 24,
+     "num_pipeline_stages": 1,
+     "num_running_batches": 0,
+     "resident_count": 2,
+     "resident_limit": 2,
+     "max_model_len": 64,
+     "block_size": 16,
+     "total_blocks": 5,
+     "free_physical_blocks": 1,
+     "watermark_blocks": 0,
+     "requests": [
+      {
+       "raw_seq_id": 4,
+       "request_id": "4",
+       "order_key": [
+        4
+       ],
+       "ownership": "running",
+       "queue_position": 0,
+       "status": "PAUSED",
+       "arrival_time": 2319608.666719723,
+       "prompt_len": 31,
+       "prompt_tokens_processed": 31,
+       "prompt_tokens_remaining": 0,
+       "prompt_processing_finished": true,
+       "output_len": 0,
+       "context_len": 31,
+       "logical_block_count": 2,
+       "physical_block_count": 2,
+       "prefill_eligible": false,
+       "decode_eligible": true,
+       "preemption_eligible": true,
+       "prefill_fixed_charge": 0,
+       "decode_demand": 0,
+       "preemption_recovery": 2,
+       "service_rank": 0,
+       "victim_rank": 1,
+       "utility": {
+        "decode_utility": 1.213230676576495,
+        "prefill_token_utility": 0.0,
+        "preemption_penalty": 1.0
+       }
+      },
+      {
+       "raw_seq_id": 5,
+       "request_id": "5",
+       "order_key": [
+        5
+       ],
+       "ownership": "running",
+       "queue_position": 1,
+       "status": "PAUSED",
+       "arrival_time": 2319608.666719723,
+       "prompt_len": 32,
+       "prompt_tokens_processed": 32,
+       "prompt_tokens_remaining": 0,
+       "prompt_processing_finished": true,
+       "output_len": 0,
+       "context_len": 32,
+       "logical_block_count": 2,
+       "physical_block_count": 2,
+       "prefill_eligible": false,
+       "decode_eligible": true,
+       "preemption_eligible": true,
+       "prefill_fixed_charge": 0,
+       "decode_demand": 0,
+       "preemption_recovery": 2,
+       "service_rank": 1,
+       "victim_rank": 0,
+       "utility": {
+        "decode_utility": 1.639692026935518,
+        "prefill_token_utility": 0.0,
+        "preemption_penalty": 1.0
+       }
+      }
+     ],
+     "running_order": [
+      4,
+      5
+     ],
+     "arrived_waiting_order": [],
+     "numerical_policy": {
+      "policy_id": "lp_relaxation_mvp_v1",
+      "feasibility_tol": 1e-07,
+      "integrality_tol": 1e-06,
+      "objective_abs_tol": 1e-09,
+      "objective_rel_tol": 1e-09
+     },
+     "lp_problem": {
+      "requests": [
+       {
+        "request_id": "4",
+        "order_key": [
+         4
+        ],
+        "resident": true,
+        "prompt_tokens_remaining": 0,
+        "prefill_upper_bound": 0,
+        "prefill_eligible": false,
+        "decode_eligible": true,
+        "preemption_eligible": true,
+        "prefill_fixed_charge": 0,
+        "decode_demand": 0,
+        "preemption_recovery": 2,
+        "decode_utility": 1.213230676576495,
+        "prefill_token_utility": 0.0,
+        "preemption_penalty": 1.0,
+        "service_rank": 0,
+        "victim_rank": 1
+       },
+       {
+        "request_id": "5",
+        "order_key": [
+         5
+        ],
+        "resident": true,
+        "prompt_tokens_remaining": 0,
+        "prefill_upper_bound": 0,
+        "prefill_eligible": false,
+        "decode_eligible": true,
+        "preemption_eligible": true,
+        "prefill_fixed_charge": 0,
+        "decode_demand": 0,
+        "preemption_recovery": 2,
+        "decode_utility": 1.639692026935518,
+        "prefill_token_utility": 0.0,
+        "preemption_penalty": 1.0,
+        "service_rank": 1,
+        "victim_rank": 0
+       }
+      ],
+      "legal_preemption_ids": [
+       "4",
+       "5"
+      ],
+      "b_max": 32,
+      "c_max": 16,
+      "s_max": 2,
+      "resident_limit": 2,
+      "resident_count": 2,
+      "m_free": 1,
+      "admission_watermark": 0,
+      "problem_id": "24",
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      }
+     }
+    }
+   ],
+   "results": [
+    {
+     "problem_id": "24",
+     "plan": {
+      "problem_id": "24",
+      "decisions": [
+       {
+        "request_id": "4",
+        "order_key": [
+         4
+        ],
+        "prefill_tokens": 0,
+        "decode": 1,
+        "preempt": 0,
+        "prefill_indicator": 0
+       },
+       {
+        "request_id": "5",
+        "order_key": [
+         5
+        ],
+        "prefill_tokens": 0,
+        "decode": 1,
+        "preempt": 0,
+        "prefill_indicator": 0
+       }
+      ],
+      "victim_order": [],
+      "execution_order": [
+       "4",
+       "5"
+      ],
+      "token_use": 2,
+      "action_count": 2,
+      "resident_count_after": 2,
+      "free_blocks_before_decodes": 1,
+      "decode_demand": 0,
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      },
+      "objective": 2.852922703512013,
+      "extraction": {
+       "candidate_order": [
+        "4",
+        "5"
+       ],
+       "victim_candidate_order": [
+        "5",
+        "4"
+       ],
+       "accepted_order": [
+        "4",
+        "5"
+       ],
+       "trial_count": 2,
+       "failed_trial_count": 0,
+       "declined_optional_trial_count": 0,
+       "skipped_candidate_count": 0,
+       "fractional_request_count": 0
+      }
+     },
+     "relaxed": {
+      "decisions": [
+       {
+        "request_id": "4",
+        "x": 0.0,
+        "y": 1.0,
+        "prefill_indicator": 0.0,
+        "z": 0.0
+       },
+       {
+        "request_id": "5",
+        "x": 0.0,
+        "y": 1.0,
+        "prefill_indicator": 0.0,
+        "z": 0.0
+       }
+      ],
+      "raw_vector": [
+       0.0,
+       0.0,
+       1.0,
+       1.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "projection_count": 0,
+      "worst_raw_violation": 0.0,
+      "worst_normalized_violation": 0.0,
+      "normalized_objective": 2.852922703512013
+     },
+     "solver": {
+      "category": "optimal_candidate",
+      "reason": "optimal candidate",
+      "diagnostics": {
+       "solver": "scipy.optimize.linprog",
+       "scipy_version": "1.15.3",
+       "method": "highs-ds",
+       "options": [
+        [
+         "presolve",
+         true
+        ]
+       ],
+       "raw_status": 0,
+       "raw_success": true,
+       "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+       "iterations": 0,
+       "vector_present": true,
+       "vector_length": 8,
+       "expected_vector_length": 8
+      },
+      "raw_vector": [
+       0.0,
+       0.0,
+       1.0,
+       1.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "reported_objective_min": -2.852922703512013,
+      "recomputed_objective_min": -2.852922703512013
+     }
+    }
+   ],
+   "executions": [
+    {
+     "id": 24,
+     "scheduled": [
+      [
+       4,
+       0
+      ],
+      [
+       5,
+       0
+      ]
+     ],
+     "ignored_seq_ids": [],
+     "preempted_seq_ids": []
+    }
+   ],
+   "scheduled": [
+    [
+     4,
+     0
+    ],
+    [
+     5,
+     0
+    ]
+   ],
+   "preempted": [],
+   "sampler": [
+    [
+     4,
+     29893
+    ],
+    [
+     5,
+     29872
+    ]
+   ],
+   "request_outputs": [
+    [
+     4,
+     [
+      29893
+     ],
+     false
+    ],
+    [
+     5,
+     [
+      29872
+     ],
+     false
+    ]
+   ],
+   "events": [
+    {
+     "seq_id": 4,
+     "name": "relaxed31",
+     "index": 1,
+     "token_id": 29893,
+     "time": 2319608.729484306,
+     "decision": 2,
+     "after_cutoff": false,
+     "finished": false
+    },
+    {
+     "seq_id": 5,
+     "name": "tight32",
+     "index": 1,
+     "token_id": 29872,
+     "time": 2319608.729484306,
+     "decision": 2,
+     "after_cutoff": false,
+     "finished": false
+    }
+   ]
+  },
+  {
+   "index": 3,
+   "started": 2319608.729517917,
+   "returned": 2319608.747938858,
+   "timing_inputs": [
+    {
+     "4": {
+      "raw_seq_id": 4,
+      "slo_class": "relaxed",
+      "ttft_target": 0.3,
+      "tbt_target": 0.12,
+      "priority": 1,
+      "arrival_time": 2319608.666719723,
+      "last_visible": 2319608.729484306
+     },
+     "5": {
+      "raw_seq_id": 5,
+      "slo_class": "tight",
+      "ttft_target": 0.1,
+      "tbt_target": 0.04,
+      "priority": 1,
+      "arrival_time": 2319608.666719723,
+      "last_visible": 2319608.729484306
+     }
+    }
+   ],
+   "snapshots": [
+    {
+     "snapshot_id": "25",
+     "snapshot_time": 2319608.729523866,
+     "scheduler_iteration_id": 25,
+     "num_pipeline_stages": 1,
+     "num_running_batches": 0,
+     "resident_count": 2,
+     "resident_limit": 2,
+     "max_model_len": 64,
+     "block_size": 16,
+     "total_blocks": 5,
+     "free_physical_blocks": 1,
+     "watermark_blocks": 0,
+     "requests": [
+      {
+       "raw_seq_id": 4,
+       "request_id": "4",
+       "order_key": [
+        4
+       ],
+       "ownership": "running",
+       "queue_position": 0,
+       "status": "PAUSED",
+       "arrival_time": 2319608.666719723,
+       "prompt_len": 31,
+       "prompt_tokens_processed": 31,
+       "prompt_tokens_remaining": 0,
+       "prompt_processing_finished": true,
+       "output_len": 1,
+       "context_len": 32,
+       "logical_block_count": 2,
+       "physical_block_count": 2,
+       "prefill_eligible": false,
+       "decode_eligible": true,
+       "preemption_eligible": true,
+       "prefill_fixed_charge": 0,
+       "decode_demand": 0,
+       "preemption_recovery": 2,
+       "service_rank": 0,
+       "victim_rank": 1,
+       "utility": {
+        "decode_utility": 1.1669963306436937,
+        "prefill_token_utility": 0.0,
+        "preemption_penalty": 1.0
+       }
+      },
+      {
+       "raw_seq_id": 5,
+       "request_id": "5",
+       "order_key": [
+        5
+       ],
+       "ownership": "running",
+       "queue_position": 1,
+       "status": "PAUSED",
+       "arrival_time": 2319608.666719723,
+       "prompt_len": 32,
+       "prompt_tokens_processed": 32,
+       "prompt_tokens_remaining": 0,
+       "prompt_processing_finished": true,
+       "output_len": 1,
+       "context_len": 33,
+       "logical_block_count": 3,
+       "physical_block_count": 2,
+       "prefill_eligible": false,
+       "decode_eligible": true,
+       "preemption_eligible": true,
+       "prefill_fixed_charge": 0,
+       "decode_demand": 1,
+       "preemption_recovery": 2,
+       "service_rank": 1,
+       "victim_rank": 0,
+       "utility": {
+        "decode_utility": 1.500988993793726,
+        "prefill_token_utility": 0.0,
+        "preemption_penalty": 1.0
+       }
+      }
+     ],
+     "running_order": [
+      4,
+      5
+     ],
+     "arrived_waiting_order": [],
+     "numerical_policy": {
+      "policy_id": "lp_relaxation_mvp_v1",
+      "feasibility_tol": 1e-07,
+      "integrality_tol": 1e-06,
+      "objective_abs_tol": 1e-09,
+      "objective_rel_tol": 1e-09
+     },
+     "lp_problem": {
+      "requests": [
+       {
+        "request_id": "4",
+        "order_key": [
+         4
+        ],
+        "resident": true,
+        "prompt_tokens_remaining": 0,
+        "prefill_upper_bound": 0,
+        "prefill_eligible": false,
+        "decode_eligible": true,
+        "preemption_eligible": true,
+        "prefill_fixed_charge": 0,
+        "decode_demand": 0,
+        "preemption_recovery": 2,
+        "decode_utility": 1.1669963306436937,
+        "prefill_token_utility": 0.0,
+        "preemption_penalty": 1.0,
+        "service_rank": 0,
+        "victim_rank": 1
+       },
+       {
+        "request_id": "5",
+        "order_key": [
+         5
+        ],
+        "resident": true,
+        "prompt_tokens_remaining": 0,
+        "prefill_upper_bound": 0,
+        "prefill_eligible": false,
+        "decode_eligible": true,
+        "preemption_eligible": true,
+        "prefill_fixed_charge": 0,
+        "decode_demand": 1,
+        "preemption_recovery": 2,
+        "decode_utility": 1.500988993793726,
+        "prefill_token_utility": 0.0,
+        "preemption_penalty": 1.0,
+        "service_rank": 1,
+        "victim_rank": 0
+       }
+      ],
+      "legal_preemption_ids": [
+       "4",
+       "5"
+      ],
+      "b_max": 32,
+      "c_max": 16,
+      "s_max": 2,
+      "resident_limit": 2,
+      "resident_count": 2,
+      "m_free": 1,
+      "admission_watermark": 0,
+      "problem_id": "25",
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      }
+     }
+    }
+   ],
+   "results": [
+    {
+     "problem_id": "25",
+     "plan": {
+      "problem_id": "25",
+      "decisions": [
+       {
+        "request_id": "4",
+        "order_key": [
+         4
+        ],
+        "prefill_tokens": 0,
+        "decode": 1,
+        "preempt": 0,
+        "prefill_indicator": 0
+       },
+       {
+        "request_id": "5",
+        "order_key": [
+         5
+        ],
+        "prefill_tokens": 0,
+        "decode": 1,
+        "preempt": 0,
+        "prefill_indicator": 0
+       }
+      ],
+      "victim_order": [],
+      "execution_order": [
+       "4",
+       "5"
+      ],
+      "token_use": 2,
+      "action_count": 2,
+      "resident_count_after": 2,
+      "free_blocks_before_decodes": 1,
+      "decode_demand": 1,
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      },
+      "objective": 2.66798532443742,
+      "extraction": {
+       "candidate_order": [
+        "4",
+        "5"
+       ],
+       "victim_candidate_order": [
+        "5",
+        "4"
+       ],
+       "accepted_order": [
+        "4",
+        "5"
+       ],
+       "trial_count": 2,
+       "failed_trial_count": 0,
+       "declined_optional_trial_count": 0,
+       "skipped_candidate_count": 0,
+       "fractional_request_count": 0
+      }
+     },
+     "relaxed": {
+      "decisions": [
+       {
+        "request_id": "4",
+        "x": 0.0,
+        "y": 1.0,
+        "prefill_indicator": 0.0,
+        "z": 0.0
+       },
+       {
+        "request_id": "5",
+        "x": 0.0,
+        "y": 1.0,
+        "prefill_indicator": 0.0,
+        "z": 0.0
+       }
+      ],
+      "raw_vector": [
+       0.0,
+       0.0,
+       1.0,
+       1.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "projection_count": 0,
+      "worst_raw_violation": 0.0,
+      "worst_normalized_violation": 0.0,
+      "normalized_objective": 2.66798532443742
+     },
+     "solver": {
+      "category": "optimal_candidate",
+      "reason": "optimal candidate",
+      "diagnostics": {
+       "solver": "scipy.optimize.linprog",
+       "scipy_version": "1.15.3",
+       "method": "highs-ds",
+       "options": [
+        [
+         "presolve",
+         true
+        ]
+       ],
+       "raw_status": 0,
+       "raw_success": true,
+       "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+       "iterations": 0,
+       "vector_present": true,
+       "vector_length": 8,
+       "expected_vector_length": 8
+      },
+      "raw_vector": [
+       0.0,
+       0.0,
+       1.0,
+       1.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "reported_objective_min": -2.66798532443742,
+      "recomputed_objective_min": -2.66798532443742
+     }
+    }
+   ],
+   "executions": [
+    {
+     "id": 25,
+     "scheduled": [
+      [
+       4,
+       0
+      ],
+      [
+       5,
+       0
+      ]
+     ],
+     "ignored_seq_ids": [],
+     "preempted_seq_ids": []
+    }
+   ],
+   "scheduled": [
+    [
+     4,
+     0
+    ],
+    [
+     5,
+     0
+    ]
+   ],
+   "preempted": [],
+   "sampler": [
+    [
+     4,
+     29889
+    ],
+    [
+     5,
+     310
+    ]
+   ],
+   "request_outputs": [
+    [
+     4,
+     [
+      29893,
+      29889
+     ],
+     false
+    ],
+    [
+     5,
+     [
+      29872,
+      310
+     ],
+     false
+    ]
+   ],
+   "events": [
+    {
+     "seq_id": 4,
+     "name": "relaxed31",
+     "index": 2,
+     "token_id": 29889,
+     "time": 2319608.747938858,
+     "decision": 3,
+     "after_cutoff": false,
+     "finished": false
+    },
+    {
+     "seq_id": 5,
+     "name": "tight32",
+     "index": 2,
+     "token_id": 310,
+     "time": 2319608.747938858,
+     "decision": 3,
+     "after_cutoff": false,
+     "finished": false
+    }
+   ]
+  },
+  {
+   "index": 4,
+   "started": 2319608.747971497,
+   "returned": 2319608.766302312,
+   "timing_inputs": [
+    {
+     "4": {
+      "raw_seq_id": 4,
+      "slo_class": "relaxed",
+      "ttft_target": 0.3,
+      "tbt_target": 0.12,
+      "priority": 1,
+      "arrival_time": 2319608.666719723,
+      "last_visible": 2319608.747938858
+     },
+     "5": {
+      "raw_seq_id": 5,
+      "slo_class": "tight",
+      "ttft_target": 0.1,
+      "tbt_target": 0.04,
+      "priority": 1,
+      "arrival_time": 2319608.666719723,
+      "last_visible": 2319608.747938858
+     }
+    }
+   ],
+   "snapshots": [
+    {
+     "snapshot_id": "26",
+     "snapshot_time": 2319608.747977517,
+     "scheduler_iteration_id": 26,
+     "num_pipeline_stages": 1,
+     "num_running_batches": 0,
+     "resident_count": 2,
+     "resident_limit": 2,
+     "max_model_len": 64,
+     "block_size": 16,
+     "total_blocks": 5,
+     "free_physical_blocks": 0,
+     "watermark_blocks": 0,
+     "requests": [
+      {
+       "raw_seq_id": 4,
+       "request_id": "4",
+       "order_key": [
+        4
+       ],
+       "ownership": "running",
+       "queue_position": 0,
+       "status": "PAUSED",
+       "arrival_time": 2319608.666719723,
+       "prompt_len": 31,
+       "prompt_tokens_processed": 31,
+       "prompt_tokens_remaining": 0,
+       "prompt_processing_finished": true,
+       "output_len": 2,
+       "context_len": 33,
+       "logical_block_count": 3,
+       "physical_block_count": 2,
+       "prefill_eligible": false,
+       "decode_eligible": true,
+       "preemption_eligible": true,
+       "prefill_fixed_charge": 0,
+       "decode_demand": 1,
+       "preemption_recovery": 2,
+       "service_rank": 0,
+       "victim_rank": 1,
+       "utility": {
+        "decode_utility": 1.1669888257359464,
+        "prefill_token_utility": 0.0,
+        "preemption_penalty": 1.0
+       }
+      },
+      {
+       "raw_seq_id": 5,
+       "request_id": "5",
+       "order_key": [
+        5
+       ],
+       "ownership": "running",
+       "queue_position": 1,
+       "status": "PAUSED",
+       "arrival_time": 2319608.666719723,
+       "prompt_len": 32,
+       "prompt_tokens_processed": 32,
+       "prompt_tokens_remaining": 0,
+       "prompt_processing_finished": true,
+       "output_len": 2,
+       "context_len": 34,
+       "logical_block_count": 3,
+       "physical_block_count": 3,
+       "prefill_eligible": false,
+       "decode_eligible": true,
+       "preemption_eligible": true,
+       "prefill_fixed_charge": 0,
+       "decode_demand": 0,
+       "preemption_recovery": 3,
+       "service_rank": 1,
+       "victim_rank": 0,
+       "utility": {
+        "decode_utility": 1.5009664790704846,
+        "prefill_token_utility": 0.0,
+        "preemption_penalty": 1.0
+       }
+      }
+     ],
+     "running_order": [
+      4,
+      5
+     ],
+     "arrived_waiting_order": [],
+     "numerical_policy": {
+      "policy_id": "lp_relaxation_mvp_v1",
+      "feasibility_tol": 1e-07,
+      "integrality_tol": 1e-06,
+      "objective_abs_tol": 1e-09,
+      "objective_rel_tol": 1e-09
+     },
+     "lp_problem": {
+      "requests": [
+       {
+        "request_id": "4",
+        "order_key": [
+         4
+        ],
+        "resident": true,
+        "prompt_tokens_remaining": 0,
+        "prefill_upper_bound": 0,
+        "prefill_eligible": false,
+        "decode_eligible": true,
+        "preemption_eligible": true,
+        "prefill_fixed_charge": 0,
+        "decode_demand": 1,
+        "preemption_recovery": 2,
+        "decode_utility": 1.1669888257359464,
+        "prefill_token_utility": 0.0,
+        "preemption_penalty": 1.0,
+        "service_rank": 0,
+        "victim_rank": 1
+       },
+       {
+        "request_id": "5",
+        "order_key": [
+         5
+        ],
+        "resident": true,
+        "prompt_tokens_remaining": 0,
+        "prefill_upper_bound": 0,
+        "prefill_eligible": false,
+        "decode_eligible": true,
+        "preemption_eligible": true,
+        "prefill_fixed_charge": 0,
+        "decode_demand": 0,
+        "preemption_recovery": 3,
+        "decode_utility": 1.5009664790704846,
+        "prefill_token_utility": 0.0,
+        "preemption_penalty": 1.0,
+        "service_rank": 1,
+        "victim_rank": 0
+       }
+      ],
+      "legal_preemption_ids": [
+       "4",
+       "5"
+      ],
+      "b_max": 32,
+      "c_max": 16,
+      "s_max": 2,
+      "resident_limit": 2,
+      "resident_count": 2,
+      "m_free": 0,
+      "admission_watermark": 0,
+      "problem_id": "26",
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      }
+     }
+    }
+   ],
+   "results": [
+    {
+     "problem_id": "26",
+     "plan": {
+      "problem_id": "26",
+      "decisions": [
+       {
+        "request_id": "4",
+        "order_key": [
+         4
+        ],
+        "prefill_tokens": 0,
+        "decode": 0,
+        "preempt": 1,
+        "prefill_indicator": 0
+       },
+       {
+        "request_id": "5",
+        "order_key": [
+         5
+        ],
+        "prefill_tokens": 0,
+        "decode": 1,
+        "preempt": 0,
+        "prefill_indicator": 0
+       }
+      ],
+      "victim_order": [
+       "4"
+      ],
+      "execution_order": [
+       "5"
+      ],
+      "token_use": 1,
+      "action_count": 1,
+      "resident_count_after": 1,
+      "free_blocks_before_decodes": 2,
+      "decode_demand": 0,
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      },
+      "objective": 0.5009664790704846,
+      "extraction": {
+       "candidate_order": [
+        "5",
+        "4"
+       ],
+       "victim_candidate_order": [
+        "4",
+        "5"
+       ],
+       "accepted_order": [
+        "5"
+       ],
+       "trial_count": 1,
+       "failed_trial_count": 0,
+       "declined_optional_trial_count": 0,
+       "skipped_candidate_count": 1,
+       "fractional_request_count": 2
+      }
+     },
+     "relaxed": {
+      "decisions": [
+       {
+        "request_id": "4",
+        "x": 0.0,
+        "y": 0.8333333333333333,
+        "prefill_indicator": 0.0,
+        "z": 0.16666666666666674
+       },
+       {
+        "request_id": "5",
+        "x": 0.0,
+        "y": 0.8333333333333334,
+        "prefill_indicator": 0.0,
+        "z": 0.1666666666666666
+       }
+      ],
+      "raw_vector": [
+       0.0,
+       0.0,
+       0.8333333333333333,
+       0.8333333333333334,
+       0.0,
+       0.0,
+       0.16666666666666674,
+       0.1666666666666666
+      ],
+      "projection_count": 0,
+      "worst_raw_violation": 0.0,
+      "worst_normalized_violation": 0.0,
+      "normalized_objective": 1.8899627540053594
+     },
+     "solver": {
+      "category": "optimal_candidate",
+      "reason": "optimal candidate",
+      "diagnostics": {
+       "solver": "scipy.optimize.linprog",
+       "scipy_version": "1.15.3",
+       "method": "highs-ds",
+       "options": [
+        [
+         "presolve",
+         true
+        ]
+       ],
+       "raw_status": 0,
+       "raw_success": true,
+       "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+       "iterations": 4,
+       "vector_present": true,
+       "vector_length": 8,
+       "expected_vector_length": 8
+      },
+      "raw_vector": [
+       0.0,
+       0.0,
+       0.8333333333333333,
+       0.8333333333333334,
+       0.0,
+       0.0,
+       0.16666666666666674,
+       0.1666666666666666
+      ],
+      "reported_objective_min": -1.8899627540053592,
+      "recomputed_objective_min": -1.8899627540053594
+     }
+    }
+   ],
+   "executions": [
+    {
+     "id": 26,
+     "scheduled": [
+      [
+       5,
+       0
+      ]
+     ],
+     "ignored_seq_ids": [],
+     "preempted_seq_ids": [
+      4
+     ]
+    }
+   ],
+   "scheduled": [
+    [
+     5,
+     0
+    ]
+   ],
+   "preempted": [
+    4
+   ],
+   "sampler": [
+    [
+     5,
+     278
+    ]
+   ],
+   "request_outputs": [
+    [
+     5,
+     [
+      29872,
+      310,
+      278
+     ],
+     true
+    ]
+   ],
+   "events": [
+    {
+     "seq_id": 5,
+     "name": "tight32",
+     "index": 3,
+     "token_id": 278,
+     "time": 2319608.766302312,
+     "decision": 4,
+     "after_cutoff": false,
+     "finished": true
+    }
+   ]
+  },
+  {
+   "index": 5,
+   "started": 2319608.766335753,
+   "returned": 2319608.785713307,
+   "timing_inputs": [
+    {
+     "4": {
+      "raw_seq_id": 4,
+      "slo_class": "relaxed",
+      "ttft_target": 0.3,
+      "tbt_target": 0.12,
+      "priority": 1,
+      "arrival_time": 2319608.666719723,
+      "last_visible": 2319608.747938858
+     },
+     "5": {
+      "raw_seq_id": 5,
+      "slo_class": "tight",
+      "ttft_target": 0.1,
+      "tbt_target": 0.04,
+      "priority": 1,
+      "arrival_time": 2319608.666719723,
+      "last_visible": 2319608.766302312
+     }
+    }
+   ],
+   "snapshots": [
+    {
+     "snapshot_id": "27",
+     "snapshot_time": 2319608.766341302,
+     "scheduler_iteration_id": 27,
+     "num_pipeline_stages": 1,
+     "num_running_batches": 0,
+     "resident_count": 0,
+     "resident_limit": 2,
+     "max_model_len": 64,
+     "block_size": 16,
+     "total_blocks": 5,
+     "free_physical_blocks": 5,
+     "watermark_blocks": 0,
+     "requests": [
+      {
+       "raw_seq_id": 4,
+       "request_id": "4",
+       "order_key": [
+        4
+       ],
+       "ownership": "waiting",
+       "queue_position": 0,
+       "status": "WAITING",
+       "arrival_time": 2319608.666719723,
+       "prompt_len": 33,
+       "prompt_tokens_processed": 0,
+       "prompt_tokens_remaining": 33,
+       "prompt_processing_finished": false,
+       "output_len": 0,
+       "context_len": 33,
+       "logical_block_count": 3,
+       "physical_block_count": 0,
+       "prefill_eligible": true,
+       "decode_eligible": false,
+       "preemption_eligible": false,
+       "prefill_fixed_charge": 3,
+       "decode_demand": 0,
+       "preemption_recovery": 0,
+       "service_rank": 0,
+       "victim_rank": null,
+       "utility": {
+        "decode_utility": 0.0,
+        "prefill_token_utility": 0.11375127296196297,
+        "preemption_penalty": 0.0
+       }
+      }
+     ],
+     "running_order": [],
+     "arrived_waiting_order": [
+      4
+     ],
+     "numerical_policy": {
+      "policy_id": "lp_relaxation_mvp_v1",
+      "feasibility_tol": 1e-07,
+      "integrality_tol": 1e-06,
+      "objective_abs_tol": 1e-09,
+      "objective_rel_tol": 1e-09
+     },
+     "lp_problem": {
+      "requests": [
+       {
+        "request_id": "4",
+        "order_key": [
+         4
+        ],
+        "resident": false,
+        "prompt_tokens_remaining": 33,
+        "prefill_upper_bound": 16,
+        "prefill_eligible": true,
+        "decode_eligible": false,
+        "preemption_eligible": false,
+        "prefill_fixed_charge": 3,
+        "decode_demand": 0,
+        "preemption_recovery": 0,
+        "decode_utility": 0.0,
+        "prefill_token_utility": 0.11375127296196297,
+        "preemption_penalty": 0.0,
+        "service_rank": 0,
+        "victim_rank": null
+       }
+      ],
+      "legal_preemption_ids": [],
+      "b_max": 32,
+      "c_max": 16,
+      "s_max": 2,
+      "resident_limit": 2,
+      "resident_count": 0,
+      "m_free": 5,
+      "admission_watermark": 0,
+      "problem_id": "27",
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      }
+     }
+    }
+   ],
+   "results": [
+    {
+     "problem_id": "27",
+     "plan": {
+      "problem_id": "27",
+      "decisions": [
+       {
+        "request_id": "4",
+        "order_key": [
+         4
+        ],
+        "prefill_tokens": 16,
+        "decode": 0,
+        "preempt": 0,
+        "prefill_indicator": 1
+       }
+      ],
+      "victim_order": [],
+      "execution_order": [
+       "4"
+      ],
+      "token_use": 16,
+      "action_count": 1,
+      "resident_count_after": 1,
+      "free_blocks_before_decodes": 2,
+      "decode_demand": 0,
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      },
+      "objective": 1.8200203673914075,
+      "extraction": {
+       "candidate_order": [
+        "4"
+       ],
+       "victim_candidate_order": [],
+       "accepted_order": [
+        "4"
+       ],
+       "trial_count": 1,
+       "failed_trial_count": 0,
+       "declined_optional_trial_count": 0,
+       "skipped_candidate_count": 0,
+       "fractional_request_count": 0
+      }
+     },
+     "relaxed": {
+      "decisions": [
+       {
+        "request_id": "4",
+        "x": 16.0,
+        "y": 0.0,
+        "prefill_indicator": 1.0,
+        "z": 0.0
+       }
+      ],
+      "raw_vector": [
+       16.0,
+       0.0,
+       1.0,
+       0.0
+      ],
+      "projection_count": 0,
+      "worst_raw_violation": 0.0,
+      "worst_normalized_violation": 0.0,
+      "normalized_objective": 1.8200203673914075
+     },
+     "solver": {
+      "category": "optimal_candidate",
+      "reason": "optimal candidate",
+      "diagnostics": {
+       "solver": "scipy.optimize.linprog",
+       "scipy_version": "1.15.3",
+       "method": "highs-ds",
+       "options": [
+        [
+         "presolve",
+         true
+        ]
+       ],
+       "raw_status": 0,
+       "raw_success": true,
+       "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+       "iterations": 0,
+       "vector_present": true,
+       "vector_length": 4,
+       "expected_vector_length": 4
+      },
+      "raw_vector": [
+       16.0,
+       0.0,
+       1.0,
+       0.0
+      ],
+      "reported_objective_min": -1.8200203673914075,
+      "recomputed_objective_min": -1.8200203673914075
+     }
+    }
+   ],
+   "executions": [
+    {
+     "id": 27,
+     "scheduled": [
+      [
+       4,
+       16
+      ]
+     ],
+     "ignored_seq_ids": [],
+     "preempted_seq_ids": []
+    }
+   ],
+   "scheduled": [
+    [
+     4,
+     16
+    ]
+   ],
+   "preempted": [],
+   "sampler": [
+    [
+     4,
+     601
+    ]
+   ],
+   "request_outputs": [
+    [
+     4,
+     [],
+     false
+    ]
+   ],
+   "events": []
+  },
+  {
+   "index": 6,
+   "started": 2319608.785738465,
+   "returned": 2319608.804904397,
+   "timing_inputs": [
+    {
+     "4": {
+      "raw_seq_id": 4,
+      "slo_class": "relaxed",
+      "ttft_target": 0.3,
+      "tbt_target": 0.12,
+      "priority": 1,
+      "arrival_time": 2319608.666719723,
+      "last_visible": 2319608.747938858
+     },
+     "5": {
+      "raw_seq_id": 5,
+      "slo_class": "tight",
+      "ttft_target": 0.1,
+      "tbt_target": 0.04,
+      "priority": 1,
+      "arrival_time": 2319608.666719723,
+      "last_visible": 2319608.766302312
+     }
+    }
+   ],
+   "snapshots": [
+    {
+     "snapshot_id": "28",
+     "snapshot_time": 2319608.785744294,
+     "scheduler_iteration_id": 28,
+     "num_pipeline_stages": 1,
+     "num_running_batches": 0,
+     "resident_count": 1,
+     "resident_limit": 2,
+     "max_model_len": 64,
+     "block_size": 16,
+     "total_blocks": 5,
+     "free_physical_blocks": 2,
+     "watermark_blocks": 0,
+     "requests": [
+      {
+       "raw_seq_id": 4,
+       "request_id": "4",
+       "order_key": [
+        4
+       ],
+       "ownership": "running",
+       "queue_position": 0,
+       "status": "PAUSED",
+       "arrival_time": 2319608.666719723,
+       "prompt_len": 33,
+       "prompt_tokens_processed": 16,
+       "prompt_tokens_remaining": 17,
+       "prompt_processing_finished": false,
+       "output_len": 0,
+       "context_len": 33,
+       "logical_block_count": 3,
+       "physical_block_count": 3,
+       "prefill_eligible": true,
+       "decode_eligible": false,
+       "preemption_eligible": true,
+       "prefill_fixed_charge": 0,
+       "decode_demand": 0,
+       "preemption_recovery": 3,
+       "service_rank": 0,
+       "victim_rank": 0,
+       "utility": {
+        "decode_utility": 0.0,
+        "prefill_token_utility": 0.1134403312850433,
+        "preemption_penalty": 1.0
+       }
+      }
+     ],
+     "running_order": [
+      4
+     ],
+     "arrived_waiting_order": [],
+     "numerical_policy": {
+      "policy_id": "lp_relaxation_mvp_v1",
+      "feasibility_tol": 1e-07,
+      "integrality_tol": 1e-06,
+      "objective_abs_tol": 1e-09,
+      "objective_rel_tol": 1e-09
+     },
+     "lp_problem": {
+      "requests": [
+       {
+        "request_id": "4",
+        "order_key": [
+         4
+        ],
+        "resident": true,
+        "prompt_tokens_remaining": 17,
+        "prefill_upper_bound": 16,
+        "prefill_eligible": true,
+        "decode_eligible": false,
+        "preemption_eligible": true,
+        "prefill_fixed_charge": 0,
+        "decode_demand": 0,
+        "preemption_recovery": 3,
+        "decode_utility": 0.0,
+        "prefill_token_utility": 0.1134403312850433,
+        "preemption_penalty": 1.0,
+        "service_rank": 0,
+        "victim_rank": 0
+       }
+      ],
+      "legal_preemption_ids": [
+       "4"
+      ],
+      "b_max": 32,
+      "c_max": 16,
+      "s_max": 2,
+      "resident_limit": 2,
+      "resident_count": 1,
+      "m_free": 2,
+      "admission_watermark": 0,
+      "problem_id": "28",
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      }
+     }
+    }
+   ],
+   "results": [
+    {
+     "problem_id": "28",
+     "plan": {
+      "problem_id": "28",
+      "decisions": [
+       {
+        "request_id": "4",
+        "order_key": [
+         4
+        ],
+        "prefill_tokens": 16,
+        "decode": 0,
+        "preempt": 0,
+        "prefill_indicator": 1
+       }
+      ],
+      "victim_order": [],
+      "execution_order": [
+       "4"
+      ],
+      "token_use": 16,
+      "action_count": 1,
+      "resident_count_after": 1,
+      "free_blocks_before_decodes": 2,
+      "decode_demand": 0,
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      },
+      "objective": 1.8150453005606928,
+      "extraction": {
+       "candidate_order": [
+        "4"
+       ],
+       "victim_candidate_order": [
+        "4"
+       ],
+       "accepted_order": [
+        "4"
+       ],
+       "trial_count": 1,
+       "failed_trial_count": 0,
+       "declined_optional_trial_count": 0,
+       "skipped_candidate_count": 0,
+       "fractional_request_count": 0
+      }
+     },
+     "relaxed": {
+      "decisions": [
+       {
+        "request_id": "4",
+        "x": 16.0,
+        "y": 0.0,
+        "prefill_indicator": 1.0,
+        "z": 0.0
+       }
+      ],
+      "raw_vector": [
+       16.0,
+       0.0,
+       1.0,
+       0.0
+      ],
+      "projection_count": 0,
+      "worst_raw_violation": 0.0,
+      "worst_normalized_violation": 0.0,
+      "normalized_objective": 1.8150453005606928
+     },
+     "solver": {
+      "category": "optimal_candidate",
+      "reason": "optimal candidate",
+      "diagnostics": {
+       "solver": "scipy.optimize.linprog",
+       "scipy_version": "1.15.3",
+       "method": "highs-ds",
+       "options": [
+        [
+         "presolve",
+         true
+        ]
+       ],
+       "raw_status": 0,
+       "raw_success": true,
+       "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+       "iterations": 0,
+       "vector_present": true,
+       "vector_length": 4,
+       "expected_vector_length": 4
+      },
+      "raw_vector": [
+       16.0,
+       0.0,
+       1.0,
+       0.0
+      ],
+      "reported_objective_min": -1.8150453005606928,
+      "recomputed_objective_min": -1.8150453005606928
+     }
+    }
+   ],
+   "executions": [
+    {
+     "id": 28,
+     "scheduled": [
+      [
+       4,
+       16
+      ]
+     ],
+     "ignored_seq_ids": [],
+     "preempted_seq_ids": []
+    }
+   ],
+   "scheduled": [
+    [
+     4,
+     16
+    ]
+   ],
+   "preempted": [],
+   "sampler": [
+    [
+     4,
+     29889
+    ]
+   ],
+   "request_outputs": [
+    [
+     4,
+     [],
+     false
+    ]
+   ],
+   "events": []
+  },
+  {
+   "index": 7,
+   "started": 2319608.804930787,
+   "returned": 2319608.822645206,
+   "timing_inputs": [
+    {
+     "4": {
+      "raw_seq_id": 4,
+      "slo_class": "relaxed",
+      "ttft_target": 0.3,
+      "tbt_target": 0.12,
+      "priority": 1,
+      "arrival_time": 2319608.666719723,
+      "last_visible": 2319608.747938858
+     },
+     "5": {
+      "raw_seq_id": 5,
+      "slo_class": "tight",
+      "ttft_target": 0.1,
+      "tbt_target": 0.04,
+      "priority": 1,
+      "arrival_time": 2319608.666719723,
+      "last_visible": 2319608.766302312
+     }
+    }
+   ],
+   "snapshots": [
+    {
+     "snapshot_id": "29",
+     "snapshot_time": 2319608.804936656,
+     "scheduler_iteration_id": 29,
+     "num_pipeline_stages": 1,
+     "num_running_batches": 0,
+     "resident_count": 1,
+     "resident_limit": 2,
+     "max_model_len": 64,
+     "block_size": 16,
+     "total_blocks": 5,
+     "free_physical_blocks": 2,
+     "watermark_blocks": 0,
+     "requests": [
+      {
+       "raw_seq_id": 4,
+       "request_id": "4",
+       "order_key": [
+        4
+       ],
+       "ownership": "running",
+       "queue_position": 0,
+       "status": "PAUSED",
+       "arrival_time": 2319608.666719723,
+       "prompt_len": 33,
+       "prompt_tokens_processed": 32,
+       "prompt_tokens_remaining": 1,
+       "prompt_processing_finished": false,
+       "output_len": 0,
+       "context_len": 33,
+       "logical_block_count": 3,
+       "physical_block_count": 3,
+       "prefill_eligible": true,
+       "decode_eligible": false,
+       "preemption_eligible": true,
+       "prefill_fixed_charge": 0,
+       "decode_demand": 0,
+       "preemption_recovery": 3,
+       "service_rank": 0,
+       "victim_rank": 0,
+       "utility": {
+        "decode_utility": 0.0,
+        "prefill_token_utility": 0.11301968635719581,
+        "preemption_penalty": 1.0
+       }
+      }
+     ],
+     "running_order": [
+      4
+     ],
+     "arrived_waiting_order": [],
+     "numerical_policy": {
+      "policy_id": "lp_relaxation_mvp_v1",
+      "feasibility_tol": 1e-07,
+      "integrality_tol": 1e-06,
+      "objective_abs_tol": 1e-09,
+      "objective_rel_tol": 1e-09
+     },
+     "lp_problem": {
+      "requests": [
+       {
+        "request_id": "4",
+        "order_key": [
+         4
+        ],
+        "resident": true,
+        "prompt_tokens_remaining": 1,
+        "prefill_upper_bound": 1,
+        "prefill_eligible": true,
+        "decode_eligible": false,
+        "preemption_eligible": true,
+        "prefill_fixed_charge": 0,
+        "decode_demand": 0,
+        "preemption_recovery": 3,
+        "decode_utility": 0.0,
+        "prefill_token_utility": 0.11301968635719581,
+        "preemption_penalty": 1.0,
+        "service_rank": 0,
+        "victim_rank": 0
+       }
+      ],
+      "legal_preemption_ids": [
+       "4"
+      ],
+      "b_max": 32,
+      "c_max": 16,
+      "s_max": 2,
+      "resident_limit": 2,
+      "resident_count": 1,
+      "m_free": 2,
+      "admission_watermark": 0,
+      "problem_id": "29",
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      }
+     }
+    }
+   ],
+   "results": [
+    {
+     "problem_id": "29",
+     "plan": {
+      "problem_id": "29",
+      "decisions": [
+       {
+        "request_id": "4",
+        "order_key": [
+         4
+        ],
+        "prefill_tokens": 1,
+        "decode": 0,
+        "preempt": 0,
+        "prefill_indicator": 1
+       }
+      ],
+      "victim_order": [],
+      "execution_order": [
+       "4"
+      ],
+      "token_use": 1,
+      "action_count": 1,
+      "resident_count_after": 1,
+      "free_blocks_before_decodes": 2,
+      "decode_demand": 0,
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      },
+      "objective": 0.11301968635719581,
+      "extraction": {
+       "candidate_order": [
+        "4"
+       ],
+       "victim_candidate_order": [
+        "4"
+       ],
+       "accepted_order": [
+        "4"
+       ],
+       "trial_count": 1,
+       "failed_trial_count": 0,
+       "declined_optional_trial_count": 0,
+       "skipped_candidate_count": 0,
+       "fractional_request_count": 0
+      }
+     },
+     "relaxed": {
+      "decisions": [
+       {
+        "request_id": "4",
+        "x": 1.0,
+        "y": 0.0,
+        "prefill_indicator": 1.0,
+        "z": 0.0
+       }
+      ],
+      "raw_vector": [
+       1.0,
+       0.0,
+       1.0,
+       0.0
+      ],
+      "projection_count": 0,
+      "worst_raw_violation": 0.0,
+      "worst_normalized_violation": 0.0,
+      "normalized_objective": 0.11301968635719581
+     },
+     "solver": {
+      "category": "optimal_candidate",
+      "reason": "optimal candidate",
+      "diagnostics": {
+       "solver": "scipy.optimize.linprog",
+       "scipy_version": "1.15.3",
+       "method": "highs-ds",
+       "options": [
+        [
+         "presolve",
+         true
+        ]
+       ],
+       "raw_status": 0,
+       "raw_success": true,
+       "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+       "iterations": 0,
+       "vector_present": true,
+       "vector_length": 4,
+       "expected_vector_length": 4
+      },
+      "raw_vector": [
+       1.0,
+       0.0,
+       1.0,
+       0.0
+      ],
+      "reported_objective_min": -0.11301968635719581,
+      "recomputed_objective_min": -0.11301968635719581
+     }
+    }
+   ],
+   "executions": [
+    {
+     "id": 29,
+     "scheduled": [
+      [
+       4,
+       1
+      ]
+     ],
+     "ignored_seq_ids": [],
+     "preempted_seq_ids": []
+    }
+   ],
+   "scheduled": [
+    [
+     4,
+     1
+    ]
+   ],
+   "preempted": [],
+   "sampler": [
+    [
+     4,
+     13
+    ]
+   ],
+   "request_outputs": [
+    [
+     4,
+     [],
+     false
+    ]
+   ],
+   "events": []
+  },
+  {
+   "index": 8,
+   "started": 2319608.822670184,
+   "returned": 2319608.840879655,
+   "timing_inputs": [
+    {
+     "4": {
+      "raw_seq_id": 4,
+      "slo_class": "relaxed",
+      "ttft_target": 0.3,
+      "tbt_target": 0.12,
+      "priority": 1,
+      "arrival_time": 2319608.666719723,
+      "last_visible": 2319608.747938858
+     },
+     "5": {
+      "raw_seq_id": 5,
+      "slo_class": "tight",
+      "ttft_target": 0.1,
+      "tbt_target": 0.04,
+      "priority": 1,
+      "arrival_time": 2319608.666719723,
+      "last_visible": 2319608.766302312
+     }
+    }
+   ],
+   "snapshots": [
+    {
+     "snapshot_id": "30",
+     "snapshot_time": 2319608.822676023,
+     "scheduler_iteration_id": 30,
+     "num_pipeline_stages": 1,
+     "num_running_batches": 0,
+     "resident_count": 1,
+     "resident_limit": 2,
+     "max_model_len": 64,
+     "block_size": 16,
+     "total_blocks": 5,
+     "free_physical_blocks": 2,
+     "watermark_blocks": 0,
+     "requests": [
+      {
+       "raw_seq_id": 4,
+       "request_id": "4",
+       "order_key": [
+        4
+       ],
+       "ownership": "running",
+       "queue_position": 0,
+       "status": "PAUSED",
+       "arrival_time": 2319608.666719723,
+       "prompt_len": 33,
+       "prompt_tokens_processed": 33,
+       "prompt_tokens_remaining": 0,
+       "prompt_processing_finished": true,
+       "output_len": 0,
+       "context_len": 33,
+       "logical_block_count": 3,
+       "physical_block_count": 3,
+       "prefill_eligible": false,
+       "decode_eligible": true,
+       "preemption_eligible": true,
+       "prefill_fixed_charge": 0,
+       "decode_demand": 0,
+       "preemption_recovery": 3,
+       "service_rank": 0,
+       "victim_rank": 0,
+       "utility": {
+        "decode_utility": 1.7894763750955462,
+        "prefill_token_utility": 0.0,
+        "preemption_penalty": 1.0
+       }
+      }
+     ],
+     "running_order": [
+      4
+     ],
+     "arrived_waiting_order": [],
+     "numerical_policy": {
+      "policy_id": "lp_relaxation_mvp_v1",
+      "feasibility_tol": 1e-07,
+      "integrality_tol": 1e-06,
+      "objective_abs_tol": 1e-09,
+      "objective_rel_tol": 1e-09
+     },
+     "lp_problem": {
+      "requests": [
+       {
+        "request_id": "4",
+        "order_key": [
+         4
+        ],
+        "resident": true,
+        "prompt_tokens_remaining": 0,
+        "prefill_upper_bound": 0,
+        "prefill_eligible": false,
+        "decode_eligible": true,
+        "preemption_eligible": true,
+        "prefill_fixed_charge": 0,
+        "decode_demand": 0,
+        "preemption_recovery": 3,
+        "decode_utility": 1.7894763750955462,
+        "prefill_token_utility": 0.0,
+        "preemption_penalty": 1.0,
+        "service_rank": 0,
+        "victim_rank": 0
+       }
+      ],
+      "legal_preemption_ids": [
+       "4"
+      ],
+      "b_max": 32,
+      "c_max": 16,
+      "s_max": 2,
+      "resident_limit": 2,
+      "resident_count": 1,
+      "m_free": 2,
+      "admission_watermark": 0,
+      "problem_id": "30",
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      }
+     }
+    }
+   ],
+   "results": [
+    {
+     "problem_id": "30",
+     "plan": {
+      "problem_id": "30",
+      "decisions": [
+       {
+        "request_id": "4",
+        "order_key": [
+         4
+        ],
+        "prefill_tokens": 0,
+        "decode": 1,
+        "preempt": 0,
+        "prefill_indicator": 0
+       }
+      ],
+      "victim_order": [],
+      "execution_order": [
+       "4"
+      ],
+      "token_use": 1,
+      "action_count": 1,
+      "resident_count_after": 1,
+      "free_blocks_before_decodes": 2,
+      "decode_demand": 0,
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      },
+      "objective": 1.7894763750955462,
+      "extraction": {
+       "candidate_order": [
+        "4"
+       ],
+       "victim_candidate_order": [
+        "4"
+       ],
+       "accepted_order": [
+        "4"
+       ],
+       "trial_count": 1,
+       "failed_trial_count": 0,
+       "declined_optional_trial_count": 0,
+       "skipped_candidate_count": 0,
+       "fractional_request_count": 0
+      }
+     },
+     "relaxed": {
+      "decisions": [
+       {
+        "request_id": "4",
+        "x": 0.0,
+        "y": 1.0,
+        "prefill_indicator": 0.0,
+        "z": 0.0
+       }
+      ],
+      "raw_vector": [
+       0.0,
+       1.0,
+       0.0,
+       0.0
+      ],
+      "projection_count": 0,
+      "worst_raw_violation": 0.0,
+      "worst_normalized_violation": 0.0,
+      "normalized_objective": 1.7894763750955462
+     },
+     "solver": {
+      "category": "optimal_candidate",
+      "reason": "optimal candidate",
+      "diagnostics": {
+       "solver": "scipy.optimize.linprog",
+       "scipy_version": "1.15.3",
+       "method": "highs-ds",
+       "options": [
+        [
+         "presolve",
+         true
+        ]
+       ],
+       "raw_status": 0,
+       "raw_success": true,
+       "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+       "iterations": 0,
+       "vector_present": true,
+       "vector_length": 4,
+       "expected_vector_length": 4
+      },
+      "raw_vector": [
+       0.0,
+       1.0,
+       0.0,
+       0.0
+      ],
+      "reported_objective_min": -1.7894763750955462,
+      "recomputed_objective_min": -1.7894763750955462
+     }
+    }
+   ],
+   "executions": [
+    {
+     "id": 30,
+     "scheduled": [
+      [
+       4,
+       0
+      ]
+     ],
+     "ignored_seq_ids": [],
+     "preempted_seq_ids": []
+    }
+   ],
+   "scheduled": [
+    [
+     4,
+     0
+    ]
+   ],
+   "preempted": [],
+   "sampler": [
+    [
+     4,
+     13
+    ]
+   ],
+   "request_outputs": [
+    [
+     4,
+     [
+      13
+     ],
+     false
+    ]
+   ],
+   "events": [
+    {
+     "seq_id": 4,
+     "name": "relaxed31",
+     "index": 3,
+     "token_id": 13,
+     "time": 2319608.840879655,
+     "decision": 8,
+     "after_cutoff": false,
+     "finished": false
+    }
+   ]
+  },
+  {
+   "index": 9,
+   "started": 2319608.840908899,
+   "returned": 2319608.859108845,
+   "timing_inputs": [
+    {
+     "4": {
+      "raw_seq_id": 4,
+      "slo_class": "relaxed",
+      "ttft_target": 0.3,
+      "tbt_target": 0.12,
+      "priority": 1,
+      "arrival_time": 2319608.666719723,
+      "last_visible": 2319608.840879655
+     },
+     "5": {
+      "raw_seq_id": 5,
+      "slo_class": "tight",
+      "ttft_target": 0.1,
+      "tbt_target": 0.04,
+      "priority": 1,
+      "arrival_time": 2319608.666719723,
+      "last_visible": 2319608.766302312
+     }
+    }
+   ],
+   "snapshots": [
+    {
+     "snapshot_id": "31",
+     "snapshot_time": 2319608.840914287,
+     "scheduler_iteration_id": 31,
+     "num_pipeline_stages": 1,
+     "num_running_batches": 0,
+     "resident_count": 1,
+     "resident_limit": 2,
+     "max_model_len": 64,
+     "block_size": 16,
+     "total_blocks": 5,
+     "free_physical_blocks": 2,
+     "watermark_blocks": 0,
+     "requests": [
+      {
+       "raw_seq_id": 4,
+       "request_id": "4",
+       "order_key": [
+        4
+       ],
+       "ownership": "running",
+       "queue_position": 0,
+       "status": "PAUSED",
+       "arrival_time": 2319608.666719723,
+       "prompt_len": 33,
+       "prompt_tokens_processed": 33,
+       "prompt_tokens_remaining": 0,
+       "prompt_processing_finished": true,
+       "output_len": 1,
+       "context_len": 34,
+       "logical_block_count": 3,
+       "physical_block_count": 3,
+       "prefill_eligible": false,
+       "decode_eligible": true,
+       "preemption_eligible": true,
+       "prefill_fixed_charge": 0,
+       "decode_demand": 0,
+       "preemption_recovery": 3,
+       "service_rank": 0,
+       "victim_rank": 0,
+       "utility": {
+        "decode_utility": 1.1669552670791745,
+        "prefill_token_utility": 0.0,
+        "preemption_penalty": 1.0
+       }
+      }
+     ],
+     "running_order": [
+      4
+     ],
+     "arrived_waiting_order": [],
+     "numerical_policy": {
+      "policy_id": "lp_relaxation_mvp_v1",
+      "feasibility_tol": 1e-07,
+      "integrality_tol": 1e-06,
+      "objective_abs_tol": 1e-09,
+      "objective_rel_tol": 1e-09
+     },
+     "lp_problem": {
+      "requests": [
+       {
+        "request_id": "4",
+        "order_key": [
+         4
+        ],
+        "resident": true,
+        "prompt_tokens_remaining": 0,
+        "prefill_upper_bound": 0,
+        "prefill_eligible": false,
+        "decode_eligible": true,
+        "preemption_eligible": true,
+        "prefill_fixed_charge": 0,
+        "decode_demand": 0,
+        "preemption_recovery": 3,
+        "decode_utility": 1.1669552670791745,
+        "prefill_token_utility": 0.0,
+        "preemption_penalty": 1.0,
+        "service_rank": 0,
+        "victim_rank": 0
+       }
+      ],
+      "legal_preemption_ids": [
+       "4"
+      ],
+      "b_max": 32,
+      "c_max": 16,
+      "s_max": 2,
+      "resident_limit": 2,
+      "resident_count": 1,
+      "m_free": 2,
+      "admission_watermark": 0,
+      "problem_id": "31",
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      }
+     }
+    }
+   ],
+   "results": [
+    {
+     "problem_id": "31",
+     "plan": {
+      "problem_id": "31",
+      "decisions": [
+       {
+        "request_id": "4",
+        "order_key": [
+         4
+        ],
+        "prefill_tokens": 0,
+        "decode": 1,
+        "preempt": 0,
+        "prefill_indicator": 0
+       }
+      ],
+      "victim_order": [],
+      "execution_order": [
+       "4"
+      ],
+      "token_use": 1,
+      "action_count": 1,
+      "resident_count_after": 1,
+      "free_blocks_before_decodes": 2,
+      "decode_demand": 0,
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      },
+      "objective": 1.1669552670791745,
+      "extraction": {
+       "candidate_order": [
+        "4"
+       ],
+       "victim_candidate_order": [
+        "4"
+       ],
+       "accepted_order": [
+        "4"
+       ],
+       "trial_count": 1,
+       "failed_trial_count": 0,
+       "declined_optional_trial_count": 0,
+       "skipped_candidate_count": 0,
+       "fractional_request_count": 0
+      }
+     },
+     "relaxed": {
+      "decisions": [
+       {
+        "request_id": "4",
+        "x": 0.0,
+        "y": 1.0,
+        "prefill_indicator": 0.0,
+        "z": 0.0
+       }
+      ],
+      "raw_vector": [
+       0.0,
+       1.0,
+       0.0,
+       0.0
+      ],
+      "projection_count": 0,
+      "worst_raw_violation": 0.0,
+      "worst_normalized_violation": 0.0,
+      "normalized_objective": 1.1669552670791745
+     },
+     "solver": {
+      "category": "optimal_candidate",
+      "reason": "optimal candidate",
+      "diagnostics": {
+       "solver": "scipy.optimize.linprog",
+       "scipy_version": "1.15.3",
+       "method": "highs-ds",
+       "options": [
+        [
+         "presolve",
+         true
+        ]
+       ],
+       "raw_status": 0,
+       "raw_success": true,
+       "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+       "iterations": 0,
+       "vector_present": true,
+       "vector_length": 4,
+       "expected_vector_length": 4
+      },
+      "raw_vector": [
+       0.0,
+       1.0,
+       0.0,
+       0.0
+      ],
+      "reported_objective_min": -1.1669552670791745,
+      "recomputed_objective_min": -1.1669552670791745
+     }
+    }
+   ],
+   "executions": [
+    {
+     "id": 31,
+     "scheduled": [
+      [
+       4,
+       0
+      ]
+     ],
+     "ignored_seq_ids": [],
+     "preempted_seq_ids": []
+    }
+   ],
+   "scheduled": [
+    [
+     4,
+     0
+    ]
+   ],
+   "preempted": [],
+   "sampler": [
+    [
+     4,
+     29966
+    ]
+   ],
+   "request_outputs": [
+    [
+     4,
+     [
+      13,
+      29966
+     ],
+     false
+    ]
+   ],
+   "events": [
+    {
+     "seq_id": 4,
+     "name": "relaxed31",
+     "index": 4,
+     "token_id": 29966,
+     "time": 2319608.859108845,
+     "decision": 9,
+     "after_cutoff": false,
+     "finished": false
+    }
+   ]
+  },
+  {
+   "index": 10,
+   "started": 2319608.85913866,
+   "returned": 2319608.877101407,
+   "timing_inputs": [
+    {
+     "4": {
+      "raw_seq_id": 4,
+      "slo_class": "relaxed",
+      "ttft_target": 0.3,
+      "tbt_target": 0.12,
+      "priority": 1,
+      "arrival_time": 2319608.666719723,
+      "last_visible": 2319608.859108845
+     },
+     "5": {
+      "raw_seq_id": 5,
+      "slo_class": "tight",
+      "ttft_target": 0.1,
+      "tbt_target": 0.04,
+      "priority": 1,
+      "arrival_time": 2319608.666719723,
+      "last_visible": 2319608.766302312
+     }
+    }
+   ],
+   "snapshots": [
+    {
+     "snapshot_id": "32",
+     "snapshot_time": 2319608.859144359,
+     "scheduler_iteration_id": 32,
+     "num_pipeline_stages": 1,
+     "num_running_batches": 0,
+     "resident_count": 1,
+     "resident_limit": 2,
+     "max_model_len": 64,
+     "block_size": 16,
+     "total_blocks": 5,
+     "free_physical_blocks": 2,
+     "watermark_blocks": 0,
+     "requests": [
+      {
+       "raw_seq_id": 4,
+       "request_id": "4",
+       "order_key": [
+        4
+       ],
+       "ownership": "running",
+       "queue_position": 0,
+       "status": "PAUSED",
+       "arrival_time": 2319608.666719723,
+       "prompt_len": 33,
+       "prompt_tokens_processed": 33,
+       "prompt_tokens_remaining": 0,
+       "prompt_processing_finished": true,
+       "output_len": 2,
+       "context_len": 35,
+       "logical_block_count": 3,
+       "physical_block_count": 3,
+       "prefill_eligible": false,
+       "decode_eligible": true,
+       "preemption_eligible": true,
+       "prefill_fixed_charge": 0,
+       "decode_demand": 0,
+       "preemption_recovery": 3,
+       "service_rank": 0,
+       "victim_rank": 0,
+       "utility": {
+        "decode_utility": 1.1669626167664926,
+        "prefill_token_utility": 0.0,
+        "preemption_penalty": 1.0
+       }
+      }
+     ],
+     "running_order": [
+      4
+     ],
+     "arrived_waiting_order": [],
+     "numerical_policy": {
+      "policy_id": "lp_relaxation_mvp_v1",
+      "feasibility_tol": 1e-07,
+      "integrality_tol": 1e-06,
+      "objective_abs_tol": 1e-09,
+      "objective_rel_tol": 1e-09
+     },
+     "lp_problem": {
+      "requests": [
+       {
+        "request_id": "4",
+        "order_key": [
+         4
+        ],
+        "resident": true,
+        "prompt_tokens_remaining": 0,
+        "prefill_upper_bound": 0,
+        "prefill_eligible": false,
+        "decode_eligible": true,
+        "preemption_eligible": true,
+        "prefill_fixed_charge": 0,
+        "decode_demand": 0,
+        "preemption_recovery": 3,
+        "decode_utility": 1.1669626167664926,
+        "prefill_token_utility": 0.0,
+        "preemption_penalty": 1.0,
+        "service_rank": 0,
+        "victim_rank": 0
+       }
+      ],
+      "legal_preemption_ids": [
+       "4"
+      ],
+      "b_max": 32,
+      "c_max": 16,
+      "s_max": 2,
+      "resident_limit": 2,
+      "resident_count": 1,
+      "m_free": 2,
+      "admission_watermark": 0,
+      "problem_id": "32",
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      }
+     }
+    }
+   ],
+   "results": [
+    {
+     "problem_id": "32",
+     "plan": {
+      "problem_id": "32",
+      "decisions": [
+       {
+        "request_id": "4",
+        "order_key": [
+         4
+        ],
+        "prefill_tokens": 0,
+        "decode": 1,
+        "preempt": 0,
+        "prefill_indicator": 0
+       }
+      ],
+      "victim_order": [],
+      "execution_order": [
+       "4"
+      ],
+      "token_use": 1,
+      "action_count": 1,
+      "resident_count_after": 1,
+      "free_blocks_before_decodes": 2,
+      "decode_demand": 0,
+      "numerical_policy": {
+       "policy_id": "lp_relaxation_mvp_v1",
+       "feasibility_tol": 1e-07,
+       "integrality_tol": 1e-06,
+       "objective_abs_tol": 1e-09,
+       "objective_rel_tol": 1e-09
+      },
+      "objective": 1.1669626167664926,
+      "extraction": {
+       "candidate_order": [
+        "4"
+       ],
+       "victim_candidate_order": [
+        "4"
+       ],
+       "accepted_order": [
+        "4"
+       ],
+       "trial_count": 1,
+       "failed_trial_count": 0,
+       "declined_optional_trial_count": 0,
+       "skipped_candidate_count": 0,
+       "fractional_request_count": 0
+      }
+     },
+     "relaxed": {
+      "decisions": [
+       {
+        "request_id": "4",
+        "x": 0.0,
+        "y": 1.0,
+        "prefill_indicator": 0.0,
+        "z": 0.0
+       }
+      ],
+      "raw_vector": [
+       0.0,
+       1.0,
+       0.0,
+       0.0
+      ],
+      "projection_count": 0,
+      "worst_raw_violation": 0.0,
+      "worst_normalized_violation": 0.0,
+      "normalized_objective": 1.1669626167664926
+     },
+     "solver": {
+      "category": "optimal_candidate",
+      "reason": "optimal candidate",
+      "diagnostics": {
+       "solver": "scipy.optimize.linprog",
+       "scipy_version": "1.15.3",
+       "method": "highs-ds",
+       "options": [
+        [
+         "presolve",
+         true
+        ]
+       ],
+       "raw_status": 0,
+       "raw_success": true,
+       "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+       "iterations": 0,
+       "vector_present": true,
+       "vector_length": 4,
+       "expected_vector_length": 4
+      },
+      "raw_vector": [
+       0.0,
+       1.0,
+       0.0,
+       0.0
+      ],
+      "reported_objective_min": -1.1669626167664926,
+      "recomputed_objective_min": -1.1669626167664926
+     }
+    }
+   ],
+   "executions": [
+    {
+     "id": 32,
+     "scheduled": [
+      [
+       4,
+       0
+      ]
+     ],
+     "ignored_seq_ids": [],
+     "preempted_seq_ids": []
+    }
+   ],
+   "scheduled": [
+    [
+     4,
+     0
+    ]
+   ],
+   "preempted": [],
+   "sampler": [
+    [
+     4,
+     29989
+    ]
+   ],
+   "request_outputs": [
+    [
+     4,
+     [
+      13,
+      29966,
+      29989
+     ],
+     true
+    ]
+   ],
+   "events": [
+    {
+     "seq_id": 4,
+     "name": "relaxed31",
+     "index": 5,
+     "token_id": 29989,
+     "time": 2319608.877101407,
+     "decision": 10,
+     "after_cutoff": false,
+     "finished": true
+    }
+   ]
+  }
+ ],
+ "events": [
+  {
+   "seq_id": 4,
+   "name": "relaxed31",
+   "index": 1,
+   "token_id": 29893,
+   "time": 2319608.729484306,
+   "decision": 2,
+   "after_cutoff": false,
+   "finished": false
+  },
+  {
+   "seq_id": 5,
+   "name": "tight32",
+   "index": 1,
+   "token_id": 29872,
+   "time": 2319608.729484306,
+   "decision": 2,
+   "after_cutoff": false,
+   "finished": false
+  },
+  {
+   "seq_id": 4,
+   "name": "relaxed31",
+   "index": 2,
+   "token_id": 29889,
+   "time": 2319608.747938858,
+   "decision": 3,
+   "after_cutoff": false,
+   "finished": false
+  },
+  {
+   "seq_id": 5,
+   "name": "tight32",
+   "index": 2,
+   "token_id": 310,
+   "time": 2319608.747938858,
+   "decision": 3,
+   "after_cutoff": false,
+   "finished": false
+  },
+  {
+   "seq_id": 5,
+   "name": "tight32",
+   "index": 3,
+   "token_id": 278,
+   "time": 2319608.766302312,
+   "decision": 4,
+   "after_cutoff": false,
+   "finished": true
+  },
+  {
+   "seq_id": 4,
+   "name": "relaxed31",
+   "index": 3,
+   "token_id": 13,
+   "time": 2319608.840879655,
+   "decision": 8,
+   "after_cutoff": false,
+   "finished": false
+  },
+  {
+   "seq_id": 4,
+   "name": "relaxed31",
+   "index": 4,
+   "token_id": 29966,
+   "time": 2319608.859108845,
+   "decision": 9,
+   "after_cutoff": false,
+   "finished": false
+  },
+  {
+   "seq_id": 4,
+   "name": "relaxed31",
+   "index": 5,
+   "token_id": 29989,
+   "time": 2319608.877101407,
+   "decision": 10,
+   "after_cutoff": false,
+   "finished": true
+  }
+ ],
+ "final_central": {
+  "total_blocks": 5,
+  "watermark_blocks": 0,
+  "free_blocks": 5,
+  "free_block_ids": [
+   3,
+   4,
+   2,
+   1,
+   0
+  ],
+  "block_tables": {},
+  "seqs": {},
+  "iteration_id": 32,
+  "num_running_batches": 0,
+  "waiting": [],
+  "running": []
+ },
+ "final_worker": {
+  "total_blocks": 5,
+  "watermark_blocks": 0,
+  "free_blocks": 5,
+  "free_block_ids": [
+   3,
+   4,
+   2,
+   0,
+   1
+  ],
+  "block_tables": {},
+  "seqs": {},
+  "block_ops": [
+   [
+    "allocate",
+    4,
+    [],
+    [
+     4,
+     3
+    ]
+   ],
+   [
+    "allocate",
+    5,
+    [],
+    [
+     2,
+     1
+    ]
+   ],
+   [
+    "append",
+    4,
+    [
+     4,
+     3
+    ],
+    [
+     4,
+     3
+    ]
+   ],
+   [
+    "append",
+    5,
+    [
+     2,
+     1
+    ],
+    [
+     2,
+     1
+    ]
+   ],
+   [
+    "append",
+    4,
+    [
+     4,
+     3
+    ],
+    [
+     4,
+     3
+    ]
+   ],
+   [
+    "append",
+    5,
+    [
+     2,
+     1
+    ],
+    [
+     2,
+     1
+    ]
+   ],
+   [
+    "append",
+    4,
+    [
+     4,
+     3
+    ],
+    [
+     4,
+     3
+    ]
+   ],
+   [
+    "append",
+    5,
+    [
+     2,
+     1
+    ],
+    [
+     2,
+     1,
+     0
+    ]
+   ],
+   [
+    "free",
+    4,
+    [
+     4,
+     3
+    ],
+    []
+   ],
+   [
+    "append",
+    5,
+    [
+     2,
+     1,
+     0
+    ],
+    [
+     2,
+     1,
+     0
+    ]
+   ],
+   [
+    "free",
+    5,
+    [
+     2,
+     1,
+     0
+    ],
+    []
+   ],
+   [
+    "allocate",
+    4,
+    [],
+    [
+     1,
+     0,
+     2
+    ]
+   ],
+   [
+    "append",
+    4,
+    [
+     1,
+     0,
+     2
+    ],
+    [
+     1,
+     0,
+     2
+    ]
+   ],
+   [
+    "append",
+    4,
+    [
+     1,
+     0,
+     2
+    ],
+    [
+     1,
+     0,
+     2
+    ]
+   ],
+   [
+    "append",
+    4,
+    [
+     1,
+     0,
+     2
+    ],
+    [
+     1,
+     0,
+     2
+    ]
+   ],
+   [
+    "append",
+    4,
+    [
+     1,
+     0,
+     2
+    ],
+    [
+     1,
+     0,
+     2
+    ]
+   ],
+   [
+    "append",
+    4,
+    [
+     1,
+     0,
+     2
+    ],
+    [
+     1,
+     0,
+     2
+    ]
+   ],
+   [
+    "free",
+    4,
+    [
+     1,
+     0,
+     2
+    ],
+    []
+   ]
+  ],
+  "cache_config_num_gpu_blocks": 5,
+  "cache_engine_num_gpu_blocks": 5,
+  "cache_layers": 22,
+  "cache_tensor_block_dims": [
+   5
+  ],
+  "cache_tensor_shapes": [
+   [
+    5,
+    16,
+    4,
+    64
+   ]
+  ],
+  "allocator_num_blocks": 5
+ }
+}

@@ -516,6 +516,185 @@ def _running_order_weights(captured, c_max, b_max):
     return weights
 
 
+@dataclass(frozen=True)
+class RequestTiming:
+    """Immutable per-request timing input of the soft-SLO coefficient
+    policies, copied once per decision from the caller's output clock.
+
+    Times are seconds on the clock of ``Sequence.arrival_time`` and the LP
+    snapshot (``time.monotonic()`` in the live scheduler). ``last_visible``
+    is the time of the request's latest verified new visible output token,
+    or ``None`` before its first one; recomputation does not reset it. The
+    targets are soft service targets, separate from SLAI's prefill-deadline
+    and strict-TBT sequence fields, which these policies never read.
+    """
+
+    raw_seq_id: int
+    slo_class: str
+    ttft_target: float
+    tbt_target: float
+    priority: float
+    arrival_time: float
+    last_visible: Optional[float]
+
+
+@dataclass(frozen=True)
+class SoftSloForecast:
+    """The urgency forecast of one request at one decision.
+
+    ``target_kind`` is ``"ttft"`` before the first visible token and
+    ``"tbt"`` afterward (including during a cache rebuild). ``boost_region``
+    is ``"floor"`` (clamped at 1), ``"interior"``, or ``"cap"`` (clamped
+    at 3)."""
+
+    raw_seq_id: int
+    target_kind: str
+    target: float
+    due: float
+    remaining_prefill_tokens: int
+    nominal_chunk: int
+    estimated_batches: int
+    batch_forecast: float
+    slack: float
+    boost: float
+    boost_region: str
+
+
+def soft_slo_forecast(captured, request, *, timing, batch_forecast, b_max,
+                      c_max):
+    """Pure urgency forecast of ``request`` from captured data and the
+    immutable ``timing`` mapping ``{raw_seq_id: RequestTiming}``.
+
+    With ``K = min(b_max, c_max)`` and ``R`` the captured prompt remainder
+    (including rebuild work after recomputation)::
+
+        estimated_batches = 1 + ceil(R / K)
+        due   = arrival + TTFT          before the first visible token
+              = last_visible + TBT      afterward
+        slack = due - snapshot_time - estimated_batches * batch_forecast
+        boost = 1 + clamp((T - slack) / T, 0, 2)
+
+    where ``T`` is the applicable target. Only priority 1 is supported; the
+    timing record must agree with the captured arrival time, and a request
+    with captured output tokens must have a visible-output time.
+    """
+    for name, value in (("c_max", c_max), ("b_max", b_max)):
+        _require(
+            _is_int(value) and value > 0,
+            f"soft-SLO forecast {name} must be a positive integer, got "
+            f"{value!r}",
+        )
+    _require(
+        _is_real(batch_forecast) and batch_forecast >= 0,
+        f"soft-SLO batch forecast must be finite and non-negative, got "
+        f"{batch_forecast!r}",
+    )
+    raw_id = request.raw_seq_id
+    _require(raw_id in timing, f"raw_seq_id {raw_id}: no timing input")
+    t = timing[raw_id]
+    _require(
+        isinstance(t, RequestTiming) and t.raw_seq_id == raw_id,
+        f"raw_seq_id {raw_id}: timing input must be its RequestTiming",
+    )
+    _require(
+        t.priority == 1,
+        f"raw_seq_id {raw_id}: only priority 1 is supported, got "
+        f"{t.priority!r}",
+    )
+    for name, value in (("ttft_target", t.ttft_target),
+                        ("tbt_target", t.tbt_target)):
+        _require(
+            _is_real(value) and value > 0,
+            f"raw_seq_id {raw_id}: {name} must be finite and positive, got "
+            f"{value!r}",
+        )
+    _require(
+        _is_real(t.arrival_time)
+        and float(t.arrival_time) == request.arrival_time,
+        f"raw_seq_id {raw_id}: timing arrival {t.arrival_time!r} differs "
+        f"from the captured arrival {request.arrival_time!r}",
+    )
+    snapshot_time = captured.snapshot_time
+    if t.last_visible is None:
+        _require(
+            request.output_len == 0,
+            f"raw_seq_id {raw_id}: {request.output_len} captured output "
+            "tokens but no visible-output time",
+        )
+        kind, target = "ttft", float(t.ttft_target)
+        due = float(t.arrival_time) + target
+    else:
+        _require(
+            _is_real(t.last_visible)
+            and t.arrival_time <= t.last_visible <= snapshot_time,
+            f"raw_seq_id {raw_id}: last visible time {t.last_visible!r} is "
+            f"outside [arrival {t.arrival_time!r}, snapshot "
+            f"{snapshot_time!r}]",
+        )
+        kind, target = "tbt", float(t.tbt_target)
+        due = float(t.last_visible) + target
+    k = min(b_max, c_max)
+    remaining = request.prompt_tokens_remaining
+    batches = 1 + -(-remaining // k)
+    slack = due - snapshot_time - batches * batch_forecast
+    raw = (target - slack) / target
+    clamped = min(max(raw, 0.0), 2.0)
+    region = "floor" if raw <= 0 else "cap" if raw >= 2 else "interior"
+    return SoftSloForecast(
+        raw_seq_id=raw_id, target_kind=kind, target=target, due=due,
+        remaining_prefill_tokens=remaining, nominal_chunk=k,
+        estimated_batches=batches, batch_forecast=float(batch_forecast),
+        slack=slack, boost=1.0 + clamped, boost_region=region,
+    )
+
+
+def soft_slo_timed_utility(captured, request, *, timing, batch_forecast,
+                           b_max, c_max):
+    """Timed soft-SLO coefficient policy for ``construct_coefficients``.
+
+    Bind ``timing``, ``batch_forecast``, ``b_max``, and ``c_max`` (for
+    example with ``functools.partial``). With ``boost`` from
+    ``soft_slo_forecast`` and ``K = min(b_max, c_max)``::
+
+        decode_utility        = boost       for a decode-eligible request
+        prefill_token_utility = boost / K   for a prefill-eligible request
+        preemption_penalty    = 1           for an eligible resident victim
+
+    and 0 for an ineligible term. One full nominal prefill chunk and one
+    decode each earn ``boost``. Reads only immutable inputs. One scoped
+    provisional candidate (D-01 to D-04 remain OPEN), not a selected policy.
+    """
+    boost = soft_slo_forecast(
+        captured, request, timing=timing, batch_forecast=batch_forecast,
+        b_max=b_max, c_max=c_max,
+    ).boost
+    k = min(b_max, c_max)
+    return RequestUtility(
+        decode_utility=boost if request.decode_eligible else 0.0,
+        prefill_token_utility=boost / k if request.prefill_eligible else 0.0,
+        preemption_penalty=1.0 if request.preemption_eligible else 0.0,
+    )
+
+
+def soft_slo_untimed_utility(captured, request, *, b_max, c_max):
+    """Untimed control of ``soft_slo_timed_utility``: the same terms with
+    ``boost = 1`` (decode 1, prefill token ``1 / K``, penalty 1; 0 when
+    ineligible), with ``K = min(b_max, c_max)``. Reads no timing input. One
+    scoped provisional candidate (D-01 to D-04 remain OPEN)."""
+    for name, value in (("c_max", c_max), ("b_max", b_max)):
+        _require(
+            _is_int(value) and value > 0,
+            f"soft-SLO untimed utility {name} must be a positive integer, "
+            f"got {value!r}",
+        )
+    k = min(b_max, c_max)
+    return RequestUtility(
+        decode_utility=1.0 if request.decode_eligible else 0.0,
+        prefill_token_utility=1.0 / k if request.prefill_eligible else 0.0,
+        preemption_penalty=1.0 if request.preemption_eligible else 0.0,
+    )
+
+
 def construct_coefficients(captured, policy):
     """Pure coefficient construction for one decision.
 

@@ -1,0 +1,37 @@
+trial            class    TTFT n med   miss  mexc | TBT gaps miss  mexc  p99   lateStreams noGap overdueOpen | afterCutoff
+warmup0_untimed  relaxed  2/2  160.4   0.0   0.0 |  10 0.00   0.0  22.0 0.00 0 0 | 0
+warmup0_untimed  tight    2/2  180.7   1.0  80.7 |  10 0.00   0.0  20.5 0.00 0 0 | 0
+warmup1_timed    relaxed  2/2  197.3   0.0   0.0 |  10 0.00   0.0  24.6 0.00 0 0 | 0
+warmup1_timed    tight    2/2  120.8   0.5  39.2 |  10 0.00   0.0  20.6 0.00 0 0 | 0
+trial0_timed     relaxed  2/2  197.7   0.0   0.0 |  10 0.00   0.0  18.6 0.00 0 0 | 0
+trial0_timed     tight    2/2  121.1   0.5  39.4 |  10 0.00   0.0  20.6 0.00 0 0 | 0
+trial1_untimed   relaxed  2/2  139.1   0.0   0.0 |  10 0.00   0.0  20.3 0.00 0 0 | 0
+trial1_untimed   tight    2/2  158.5   1.0  58.5 |  10 0.00   0.0  20.4 0.00 0 0 | 0
+trial2_untimed   relaxed  2/2  139.2   0.0   0.0 |  10 0.00   0.0  20.5 0.00 0 0 | 0
+trial2_untimed   tight    2/2  158.7   1.0  58.7 |  10 0.00   0.0  20.5 0.00 0 0 | 0
+trial3_timed     relaxed  2/2  198.2   0.0   0.0 |  10 0.00   0.0  18.6 0.00 0 0 | 0
+trial3_timed     tight    2/2  121.0   0.5  39.5 |  10 0.00   0.0  20.5 0.00 0 0 | 0
+
+per-request TTFT ms (trial: name=ttft)
+  warmup0_untimed {'relaxed17': '83.9', 'tight17': '124.5', 'relaxed33': '236.8', 'tight33': '236.8'}
+  warmup1_timed {'relaxed17': '143.0', 'tight17': '63.1', 'relaxed33': '251.6', 'tight33': '178.4'}
+  trial0_timed {'relaxed17': '143.4', 'tight17': '63.4', 'relaxed33': '252.0', 'tight33': '178.9'}
+  trial1_untimed {'relaxed17': '63.7', 'tight17': '102.4', 'relaxed33': '214.6', 'tight33': '214.6'}
+  trial2_untimed {'relaxed17': '63.6', 'tight17': '102.6', 'relaxed33': '214.9', 'tight33': '214.9'}
+  trial3_timed {'relaxed17': '143.5', 'tight17': '63.1', 'relaxed33': '252.9', 'tight33': '179.0'}
+
+warmup0_untimed  boost={'ttft:interior': 27, 'tbt:interior': 20, 'ttft:cap': 3} next-token err ms mean 28.2 min -3.8 max 134.8 | batch err ms mean 0.36 max 21.4
+warmup1_timed    boost={'ttft:interior': 32, 'tbt:interior': 20} next-token err ms mean 34.3 min -3.7 max 169.3 | batch err ms mean -0.66 max 4.6
+trial0_timed     boost={'ttft:interior': 32, 'tbt:interior': 20} next-token err ms mean 34.2 min -3.4 max 169.3 | batch err ms mean -0.99 max 2.3
+trial1_untimed   boost={'ttft:interior': 28, 'tbt:interior': 20, 'ttft:cap': 2} next-token err ms mean 26.8 min -3.6 max 131.7 | batch err ms mean -0.96 max 2.3
+trial2_untimed   boost={'ttft:interior': 28, 'tbt:interior': 20, 'ttft:cap': 2} next-token err ms mean 26.9 min -3.7 max 132.1 | batch err ms mean -0.93 max 2.2
+trial3_timed     boost={'ttft:interior': 32, 'tbt:interior': 20} next-token err ms mean 34.6 min -3.1 max 170.7 | batch err ms mean -0.95 max 2.0
+
+same_state_exact rows: 19
+PH1 != exact on 6 of 38
+ d 0 {'timed': ({'8': 'prefill:1', '9': 'prefill:16'}, {'8': 'prefill:1', '9': 'prefill:16'}, 0.0), 'untimed': ({'8': 'prefill:16', '9': 'prefill:1'}, {'8': 'prefill:16', '9': 'prefill:1'}, 0.0)}
+ d 1 {'timed': ({'9': 'prefill:1', '11': 'prefill:16'}, {'9': 'prefill:1', '11': 'prefill:16'}, 0.0), 'untimed': ({'9': 'prefill:1', '11': 'prefill:16'}, {'8': 'prefill:16', '9': 'prefill:1'}, 0.0)}
+ d 2 {'timed': ({'9': 'decode', '11': 'prefill:16'}, {'9': 'decode', '11': 'prefill:16'}, 0.0), 'untimed': ({'9': 'decode', '11': 'prefill:16'}, {'8': 'prefill:16', '9': 'decode'}, 0.0)}
+ d 3 {'timed': ({'9': 'decode', '10': 'prefill:16'}, {'9': 'decode', '10': 'prefill:16'}, 0.0), 'untimed': ({'8': 'prefill:16', '9': 'decode'}, {'9': 'decode', '10': 'prefill:16'}, 0.0)}
+ d 4 {'timed': ({'8': 'prefill:16', '9': 'decode'}, {'9': 'decode', '10': 'prefill:16'}, -6.208811242913725e-11), 'untimed': ({'8': 'prefill:16', '9': 'decode'}, {'9': 'decode', '10': 'prefill:16'}, 0.0)}
+ d 5 {'timed': ({'9': 'decode', '10': 'prefill:16'}, {'9': 'decode', '10': 'prefill:16'}, 0.0), 'untimed': ({'8': 'decode', '9': 'decode'}, {'9': 'decode', '10': 'prefill:16'}, 0.0)}
