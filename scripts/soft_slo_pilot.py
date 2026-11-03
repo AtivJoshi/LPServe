@@ -123,6 +123,9 @@ def _request(name, slo_class, prompt_len, arrival_offset, max_tokens,
 
 # Within each arrival group the relaxed request registers first, so the
 # untimed control's service-rank tie-break favors it (a visible choice).
+# ``--registration-order tight_first`` reverses this within each group of
+# consecutive equal arrival offsets only (``registration_sequence``).
+REGISTRATION_ORDERS = ("relaxed_first", "tight_first")
 CASES = {
     "ample": dict(
         requests=(
@@ -421,12 +424,33 @@ def check_quiescent_engine(engine, case, tag):
           f"{tag}: engine is not quiescent and empty")
 
 
-def run_trial(engine, case_name, policy, label, prompts, worker_state):
+def registration_sequence(requests, order):
+    """Requests in registration order. ``relaxed_first`` keeps the case
+    order; ``tight_first`` moves tight requests ahead within each run of
+    consecutive equal arrival offsets, keeping every other relative order."""
+    check(order in REGISTRATION_ORDERS,
+          f"unknown registration order {order!r}")
+    if order == "relaxed_first":
+        return tuple(requests)
+    out, group = [], []
+    for r in tuple(requests) + (None,):
+        if group and (r is None
+                      or r["arrival_offset"] != group[0]["arrival_offset"]):
+            out += sorted(group, key=lambda g: g["slo_class"] != "tight")
+            group = []
+        if r is not None:
+            group.append(r)
+    return tuple(out)
+
+
+def run_trial(engine, case_name, policy, label, prompts, worker_state,
+              registration_order="relaxed_first"):
     """One trial; returns its record (references, serialized later). A
     failure is recorded in the returned record and re-raised as
     ``TrialFailure``."""
     from sarathi.core.datatypes.sampling_params import SamplingParams
     case = CASES[case_name]
+    requests = registration_sequence(case["requests"], registration_order)
     scheduler = engine.scheduler
     seq_map = engine.seq_manager.seq_map
     check_quiescent_engine(engine, case, f"{label} start")
@@ -437,11 +461,12 @@ def run_trial(engine, case_name, policy, label, prompts, worker_state):
     clock = OutputClock()
     recorder = DecisionRecorder(scheduler, clock, policy, case)
     trial = dict(label=label, case=case_name, policy=policy, cohort=[],
-                 steps=[], stop_reason=None, failure=None)
+                 registration_order=registration_order, steps=[],
+                 stop_reason=None, failure=None)
     try:
         start = time.monotonic()
         t0 = start + REGISTRATION_LEAD_SECONDS
-        for r in case["requests"]:
+        for r in requests:
             ttft, tbt = resolve_targets(r)
             before = set(seq_map)
             engine.add_request(
@@ -1202,7 +1227,9 @@ def trial_record(trial):
             events=s.get("events")))
     return to_jsonable(dict(
         label=trial["label"], case=trial["case"], policy=trial["policy"],
-        cohort=trial["cohort"], t0=trial.get("t0"),
+        cohort=trial["cohort"],
+        registration_order=trial.get("registration_order"),
+        t0=trial.get("t0"),
         cutoff=trial.get("cutoff"),
         observation_cutoff=trial.get("observation_cutoff", trial.get("cutoff")),
         registration_start=trial.get("registration_start"),
@@ -1269,12 +1296,12 @@ def finished_in_window(trial):
 
 
 def run_session(engine, case_name, prompts, labels, worker_state, *,
-                save_trial=None):
+                save_trial=None, registration_order="relaxed_first"):
     """Run trials on one engine, saving each raw trace before analysis."""
     trials, analyses, metrics = [], {}, {}
     for label, policy, _ in labels:
         trial = run_trial(engine, case_name, policy, label, prompts,
-                          worker_state)
+                          worker_state, registration_order)
         trials.append(trial)
         if save_trial is not None:
             save_trial(trial)
@@ -1302,6 +1329,9 @@ def parse_args(argv=None):
                         help="one untimed trial with max_tokens 1 per request")
     parser.add_argument("--single", choices=POLICIES,
                         help="one trial of this policy, no warm-up")
+    parser.add_argument("--registration-order", choices=REGISTRATION_ORDERS,
+                        default="relaxed_first",
+                        help="class order within equal-arrival groups")
     return parser, parser.parse_args(argv)
 
 
@@ -1320,7 +1350,9 @@ def main(argv=None):
         CASES[args.case] = case = dict(case, requests=tuple(
             dict(r, max_tokens=1) for r in case["requests"]))
     summary = dict(validation_passed=False, argv=sys.argv, case=args.case,
-                   cpu=args.cpu, smoke=args.smoke, settings=settings_record(),
+                   cpu=args.cpu, smoke=args.smoke,
+                   registration_order=args.registration_order,
+                   settings=settings_record(),
                    provenance=provenance_record(), failure=None)
     engine = None
 
@@ -1396,7 +1428,8 @@ def main(argv=None):
                          for i, p in enumerate(MEASURED_ORDER)])
         trials, analyses, metrics = run_session(
             engine, args.case, prompts, labels,
-            functools.partial(_worker_state, engine), save_trial=save_trial)
+            functools.partial(_worker_state, engine), save_trial=save_trial,
+            registration_order=args.registration_order)
         measured = {label: analyses[label] for label, _, include in labels
                     if include and label in analyses}
         summary.update(

@@ -1,0 +1,47 @@
+cpu_ample_relaxed_first: passed=True order=relaxed_first code_matches_frozen=True head=5d99fe4 settings_sha=8018a0022018 gates={'contended_decisions': 12, 'action_differences': 12, 'preemptions': 0, 'decisions': 72} failure=None
+cpu_ample_tight_first: passed=False order=tight_first code_matches_frozen=True head=5d99fe4 settings_sha=8018a0022018 gates={'contended_decisions': 12, 'action_differences': 0, 'preemptions': 0, 'decisions': 72} failure=ample comparison did not meet its gates: {'contended_decisions': 12, 'action_differences': 0, 'preemptions': 0, 'decisions': 72}
+gpu_ample_relaxed_first: passed=True order=relaxed_first code_matches_frozen=True head=5d99fe4 settings_sha=8018a0022018 gates={'contended_decisions': 44, 'action_differences': 18, 'preemptions': 0, 'decisions': 72} failure=None
+gpu_ample_tight_first: passed=True order=tight_first code_matches_frozen=True head=5d99fe4 settings_sha=8018a0022018 gates={'contended_decisions': 44, 'action_differences': 24, 'preemptions': 0, 'decisions': 72} failure=None
+gpu_smoke: passed=True order=relaxed_first code_matches_frozen=True head=5d99fe4 settings_sha=4dc53ca94d69 gates={'contended_decisions': 0, 'action_differences': 0, 'preemptions': 0, 'decisions': 0} failure=None
+
+GPU: NVIDIA A16 0, NVIDIA A16, GPU-bb2dae9d-9eb7-2077-69b2-39cc374880a1, 595.91.07, 15356 MiB host=gpu052 job=66576498 load_format=auto torch.float16 params=1100048384 weights_match=[True, True] cache=[15613]->32 versions={'torch': '2.3.0+cu121', 'transformers': '4.57.6', 'ray': '2.58.0', 'numpy': '2.2.6', 'scipy': '1.15.3', 'flashinfer': '0.2.0.post1+cu121torch2.3', 'vllm-flash-attn': '2.5.9', 'sarathi': '0.1.7', 'nvidia-ml-py': '13.595.45', 'huggingface-hub': '0.36.2', 'tokenizers': '0.22.2'}
+
+=== gpu_ample_relaxed_first  prompts identical to relaxed_first: True
+ warmup0_untimed  order=['relaxed17', 'tight17', 'relaxed33', 'tight33'] first16=['relaxed17@d0', 'tight33@d1'] finished_in_cutoff=True decisions=17 contended=10 preempt=0 diffs=6
+   tight: TTFT med 181.1 miss 2/2 TBT miss 0/10 | relaxed: TTFT med 161.0 miss 0/2 TBT miss 0/10
+   per-request TTFT ms: {'relaxed17': '84.1', 'tight17': '124.3', 'relaxed33': '237.9', 'tight33': '237.9'}
+ warmup1_timed    order=['relaxed17', 'tight17', 'relaxed33', 'tight33'] first16=['tight17@d0', 'tight33@d1'] finished_in_cutoff=True decisions=19 contended=12 preempt=0 diffs=3
+   tight: TTFT med 121.9 miss 1/2 TBT miss 0/10 | relaxed: TTFT med 199.0 miss 0/2 TBT miss 0/10
+   per-request TTFT ms: {'relaxed17': '144.3', 'tight17': '63.5', 'relaxed33': '253.6', 'tight33': '180.2'}
+ trial0_timed     order=['relaxed17', 'tight17', 'relaxed33', 'tight33'] first16=['tight17@d0', 'tight33@d1'] finished_in_cutoff=True decisions=19 contended=12 preempt=0 diffs=3
+   tight: TTFT med 121.9 miss 1/2 TBT miss 0/10 | relaxed: TTFT med 199.1 miss 0/2 TBT miss 0/10
+   per-request TTFT ms: {'relaxed17': '144.2', 'tight17': '63.6', 'relaxed33': '254.0', 'tight33': '180.2'}
+ trial1_untimed   order=['relaxed17', 'tight17', 'relaxed33', 'tight33'] first16=['relaxed17@d0', 'tight33@d1'] finished_in_cutoff=True decisions=17 contended=10 preempt=0 diffs=6
+   tight: TTFT med 159.0 miss 2/2 TBT miss 0/10 | relaxed: TTFT med 139.5 miss 0/2 TBT miss 0/10
+   per-request TTFT ms: {'relaxed17': '63.5', 'tight17': '102.5', 'relaxed33': '215.5', 'tight33': '215.5'}
+ trial2_untimed   order=['relaxed17', 'tight17', 'relaxed33', 'tight33'] first16=['relaxed17@d0', 'tight33@d1'] finished_in_cutoff=True decisions=17 contended=10 preempt=0 diffs=6
+   tight: TTFT med 159.3 miss 2/2 TBT miss 0/10 | relaxed: TTFT med 139.8 miss 0/2 TBT miss 0/10
+   per-request TTFT ms: {'relaxed17': '63.6', 'tight17': '102.6', 'relaxed33': '216.1', 'tight33': '216.1'}
+ trial3_timed     order=['relaxed17', 'tight17', 'relaxed33', 'tight33'] first16=['tight17@d0', 'tight33@d1'] finished_in_cutoff=True decisions=19 contended=12 preempt=0 diffs=3
+   tight: TTFT med 121.4 miss 1/2 TBT miss 0/10 | relaxed: TTFT med 198.1 miss 0/2 TBT miss 0/10
+   per-request TTFT ms: {'relaxed17': '143.5', 'tight17': '63.7', 'relaxed33': '252.8', 'tight33': '179.2'}
+
+=== gpu_ample_tight_first  prompts identical to relaxed_first: True
+ warmup0_untimed  order=['tight17', 'relaxed17', 'tight33', 'relaxed33'] first16=['tight17@d0', 'relaxed33@d1'] finished_in_cutoff=True decisions=17 contended=10 preempt=0 diffs=7
+   tight: TTFT med 160.1 miss 1/2 TBT miss 0/10 | relaxed: TTFT med 180.6 miss 0/2 TBT miss 0/10
+   per-request TTFT ms: {'tight17': '82.7', 'relaxed17': '123.8', 'tight33': '237.5', 'relaxed33': '237.5'}
+ warmup1_timed    order=['tight17', 'relaxed17', 'tight33', 'relaxed33'] first16=['tight17@d0', 'tight33@d1'] finished_in_cutoff=True decisions=19 contended=12 preempt=0 diffs=5
+   tight: TTFT med 120.4 miss 1/2 TBT miss 0/10 | relaxed: TTFT med 196.5 miss 0/2 TBT miss 0/10
+   per-request TTFT ms: {'tight17': '63.1', 'relaxed17': '142.5', 'tight33': '177.7', 'relaxed33': '250.5'}
+ trial0_timed     order=['tight17', 'relaxed17', 'tight33', 'relaxed33'] first16=['tight17@d0', 'tight33@d1'] finished_in_cutoff=True decisions=19 contended=12 preempt=0 diffs=5
+   tight: TTFT med 120.4 miss 1/2 TBT miss 0/10 | relaxed: TTFT med 196.5 miss 0/2 TBT miss 0/10
+   per-request TTFT ms: {'tight17': '63.1', 'relaxed17': '142.5', 'tight33': '177.6', 'relaxed33': '250.5'}
+ trial1_untimed   order=['tight17', 'relaxed17', 'tight33', 'relaxed33'] first16=['tight17@d0', 'relaxed33@d1'] finished_in_cutoff=True decisions=17 contended=10 preempt=0 diffs=7
+   tight: TTFT med 138.3 miss 1/2 TBT miss 0/10 | relaxed: TTFT med 157.7 miss 0/2 TBT miss 0/10
+   per-request TTFT ms: {'tight17': '63.2', 'relaxed17': '101.9', 'tight33': '213.5', 'relaxed33': '213.5'}
+ trial2_untimed   order=['tight17', 'relaxed17', 'tight33', 'relaxed33'] first16=['tight17@d0', 'relaxed33@d1'] finished_in_cutoff=True decisions=17 contended=10 preempt=0 diffs=7
+   tight: TTFT med 138.2 miss 1/2 TBT miss 0/10 | relaxed: TTFT med 157.5 miss 0/2 TBT miss 0/10
+   per-request TTFT ms: {'tight17': '62.7', 'relaxed17': '101.3', 'tight33': '213.7', 'relaxed33': '213.7'}
+ trial3_timed     order=['tight17', 'relaxed17', 'tight33', 'relaxed33'] first16=['tight17@d0', 'tight33@d1'] finished_in_cutoff=True decisions=19 contended=12 preempt=0 diffs=5
+   tight: TTFT med 119.8 miss 1/2 TBT miss 0/10 | relaxed: TTFT med 196.5 miss 0/2 TBT miss 0/10
+   per-request TTFT ms: {'tight17': '62.6', 'relaxed17': '142.0', 'tight33': '177.0', 'relaxed33': '250.9'}

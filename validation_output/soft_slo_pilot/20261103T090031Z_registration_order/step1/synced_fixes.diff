@@ -1,0 +1,279 @@
+diff --git a/AGENTS.md b/AGENTS.md
+index 70fe981..51d9ffb 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -138,6 +138,7 @@ Resolve only what the active MVP needs. If a missing input matters to that path,
+ ## Local and Unity environments
+ 
+ - Use local development for documentation, source inspection, implementation, and CPU/unit tests when appropriate.
++- Codex must not rerun code on macOS just to check results from Unity. If a local rerun is essential, ask for the user's explicit permission first.
+ - Use the validated Unity setup in `docs/unity_setup.md` for GPU and serving validation unless an explicit task establishes and records another environment.
+ - On Unity, obtain an allocation only when one is needed; never initialize models, run CUDA validation, or benchmark on a login node.
+ - When Claude or another implementation agent starts inside an allocated Unity GPU node, use that node and the repository's existing Python environment directly. Do not invoke `srun`, create another allocation, submit a job, or SSH elsewhere unless explicitly requested. Load required modules and activate the existing environment in the shell used for execution. Do not assume activation persists across separate tool shells.
+diff --git a/scripts/soft_slo_pilot.py b/scripts/soft_slo_pilot.py
+index 2d0055c..767929e 100644
+--- a/scripts/soft_slo_pilot.py
++++ b/scripts/soft_slo_pilot.py
+@@ -477,14 +477,15 @@ def run_trial(engine, case_name, policy, label, prompts, worker_state):
+             if now >= cutoff:
+                 trial["stop_reason"] = "cutoff"
+                 break
++            if index >= case["max_decisions"]:
++                trial["stop_reason"] = "decision_cap"
++                trial["observation_cutoff"] = now
++                break
+             pending = [r["arrival_time"] for r in clock.requests.values()
+                        if r["finish_time"] is None]
+             if min(pending) > now:  # nothing arrived: idle without a call
+                 time.sleep(min(min(pending), cutoff) - now)
+                 continue
+-            if index >= case["max_decisions"]:
+-                trial["stop_reason"] = "decision_cap"
+-                break
+             recorder.begin()
+             engine.validation_sampler_outputs = None
+             started = time.monotonic()
+@@ -538,8 +539,11 @@ def run_trial(engine, case_name, policy, label, prompts, worker_state):
+     except BaseException as err:  # keep the original failure visible
+         trial.setdefault("probe_failure", repr(err))
+     if trial["failure"] is None and trial["stop_reason"] == "drained":
+-        fc, fw = trial["final_central"], trial["final_worker"]
+         try:
++            check("probe_failure" not in trial,
++                  f"{label}: final state probe failed: "
++                  f"{trial.get('probe_failure')}")
++            fc, fw = trial["final_central"], trial["final_worker"]
+             check(fc["waiting"] == [] and fc["running"] == []
+                   and fc["seqs"] == {} and fc["block_tables"] == {}
+                   and fc["free_blocks"] == case["num_gpu_blocks"]
+@@ -772,27 +776,31 @@ def latency_metrics(requests, cutoff):
+                    ttft_target=r["ttft_target"], tbt_target=r["tbt_target"],
+                    events_within_cutoff=len(within),
+                    finished_by_cutoff=finished)
++        due = r["arrival_time"] + r["ttft_target"]
+         if within:
+-            ttft = within[0] - r["arrival_time"]
+-            row.update(ttft_status="observed", ttft=ttft,
+-                       ttft_miss=ttft > r["ttft_target"],
+-                       ttft_excess=max(0.0, ttft - r["ttft_target"]))
++            row.update(ttft_status="observed",
++                       ttft=within[0] - r["arrival_time"],
++                       ttft_miss=within[0] > due,
++                       ttft_excess=max(0.0, within[0] - due))
+         else:
+-            due = r["arrival_time"] + r["ttft_target"]
+             if due <= cutoff:
+                 row.update(ttft_status="known_miss_missing",
+                            ttft_miss=True,
+                            ttft_excess_lower_bound=cutoff - due)
+             else:
+                 row.update(ttft_status="unresolved", ttft_miss=None)
+-        gaps = [b - a for a, b in zip(within, within[1:])]
+-        row.update(gaps=gaps, gap_misses=[g > r["tbt_target"] for g in gaps],
+-                   gap_excess=[max(0.0, g - r["tbt_target"]) for g in gaps])
++        gaps, gap_misses, gap_excess = [], [], []
++        for previous, current in zip(within, within[1:]):
++            due = previous + r["tbt_target"]
++            gaps.append(current - previous)
++            gap_misses.append(current > due)
++            gap_excess.append(max(0.0, current - due))
++        row.update(gaps=gaps, gap_misses=gap_misses, gap_excess=gap_excess)
+         if within and not finished:
+-            open_gap = cutoff - within[-1]
++            due = within[-1] + r["tbt_target"]
+             row["open_gap"] = dict(
+-                elapsed=open_gap, overdue=open_gap > r["tbt_target"],
+-                excess_lower_bound=max(0.0, open_gap - r["tbt_target"]))
++                elapsed=cutoff - within[-1], overdue=cutoff > due,
++                excess_lower_bound=max(0.0, cutoff - due))
+         per_request.append(row)
+     by_class = {}
+     for cls in sorted({r["slo_class"] for r in per_request}):
+@@ -844,7 +852,7 @@ def trial_metrics(trial):
+                  tbt_target=r["tbt_target"], event_times=list(r["event_times"]),
+                  finish_time=r["finish_time"])
+             for r in clock.requests.values()]
+-    return latency_metrics(rows, trial["cutoff"])
++    return latency_metrics(rows, trial.get("observation_cutoff", trial["cutoff"]))
+ 
+ 
+ # ---------------------------------------------------------------------------
+@@ -1196,6 +1204,7 @@ def trial_record(trial):
+         label=trial["label"], case=trial["case"], policy=trial["policy"],
+         cohort=trial["cohort"], t0=trial.get("t0"),
+         cutoff=trial.get("cutoff"),
++        observation_cutoff=trial.get("observation_cutoff", trial.get("cutoff")),
+         registration_start=trial.get("registration_start"),
+         registration_end=trial.get("registration_end"),
+         stop_reason=trial["stop_reason"], failure=trial["failure"],
+@@ -1250,14 +1259,25 @@ def summarize_pair(analyses):
+         decisions=len(decisions))
+ 
+ 
+-def run_session(engine, case_name, prompts, labels, worker_state):
+-    """Run the trials in ``labels`` ([(label, policy, measured)]) on one
+-    engine; stop at the first trial that fails or does not drain."""
++def finished_in_window(trial):
++    """Every registered request finished by the measurement cutoff."""
++    requests = trial["clock"].requests
++    return (trial["stop_reason"] == "drained" and bool(requests)
++            and all(r["finish_time"] is not None
++                    and r["finish_time"] <= trial["cutoff"]
++                    for r in requests.values()))
++
++
++def run_session(engine, case_name, prompts, labels, worker_state, *,
++                save_trial=None):
++    """Run trials on one engine, saving each raw trace before analysis."""
+     trials, analyses, metrics = [], {}, {}
+-    for label, policy, measured in labels:
++    for label, policy, _ in labels:
+         trial = run_trial(engine, case_name, policy, label, prompts,
+                           worker_state)
+         trials.append(trial)
++        if save_trial is not None:
++            save_trial(trial)
+         print(f"{label}: {trial['stop_reason']} decisions "
+               f"{len(trial['steps'])} failure "
+               f"{trial['failure'] and trial['failure']['message']}",
+@@ -1266,7 +1286,7 @@ def run_session(engine, case_name, prompts, labels, worker_state):
+             break
+         analyses[label] = analyze_trial(trial)
+         metrics[label] = trial_metrics(trial)
+-        if trial["stop_reason"] != "drained":
++        if not finished_in_window(trial):
+             break
+     return trials, analyses, metrics
+ 
+@@ -1303,7 +1323,13 @@ def main(argv=None):
+                    cpu=args.cpu, smoke=args.smoke, settings=settings_record(),
+                    provenance=provenance_record(), failure=None)
+     engine = None
+-    trials = []
++
++    def save_trial(trial):
++        trial_dir = out_dir / "trials"
++        trial_dir.mkdir(exist_ok=True)
++        (trial_dir / f"{trial['label']}.json").write_text(
++            json.dumps(trial_record(trial), indent=1))
++
+     try:
+         summary["flip_example"] = to_jsonable(flip_example())
+         if args.cpu:
+@@ -1370,9 +1396,9 @@ def main(argv=None):
+                          for i, p in enumerate(MEASURED_ORDER)])
+         trials, analyses, metrics = run_session(
+             engine, args.case, prompts, labels,
+-            functools.partial(_worker_state, engine))
+-        measured = {k: v for k, v in analyses.items()
+-                    if not k.startswith(("warmup", "smoke", "single"))}
++            functools.partial(_worker_state, engine), save_trial=save_trial)
++        measured = {label: analyses[label] for label, _, include in labels
++                    if include and label in analyses}
+         summary.update(
+             trials={t["label"]: dict(stop_reason=t["stop_reason"],
+                                      decisions=len(t["steps"]),
+@@ -1383,9 +1409,17 @@ def main(argv=None):
+         first = next((t for t in trials if t["label"] in measured), None)
+         if first is not None:
+             summary["same_state_exact"] = to_jsonable(same_state_exact(first))
+-        summary["validation_passed"] = (
+-            len(trials) == len(labels)
+-            and all(t["failure"] is None for t in trials))
++        check(len(trials) == len(labels)
++              and all(t["failure"] is None and finished_in_window(t)
++                      for t in trials),
++              "at least one trial failed or did not finish within cutoff")
++        if args.case == "ample" and not (args.smoke or args.single):
++            gates = summary["gates"]
++            check(gates["contended_decisions"] > 0
++                  and gates["action_differences"] > 0
++                  and gates["preemptions"] == 0,
++                  f"ample comparison did not meet its gates: {gates}")
++        summary["validation_passed"] = True
+     except BaseException as err:
+         summary["failure"] = dict(type=type(err).__name__, message=str(err),
+                                   traceback=traceback.format_exc())
+@@ -1395,11 +1429,6 @@ def main(argv=None):
+     finally:
+         cleanup = dict(engine_constructed=engine is not None)
+         try:
+-            trial_dir = out_dir / "trials"
+-            trial_dir.mkdir(exist_ok=True)
+-            for t in trials:
+-                (trial_dir / f"{t['label']}.json").write_text(
+-                    json.dumps(trial_record(t), indent=1))
+             (out_dir / "summary.json").write_text(
+                 json.dumps(to_jsonable(summary), indent=1))
+         finally:
+diff --git a/tests/test_soft_slo_pilot.py b/tests/test_soft_slo_pilot.py
+index 008aaff..35d224f 100644
+--- a/tests/test_soft_slo_pilot.py
++++ b/tests/test_soft_slo_pilot.py
+@@ -8,8 +8,10 @@ manager replaying copies, with synthetic samples.
+ """
+ 
+ import functools
++import json
+ import math
+ import sys
++import tempfile
+ import unittest
+ from pathlib import Path
+ from types import MappingProxyType, SimpleNamespace
+@@ -301,6 +303,24 @@ class MetricsTest(unittest.TestCase):
+         self.assertEqual(m["events_after_cutoff"],
+                          [dict(name="after_cutoff", time=1.2)])
+ 
++    def test_exact_due_times_at_nonzero_epoch_are_on_time(self):
++        arrival = 10_000.0
++        first = arrival + 0.100
++        second = first + 0.040
++        row = _row("equal", "tight", [first, second], finish=second,
++                   arrival=arrival)
++        request, = pilot.latency_metrics([row], second)["per_request"]
++        self.assertFalse(request["ttft_miss"])
++        self.assertEqual(request["ttft_excess"], 0.0)
++        self.assertEqual(request["gap_misses"], [False])
++        self.assertEqual(request["gap_excess"], [0.0])
++
++    def test_decision_cap_censors_at_the_observed_boundary(self):
++        clock = _clock(_FakeSeq(0))
++        trial = dict(clock=clock, cutoff=5.0, observation_cutoff=0.02)
++        request, = pilot.trial_metrics(trial)["per_request"]
++        self.assertEqual(request["ttft_status"], "unresolved")
++
+     def test_tbt_gaps_open_gaps_and_p99(self):
+         rows = [
+             _row("a", "tight", [0.1, 0.13, 0.20, 0.24], finish=0.24),
+@@ -464,6 +484,30 @@ class LiveCpuTest(unittest.TestCase):
+         self.assertEqual(pilot.trial_record(trials[0])["failed_step"]["index"],
+                          0)
+ 
++    def test_cli_fails_at_cutoff_and_preserves_trace(self):
++        case = dict(pilot.CASES["ample"], cutoff_seconds=0.0)
++        with tempfile.TemporaryDirectory() as out, mock.patch.dict(
++                pilot.CASES, {"ample": case}):
++            status = pilot.main(["--cpu", "--case", "ample", "--single",
++                                 "timed", "--output-dir", out])
++            raw = json.loads((Path(out) / "trials/single_timed.json").read_text())
++            summary = json.loads((Path(out) / "summary.json").read_text())
++        self.assertEqual(status, 1)
++        self.assertFalse(summary["validation_passed"])
++        self.assertEqual(raw["stop_reason"], "cutoff")
++
++    def test_cli_preserves_raw_trace_when_analysis_fails(self):
++        with tempfile.TemporaryDirectory() as out, mock.patch.object(
++                pilot, "analyze_trial", side_effect=CheckFailure("bad trace")):
++            status = pilot.main(["--cpu", "--case", "ample", "--single",
++                                 "timed", "--output-dir", out])
++            raw = json.loads((Path(out) / "trials/single_timed.json").read_text())
++            summary = json.loads((Path(out) / "summary.json").read_text())
++        self.assertEqual(status, 1)
++        self.assertEqual(summary["failure"]["message"], "bad trace")
++        self.assertEqual(raw["stop_reason"], "drained")
++        self.assertTrue(raw["steps"])
++
+     def test_cutoff_stops_with_unfinished_work_visible(self):
+         case = dict(pilot.CASES["ample"], cutoff_seconds=0.0)
+         with mock.patch.dict(pilot.CASES, {"ample": case}):

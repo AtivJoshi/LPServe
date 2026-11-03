@@ -1,0 +1,13 @@
+`torch_dtype` is deprecated! Use `dtype` instead!
+WARNING 11-03 09:05:10 config.py:666] Casting torch.bfloat16 to torch.float16.
+INFO 11-03 09:05:11 base_llm_engine.py:69] Initializing an LLM engine with config: model='/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6', tokenizer='/home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6', tokenizer_mode=auto, revision=None, trust_remote_code=True, dtype=torch.float16, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, seed=42)
+2026-11-03 09:05:18,079	INFO worker.py:2024 -- Started a local Ray instance.
+INFO 11-03 09:05:31 base_llm_engine.py:147] Starting workers with resource mapping: [(None, 0)]
+INFO 11-03 09:05:31 base_llm_engine.py:190] Initializing workers with distributed init method: tcp://10.100.20.52:11587
+[36m(RayWorker pid=3838221)[0m INFO 11-03 09:05:37 base_worker.py:103] Worker 0 is using device 0
+[36m(RayWorker pid=3838221)[0m INFO 11-03 09:05:37 base_worker.py:122] Initializing worker 0 on device cuda:0, tensor parallel rank 0 and pipeline parallel rank 0.
+[36m(RayWorker pid=3838221)[0m INFO 11-03 09:05:45 base_worker.py:138] Model initialized on worker 0.
+INFO 11-03 09:05:45 base_llm_engine.py:243] # GPU blocks: 32
+INFO 11-03 09:05:45 base_llm_engine.py:130] Scheduler initialised, block_manager has 32 total blocks
+smoke_untimed: drained decisions 7 failure None
+RESULT: PASS

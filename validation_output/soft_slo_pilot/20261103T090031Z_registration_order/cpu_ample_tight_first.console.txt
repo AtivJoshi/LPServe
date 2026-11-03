@@ -1,0 +1,15 @@
+INFO 11-03 09:04:58 metrics_store.py:72] MetricsStore disabled
+warmup0_untimed: drained decisions 18 failure None
+warmup1_timed: drained decisions 18 failure None
+trial0_timed: drained decisions 18 failure None
+trial1_untimed: drained decisions 18 failure None
+trial2_untimed: drained decisions 18 failure None
+trial3_timed: drained decisions 18 failure None
+CHECK FAILED: CheckFailure ample comparison did not meet its gates: {'contended_decisions': 12, 'action_differences': 0, 'preemptions': 0, 'decisions': 72}
+Traceback (most recent call last):
+  File "/home/atjoshi_umass_edu/LPServe/scripts/soft_slo_pilot.py", line 1451, in main
+    check(gates["contended_decisions"] > 0
+  File "/home/atjoshi_umass_edu/LPServe/scripts/check_lp_scheduler_gpu.py", line 101, in check
+    raise CheckFailure(message)
+check_lp_scheduler_gpu.CheckFailure: ample comparison did not meet its gates: {'contended_decisions': 12, 'action_differences': 0, 'preemptions': 0, 'decisions': 72}
+RESULT: FAIL

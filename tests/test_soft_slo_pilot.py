@@ -508,6 +508,46 @@ class LiveCpuTest(unittest.TestCase):
         self.assertEqual(raw["stop_reason"], "drained")
         self.assertTrue(raw["steps"])
 
+    def test_registration_order_is_explicit_and_relaxed_first_by_default(self):
+        names = lambda rs: [r["name"] for r in rs]  # noqa: E731
+        ample = pilot.CASES["ample"]["requests"]
+        self.assertEqual(names(pilot.registration_sequence(
+            ample, "relaxed_first")), names(ample))
+        self.assertEqual(names(pilot.registration_sequence(
+            ample, "tight_first")),
+            ["tight17", "relaxed17", "tight33", "relaxed33"])
+        # Only consecutive equal-arrival groups are reordered.
+        mixed = (dict(name="r0", slo_class="relaxed", arrival_offset=0.0),
+                 dict(name="t1", slo_class="tight", arrival_offset=0.1),
+                 dict(name="t0", slo_class="tight", arrival_offset=0.0))
+        self.assertEqual(names(pilot.registration_sequence(
+            mixed, "tight_first")), ["r0", "t1", "t0"])
+        with self.assertRaises(CheckFailure):
+            pilot.registration_sequence(ample, "other")
+        self.assertEqual(pilot.parse_args(
+            ["--case", "ample", "--cpu", "--output-dir", "x"])[1]
+            .registration_order, "relaxed_first")
+
+    def test_tight_first_session_registers_tight_first_and_drains(self):
+        engine = pilot.build_cpu_engine("ample")
+        prompts = pilot.prompt_ids(pilot.CASES["ample"])
+        trials, analyses, _ = pilot.run_session(
+            engine, "ample", prompts, [("t", "timed", True),
+                                       ("u", "untimed", True)],
+            functools.partial(pilot._worker_state, engine),
+            registration_order="tight_first")
+        for trial in trials:
+            self.assertEqual(trial["registration_order"], "tight_first")
+            self.assertEqual([c["name"] for c in trial["cohort"]],
+                             ["tight17", "relaxed17", "tight33", "relaxed33"])
+            self.assertTrue(pilot.finished_in_window(trial))
+            # Prompts follow the request, not the registration slot.
+            seqs = {c["name"]: c["seq_id"] for c in trial["cohort"]}
+            first = trial["steps"][0]["record"]["snapshots"][0]
+            by_id = {r.raw_seq_id: r for r in first.requests}
+            self.assertEqual(by_id[seqs["tight17"]].prompt_len, 17)
+        self.assertEqual(pilot.summarize_pair(analyses)["preemptions"], 0)
+
     def test_cutoff_stops_with_unfinished_work_visible(self):
         case = dict(pilot.CASES["ample"], cutoff_seconds=0.0)
         with mock.patch.dict(pilot.CASES, {"ample": case}):

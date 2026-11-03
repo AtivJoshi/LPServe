@@ -1,0 +1,10 @@
+## cpu_ample_relaxed_first: python -B scripts/soft_slo_pilot.py --cpu --case ample --registration-order relaxed_first --output-dir validation_output/soft_slo_pilot/20261103T090031Z_registration_order/cpu_ample_relaxed_first
+exit=0
+## cpu_ample_tight_first: python -B scripts/soft_slo_pilot.py --cpu --case ample --registration-order tight_first --output-dir validation_output/soft_slo_pilot/20261103T090031Z_registration_order/cpu_ample_tight_first
+exit=1
+## gpu_smoke: python -B scripts/soft_slo_pilot.py --case ample --smoke --model-path /home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6 --output-dir validation_output/soft_slo_pilot/20261103T090031Z_registration_order/gpu_smoke
+exit=0
+## gpu_ample_relaxed_first: python -B scripts/soft_slo_pilot.py --case ample --registration-order relaxed_first --model-path /home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6 --output-dir validation_output/soft_slo_pilot/20261103T090031Z_registration_order/gpu_ample_relaxed_first
+exit=0
+## gpu_ample_tight_first: python -B scripts/soft_slo_pilot.py --case ample --registration-order tight_first --model-path /home/atjoshi_umass_edu/.cache/huggingface/hub/models--TinyLlama--TinyLlama-1.1B-Chat-v1.0/snapshots/fe8a4ea1ffedaf415f4da2f062534de366a451e6 --output-dir validation_output/soft_slo_pilot/20261103T090031Z_registration_order/gpu_ample_tight_first
+exit=0
