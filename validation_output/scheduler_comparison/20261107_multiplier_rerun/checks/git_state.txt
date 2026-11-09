@@ -1,0 +1,73 @@
+branch=task1-multiplier-comparison
+head=adf4b262980c8e1b4c729b12d71d02b913c83040
+base_reviewed=adf4b262980c8e1b4c729b12d71d02b913c83040
+retained_controls=validation_output/scheduler_comparison/20261026T045354Z_running_order/cpu_comparison
+--- git status --short --untracked-files=all
+ M scripts/compare_coefficient_policies_cpu.py
+ M scripts/compare_scheduler_gpu.py
+ M tests/test_compare_scheduler_gpu.py
+?? docs/planned_modifications.md
+?? validation_output/scheduler_comparison/20261107_multiplier/checks/01_py_compile.txt
+?? validation_output/scheduler_comparison/20261107_multiplier/checks/02_help_gpu_driver.txt
+?? validation_output/scheduler_comparison/20261107_multiplier/checks/03_help_cpu_batch.txt
+?? validation_output/scheduler_comparison/20261107_multiplier/checks/04_multiplier_tests.txt
+?? validation_output/scheduler_comparison/20261107_multiplier/checks/05_compare_driver.txt
+?? validation_output/scheduler_comparison/20261107_multiplier/checks/06_state_mapping.txt
+?? validation_output/scheduler_comparison/20261107_multiplier/checks/07_exact_integer_plan.txt
+?? validation_output/scheduler_comparison/20261107_multiplier/checks/08_lp_relaxation.txt
+?? validation_output/scheduler_comparison/20261107_multiplier/checks/09_plan_execution.txt
+?? validation_output/scheduler_comparison/20261107_multiplier/checks/10_live_scheduler.txt
+?? validation_output/scheduler_comparison/20261107_multiplier/checks/11_whitespace.txt
+?? validation_output/scheduler_comparison/20261107_multiplier/checks/12_git_diff_check.txt
+?? validation_output/scheduler_comparison/20261107_multiplier/checks/13_multiplier_batch.txt
+?? validation_output/scheduler_comparison/20261107_multiplier/checks/14_sources_unchanged_during_run.txt
+?? validation_output/scheduler_comparison/20261107_multiplier/checks/aggregate_status.txt
+?? validation_output/scheduler_comparison/20261107_multiplier/checks/environment.txt
+?? validation_output/scheduler_comparison/20261107_multiplier/checks/git_state.txt
+?? validation_output/scheduler_comparison/20261107_multiplier/checks/sha256sums_end.txt
+?? validation_output/scheduler_comparison/20261107_multiplier/checks/sha256sums_start.txt
+?? validation_output/scheduler_comparison/20261107_multiplier/checks/steps.tsv
+?? validation_output/scheduler_comparison/20261107_multiplier/checks/working_tree.diff
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/comparison.txt
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/divergences.json
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst/lp_reciprocal_square/comparisons.json.gz
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst/lp_reciprocal_square/decision_trace.json.gz
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst/lp_reciprocal_square/summary.json
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst/lp_rs_both_x4/comparisons.json.gz
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst/lp_rs_both_x4/decision_trace.json.gz
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst/lp_rs_both_x4/summary.json
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst/lp_rs_decode_x4/comparisons.json.gz
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst/lp_rs_decode_x4/decision_trace.json.gz
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst/lp_rs_decode_x4/summary.json
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst/lp_rs_penalty_x4/comparisons.json.gz
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst/lp_rs_penalty_x4/decision_trace.json.gz
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst/lp_rs_penalty_x4/summary.json
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst/lp_running_order/comparisons.json.gz
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst/lp_running_order/decision_trace.json.gz
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst/lp_running_order/summary.json
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst_pool12/lp_reciprocal_square/comparisons.json.gz
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst_pool12/lp_reciprocal_square/decision_trace.json.gz
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst_pool12/lp_reciprocal_square/summary.json
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst_pool12/lp_rs_both_x4/comparisons.json.gz
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst_pool12/lp_rs_both_x4/decision_trace.json.gz
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst_pool12/lp_rs_both_x4/summary.json
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst_pool12/lp_rs_decode_x4/comparisons.json.gz
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst_pool12/lp_rs_decode_x4/decision_trace.json.gz
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst_pool12/lp_rs_decode_x4/summary.json
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst_pool12/lp_rs_penalty_x4/comparisons.json.gz
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst_pool12/lp_rs_penalty_x4/decision_trace.json.gz
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst_pool12/lp_rs_penalty_x4/summary.json
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst_pool12/lp_running_order/comparisons.json.gz
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst_pool12/lp_running_order/decision_trace.json.gz
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/rollouts/queue48_burst_pool12/lp_running_order/summary.json
+?? validation_output/scheduler_comparison/20261107_multiplier/cpu_comparison/run_record.json
+?? validation_output/scheduler_comparison/20261107_multiplier/run_batch.sh
+?? validation_output/scheduler_comparison/20261107_multiplier_rerun/checks/environment.txt
+?? validation_output/scheduler_comparison/20261107_multiplier_rerun/checks/git_state.txt
+?? validation_output/scheduler_comparison/20261107_multiplier_rerun/run_batch.sh
+--- git diff HEAD --stat (tracked changes)
+ scripts/compare_coefficient_policies_cpu.py | 196 +++++++++++++++++++++++++++-
+ scripts/compare_scheduler_gpu.py            |  52 +++++++-
+ tests/test_compare_scheduler_gpu.py         | 156 ++++++++++++++++++++++
+ 3 files changed, 400 insertions(+), 4 deletions(-)
+git_diff_head_sha256=e2f70b3279a40a7669f7415cddcdab6507f5e4b07bed6467f48dd1a5feae39b0  -

@@ -30,7 +30,10 @@ the command line): the methods ``ilp_coordinated``,
 decision from the integer optimum of the same coordinated, reciprocal-square,
 or running-order problem (``exact_integer_plan.integer_decision``); the LP
 method ``lp_running_order`` (``lpserve_state_mapping.running_order_utility``,
-bound to the case's ``c_max`` and ``b_max``, through the same hook); the
+bound to the case's ``c_max`` and ``b_max``, through the same hook); the LP
+methods ``RECIPROCAL_SQUARE_VARIANTS`` (the reciprocal-square policy with its
+decode reward and/or preemption penalty multiplied by four, through the same
+hook); the
 representative cases ``REPRESENTATIVE_CASES`` (six requests, optional
 per-request output limits, and virtual arrival times; see ``case_inputs``);
 the queue-growth cases ``QUEUE_GROWTH_CASES`` other than
@@ -169,9 +172,18 @@ RECIPROCAL_SQUARE_INTEGER_POLICY = "ilp_reciprocal_square"  # CPU only
 # Running-order policy (provisional; CPU comparison only, LP and integer).
 RUNNING_ORDER_POLICY = "lp_running_order"
 RUNNING_ORDER_INTEGER_POLICY = "ilp_running_order"
+# Fixed multiplier comparison (CPU comparison only, LP only): reciprocal-square
+# with its decode reward and/or preemption penalty multiplied by four; prefill
+# rewards unchanged. Fixed inputs, not tuned.
+RECIPROCAL_SQUARE_VARIANTS = {
+    "lp_rs_decode_x4": dict(decode=4.0, penalty=1.0),
+    "lp_rs_penalty_x4": dict(decode=1.0, penalty=4.0),
+    "lp_rs_both_x4": dict(decode=4.0, penalty=4.0),
+}
 INTEGER_POLICIES = (INTEGER_POLICY, RECIPROCAL_SQUARE_INTEGER_POLICY,
                     RUNNING_ORDER_INTEGER_POLICY)
-CPU_POLICIES = POLICIES + (RUNNING_ORDER_POLICY,) + INTEGER_POLICIES
+CPU_POLICIES = (POLICIES + (RUNNING_ORDER_POLICY,)
+                + tuple(RECIPROCAL_SQUARE_VARIANTS) + INTEGER_POLICIES)
 COORDINATED_POLICIES = ("lp_coordinated", INTEGER_POLICY)
 RECIPROCAL_SQUARE_POLICIES = (RECIPROCAL_SQUARE_POLICY,
                               RECIPROCAL_SQUARE_INTEGER_POLICY)
@@ -370,6 +382,15 @@ def coefficient_policy_record(policy, c):
                     "waiting position); q = min(remaining, c_max, b_max); "
                     "decode w; prefill token w / q; penalty w",
                     note="configured triple unused")
+    if policy in RECIPROCAL_SQUARE_VARIANTS:
+        return dict(reciprocal_square_rank_utility=dict(c_max=c["c_max"],
+                                                        b_max=c["b_max"]),
+                    multipliers=RECIPROCAL_SQUARE_VARIANTS[policy],
+                    formula="reciprocal-square (w = 1 / (1 + r) ** 2; "
+                    "q = min(remaining, c_max, b_max)); decode "
+                    "multipliers['decode'] * w; prefill token w / q "
+                    "(unchanged); penalty multipliers['penalty'] * w",
+                    note="configured triple unused")
     if policy in RUNNING_ORDER_POLICIES:
         return dict(running_order_utility=dict(c_max=c["c_max"],
                                                b_max=c["b_max"]),
@@ -433,6 +454,9 @@ def select_coefficient_policy(scheduler, policy, case=TWO_REQUEST):
         coefficients = reciprocal_square_policy(case_inputs(case))
     elif policy in RUNNING_ORDER_POLICIES:
         coefficients = running_order_policy(case_inputs(case))
+    elif policy in RECIPROCAL_SQUARE_VARIANTS:
+        coefficients = scaled_reciprocal_policy(
+            case_inputs(case), **RECIPROCAL_SQUARE_VARIANTS[policy])
     else:
         return
     scheduler._coefficient_policy = lambda: coefficients
@@ -446,6 +470,24 @@ def reciprocal_square_policy(c):
     import lpserve_state_mapping as lsm
     return functools.partial(lsm.reciprocal_square_rank_utility,
                              c_max=c["c_max"], b_max=c["b_max"])
+
+
+def scaled_reciprocal_policy(c, decode, penalty):
+    """Reciprocal-square bound to ``c``'s LP caps, with its decode reward
+    multiplied by ``decode`` and its preemption penalty by ``penalty``.
+    Prefill rewards and zero (ineligible) terms are unchanged."""
+
+    import lpserve_state_mapping as lsm
+    base = reciprocal_square_policy(c)
+
+    def policy(captured, request):
+        u = base(captured, request)
+        return lsm.RequestUtility(
+            decode_utility=decode * u.decode_utility,
+            prefill_token_utility=u.prefill_token_utility,
+            preemption_penalty=penalty * u.preemption_penalty
+        )
+    return policy
 
 
 def running_order_policy(c):
@@ -616,6 +658,12 @@ def check_reference_decision(tag, before, record, resident_limit, c):
 
 def expected_coefficients(policy, snap, request, c):
     """The coefficient triple the run's policy specifies for ``request``."""
+    if policy in RECIPROCAL_SQUARE_VARIANTS:
+        m = RECIPROCAL_SQUARE_VARIANTS[policy]
+        base = expected_coefficients(RECIPROCAL_SQUARE_POLICY, snap, request, c)
+        return dict(decode_utility=m["decode"] * base["decode_utility"],
+                    prefill_token_utility=base["prefill_token_utility"],
+                    preemption_penalty=m["penalty"] * base["preemption_penalty"])
     if policy == "lp_uniform":
         return UNIFORM
     if policy in RUNNING_ORDER_POLICIES:

@@ -1769,6 +1769,162 @@ class RunningOrderTest(unittest.TestCase):
                                   status["problems"][0])
 
 
+VARIANTS = driver.RECIPROCAL_SQUARE_VARIANTS
+# Prefill, decode with one-block demand, and a waiting request; small caps.
+MULTIPLIER_STATE = dict(residents=[(16, 8, 0), (16, 16, 1), (8, 8, 0)],
+                        waiting=[8], pool=6, max_model_len=32, limit=4,
+                        b_max=8, c_max=8, s_max=4, budget=8)
+
+
+def _map_with(policy, spec=MULTIPLIER_STATE):
+    """The problem of one constructed state under coefficient ``policy``."""
+    import compare_coefficient_policies_cpu as batch
+    snap = lsm.map_scheduler_state(
+        batch.build_state(spec, "lp"), snapshot_time=time.monotonic(),
+        b_max=spec["b_max"], c_max=spec["c_max"], s_max=spec["s_max"],
+        coefficient_policy=policy, rank_profile=lsm.vllm_oriented_ranks,
+        numerical_policy=lrs.NumericalPolicy(**driver.NUMERICAL_POLICY_FIELDS))
+    assert isinstance(snap, lsm.StateSnapshot), snap
+    return snap.lp_problem
+
+
+class MultiplierTest(unittest.TestCase):
+    """The fixed multiplier variants of the reciprocal-square policy, their
+    coefficient check, and the multiplier batch's control reproduction."""
+
+    def test_variants_are_cpu_only_lp_methods(self):
+        self.assertEqual(VARIANTS, {
+            "lp_rs_decode_x4": dict(decode=4.0, penalty=1.0),
+            "lp_rs_penalty_x4": dict(decode=1.0, penalty=4.0),
+            "lp_rs_both_x4": dict(decode=4.0, penalty=4.0)})
+        self.assertTrue(set(VARIANTS) <= set(driver.CPU_POLICIES))
+        self.assertFalse(set(VARIANTS) & set(driver.POLICIES
+                                             + driver.INTEGER_POLICIES))
+        for policy, m in VARIANTS.items():
+            with self.subTest(policy=policy):
+                with contextlib.redirect_stderr(io.StringIO()), \
+                        self.assertRaises(SystemExit) as caught:
+                    driver.parse_args(["--policy", policy, "--model-path", "m",
+                                       "--output-dir", "o"])
+                self.assertEqual(caught.exception.code, 2)
+                runtime = CpuRuntime(policy, 8, ANCHOR)
+                driver.select_coefficient_policy(runtime.scheduler, policy,
+                                                 ANCHOR)
+                self.assertNotIn("_schedule", vars(runtime.scheduler))
+                self.assertEqual(driver.decision_calls(policy), driver.LP_CALLS)
+                self.assertEqual(driver.run_parameters(policy, 8, ANCHOR)[
+                    "coefficient_policy"]["multipliers"], m)
+
+    def test_only_decode_and_penalty_are_multiplied(self):
+        c = dict(c_max=MULTIPLIER_STATE["c_max"], b_max=MULTIPLIER_STATE["b_max"])
+        base = _map_with(driver.reciprocal_square_policy(c)).requests
+        seen = set()
+        for policy, m in VARIANTS.items():
+            with self.subTest(policy=policy):
+                scaled = _map_with(driver.scaled_reciprocal_policy(c, **m))
+                for a, b in zip(base, scaled.requests):
+                    self.assertEqual(a.request_id, b.request_id)
+                    self.assertEqual(b.decode_utility,
+                                     m["decode"] * a.decode_utility)
+                    self.assertEqual(b.prefill_token_utility,
+                                     a.prefill_token_utility)
+                    self.assertEqual(b.preemption_penalty,
+                                     m["penalty"] * a.preemption_penalty)
+                    # Eligibility and zero terms are preserved.
+                    self.assertEqual(
+                        (b.decode_eligible, b.prefill_eligible,
+                         b.preemption_eligible),
+                        (a.decode_eligible, a.prefill_eligible,
+                         a.preemption_eligible))
+                    for term in ("decode_utility", "prefill_token_utility",
+                                 "preemption_penalty"):
+                        self.assertEqual(getattr(b, term) == 0,
+                                         getattr(a, term) == 0)
+                    seen.update(t for t in ("decode_utility",
+                                            "prefill_token_utility",
+                                            "preemption_penalty")
+                                if getattr(a, t) > 0)
+        # The state exercises every term (otherwise the test proves nothing).
+        self.assertEqual(seen, {"decode_utility", "prefill_token_utility",
+                                "preemption_penalty"})
+
+    def test_variant_rollouts_and_coefficient_check(self):
+        import compare_coefficient_policies_cpu as batch
+        for policy in VARIANTS:
+            with self.subTest(policy=policy):
+                summary, trace = _queue_run(policy)
+                self.assertTrue(summary["validation_passed"], summary["failure"])
+                records, coverage = batch.decision_comparisons(trace, policy)
+                self.assertTrue(coverage["complete"], coverage)
+                self.assertEqual(coverage["attempted_solves"],
+                                 len(trace["decisions"]))
+        native = driver.expected_coefficients
+
+        def unscaled(policy, snap, request, c):
+            return native(driver.RECIPROCAL_SQUARE_POLICY, snap, request, c)
+        for policy in VARIANTS:
+            with self.subTest(policy=policy), \
+                    mock.patch.object(driver, "expected_coefficients",
+                                      unscaled):
+                with self.assertRaisesRegex(driver.CheckFailure,
+                                            "coefficients of"):
+                    _run(policy, 8, ANCHOR)
+
+    def test_retained_control_check(self):
+        import compare_coefficient_policies_cpu as batch
+        method = driver.RECIPROCAL_SQUARE_POLICY
+        summary, trace = _queue_run(method)
+        with tempfile.TemporaryDirectory() as tmp:
+            retained = Path(tmp)
+            (retained / "summary.json").write_text(json.dumps(summary))
+            batch.write_json_gz(retained / "decision_trace.json.gz", trace)
+            same = batch.retained_control_check(summary, trace, retained)
+            self.assertTrue(same["equal"], same)
+            changed = copy.deepcopy(trace)
+            changed["decisions"][2]["lp_events"][0]["result"]["lp_problem"][
+                "requests"][0]["decode_utility"] += 1.0
+            differs = batch.retained_control_check(summary, changed, retained)
+            self.assertFalse(differs["equal"])
+            self.assertFalse(differs["checks"]["mapped_problems"])
+            self.assertEqual(differs["first_problem_difference"], 2)
+            missing = batch.retained_control_check(summary, trace,
+                                                   retained / "absent")
+            self.assertEqual((missing["found"], missing["equal"]),
+                             (False, False))
+        # Problem IDs are excluded from the comparison.
+        renumbered = copy.deepcopy(trace)
+        for d in renumbered["decisions"]:
+            problem = d["lp_events"][0]["result"]["lp_problem"]
+            problem["problem_id"] = f"renumbered-{problem['problem_id']}"
+        self.assertEqual(batch.mapped_problems(renumbered),
+                         batch.mapped_problems(trace))
+
+    def test_multiplier_batch_options(self):
+        import compare_coefficient_policies_cpu as batch
+        self.assertIn("multiplier", batch.BATCHES)
+        self.assertEqual(batch.MULTIPLIER_CASES,
+                         ("queue48_burst", "queue48_burst_pool12"))
+        self.assertEqual(batch.MULTIPLIER_METHODS, (
+            driver.RECIPROCAL_SQUARE_POLICY, "lp_rs_decode_x4",
+            "lp_rs_penalty_x4", "lp_rs_both_x4", driver.RUNNING_ORDER_POLICY))
+        for case in batch.MULTIPLIER_CASES:
+            c = driver.case_inputs(case)
+            self.assertEqual(
+                (c["resident_limits"], c["b_max"], c["c_max"], c["s_max"],
+                 c["max_decisions"], len(c["prompts"])),
+                ((8,), 128, 128, 8, 384, 48))
+        self.assertEqual(
+            [(driver.case_inputs(c)["num_gpu_blocks"],
+              driver.case_inputs(c)["max_model_len"])
+             for c in batch.MULTIPLIER_CASES], [(128, 256), (12, 192)])
+        with tempfile.TemporaryDirectory() as tmp, \
+                contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit) as caught:
+                batch.main(["--batch", "running_order", "--retained-controls",
+                            "x", "--output-dir", str(Path(tmp) / "o")])
+            self.assertEqual(caught.exception.code, 2)
+
+
 class CpuEntrypointTest(unittest.TestCase):
     def test_help_loads_no_engine_worker_ray_or_torch(self):
         code = (

@@ -1,0 +1,120 @@
+Fixed multiplier comparison (CPU, native central/worker replay; resident limit 8). Objectives of different policies are not compared.
+
+Rollouts
+case | method | valid | outcome | dec | done | preempt | after_out | adm+victim | discarded | replayed | expanded | events | overgen | res_omit | max_streak | adm_inv | done_inv
+queue48_burst | lp_reciprocal_square | True | drained | 40 | 48 | 0 | 0 | 0 | 0 | 0 | 0 | 224 | 0 | 0 | 0 | 33 | 110
+queue48_burst | lp_rs_decode_x4 | True | drained | 40 | 48 | 0 | 0 | 0 | 0 | 0 | 0 | 224 | 0 | 0 | 0 | 33 | 110
+queue48_burst | lp_rs_penalty_x4 | True | drained | 40 | 48 | 0 | 0 | 0 | 0 | 0 | 0 | 224 | 0 | 0 | 0 | 33 | 110
+queue48_burst | lp_rs_both_x4 | True | drained | 40 | 48 | 0 | 0 | 0 | 0 | 0 | 0 | 224 | 0 | 0 | 0 | 33 | 110
+queue48_burst | lp_running_order | True | drained | 42 | 48 | 0 | 0 | 0 | 0 | 0 | 0 | 224 | 0 | 0 | 0 | 6 | 69
+queue48_burst_pool12 | lp_reciprocal_square | True | drained | 118 | 48 | 5 | 3 | 3 | 226 | 226 | 3 | 227 | 3 | 0 | 0 | 208 | 246
+queue48_burst_pool12 | lp_rs_decode_x4 | True | drained | 118 | 48 | 5 | 3 | 3 | 226 | 226 | 3 | 227 | 3 | 0 | 0 | 208 | 246
+queue48_burst_pool12 | lp_rs_penalty_x4 | True | drained | 118 | 48 | 3 | 2 | 3 | 113 | 113 | 2 | 226 | 2 | 3 | 1 | 245 | 280
+queue48_burst_pool12 | lp_rs_both_x4 | True | drained | 118 | 48 | 5 | 3 | 3 | 226 | 226 | 3 | 227 | 3 | 0 | 0 | 208 | 246
+queue48_burst_pool12 | lp_running_order | True | drained | 117 | 48 | 2 | 0 | 1 | 96 | 96 | 0 | 224 | 0 | 0 | 0 | 251 | 301
+
+Comparison coverage (every reached decision)
+case | method | reached | records | valid | no_problem | solved | reused | optimal | time_limit | other_fail | errors | missing | round_trip_fail | complete
+queue48_burst | lp_reciprocal_square | 40 | 40 | 40 | 0 | 40 | 0 | 40 | 0 | 0 | 0 | 0 | 0 | True
+queue48_burst | lp_rs_decode_x4 | 40 | 40 | 40 | 0 | 40 | 0 | 40 | 0 | 0 | 0 | 0 | 0 | True
+queue48_burst | lp_rs_penalty_x4 | 40 | 40 | 40 | 0 | 40 | 0 | 40 | 0 | 0 | 0 | 0 | 0 | True
+queue48_burst | lp_rs_both_x4 | 40 | 40 | 40 | 0 | 40 | 0 | 40 | 0 | 0 | 0 | 0 | 0 | True
+queue48_burst | lp_running_order | 42 | 42 | 42 | 0 | 42 | 0 | 42 | 0 | 0 | 0 | 0 | 0 | True
+queue48_burst_pool12 | lp_reciprocal_square | 118 | 118 | 118 | 0 | 118 | 0 | 118 | 0 | 0 | 0 | 0 | 0 | True
+queue48_burst_pool12 | lp_rs_decode_x4 | 118 | 118 | 118 | 0 | 118 | 0 | 118 | 0 | 0 | 0 | 0 | 0 | True
+queue48_burst_pool12 | lp_rs_penalty_x4 | 118 | 118 | 118 | 0 | 118 | 0 | 118 | 0 | 0 | 0 | 0 | 0 | True
+queue48_burst_pool12 | lp_rs_both_x4 | 118 | 118 | 118 | 0 | 118 | 0 | 118 | 0 | 0 | 0 | 0 | 0 | True
+queue48_burst_pool12 | lp_running_order | 117 | 117 | 117 | 0 | 117 | 0 | 117 | 0 | 0 | 0 | 0 | 0 | True
+
+Same-state results (identical problems only; objectives of different policies are not compared)
+  queue48_burst lp_reciprocal_square: {'extraction_loss': 4, 'identical_actions': 36}; fractional relaxations 14; relaxation gaps 13 (max 0.00272839); extraction losses [[0, 0.002832840236686396], [3, 0.0013892940096149609], [5, 0.0011160714285713969], [8, 0.0012755102040815647]]; action differences [[0, 'extraction_loss'], [3, 'extraction_loss'], [5, 'extraction_loss'], [8, 'extraction_loss']]; near ties []; integer raw statuses {'0': 40}, max integrality deviation 1.42109e-14
+  queue48_burst lp_rs_decode_x4: {'extraction_loss': 4, 'identical_actions': 36}; fractional relaxations 14; relaxation gaps 13 (max 0.00272839); extraction losses [[0, 0.002832840236686396], [3, 0.001389294009615405], [5, 0.001116071428572063], [8, 0.0012755102040822308]]; action differences [[0, 'extraction_loss'], [3, 'extraction_loss'], [5, 'extraction_loss'], [8, 'extraction_loss']]; near ties []; integer raw statuses {'0': 40}, max integrality deviation 1.42109e-14
+  queue48_burst lp_rs_penalty_x4: {'extraction_loss': 4, 'identical_actions': 36}; fractional relaxations 14; relaxation gaps 13 (max 0.00272839); extraction losses [[0, 0.002832840236686396], [3, 0.0013892940096149609], [5, 0.0011160714285713969], [8, 0.0012755102040815647]]; action differences [[0, 'extraction_loss'], [3, 'extraction_loss'], [5, 'extraction_loss'], [8, 'extraction_loss']]; near ties []; integer raw statuses {'0': 40}, max integrality deviation 2.41585e-13
+  queue48_burst lp_rs_both_x4: {'extraction_loss': 4, 'identical_actions': 36}; fractional relaxations 14; relaxation gaps 13 (max 0.00272839); extraction losses [[0, 0.002832840236686396], [3, 0.001389294009615405], [5, 0.001116071428572063], [8, 0.0012755102040822308]]; action differences [[0, 'extraction_loss'], [3, 'extraction_loss'], [5, 'extraction_loss'], [8, 'extraction_loss']]; near ties []; integer raw statuses {'0': 40}, max integrality deviation 1.42109e-14
+  queue48_burst lp_running_order: {'identical_actions': 41, 'extraction_loss': 1}; fractional relaxations 10; relaxation gaps 2 (max 0.00544975); extraction losses [[25, 7.812499995907274e-05]]; action differences [[25, 'extraction_loss']]; near ties []; integer raw statuses {'0': 42}, max integrality deviation 1.73372e-12
+  queue48_burst_pool12 lp_reciprocal_square: {'extraction_loss': 6, 'identical_actions': 112}; fractional relaxations 92; relaxation gaps 92 (max 0.21875); extraction losses [[0, 0.0011121612243407686], [8, 0.00042201316801238065], [13, 6.174976915973573e-05], [20, 0.08376201460976551], [24, 0.000754462039253001], [34, 0.09130506245890868]]; action differences [[0, 'extraction_loss'], [8, 'extraction_loss'], [13, 'extraction_loss'], [20, 'extraction_loss'], [24, 'extraction_loss'], [34, 'extraction_loss']]; near ties []; integer raw statuses {'0': 118}, max integrality deviation 2.22045e-16
+  queue48_burst_pool12 lp_rs_decode_x4: {'extraction_loss': 6, 'identical_actions': 112}; fractional relaxations 92; relaxation gaps 92 (max 0.24516); extraction losses [[0, 0.0011121612243407686], [8, 0.00042201316801193656], [13, 6.174976916017982e-05], [20, 0.229595347943099], [24, 0.000754462039252779], [34, 0.23713839579224238]]; action differences [[0, 'extraction_loss'], [8, 'extraction_loss'], [13, 'extraction_loss'], [20, 'extraction_loss'], [24, 'extraction_loss'], [34, 'extraction_loss']]; near ties []; integer raw statuses {'0': 118}, max integrality deviation 0
+  queue48_burst_pool12 lp_rs_penalty_x4: {'extraction_loss': 3, 'identical_actions': 115}; fractional relaxations 96; relaxation gaps 95 (max 0.21875); extraction losses [[0, 0.0011121612243407686], [16, 0.05951111111111107], [21, 0.1042355371900825]]; action differences [[0, 'extraction_loss'], [16, 'extraction_loss'], [21, 'extraction_loss']]; near ties []; integer raw statuses {'0': 118}, max integrality deviation 0
+  queue48_burst_pool12 lp_rs_both_x4: {'extraction_loss': 6, 'identical_actions': 112}; fractional relaxations 92; relaxation gaps 92 (max 0.392256); extraction losses [[0, 0.0011121612243407686], [8, 0.00042201316801193656], [13, 6.174976916017982e-05], [20, 0.37542868127643203], [24, 0.000754462039252779], [34, 0.3829717291255754]]; action differences [[0, 'extraction_loss'], [8, 'extraction_loss'], [13, 'extraction_loss'], [20, 'extraction_loss'], [24, 'extraction_loss'], [34, 'extraction_loss']]; near ties []; integer raw statuses {'0': 118}, max integrality deviation 2.22045e-16
+  queue48_burst_pool12 lp_running_order: {'identical_actions': 105, 'extraction_loss': 12}; fractional relaxations 96; relaxation gaps 95 (max 2); extraction losses [[2, 7.953993055555543], [3, 0.0008149092970484162], [5, 0.00047839506180480385], [6, 0.0016319444444548026], [7, 0.00030561719256638753], [9, 0.00018838532656673124], [11, 0.0013351606224318857], [13, 0.00011654110676317941], [15, 0.0008603395061754782], [21, 0.0008603395061754782], [24, 0.0006384871441689199], [29, 0.0005569809130498982]]; action differences [[2, 'extraction_loss'], [3, 'extraction_loss'], [5, 'extraction_loss'], [6, 'extraction_loss'], [7, 'extraction_loss'], [9, 'extraction_loss'], [11, 'extraction_loss'], [13, 'extraction_loss'], [15, 'extraction_loss'], [21, 'extraction_loss'], [24, 'extraction_loss'], [29, 'extraction_loss']]; near ties []; integer raw statuses {'0': 117}, max integrality deviation 0
+
+Numerical scale (eligible terms over all valid problems)
+  queue48_burst lp_reciprocal_square: max rank 47, min positive coefficient 3.39084e-06, min gaps {'prefill_token': 4.96e-08, 'full_chunk': 1.87e-05, 'decode': 0.00478, 'penalty': 0.00478}, exact ties {'decode': 0, 'prefill_token': 29, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00895293 s
+  queue48_burst lp_rs_decode_x4: max rank 47, min positive coefficient 3.39084e-06, min gaps {'prefill_token': 4.96e-08, 'full_chunk': 1.87e-05, 'decode': 0.0191, 'penalty': 0.00478}, exact ties {'decode': 0, 'prefill_token': 29, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00814396 s
+  queue48_burst lp_rs_penalty_x4: max rank 47, min positive coefficient 3.39084e-06, min gaps {'prefill_token': 4.96e-08, 'full_chunk': 1.87e-05, 'decode': 0.00478, 'penalty': 0.0191}, exact ties {'decode': 0, 'prefill_token': 29, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00817799 s
+  queue48_burst lp_rs_both_x4: max rank 47, min positive coefficient 3.39084e-06, min gaps {'prefill_token': 4.96e-08, 'full_chunk': 1.87e-05, 'decode': 0.0191, 'penalty': 0.0191}, exact ties {'decode': 0, 'prefill_token': 29, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00998009 s
+  queue48_burst lp_running_order: max rank 47, min positive coefficient 3.39084e-06, min gaps {'prefill_token': 1.46e-07, 'full_chunk': 1.06e-07, 'decode': 2.0, 'penalty': 2.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 39, 'penalty': 0}, max offline solve 0.00867847 s
+  queue48_burst_pool12 lp_reciprocal_square: max rank 47, min positive coefficient 3.39084e-06, min gaps {'prefill_token': 4.96e-08, 'full_chunk': 1.87e-05, 'decode': 0.00478, 'penalty': 0.00478}, exact ties {'decode': 0, 'prefill_token': 37, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00958207 s
+  queue48_burst_pool12 lp_rs_decode_x4: max rank 47, min positive coefficient 3.39084e-06, min gaps {'prefill_token': 4.96e-08, 'full_chunk': 1.87e-05, 'decode': 0.0191, 'penalty': 0.00478}, exact ties {'decode': 0, 'prefill_token': 37, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.0113965 s
+  queue48_burst_pool12 lp_rs_penalty_x4: max rank 47, min positive coefficient 3.39084e-06, min gaps {'prefill_token': 4.96e-08, 'full_chunk': 1.87e-05, 'decode': 0.00478, 'penalty': 0.0191}, exact ties {'decode': 0, 'prefill_token': 40, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00904821 s
+  queue48_burst_pool12 lp_rs_both_x4: max rank 47, min positive coefficient 3.39084e-06, min gaps {'prefill_token': 4.96e-08, 'full_chunk': 1.87e-05, 'decode': 0.0191, 'penalty': 0.0191}, exact ties {'decode': 0, 'prefill_token': 37, 'full_chunk': 0, 'penalty': 0}, max offline solve 0.00914194 s
+  queue48_burst_pool12 lp_running_order: max rank 47, min positive coefficient 3.39084e-06, min gaps {'prefill_token': 1.46e-07, 'full_chunk': 1.06e-07, 'decode': 4.0, 'penalty': 4.0}, exact ties {'decode': 0, 'prefill_token': 0, 'full_chunk': 18, 'penalty': 0}, max offline solve 0.0118892 s
+
+Victims: [decision, victim, running position / count, had output, reasons, admitted in the same decision]
+  queue48_burst_pool12 lp_reciprocal_square:
+    2 R08 6/8 True ['decode_block_demand'] []
+    11 R04 4/5 True ['admission_charges', 'lp_decode_prerequisite'] ['R21', 'R24']
+    20 R16 2/4 False ['admission_charges', 'lp_decode_prerequisite'] ['R36', 'R27']
+    25 R38 4/5 False ['decode_block_demand'] []
+    34 R34 2/4 True ['decode_block_demand', 'admission_charges'] ['R44']
+  queue48_burst_pool12 lp_rs_decode_x4:
+    2 R08 6/8 True ['decode_block_demand'] []
+    11 R04 4/5 True ['admission_charges', 'lp_decode_prerequisite'] ['R21', 'R24']
+    20 R16 2/4 False ['admission_charges', 'lp_decode_prerequisite'] ['R36', 'R27']
+    25 R38 4/5 False ['decode_block_demand'] []
+    34 R34 2/4 True ['decode_block_demand', 'admission_charges'] ['R44']
+  queue48_burst_pool12 lp_rs_penalty_x4:
+    12 R20 4/5 True ['decode_block_demand', 'admission_charges'] ['R30']
+    16 R21 4/6 False ['decode_block_demand', 'admission_charges'] ['R42']
+    21 R16 3/5 True ['decode_block_demand', 'admission_charges'] ['R27']
+  queue48_burst_pool12 lp_rs_both_x4:
+    2 R08 6/8 True ['decode_block_demand'] []
+    11 R04 4/5 True ['admission_charges', 'lp_decode_prerequisite'] ['R21', 'R24']
+    20 R16 2/4 False ['admission_charges', 'lp_decode_prerequisite'] ['R36', 'R27']
+    25 R38 4/5 False ['decode_block_demand'] []
+    34 R34 2/4 True ['decode_block_demand', 'admission_charges'] ['R44']
+  queue48_burst_pool12 lp_running_order:
+    2 R04 4/6 False ['decode_block_demand', 'admission_charges'] ['R07', 'R08']
+    18 R27 4/5 False ['decode_block_demand'] []
+
+Mean first-prefill and completion decision index by prompt length (decision indices, not time)
+  queue48_burst lp_reciprocal_square: 8: 10.5/12.5 (max done 29), 16: 12/16 (max done 32), 17: 12.5/20.5 (max done 36), 32: 13.5/15.5 (max done 31), 64: 14.875/18.875 (max done 34), 128: 17.25/26.25 (max done 39)
+  queue48_burst lp_rs_decode_x4: 8: 10.5/12.5 (max done 29), 16: 12/16 (max done 32), 17: 12.5/20.5 (max done 36), 32: 13.5/15.5 (max done 31), 64: 14.875/18.875 (max done 34), 128: 17.25/26.25 (max done 39)
+  queue48_burst lp_rs_penalty_x4: 8: 10.5/12.5 (max done 29), 16: 12/16 (max done 32), 17: 12.5/20.5 (max done 36), 32: 13.5/15.5 (max done 31), 64: 14.875/18.875 (max done 34), 128: 17.25/26.25 (max done 39)
+  queue48_burst lp_rs_both_x4: 8: 10.5/12.5 (max done 29), 16: 12/16 (max done 32), 17: 12.5/20.5 (max done 36), 32: 13.5/15.5 (max done 31), 64: 14.875/18.875 (max done 34), 128: 17.25/26.25 (max done 39)
+  queue48_burst lp_running_order: 8: 13.375/15.375 (max done 31), 16: 13.625/17.625 (max done 34), 17: 14.375/22.375 (max done 38), 32: 15/17 (max done 32), 64: 15.875/20.125 (max done 35), 128: 15.75/24.75 (max done 41)
+  queue48_burst_pool12 lp_reciprocal_square: 8: 9.375/11.375 (max done 29), 16: 12.125/16.125 (max done 36), 17: 13.25/21.875 (max done 42), 32: 15.75/17.75 (max done 37), 64: 26.75/32.25 (max done 45), 128: 77.5/85.5 (max done 117)
+  queue48_burst_pool12 lp_rs_decode_x4: 8: 9.375/11.375 (max done 29), 16: 12.125/16.125 (max done 36), 17: 13.25/21.875 (max done 42), 32: 15.75/17.75 (max done 37), 64: 26.75/32.25 (max done 45), 128: 77.5/85.5 (max done 117)
+  queue48_burst_pool12 lp_rs_penalty_x4: 8: 7/9 (max done 18), 16: 8.25/12.5 (max done 22), 17: 14.375/22.875 (max done 39), 32: 16.5/19.125 (max done 34), 64: 27.25/31.75 (max done 45), 128: 77.5/85.5 (max done 117)
+  queue48_burst_pool12 lp_rs_both_x4: 8: 9.375/11.375 (max done 29), 16: 12.125/16.125 (max done 36), 17: 13.25/21.875 (max done 42), 32: 15.75/17.75 (max done 37), 64: 26.75/32.25 (max done 45), 128: 77.5/85.5 (max done 117)
+  queue48_burst_pool12 lp_running_order: 8: 6.125/8.125 (max done 15), 16: 7.25/11.25 (max done 20), 17: 13.5/21.5 (max done 37), 32: 15/17.375 (max done 32), 64: 27.625/33.5 (max done 44), 128: 76.5/84.5 (max done 116)
+
+First emitted difference between rollouts (closed loop): first index whose emitted output differs, and first index whose selected set (victims and served requests) differs
+  queue48_burst lp_reciprocal_square vs lp_rs_decode_x4: {'emitted': None, 'first_selection_difference': None}
+  queue48_burst lp_reciprocal_square vs lp_rs_penalty_x4: {'emitted': None, 'first_selection_difference': None}
+  queue48_burst lp_reciprocal_square vs lp_rs_both_x4: {'emitted': None, 'first_selection_difference': None}
+  queue48_burst lp_reciprocal_square vs lp_running_order: {'emitted': {'index': 0, 'same_before_state': True, 'a': [[], [[0, 8], [1, 16], [2, 17], [3, 32], [6, 8], [7, 16], [8, 17], [12, 8]]], 'b': [[], [[0, 8], [1, 16], [2, 17], [3, 32], [4, 55]]]}, 'first_selection_difference': 0}
+  queue48_burst_pool12 lp_reciprocal_square vs lp_rs_decode_x4: {'emitted': None, 'first_selection_difference': None}
+  queue48_burst_pool12 lp_reciprocal_square vs lp_rs_penalty_x4: {'emitted': {'index': 2, 'same_before_state': True, 'a': [[8], [[0, 0], [2, 0], [6, 0], [12, 0], [1, 0], [3, 0], [7, 0]]], 'b': [[], [[0, 0], [2, 0], [6, 0], [8, 0], [12, 0], [1, 0]]]}, 'first_selection_difference': 2}
+  queue48_burst_pool12 lp_reciprocal_square vs lp_rs_both_x4: {'emitted': None, 'first_selection_difference': None}
+  queue48_burst_pool12 lp_reciprocal_square vs lp_running_order: {'emitted': {'index': 0, 'same_before_state': True, 'a': [[], [[0, 8], [1, 16], [2, 17], [3, 32], [6, 8], [7, 16], [8, 17], [12, 8]]], 'b': [[], [[0, 8], [1, 16], [2, 17], [3, 32], [4, 55]]]}, 'first_selection_difference': 0}
+
+Victim reasons (decisions citing each constraint)
+  queue48_burst lp_reciprocal_square: {}; decisions with victims and admissions 0
+  queue48_burst lp_rs_decode_x4: {}; decisions with victims and admissions 0
+  queue48_burst lp_rs_penalty_x4: {}; decisions with victims and admissions 0
+  queue48_burst lp_rs_both_x4: {}; decisions with victims and admissions 0
+  queue48_burst lp_running_order: {}; decisions with victims and admissions 0
+  queue48_burst_pool12 lp_reciprocal_square: {'decode_block_demand': 3, 'admission_charges': 3, 'lp_decode_prerequisite': 2}; decisions with victims and admissions 3
+  queue48_burst_pool12 lp_rs_decode_x4: {'decode_block_demand': 3, 'admission_charges': 3, 'lp_decode_prerequisite': 2}; decisions with victims and admissions 3
+  queue48_burst_pool12 lp_rs_penalty_x4: {'decode_block_demand': 3, 'admission_charges': 3}; decisions with victims and admissions 3
+  queue48_burst_pool12 lp_rs_both_x4: {'decode_block_demand': 3, 'admission_charges': 3, 'lp_decode_prerequisite': 2}; decisions with victims and admissions 3
+  queue48_burst_pool12 lp_running_order: {'decode_block_demand': 2, 'admission_charges': 1}; decisions with victims and admissions 1
+
+Retained control reproduction
+  queue48_burst lp_reciprocal_square: equal True; {'workload_outcome': True, 'decisions': True, 'emitted': True, 'parameters': True, 'mapped_problems': True}; first problem difference None
+  queue48_burst lp_running_order: equal True; {'workload_outcome': True, 'decisions': True, 'emitted': True, 'parameters': True, 'mapped_problems': True}; first problem difference None
+  queue48_burst_pool12 lp_reciprocal_square: equal True; {'workload_outcome': True, 'decisions': True, 'emitted': True, 'parameters': True, 'mapped_problems': True}; first problem difference None
+  queue48_burst_pool12 lp_running_order: equal True; {'workload_outcome': True, 'decisions': True, 'emitted': True, 'parameters': True, 'mapped_problems': True}; first problem difference None
+
+Status: {'runs_expected': 10, 'runs_completed': 10, 'validation_passed': 10, 'outcomes': {'drained': 10, 'bounded_unfinished': 0, 'failure': 0}, 'controls_checked': 4, 'problems': [], 'result': 'PASS'}

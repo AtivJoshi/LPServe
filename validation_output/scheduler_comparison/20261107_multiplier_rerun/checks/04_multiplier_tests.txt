@@ -1,0 +1,16 @@
+$ python -B -m unittest tests.test_compare_scheduler_gpu.MultiplierTest -v
+INFO 11-08 03:28:13 metrics_store.py:72] MetricsStore disabled
+test_multiplier_batch_options (tests.test_compare_scheduler_gpu.MultiplierTest) ... ok
+test_only_decode_and_penalty_are_multiplied (tests.test_compare_scheduler_gpu.MultiplierTest) ... ok
+test_retained_control_check (tests.test_compare_scheduler_gpu.MultiplierTest) ... ok
+test_variant_rollouts_and_coefficient_check (tests.test_compare_scheduler_gpu.MultiplierTest) ... queue6_burst lp_rs_decode_x4 limit 8 decision 0: preempted [] emitted [[0, 8], [1, 16], [2, 17], [3, 32], [4, 55]] free 118/118
+queue6_burst lp_rs_penalty_x4 limit 8 decision 0: preempted [] emitted [[0, 8], [1, 16], [2, 17], [3, 32], [4, 55]] free 118/118
+queue6_burst lp_rs_both_x4 limit 8 decision 0: preempted [] emitted [[0, 8], [1, 16], [2, 17], [3, 32], [4, 55]] free 118/118
+ok
+test_variants_are_cpu_only_lp_methods (tests.test_compare_scheduler_gpu.MultiplierTest) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.635s
+
+OK
+exit_status=0
