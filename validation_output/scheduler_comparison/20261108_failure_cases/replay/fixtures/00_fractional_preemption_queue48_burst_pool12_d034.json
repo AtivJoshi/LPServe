@@ -1,0 +1,1273 @@
+{
+ "example": "fractional_preemption",
+ "label": "reciprocal-square, queue48_burst_pool12",
+ "kind": "rollout",
+ "source": {
+  "trace": "validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_comparison/rollouts/queue48_burst_pool12/lp_reciprocal_square/decision_trace.json.gz",
+  "trace_sha256": "c3883c1935ffcd8e5aa600e73c3591c3b315f6b18b25e8daf2a77a8fef31684a",
+  "comparisons": "validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_comparison/rollouts/queue48_burst_pool12/lp_reciprocal_square/comparisons.json",
+  "comparisons_sha256": "84ef3b12f4636175e14401b529455287ed56a785c5f2a8e00dfe092d18bf4ec8"
+ },
+ "case": "queue48_burst_pool12",
+ "policy": "lp_reciprocal_square",
+ "resident_limit": 8,
+ "decision": 34,
+ "rollout": {
+  "summary": "validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_comparison/rollouts/queue48_burst_pool12/lp_reciprocal_square/summary.json",
+  "summary_sha256": "38fcfbae48aea6bee9eb677afe9feda8a5e527c12f447534d69c4de503978a06",
+  "workload_outcome": "drained",
+  "decisions": 118,
+  "finished": [
+   "R00",
+   "R01",
+   "R02",
+   "R03",
+   "R04",
+   "R05",
+   "R06",
+   "R07",
+   "R08",
+   "R09",
+   "R10",
+   "R11",
+   "R12",
+   "R13",
+   "R14",
+   "R15",
+   "R16",
+   "R17",
+   "R18",
+   "R19",
+   "R20",
+   "R21",
+   "R22",
+   "R23",
+   "R24",
+   "R25",
+   "R26",
+   "R27",
+   "R28",
+   "R29",
+   "R30",
+   "R31",
+   "R32",
+   "R33",
+   "R34",
+   "R35",
+   "R36",
+   "R37",
+   "R38",
+   "R39",
+   "R40",
+   "R41",
+   "R42",
+   "R43",
+   "R44",
+   "R45",
+   "R46",
+   "R47"
+  ],
+  "unfinished": [],
+  "preemptions": 5,
+  "prefill_tokens_replayed": 226
+ },
+ "before": {
+  "total_blocks": 12,
+  "free_blocks": 0,
+  "watermark_blocks": 0,
+  "running": [
+   "38",
+   "28",
+   "34",
+   "43"
+  ],
+  "waiting": [
+   "5",
+   "11",
+   "17",
+   "23",
+   "29",
+   "35",
+   "40",
+   "41",
+   "44",
+   "45",
+   "46",
+   "47"
+  ],
+  "block_tables": {
+   "38": [
+    0,
+    10
+   ],
+   "28": [
+    8,
+    9,
+    2,
+    3,
+    5
+   ],
+   "34": [
+    7,
+    1,
+    4,
+    6
+   ],
+   "43": [
+    11
+   ]
+  },
+  "requests": {
+   "5": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "11": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "17": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "23": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "28": {
+    "status": "PAUSED",
+    "prompt_len": 64,
+    "prompt_processed": 64,
+    "outputs": 2
+   },
+   "29": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "34": {
+    "status": "PAUSED",
+    "prompt_len": 64,
+    "prompt_processed": 64,
+    "outputs": 1
+   },
+   "35": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "38": {
+    "status": "PAUSED",
+    "prompt_len": 17,
+    "prompt_processed": 17,
+    "outputs": 7
+   },
+   "40": {
+    "status": "WAITING",
+    "prompt_len": 64,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "41": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "43": {
+    "status": "PAUSED",
+    "prompt_len": 16,
+    "prompt_processed": 16,
+    "outputs": 1
+   },
+   "44": {
+    "status": "WAITING",
+    "prompt_len": 17,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "45": {
+    "status": "WAITING",
+    "prompt_len": 32,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "46": {
+    "status": "WAITING",
+    "prompt_len": 64,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "47": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   }
+  }
+ },
+ "problem": {
+  "requests": [
+   {
+    "request_id": "5",
+    "order_key": [
+     5
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 128,
+    "prefill_upper_bound": 128,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 8,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 0.0003125,
+    "preemption_penalty": 0.0,
+    "service_rank": 4,
+    "victim_rank": null
+   },
+   {
+    "request_id": "11",
+    "order_key": [
+     11
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 128,
+    "prefill_upper_bound": 128,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 8,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 0.00021701388888888888,
+    "preemption_penalty": 0.0,
+    "service_rank": 5,
+    "victim_rank": null
+   },
+   {
+    "request_id": "17",
+    "order_key": [
+     17
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 128,
+    "prefill_upper_bound": 128,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 8,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 0.00015943877551020407,
+    "preemption_penalty": 0.0,
+    "service_rank": 6,
+    "victim_rank": null
+   },
+   {
+    "request_id": "23",
+    "order_key": [
+     23
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 128,
+    "prefill_upper_bound": 128,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 8,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 0.0001220703125,
+    "preemption_penalty": 0.0,
+    "service_rank": 7,
+    "victim_rank": null
+   },
+   {
+    "request_id": "28",
+    "order_key": [
+     28
+    ],
+    "resident": true,
+    "prompt_tokens_remaining": 0,
+    "prefill_upper_bound": 0,
+    "prefill_eligible": false,
+    "decode_eligible": true,
+    "preemption_eligible": true,
+    "prefill_fixed_charge": 0,
+    "decode_demand": 0,
+    "preemption_recovery": 5,
+    "decode_utility": 0.25,
+    "prefill_token_utility": 0.0,
+    "preemption_penalty": 0.25,
+    "service_rank": 1,
+    "victim_rank": 2
+   },
+   {
+    "request_id": "29",
+    "order_key": [
+     29
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 128,
+    "prefill_upper_bound": 128,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 8,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 9.645061728395061e-05,
+    "preemption_penalty": 0.0,
+    "service_rank": 8,
+    "victim_rank": null
+   },
+   {
+    "request_id": "34",
+    "order_key": [
+     34
+    ],
+    "resident": true,
+    "prompt_tokens_remaining": 0,
+    "prefill_upper_bound": 0,
+    "prefill_eligible": false,
+    "decode_eligible": true,
+    "preemption_eligible": true,
+    "prefill_fixed_charge": 0,
+    "decode_demand": 1,
+    "preemption_recovery": 4,
+    "decode_utility": 0.1111111111111111,
+    "prefill_token_utility": 0.0,
+    "preemption_penalty": 0.1111111111111111,
+    "service_rank": 2,
+    "victim_rank": 1
+   },
+   {
+    "request_id": "35",
+    "order_key": [
+     35
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 128,
+    "prefill_upper_bound": 128,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 8,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 7.8125e-05,
+    "preemption_penalty": 0.0,
+    "service_rank": 9,
+    "victim_rank": null
+   },
+   {
+    "request_id": "38",
+    "order_key": [
+     38
+    ],
+    "resident": true,
+    "prompt_tokens_remaining": 0,
+    "prefill_upper_bound": 0,
+    "prefill_eligible": false,
+    "decode_eligible": true,
+    "preemption_eligible": true,
+    "prefill_fixed_charge": 0,
+    "decode_demand": 0,
+    "preemption_recovery": 2,
+    "decode_utility": 1.0,
+    "prefill_token_utility": 0.0,
+    "preemption_penalty": 1.0,
+    "service_rank": 0,
+    "victim_rank": 3
+   },
+   {
+    "request_id": "40",
+    "order_key": [
+     40
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 64,
+    "prefill_upper_bound": 64,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 4,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 0.00012913223140495868,
+    "preemption_penalty": 0.0,
+    "service_rank": 10,
+    "victim_rank": null
+   },
+   {
+    "request_id": "41",
+    "order_key": [
+     41
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 128,
+    "prefill_upper_bound": 128,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 8,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 5.425347222222222e-05,
+    "preemption_penalty": 0.0,
+    "service_rank": 11,
+    "victim_rank": null
+   },
+   {
+    "request_id": "43",
+    "order_key": [
+     43
+    ],
+    "resident": true,
+    "prompt_tokens_remaining": 0,
+    "prefill_upper_bound": 0,
+    "prefill_eligible": false,
+    "decode_eligible": true,
+    "preemption_eligible": true,
+    "prefill_fixed_charge": 0,
+    "decode_demand": 1,
+    "preemption_recovery": 1,
+    "decode_utility": 0.0625,
+    "prefill_token_utility": 0.0,
+    "preemption_penalty": 0.0625,
+    "service_rank": 3,
+    "victim_rank": 0
+   },
+   {
+    "request_id": "44",
+    "order_key": [
+     44
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 17,
+    "prefill_upper_bound": 17,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 2,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 0.00034806822137138876,
+    "preemption_penalty": 0.0,
+    "service_rank": 12,
+    "victim_rank": null
+   },
+   {
+    "request_id": "45",
+    "order_key": [
+     45
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 32,
+    "prefill_upper_bound": 32,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 2,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 0.00015943877551020407,
+    "preemption_penalty": 0.0,
+    "service_rank": 13,
+    "victim_rank": null
+   },
+   {
+    "request_id": "46",
+    "order_key": [
+     46
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 64,
+    "prefill_upper_bound": 64,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 4,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 6.944444444444444e-05,
+    "preemption_penalty": 0.0,
+    "service_rank": 14,
+    "victim_rank": null
+   },
+   {
+    "request_id": "47",
+    "order_key": [
+     47
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 128,
+    "prefill_upper_bound": 128,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 8,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 3.0517578125e-05,
+    "preemption_penalty": 0.0,
+    "service_rank": 15,
+    "victim_rank": null
+   }
+  ],
+  "legal_preemption_ids": [
+   "28",
+   "34",
+   "38",
+   "43"
+  ],
+  "b_max": 128,
+  "c_max": 128,
+  "s_max": 8,
+  "resident_limit": 8,
+  "resident_count": 4,
+  "m_free": 0,
+  "admission_watermark": 0,
+  "problem_id": "34",
+  "numerical_policy": {
+   "policy_id": "lp_relaxation_mvp_v1",
+   "feasibility_tol": 1e-07,
+   "integrality_tol": 1e-06,
+   "objective_abs_tol": 1e-09,
+   "objective_rel_tol": 1e-09
+  }
+ },
+ "executed_plan": "lp",
+ "retained_lp": {
+  "result_type": "SchedulingSuccess",
+  "result": {
+   "problem_id": "34",
+   "plan": {
+    "problem_id": "34",
+    "decisions": [
+     {
+      "request_id": "5",
+      "order_key": [
+       5
+      ],
+      "prefill_tokens": 0,
+      "decode": 0,
+      "preempt": 0,
+      "prefill_indicator": 0
+     },
+     {
+      "request_id": "11",
+      "order_key": [
+       11
+      ],
+      "prefill_tokens": 0,
+      "decode": 0,
+      "preempt": 0,
+      "prefill_indicator": 0
+     },
+     {
+      "request_id": "17",
+      "order_key": [
+       17
+      ],
+      "prefill_tokens": 0,
+      "decode": 0,
+      "preempt": 0,
+      "prefill_indicator": 0
+     },
+     {
+      "request_id": "23",
+      "order_key": [
+       23
+      ],
+      "prefill_tokens": 0,
+      "decode": 0,
+      "preempt": 0,
+      "prefill_indicator": 0
+     },
+     {
+      "request_id": "28",
+      "order_key": [
+       28
+      ],
+      "prefill_tokens": 0,
+      "decode": 1,
+      "preempt": 0,
+      "prefill_indicator": 0
+     },
+     {
+      "request_id": "29",
+      "order_key": [
+       29
+      ],
+      "prefill_tokens": 0,
+      "decode": 0,
+      "preempt": 0,
+      "prefill_indicator": 0
+     },
+     {
+      "request_id": "34",
+      "order_key": [
+       34
+      ],
+      "prefill_tokens": 0,
+      "decode": 0,
+      "preempt": 1,
+      "prefill_indicator": 0
+     },
+     {
+      "request_id": "35",
+      "order_key": [
+       35
+      ],
+      "prefill_tokens": 0,
+      "decode": 0,
+      "preempt": 0,
+      "prefill_indicator": 0
+     },
+     {
+      "request_id": "38",
+      "order_key": [
+       38
+      ],
+      "prefill_tokens": 0,
+      "decode": 1,
+      "preempt": 0,
+      "prefill_indicator": 0
+     },
+     {
+      "request_id": "40",
+      "order_key": [
+       40
+      ],
+      "prefill_tokens": 0,
+      "decode": 0,
+      "preempt": 0,
+      "prefill_indicator": 0
+     },
+     {
+      "request_id": "41",
+      "order_key": [
+       41
+      ],
+      "prefill_tokens": 0,
+      "decode": 0,
+      "preempt": 0,
+      "prefill_indicator": 0
+     },
+     {
+      "request_id": "43",
+      "order_key": [
+       43
+      ],
+      "prefill_tokens": 0,
+      "decode": 1,
+      "preempt": 0,
+      "prefill_indicator": 0
+     },
+     {
+      "request_id": "44",
+      "order_key": [
+       44
+      ],
+      "prefill_tokens": 17,
+      "decode": 0,
+      "preempt": 0,
+      "prefill_indicator": 1
+     },
+     {
+      "request_id": "45",
+      "order_key": [
+       45
+      ],
+      "prefill_tokens": 0,
+      "decode": 0,
+      "preempt": 0,
+      "prefill_indicator": 0
+     },
+     {
+      "request_id": "46",
+      "order_key": [
+       46
+      ],
+      "prefill_tokens": 0,
+      "decode": 0,
+      "preempt": 0,
+      "prefill_indicator": 0
+     },
+     {
+      "request_id": "47",
+      "order_key": [
+       47
+      ],
+      "prefill_tokens": 0,
+      "decode": 0,
+      "preempt": 0,
+      "prefill_indicator": 0
+     }
+    ],
+    "victim_order": [
+     "34"
+    ],
+    "execution_order": [
+     "44",
+     "38",
+     "28",
+     "43"
+    ],
+    "token_use": 20,
+    "action_count": 4,
+    "resident_count_after": 4,
+    "free_blocks_before_decodes": 2,
+    "decode_demand": 1,
+    "numerical_policy": {
+     "policy_id": "lp_relaxation_mvp_v1",
+     "feasibility_tol": 1e-07,
+     "integrality_tol": 1e-06,
+     "objective_abs_tol": 1e-09,
+     "objective_rel_tol": 1e-09
+    },
+    "objective": 1.2073060486522025,
+    "extraction": {
+     "candidate_order": [
+      "38",
+      "28",
+      "43",
+      "34",
+      "5",
+      "11",
+      "17",
+      "23",
+      "29",
+      "35",
+      "40",
+      "41",
+      "44",
+      "45",
+      "46",
+      "47"
+     ],
+     "victim_candidate_order": [
+      "34",
+      "43",
+      "28",
+      "38"
+     ],
+     "accepted_order": [
+      "38",
+      "28",
+      "43",
+      "44"
+     ],
+     "trial_count": 15,
+     "failed_trial_count": 11,
+     "declined_optional_trial_count": 0,
+     "skipped_candidate_count": 1,
+     "fractional_request_count": 1
+    }
+   },
+   "relaxed": {
+    "decisions": [
+     {
+      "request_id": "5",
+      "x": -0.0,
+      "y": 0.0,
+      "prefill_indicator": 0.0,
+      "z": 0.0
+     },
+     {
+      "request_id": "11",
+      "x": -0.0,
+      "y": 0.0,
+      "prefill_indicator": 0.0,
+      "z": 0.0
+     },
+     {
+      "request_id": "17",
+      "x": -0.0,
+      "y": 0.0,
+      "prefill_indicator": 0.0,
+      "z": 0.0
+     },
+     {
+      "request_id": "23",
+      "x": -0.0,
+      "y": 0.0,
+      "prefill_indicator": 0.0,
+      "z": 0.0
+     },
+     {
+      "request_id": "28",
+      "x": 0.0,
+      "y": 1.0,
+      "prefill_indicator": 0.0,
+      "z": 0.0
+     },
+     {
+      "request_id": "29",
+      "x": -0.0,
+      "y": 0.0,
+      "prefill_indicator": 0.0,
+      "z": 0.0
+     },
+     {
+      "request_id": "34",
+      "x": 0.0,
+      "y": 0.6,
+      "prefill_indicator": 0.0,
+      "z": 0.4
+     },
+     {
+      "request_id": "35",
+      "x": -0.0,
+      "y": 0.0,
+      "prefill_indicator": 0.0,
+      "z": 0.0
+     },
+     {
+      "request_id": "38",
+      "x": 0.0,
+      "y": 1.0,
+      "prefill_indicator": 0.0,
+      "z": 0.0
+     },
+     {
+      "request_id": "40",
+      "x": -0.0,
+      "y": 0.0,
+      "prefill_indicator": 0.0,
+      "z": 0.0
+     },
+     {
+      "request_id": "41",
+      "x": -0.0,
+      "y": 0.0,
+      "prefill_indicator": 0.0,
+      "z": 0.0
+     },
+     {
+      "request_id": "43",
+      "x": 0.0,
+      "y": 1.0,
+      "prefill_indicator": 0.0,
+      "z": 0.0
+     },
+     {
+      "request_id": "44",
+      "x": -0.0,
+      "y": 0.0,
+      "prefill_indicator": 0.0,
+      "z": 0.0
+     },
+     {
+      "request_id": "45",
+      "x": -0.0,
+      "y": 0.0,
+      "prefill_indicator": 0.0,
+      "z": 0.0
+     },
+     {
+      "request_id": "46",
+      "x": -0.0,
+      "y": 0.0,
+      "prefill_indicator": 0.0,
+      "z": 0.0
+     },
+     {
+      "request_id": "47",
+      "x": -0.0,
+      "y": 0.0,
+      "prefill_indicator": 0.0,
+      "z": 0.0
+     }
+    ],
+    "raw_vector": [
+     -0.0,
+     -0.0,
+     -0.0,
+     -0.0,
+     0.0,
+     -0.0,
+     0.0,
+     -0.0,
+     0.0,
+     -0.0,
+     -0.0,
+     0.0,
+     -0.0,
+     -0.0,
+     -0.0,
+     -0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.6,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.4,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "projection_count": 0,
+    "worst_raw_violation": 0.0,
+    "worst_normalized_violation": 0.0,
+    "normalized_objective": 1.3347222222222221
+   },
+   "solver": {
+    "category": "optimal_candidate",
+    "reason": "optimal candidate",
+    "diagnostics": {
+     "solver": "scipy.optimize.linprog",
+     "scipy_version": "1.15.3",
+     "method": "highs-ds",
+     "options": [
+      [
+       "presolve",
+       true
+      ]
+     ],
+     "raw_status": 0,
+     "raw_success": true,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "iterations": 16,
+     "vector_present": true,
+     "vector_length": 64,
+     "expected_vector_length": 64
+    },
+    "raw_vector": [
+     -0.0,
+     -0.0,
+     -0.0,
+     -0.0,
+     0.0,
+     -0.0,
+     0.0,
+     -0.0,
+     0.0,
+     -0.0,
+     -0.0,
+     0.0,
+     -0.0,
+     -0.0,
+     -0.0,
+     -0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.6,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     1.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.4,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "reported_objective_min": -1.3347222222222221,
+    "recomputed_objective_min": -1.3347222222222221
+   }
+  }
+ },
+ "retained_integer": {
+  "status": "optimal",
+  "objective": 1.2986111111111112,
+  "actions": {
+   "28": "decode",
+   "34": "decode",
+   "38": "decode",
+   "43": "preempt"
+  },
+  "raw_status": 0,
+  "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+  "dual_bound": 1.2986111111111112,
+  "reported_gap": 0.0,
+  "node_count": 1,
+  "max_integrality_deviation": 2.220446049250313e-16
+ },
+ "retained_integer_source": "retained offline same-state comparison",
+ "victim_need": {
+  "free_blocks": 0,
+  "victims": [
+   34
+  ],
+  "recovered_blocks": 4,
+  "selected_admission_charges": 2,
+  "selected_decode_demands": 1,
+  "selected_decodes": 3,
+  "decode_demands": {
+   "38": 0,
+   "28": 0,
+   "34": 1,
+   "43": 1
+  },
+  "victim_blocks_needed_for_decodes": 1,
+  "victim_blocks_needed_physical": 3,
+  "victim_blocks_needed_with_lp_prerequisite": 3,
+  "victims_needed_for_resident_limit": 0,
+  "reasons": [
+   "decode_block_demand",
+   "admission_charges"
+  ],
+  "non_preemptive_actions": [],
+  "preemption_free_alternative": false,
+  "extraction_changed_relaxed": true
+ },
+ "executed": {
+  "id": 34,
+  "scheduled": [
+   [
+    44,
+    17
+   ],
+   [
+    38,
+    0
+   ],
+   [
+    28,
+    0
+   ],
+   [
+    43,
+    0
+   ]
+  ],
+  "ignored_seq_ids": [],
+  "preempted_seq_ids": [
+   34
+  ]
+ },
+ "after": {
+  "total_blocks": 12,
+  "free_blocks": 3,
+  "watermark_blocks": 0,
+  "running": [
+   "28",
+   "43",
+   "44"
+  ],
+  "waiting": [
+   "34",
+   "5",
+   "11",
+   "17",
+   "23",
+   "29",
+   "35",
+   "40",
+   "41",
+   "45",
+   "46",
+   "47"
+  ],
+  "block_tables": {
+   "28": [
+    8,
+    9,
+    2,
+    3,
+    5
+   ],
+   "43": [
+    11,
+    4
+   ],
+   "44": [
+    7,
+    1
+   ]
+  },
+  "requests": {
+   "5": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "11": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "17": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "23": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "28": {
+    "status": "PAUSED",
+    "prompt_len": 64,
+    "prompt_processed": 64,
+    "outputs": 3
+   },
+   "29": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "34": {
+    "status": "WAITING",
+    "prompt_len": 65,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "35": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "40": {
+    "status": "WAITING",
+    "prompt_len": 64,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "41": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "43": {
+    "status": "PAUSED",
+    "prompt_len": 16,
+    "prompt_processed": 16,
+    "outputs": 2
+   },
+   "44": {
+    "status": "PAUSED",
+    "prompt_len": 17,
+    "prompt_processed": 17,
+    "outputs": 0
+   },
+   "45": {
+    "status": "WAITING",
+    "prompt_len": 32,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "46": {
+    "status": "WAITING",
+    "prompt_len": 64,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "47": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   }
+  }
+ }
+}
