@@ -1,0 +1,3054 @@
+{
+ "status": "PASS",
+ "fixtures": [
+  "validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures/00_fractional_preemption_queue48_burst_pool12_d020.json",
+  "validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures/00_fractional_preemption_queue48_burst_pool12_d034.json",
+  "validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures/01_fractional_preemption_queue48_burst_pool12_d002.json",
+  "validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures/02_fractional_admission_fractional_admission.json",
+  "validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures/03_fractional_admission_queue48_burst_d000.json",
+  "validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures/04_admit_then_evict_queue96_burst_pool12_d016.json",
+  "validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures/04_admit_then_evict_queue96_burst_pool12_d017.json",
+  "validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures/04_admit_then_evict_queue96_burst_pool12_d055.json",
+  "validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures/04_admit_then_evict_queue96_burst_pool12_d056.json",
+  "validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures/05_repeated_prefill_two_request_d000.json",
+  "validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures/05_repeated_prefill_two_request_d001.json",
+  "validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures/05_repeated_prefill_two_request_d002.json",
+  "validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures/05_repeated_prefill_two_request_d003.json",
+  "validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures/05_repeated_prefill_two_request_d004.json",
+  "validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures/05_repeated_prefill_two_request_d005.json",
+  "validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures/05_repeated_prefill_two_request_d006.json",
+  "validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures/05_repeated_prefill_two_request_d007.json",
+  "validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures/06_repeated_prefill_two_request_d000.json",
+  "validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures/06_repeated_prefill_two_request_d001.json",
+  "validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures/06_repeated_prefill_two_request_d002.json",
+  "validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures/06_repeated_prefill_two_request_d003.json",
+  "validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures/06_repeated_prefill_two_request_d004.json",
+  "validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures/06_repeated_prefill_two_request_d005.json",
+  "validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures/06_repeated_prefill_two_request_d006.json",
+  "validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures/06_repeated_prefill_two_request_d007.json"
+ ],
+ "fixture_sha256": {
+  "00_fractional_preemption_queue48_burst_pool12_d020.json": "ecd16871dd5a187d0f27d63e79eb310a3703ea1b96b19e3c7b2171302a0f4948",
+  "00_fractional_preemption_queue48_burst_pool12_d034.json": "f097bc39af90f7b4dc2d7ee54811f703566ec5780df0ee1935e3973c35879c93",
+  "01_fractional_preemption_queue48_burst_pool12_d002.json": "ae038f5adb2c5842cd3cf846cef52de6a809f22a098b79aedcfc3f81584f6f52",
+  "02_fractional_admission_fractional_admission.json": "d9f3a45c672d3a1bd4ce8aa5ac3210f365b85e3992a72916ba4451fc42df95c2",
+  "03_fractional_admission_queue48_burst_d000.json": "3a71ba7da25881dcd041d942afae2e31306d5c3a90bee0427f9127445fbf6e8d",
+  "04_admit_then_evict_queue96_burst_pool12_d016.json": "305bec7338eb9cbe2edfced31cea1e5e0c4c877114b3cfed8015163acf8fbd43",
+  "04_admit_then_evict_queue96_burst_pool12_d017.json": "379c0605e40c42910377e759305d7e070190882ff99278c85bdc7ad81c050a5d",
+  "04_admit_then_evict_queue96_burst_pool12_d055.json": "0e054be5e949bb0f383139bd71066d83f71c8d349f30a6bee8cf1137d96e43be",
+  "04_admit_then_evict_queue96_burst_pool12_d056.json": "defadde13344c0537bc68845f126df68265288065ac7334b32df83677f308f9f",
+  "05_repeated_prefill_two_request_d000.json": "f0eed46965aab8ad88f10964a782e76c2ba3337bdd62eec49fea13bc22e0a2d3",
+  "05_repeated_prefill_two_request_d001.json": "eafa2739cc160a28d2968949a6b935f9572306e30eb81662098eabe4ae7c03eb",
+  "05_repeated_prefill_two_request_d002.json": "bb0c9e45c0b19dc168ce0b2f02bc9fc0252154d7a0566a81cc94822550eb8495",
+  "05_repeated_prefill_two_request_d003.json": "7dede52a6810e0263a98603763162d3c59547bb5c3dcc54ba85d697983c59e92",
+  "05_repeated_prefill_two_request_d004.json": "83f5165631c1a711b818281f9ddd17705b6862210d515f302f24443306f2a58c",
+  "05_repeated_prefill_two_request_d005.json": "342dcadb05b7fc53480f8d2dc1339f4ade9a6b33362d3e691e4f751b004a70e2",
+  "05_repeated_prefill_two_request_d006.json": "e88b163a22245403bc0adcd72cac71d454625c5ea673ee91b263af17908cfa70",
+  "05_repeated_prefill_two_request_d007.json": "5ef1775b9b98abc0fe12985303771c230e18c0f072d5db9d3f4cd7d36905d6cf",
+  "06_repeated_prefill_two_request_d000.json": "517a506b39693c607ae11e595b46205bf3c695c2c9d3923d669f5f34803fda02",
+  "06_repeated_prefill_two_request_d001.json": "12702550e9175108d3b3800af16844b32bc216060fe6ac8a6577f7d4d940d0b0",
+  "06_repeated_prefill_two_request_d002.json": "35d6c717b744a70507a2318b585f0c36c9468cc1922dd6054a1bb2056e56a127",
+  "06_repeated_prefill_two_request_d003.json": "5d85dab0c8e56fa3019f4e2ada1b378f29d64a9594a686c03da995f2f8f469e7",
+  "06_repeated_prefill_two_request_d004.json": "b2d381aa7f80dde67b83362690a84a0a68b789a34144533d5e03d4fcd6aca2ab",
+  "06_repeated_prefill_two_request_d005.json": "52ac6aca5c51fa000eb9b0ffc71785291490869073c970bfcb3bd1ff9010233f",
+  "06_repeated_prefill_two_request_d006.json": "30ffa6acb39899abe7394932741bf46f4658de6dd5686f8e01831a86283de572",
+  "06_repeated_prefill_two_request_d007.json": "6b9b2cdae99efa1a574aa014ff8ae3e7a4cc1832a357097cba9ce8b41e70d2fa"
+ },
+ "environment": {
+  "python": "3.10.8 (main, Oct 23 2023, 13:48:55) [GCC 12.2.0]",
+  "platform": "Linux-6.8.0-149-generic-x86_64-with-glibc2.39",
+  "numpy": "2.2.6",
+  "scipy": "1.15.3"
+ },
+ "integer_solver": {
+  "solver": "scipy.optimize.milp (HiGHS)",
+  "options": [
+   [
+    "mip_rel_gap",
+    0.0
+   ],
+   [
+    "presolve",
+    true
+   ],
+   [
+    "time_limit",
+    10.0
+   ]
+  ],
+  "comparison_tol": 1e-07
+ },
+ "results": [
+  {
+   "example": "fractional_preemption",
+   "label": "reciprocal-square, queue48_burst_pool12",
+   "case": "queue48_burst_pool12",
+   "decision": 20,
+   "mismatches": [],
+   "round_trip_equal": true,
+   "lp_status": "SchedulingSuccess",
+   "relaxed": {
+    "10": {
+     "y": 1.0
+    },
+    "16": {
+     "y": 0.8787878787878788,
+     "z": 0.12121212121212122
+    },
+    "26": {
+     "y": 1.0
+    },
+    "31": {
+     "y": 1.0
+    }
+   },
+   "lp_solver": {
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "method": "highs-ds",
+    "options": [
+     [
+      "presolve",
+      true
+     ]
+    ]
+   },
+   "lp_summary": {
+    "relaxed_objective": 1.3966750841750841,
+    "plan_objective": 1.2148490965013456,
+    "actions": {
+     "10": "decode",
+     "16": "preempt",
+     "26": "decode",
+     "27": "prefill:32",
+     "31": "decode",
+     "36": "prefill:8"
+    },
+    "fractional_request_count": 1
+   },
+   "lp_source": "retained and reproduced",
+   "lp_plan_equal": true,
+   "relaxed_vector_equal": true,
+   "relaxed_vector_max_difference": 0.0,
+   "integer": {
+    "status": "optimal",
+    "objective": 1.2986111111111112,
+    "actions": {
+     "10": "decode",
+     "16": "decode",
+     "26": "decode",
+     "31": "preempt"
+    },
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "dual_bound": 1.2986111111111112,
+    "reported_gap": 0.0,
+    "node_count": 1,
+    "max_integrality_deviation": 0.0
+   },
+   "integer_source": "retained offline same-state comparison; reproduced",
+   "integer_equal": true,
+   "comparison": {
+    "problem_id": "20",
+    "comparison_tol": 1e-07,
+    "lp_status": "SchedulingSuccess",
+    "integer_status": "optimal",
+    "integer": {
+     "status": "optimal",
+     "objective": 1.2986111111111112,
+     "actions": {
+      "10": "decode",
+      "16": "decode",
+      "26": "decode",
+      "31": "preempt"
+     },
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "dual_bound": 1.2986111111111112,
+     "reported_gap": 0.0,
+     "node_count": 1,
+     "max_integrality_deviation": 0.0
+    },
+    "integer_objective": 1.2986111111111112,
+    "integer_dual_bound": 1.2986111111111112,
+    "integer_reported_gap": 0.0,
+    "integer_node_count": 1,
+    "integer_actions": {
+     "10": "decode",
+     "16": "decode",
+     "26": "decode",
+     "31": "preempt"
+    },
+    "lp_relaxed_objective": 1.3966750841750841,
+    "lp_plan_objective": 1.2148490965013456,
+    "lp_actions": {
+     "10": "decode",
+     "16": "preempt",
+     "26": "decode",
+     "27": "prefill:32",
+     "31": "decode",
+     "36": "prefill:8"
+    },
+    "fractional_request_count": 1,
+    "relaxation_gap": 0.09806397306397296,
+    "extraction_loss": 0.08376201460976551,
+    "same_actions": false,
+    "bounds_consistent": true,
+    "attribution": "extraction_loss",
+    "relaxation_gap_present": true
+   },
+   "executed_actions": {
+    "16": "preempt",
+    "27": "prefill:32",
+    "36": "prefill:8",
+    "26": "decode",
+    "10": "decode",
+    "31": "decode"
+   },
+   "executed_equals_plan": true,
+   "executed_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 1.2148490965013456
+   }
+  },
+  {
+   "example": "fractional_preemption",
+   "label": "reciprocal-square, queue48_burst_pool12",
+   "case": "queue48_burst_pool12",
+   "decision": 34,
+   "mismatches": [],
+   "round_trip_equal": true,
+   "lp_status": "SchedulingSuccess",
+   "relaxed": {
+    "28": {
+     "y": 1.0
+    },
+    "34": {
+     "y": 0.6,
+     "z": 0.4
+    },
+    "38": {
+     "y": 1.0
+    },
+    "43": {
+     "y": 1.0
+    }
+   },
+   "lp_solver": {
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "method": "highs-ds",
+    "options": [
+     [
+      "presolve",
+      true
+     ]
+    ]
+   },
+   "lp_summary": {
+    "relaxed_objective": 1.3347222222222221,
+    "plan_objective": 1.2073060486522025,
+    "actions": {
+     "28": "decode",
+     "34": "preempt",
+     "38": "decode",
+     "43": "decode",
+     "44": "prefill:17"
+    },
+    "fractional_request_count": 1
+   },
+   "lp_source": "retained and reproduced",
+   "lp_plan_equal": true,
+   "relaxed_vector_equal": true,
+   "relaxed_vector_max_difference": 0.0,
+   "integer": {
+    "status": "optimal",
+    "objective": 1.2986111111111112,
+    "actions": {
+     "28": "decode",
+     "34": "decode",
+     "38": "decode",
+     "43": "preempt"
+    },
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "dual_bound": 1.2986111111111112,
+    "reported_gap": 0.0,
+    "node_count": 1,
+    "max_integrality_deviation": 2.220446049250313e-16
+   },
+   "integer_source": "retained offline same-state comparison; reproduced",
+   "integer_equal": true,
+   "comparison": {
+    "problem_id": "34",
+    "comparison_tol": 1e-07,
+    "lp_status": "SchedulingSuccess",
+    "integer_status": "optimal",
+    "integer": {
+     "status": "optimal",
+     "objective": 1.2986111111111112,
+     "actions": {
+      "28": "decode",
+      "34": "decode",
+      "38": "decode",
+      "43": "preempt"
+     },
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "dual_bound": 1.2986111111111112,
+     "reported_gap": 0.0,
+     "node_count": 1,
+     "max_integrality_deviation": 2.220446049250313e-16
+    },
+    "integer_objective": 1.2986111111111112,
+    "integer_dual_bound": 1.2986111111111112,
+    "integer_reported_gap": 0.0,
+    "integer_node_count": 1,
+    "integer_actions": {
+     "28": "decode",
+     "34": "decode",
+     "38": "decode",
+     "43": "preempt"
+    },
+    "lp_relaxed_objective": 1.3347222222222221,
+    "lp_plan_objective": 1.2073060486522025,
+    "lp_actions": {
+     "28": "decode",
+     "34": "preempt",
+     "38": "decode",
+     "43": "decode",
+     "44": "prefill:17"
+    },
+    "fractional_request_count": 1,
+    "relaxation_gap": 0.03611111111111098,
+    "extraction_loss": 0.09130506245890868,
+    "same_actions": false,
+    "bounds_consistent": true,
+    "attribution": "extraction_loss",
+    "relaxation_gap_present": true
+   },
+   "executed_actions": {
+    "34": "preempt",
+    "44": "prefill:17",
+    "38": "decode",
+    "28": "decode",
+    "43": "decode"
+   },
+   "executed_equals_plan": true,
+   "executed_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 1.2073060486522025
+   }
+  },
+  {
+   "example": "fractional_preemption",
+   "label": "running order, queue48_burst_pool12",
+   "case": "queue48_burst_pool12",
+   "decision": 2,
+   "mismatches": [],
+   "round_trip_equal": true,
+   "lp_status": "SchedulingSuccess",
+   "relaxed": {
+    "0": {
+     "y": 1.0
+    },
+    "1": {
+     "y": 1.0
+    },
+    "2": {
+     "y": 1.0
+    },
+    "3": {
+     "y": 1.0
+    },
+    "4": {
+     "y": 0.75,
+     "z": 0.25
+    },
+    "6": {
+     "y": 1.0
+    }
+   },
+   "lp_solver": {
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "method": "highs-ds",
+    "options": [
+     [
+      "presolve",
+      true
+     ]
+    ]
+   },
+   "lp_summary": {
+    "relaxed_objective": 725.0,
+    "plan_objective": 716.0460069444445,
+    "actions": {
+     "0": "decode",
+     "1": "decode",
+     "2": "decode",
+     "3": "decode",
+     "4": "preempt",
+     "6": "decode",
+     "7": "prefill:16",
+     "8": "prefill:17"
+    },
+    "fractional_request_count": 1
+   },
+   "lp_source": "retained and reproduced",
+   "lp_plan_equal": true,
+   "relaxed_vector_equal": true,
+   "relaxed_vector_max_difference": 0.0,
+   "integer": {
+    "status": "optimal",
+    "objective": 724.0,
+    "actions": {
+     "0": "decode",
+     "1": "decode",
+     "2": "decode",
+     "3": "decode",
+     "4": "decode",
+     "6": "preempt"
+    },
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "dual_bound": 724.0,
+    "reported_gap": 0.0,
+    "node_count": 1,
+    "max_integrality_deviation": 0.0
+   },
+   "integer_source": "retained offline same-state comparison; reproduced",
+   "integer_equal": true,
+   "comparison": {
+    "problem_id": "2",
+    "comparison_tol": 1e-07,
+    "lp_status": "SchedulingSuccess",
+    "integer_status": "optimal",
+    "integer": {
+     "status": "optimal",
+     "objective": 724.0,
+     "actions": {
+      "0": "decode",
+      "1": "decode",
+      "2": "decode",
+      "3": "decode",
+      "4": "decode",
+      "6": "preempt"
+     },
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "dual_bound": 724.0,
+     "reported_gap": 0.0,
+     "node_count": 1,
+     "max_integrality_deviation": 0.0
+    },
+    "integer_objective": 724.0,
+    "integer_dual_bound": 724.0,
+    "integer_reported_gap": 0.0,
+    "integer_node_count": 1,
+    "integer_actions": {
+     "0": "decode",
+     "1": "decode",
+     "2": "decode",
+     "3": "decode",
+     "4": "decode",
+     "6": "preempt"
+    },
+    "lp_relaxed_objective": 725.0,
+    "lp_plan_objective": 716.0460069444445,
+    "lp_actions": {
+     "0": "decode",
+     "1": "decode",
+     "2": "decode",
+     "3": "decode",
+     "4": "preempt",
+     "6": "decode",
+     "7": "prefill:16",
+     "8": "prefill:17"
+    },
+    "fractional_request_count": 1,
+    "relaxation_gap": 1.0,
+    "extraction_loss": 7.953993055555543,
+    "same_actions": false,
+    "bounds_consistent": true,
+    "attribution": "extraction_loss",
+    "relaxation_gap_present": true
+   },
+   "executed_actions": {
+    "4": "preempt",
+    "7": "prefill:16",
+    "8": "prefill:17",
+    "0": "decode",
+    "2": "decode",
+    "6": "decode",
+    "1": "decode",
+    "3": "decode"
+   },
+   "executed_equals_plan": true,
+   "executed_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 716.0460069444445
+   }
+  },
+  {
+   "example": "fractional_admission",
+   "label": "running order, fractional_admission state",
+   "case": "fractional_admission",
+   "decision": null,
+   "mismatches": [],
+   "round_trip_equal": true,
+   "lp_status": "SchedulingSuccess",
+   "relaxed": {
+    "0": {
+     "x": 0.9375,
+     "I": 0.9375
+    },
+    "1": {
+     "x": 1.0,
+     "I": 1.0
+    }
+   },
+   "lp_solver": {
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "method": "highs-ds",
+    "options": [
+     [
+      "presolve",
+      true
+     ]
+    ]
+   },
+   "lp_summary": {
+    "relaxed_objective": 0.59375,
+    "plan_objective": 0.125,
+    "actions": {
+     "1": "prefill:1"
+    },
+    "fractional_request_count": 1
+   },
+   "lp_source": "retained and reproduced",
+   "lp_plan_equal": true,
+   "relaxed_vector_equal": true,
+   "relaxed_vector_max_difference": 0.0,
+   "integer": {
+    "status": "optimal",
+    "objective": 0.5,
+    "actions": {
+     "0": "prefill:1"
+    },
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "dual_bound": 0.5,
+    "reported_gap": 0.0,
+    "node_count": 0,
+    "max_integrality_deviation": 0.0
+   },
+   "integer_source": "retained diagnostic integer solve; reproduced",
+   "integer_equal": true,
+   "comparison": {
+    "problem_id": "-1",
+    "comparison_tol": 1e-07,
+    "lp_status": "SchedulingSuccess",
+    "integer_status": "optimal",
+    "integer": {
+     "status": "optimal",
+     "objective": 0.5,
+     "actions": {
+      "0": "prefill:1"
+     },
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "dual_bound": 0.5,
+     "reported_gap": 0.0,
+     "node_count": 0,
+     "max_integrality_deviation": 0.0
+    },
+    "integer_objective": 0.5,
+    "integer_dual_bound": 0.5,
+    "integer_reported_gap": 0.0,
+    "integer_node_count": 0,
+    "integer_actions": {
+     "0": "prefill:1"
+    },
+    "lp_relaxed_objective": 0.59375,
+    "lp_plan_objective": 0.125,
+    "lp_actions": {
+     "1": "prefill:1"
+    },
+    "fractional_request_count": 1,
+    "relaxation_gap": 0.09375,
+    "extraction_loss": 0.375,
+    "same_actions": false,
+    "bounds_consistent": true,
+    "attribution": "extraction_loss",
+    "relaxation_gap_present": true
+   },
+   "executed_actions": {
+    "1": "prefill:1"
+   },
+   "executed_equals_plan": true,
+   "executed_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 0.125
+   }
+  },
+  {
+   "example": "fractional_admission",
+   "label": "reciprocal-square, queue48_burst",
+   "case": "queue48_burst",
+   "decision": 0,
+   "mismatches": [],
+   "round_trip_equal": true,
+   "lp_status": "SchedulingSuccess",
+   "relaxed": {
+    "0": {
+     "x": 8.0,
+     "I": 1.0
+    },
+    "1": {
+     "x": 16.0,
+     "I": 1.0
+    },
+    "2": {
+     "x": 17.0,
+     "I": 1.0
+    },
+    "3": {
+     "x": 32.0,
+     "I": 1.0
+    },
+    "4": {
+     "x": 6.857142857142857,
+     "I": 0.10714285714285714
+    },
+    "6": {
+     "x": 8.0,
+     "I": 1.0
+    },
+    "7": {
+     "x": 16.0,
+     "I": 1.0
+    },
+    "8": {
+     "x": 17.0,
+     "I": 1.0
+    },
+    "12": {
+     "x": 7.142857142857143,
+     "I": 0.8928571428571429
+    }
+   },
+   "lp_solver": {
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "method": "highs-ds",
+    "options": [
+     [
+      "presolve",
+      true
+     ]
+    ]
+   },
+   "lp_summary": {
+    "relaxed_objective": 1.4815588460345785,
+    "plan_objective": 1.4779071131520765,
+    "actions": {
+     "0": "prefill:8",
+     "1": "prefill:16",
+     "2": "prefill:17",
+     "3": "prefill:32",
+     "6": "prefill:8",
+     "7": "prefill:16",
+     "8": "prefill:17",
+     "12": "prefill:8"
+    },
+    "fractional_request_count": 2
+   },
+   "lp_source": "retained and reproduced",
+   "lp_plan_equal": true,
+   "relaxed_vector_equal": true,
+   "relaxed_vector_max_difference": 0.0,
+   "integer": {
+    "status": "optimal",
+    "objective": 1.4807399533887629,
+    "actions": {
+     "0": "prefill:8",
+     "1": "prefill:16",
+     "2": "prefill:17",
+     "3": "prefill:32",
+     "4": "prefill:14",
+     "6": "prefill:8",
+     "7": "prefill:16",
+     "8": "prefill:17"
+    },
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "dual_bound": 1.4807399533887629,
+    "reported_gap": 0.0,
+    "node_count": 1,
+    "max_integrality_deviation": 0.0
+   },
+   "integer_source": "retained offline same-state comparison; reproduced",
+   "integer_equal": true,
+   "comparison": {
+    "problem_id": "0",
+    "comparison_tol": 1e-07,
+    "lp_status": "SchedulingSuccess",
+    "integer_status": "optimal",
+    "integer": {
+     "status": "optimal",
+     "objective": 1.4807399533887629,
+     "actions": {
+      "0": "prefill:8",
+      "1": "prefill:16",
+      "2": "prefill:17",
+      "3": "prefill:32",
+      "4": "prefill:14",
+      "6": "prefill:8",
+      "7": "prefill:16",
+      "8": "prefill:17"
+     },
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "dual_bound": 1.4807399533887629,
+     "reported_gap": 0.0,
+     "node_count": 1,
+     "max_integrality_deviation": 0.0
+    },
+    "integer_objective": 1.4807399533887629,
+    "integer_dual_bound": 1.4807399533887629,
+    "integer_reported_gap": 0.0,
+    "integer_node_count": 1,
+    "integer_actions": {
+     "0": "prefill:8",
+     "1": "prefill:16",
+     "2": "prefill:17",
+     "3": "prefill:32",
+     "4": "prefill:14",
+     "6": "prefill:8",
+     "7": "prefill:16",
+     "8": "prefill:17"
+    },
+    "lp_relaxed_objective": 1.4815588460345785,
+    "lp_plan_objective": 1.4779071131520765,
+    "lp_actions": {
+     "0": "prefill:8",
+     "1": "prefill:16",
+     "2": "prefill:17",
+     "3": "prefill:32",
+     "6": "prefill:8",
+     "7": "prefill:16",
+     "8": "prefill:17",
+     "12": "prefill:8"
+    },
+    "fractional_request_count": 2,
+    "relaxation_gap": 0.0008188926458156942,
+    "extraction_loss": 0.002832840236686396,
+    "same_actions": false,
+    "bounds_consistent": true,
+    "attribution": "extraction_loss",
+    "relaxation_gap_present": true
+   },
+   "executed_actions": {
+    "0": "prefill:8",
+    "1": "prefill:16",
+    "2": "prefill:17",
+    "3": "prefill:32",
+    "6": "prefill:8",
+    "7": "prefill:16",
+    "8": "prefill:17",
+    "12": "prefill:8"
+   },
+   "executed_equals_plan": true,
+   "executed_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 1.4779071131520765
+   }
+  },
+  {
+   "example": "admit_then_evict",
+   "label": "running-order integer optimum, queue96_burst_pool12",
+   "case": "queue96_burst_pool12",
+   "decision": 16,
+   "mismatches": [],
+   "round_trip_equal": true,
+   "lp_status": "SchedulingSuccess",
+   "relaxed": {
+    "14": {
+     "y": 1.0
+    },
+    "16": {
+     "y": 1.0
+    },
+    "21": {
+     "y": 0.5,
+     "z": 0.5
+    },
+    "25": {
+     "y": 1.0
+    },
+    "31": {
+     "y": 1.0
+    }
+   },
+   "lp_solver": {
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "method": "highs-ds",
+    "options": [
+     [
+      "presolve",
+      true
+     ]
+    ]
+   },
+   "lp_summary": {
+    "relaxed_objective": 240.0,
+    "plan_objective": 238.00051652892563,
+    "actions": {
+     "14": "decode",
+     "16": "decode",
+     "21": "preempt",
+     "25": "decode",
+     "30": "prefill:8",
+     "31": "decode"
+    },
+    "fractional_request_count": 1
+   },
+   "lp_source": "offline only; the rollout did not solve the LP",
+   "integer": {
+    "status": "optimal",
+    "objective": 238.00051652892563,
+    "actions": {
+     "14": "decode",
+     "16": "decode",
+     "21": "preempt",
+     "25": "decode",
+     "30": "prefill:8",
+     "31": "decode"
+    },
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "dual_bound": 238.00051652892563,
+    "reported_gap": 0.0,
+    "node_count": 1,
+    "max_integrality_deviation": 0.0
+   },
+   "integer_source": "rollout's own integer solve; reproduced",
+   "integer_equal": true,
+   "comparison": {
+    "problem_id": "16",
+    "comparison_tol": 1e-07,
+    "lp_status": "SchedulingSuccess",
+    "integer_status": "optimal",
+    "integer": {
+     "status": "optimal",
+     "objective": 238.00051652892563,
+     "actions": {
+      "14": "decode",
+      "16": "decode",
+      "21": "preempt",
+      "25": "decode",
+      "30": "prefill:8",
+      "31": "decode"
+     },
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "dual_bound": 238.00051652892563,
+     "reported_gap": 0.0,
+     "node_count": 1,
+     "max_integrality_deviation": 0.0
+    },
+    "integer_objective": 238.00051652892563,
+    "integer_dual_bound": 238.00051652892563,
+    "integer_reported_gap": 0.0,
+    "integer_node_count": 1,
+    "integer_actions": {
+     "14": "decode",
+     "16": "decode",
+     "21": "preempt",
+     "25": "decode",
+     "30": "prefill:8",
+     "31": "decode"
+    },
+    "lp_relaxed_objective": 240.0,
+    "lp_plan_objective": 238.00051652892563,
+    "lp_actions": {
+     "14": "decode",
+     "16": "decode",
+     "21": "preempt",
+     "25": "decode",
+     "30": "prefill:8",
+     "31": "decode"
+    },
+    "fractional_request_count": 1,
+    "relaxation_gap": 1.9994834710743703,
+    "extraction_loss": 0.0,
+    "same_actions": true,
+    "bounds_consistent": true,
+    "attribution": "identical_actions",
+    "relaxation_gap_present": true
+   },
+   "executed_actions": {
+    "21": "preempt",
+    "30": "prefill:8",
+    "14": "decode",
+    "25": "decode",
+    "16": "decode",
+    "31": "decode"
+   },
+   "executed_equals_plan": true,
+   "executed_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 238.00051652892563
+   }
+  },
+  {
+   "example": "admit_then_evict",
+   "label": "running-order integer optimum, queue96_burst_pool12",
+   "case": "queue96_burst_pool12",
+   "decision": 17,
+   "mismatches": [],
+   "round_trip_equal": true,
+   "lp_status": "SchedulingSuccess",
+   "relaxed": {
+    "14": {
+     "y": 1.0
+    },
+    "16": {
+     "y": 1.0
+    },
+    "25": {
+     "y": 1.0
+    },
+    "30": {
+     "y": 0.4444444444444444,
+     "z": 0.5555555555555556
+    },
+    "31": {
+     "y": 1.0
+    }
+   },
+   "lp_solver": {
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "method": "highs-ds",
+    "options": [
+     [
+      "presolve",
+      true
+     ]
+    ]
+   },
+   "lp_summary": {
+    "relaxed_objective": 239.77777777777777,
+    "plan_objective": 238.0,
+    "actions": {
+     "14": "decode",
+     "16": "decode",
+     "25": "decode",
+     "30": "preempt",
+     "31": "decode"
+    },
+    "fractional_request_count": 1
+   },
+   "lp_source": "offline only; the rollout did not solve the LP",
+   "integer": {
+    "status": "optimal",
+    "objective": 238.0,
+    "actions": {
+     "14": "decode",
+     "16": "decode",
+     "25": "decode",
+     "30": "preempt",
+     "31": "decode"
+    },
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "dual_bound": 238.0,
+    "reported_gap": 0.0,
+    "node_count": 1,
+    "max_integrality_deviation": 0.0
+   },
+   "integer_source": "rollout's own integer solve; reproduced",
+   "integer_equal": true,
+   "comparison": {
+    "problem_id": "17",
+    "comparison_tol": 1e-07,
+    "lp_status": "SchedulingSuccess",
+    "integer_status": "optimal",
+    "integer": {
+     "status": "optimal",
+     "objective": 238.0,
+     "actions": {
+      "14": "decode",
+      "16": "decode",
+      "25": "decode",
+      "30": "preempt",
+      "31": "decode"
+     },
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "dual_bound": 238.0,
+     "reported_gap": 0.0,
+     "node_count": 1,
+     "max_integrality_deviation": 0.0
+    },
+    "integer_objective": 238.0,
+    "integer_dual_bound": 238.0,
+    "integer_reported_gap": 0.0,
+    "integer_node_count": 1,
+    "integer_actions": {
+     "14": "decode",
+     "16": "decode",
+     "25": "decode",
+     "30": "preempt",
+     "31": "decode"
+    },
+    "lp_relaxed_objective": 239.77777777777777,
+    "lp_plan_objective": 238.0,
+    "lp_actions": {
+     "14": "decode",
+     "16": "decode",
+     "25": "decode",
+     "30": "preempt",
+     "31": "decode"
+    },
+    "fractional_request_count": 1,
+    "relaxation_gap": 1.7777777777777715,
+    "extraction_loss": 0.0,
+    "same_actions": true,
+    "bounds_consistent": true,
+    "attribution": "identical_actions",
+    "relaxation_gap_present": true
+   },
+   "executed_actions": {
+    "30": "preempt",
+    "14": "decode",
+    "25": "decode",
+    "16": "decode",
+    "31": "decode"
+   },
+   "executed_equals_plan": true,
+   "executed_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 238.0
+   }
+  },
+  {
+   "example": "admit_then_evict",
+   "label": "running-order integer optimum, queue96_burst_pool12",
+   "case": "queue96_burst_pool12",
+   "decision": 55,
+   "mismatches": [],
+   "round_trip_equal": true,
+   "lp_status": "SchedulingSuccess",
+   "relaxed": {
+    "56": {
+     "y": 1.0
+    },
+    "58": {
+     "y": 1.0
+    },
+    "62": {
+     "y": 1.0
+    },
+    "67": {
+     "y": 1.0
+    },
+    "69": {
+     "y": 0.3333333333333333,
+     "z": 0.6666666666666666
+    }
+   },
+   "lp_solver": {
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "method": "highs-ds",
+    "options": [
+     [
+      "presolve",
+      true
+     ]
+    ]
+   },
+   "lp_summary": {
+    "relaxed_objective": 239.33333333333334,
+    "plan_objective": 238.0003698224852,
+    "actions": {
+     "56": "decode",
+     "58": "decode",
+     "62": "decode",
+     "66": "prefill:8",
+     "67": "decode",
+     "69": "preempt"
+    },
+    "fractional_request_count": 1
+   },
+   "lp_source": "offline only; the rollout did not solve the LP",
+   "integer": {
+    "status": "optimal",
+    "objective": 238.00038580246914,
+    "actions": {
+     "56": "decode",
+     "58": "decode",
+     "62": "decode",
+     "67": "decode",
+     "69": "preempt",
+     "73": "prefill:16"
+    },
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "dual_bound": 238.00038580246914,
+    "reported_gap": 0.0,
+    "node_count": 1,
+    "max_integrality_deviation": 0.0
+   },
+   "integer_source": "rollout's own integer solve; reproduced",
+   "integer_equal": true,
+   "comparison": {
+    "problem_id": "55",
+    "comparison_tol": 1e-07,
+    "lp_status": "SchedulingSuccess",
+    "integer_status": "optimal",
+    "integer": {
+     "status": "optimal",
+     "objective": 238.00038580246914,
+     "actions": {
+      "56": "decode",
+      "58": "decode",
+      "62": "decode",
+      "67": "decode",
+      "69": "preempt",
+      "73": "prefill:16"
+     },
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "dual_bound": 238.00038580246914,
+     "reported_gap": 0.0,
+     "node_count": 1,
+     "max_integrality_deviation": 0.0
+    },
+    "integer_objective": 238.00038580246914,
+    "integer_dual_bound": 238.00038580246914,
+    "integer_reported_gap": 0.0,
+    "integer_node_count": 1,
+    "integer_actions": {
+     "56": "decode",
+     "58": "decode",
+     "62": "decode",
+     "67": "decode",
+     "69": "preempt",
+     "73": "prefill:16"
+    },
+    "lp_relaxed_objective": 239.33333333333334,
+    "lp_plan_objective": 238.0003698224852,
+    "lp_actions": {
+     "56": "decode",
+     "58": "decode",
+     "62": "decode",
+     "66": "prefill:8",
+     "67": "decode",
+     "69": "preempt"
+    },
+    "fractional_request_count": 1,
+    "relaxation_gap": 1.3329475308642031,
+    "extraction_loss": 1.5979983942315812e-05,
+    "same_actions": false,
+    "bounds_consistent": true,
+    "attribution": "tied_optimum_different_actions",
+    "relaxation_gap_present": true
+   },
+   "executed_actions": {
+    "69": "preempt",
+    "73": "prefill:16",
+    "56": "decode",
+    "62": "decode",
+    "58": "decode",
+    "67": "decode"
+   },
+   "executed_equals_plan": true,
+   "executed_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 238.00038580246914
+   }
+  },
+  {
+   "example": "admit_then_evict",
+   "label": "running-order integer optimum, queue96_burst_pool12",
+   "case": "queue96_burst_pool12",
+   "decision": 56,
+   "mismatches": [],
+   "round_trip_equal": true,
+   "lp_status": "SchedulingSuccess",
+   "relaxed": {
+    "56": {
+     "y": 1.0
+    },
+    "58": {
+     "y": 1.0
+    },
+    "62": {
+     "y": 1.0
+    },
+    "67": {
+     "y": 1.0
+    },
+    "73": {
+     "y": 0.4444444444444444,
+     "z": 0.5555555555555556
+    }
+   },
+   "lp_solver": {
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "method": "highs-ds",
+    "options": [
+     [
+      "presolve",
+      true
+     ]
+    ]
+   },
+   "lp_summary": {
+    "relaxed_objective": 239.77777777777777,
+    "plan_objective": 238.0,
+    "actions": {
+     "56": "decode",
+     "58": "decode",
+     "62": "decode",
+     "67": "decode",
+     "73": "preempt"
+    },
+    "fractional_request_count": 1
+   },
+   "lp_source": "offline only; the rollout did not solve the LP",
+   "integer": {
+    "status": "optimal",
+    "objective": 238.0,
+    "actions": {
+     "56": "decode",
+     "58": "decode",
+     "62": "decode",
+     "67": "decode",
+     "73": "preempt"
+    },
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "dual_bound": 238.0,
+    "reported_gap": 0.0,
+    "node_count": 1,
+    "max_integrality_deviation": 0.0
+   },
+   "integer_source": "rollout's own integer solve; reproduced",
+   "integer_equal": true,
+   "comparison": {
+    "problem_id": "56",
+    "comparison_tol": 1e-07,
+    "lp_status": "SchedulingSuccess",
+    "integer_status": "optimal",
+    "integer": {
+     "status": "optimal",
+     "objective": 238.0,
+     "actions": {
+      "56": "decode",
+      "58": "decode",
+      "62": "decode",
+      "67": "decode",
+      "73": "preempt"
+     },
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "dual_bound": 238.0,
+     "reported_gap": 0.0,
+     "node_count": 1,
+     "max_integrality_deviation": 0.0
+    },
+    "integer_objective": 238.0,
+    "integer_dual_bound": 238.0,
+    "integer_reported_gap": 0.0,
+    "integer_node_count": 1,
+    "integer_actions": {
+     "56": "decode",
+     "58": "decode",
+     "62": "decode",
+     "67": "decode",
+     "73": "preempt"
+    },
+    "lp_relaxed_objective": 239.77777777777777,
+    "lp_plan_objective": 238.0,
+    "lp_actions": {
+     "56": "decode",
+     "58": "decode",
+     "62": "decode",
+     "67": "decode",
+     "73": "preempt"
+    },
+    "fractional_request_count": 1,
+    "relaxation_gap": 1.7777777777777715,
+    "extraction_loss": 0.0,
+    "same_actions": true,
+    "bounds_consistent": true,
+    "attribution": "identical_actions",
+    "relaxation_gap_present": true
+   },
+   "executed_actions": {
+    "73": "preempt",
+    "56": "decode",
+    "62": "decode",
+    "58": "decode",
+    "67": "decode"
+   },
+   "executed_equals_plan": true,
+   "executed_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 238.0
+   }
+  },
+  {
+   "example": "repeated_prefill",
+   "label": "uniform, two_request, resident limit 1",
+   "case": "two_request",
+   "decision": 0,
+   "mismatches": [],
+   "round_trip_equal": true,
+   "lp_status": "SchedulingSuccess",
+   "relaxed": {
+    "1": {
+     "x": 8.0,
+     "I": 1.0
+    }
+   },
+   "lp_solver": {
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "method": "highs-ds",
+    "options": [
+     [
+      "presolve",
+      true
+     ]
+    ]
+   },
+   "lp_summary": {
+    "relaxed_objective": 8.0,
+    "plan_objective": 8.0,
+    "actions": {
+     "1": "prefill:8"
+    },
+    "fractional_request_count": 0
+   },
+   "lp_source": "retained and reproduced",
+   "lp_plan_equal": true,
+   "relaxed_vector_equal": true,
+   "relaxed_vector_max_difference": 0.0,
+   "integer": {
+    "status": "optimal",
+    "objective": 8.0,
+    "actions": {
+     "1": "prefill:8"
+    },
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "dual_bound": 8.0,
+    "reported_gap": 0.0,
+    "node_count": 1,
+    "max_integrality_deviation": 0.0
+   },
+   "integer_source": "not retained; new solve of the saved problem (original state and coefficients)",
+   "comparison": {
+    "problem_id": "0",
+    "comparison_tol": 1e-07,
+    "lp_status": "SchedulingSuccess",
+    "integer_status": "optimal",
+    "integer": {
+     "status": "optimal",
+     "objective": 8.0,
+     "actions": {
+      "1": "prefill:8"
+     },
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "dual_bound": 8.0,
+     "reported_gap": 0.0,
+     "node_count": 1,
+     "max_integrality_deviation": 0.0
+    },
+    "integer_objective": 8.0,
+    "integer_dual_bound": 8.0,
+    "integer_reported_gap": 0.0,
+    "integer_node_count": 1,
+    "integer_actions": {
+     "1": "prefill:8"
+    },
+    "lp_relaxed_objective": 8.0,
+    "lp_plan_objective": 8.0,
+    "lp_actions": {
+     "1": "prefill:8"
+    },
+    "fractional_request_count": 0,
+    "relaxation_gap": 0.0,
+    "extraction_loss": 0.0,
+    "same_actions": true,
+    "bounds_consistent": true,
+    "attribution": "identical_actions",
+    "relaxation_gap_present": false
+   },
+   "executed_actions": {
+    "1": "prefill:8"
+   },
+   "executed_equals_plan": true,
+   "executed_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 8.0
+   }
+  },
+  {
+   "example": "repeated_prefill",
+   "label": "uniform, two_request, resident limit 1",
+   "case": "two_request",
+   "decision": 1,
+   "mismatches": [],
+   "round_trip_equal": true,
+   "lp_status": "SchedulingSuccess",
+   "relaxed": {
+    "0": {
+     "x": 5.0,
+     "I": 1.0
+    },
+    "1": {
+     "z": 1.0
+    }
+   },
+   "lp_solver": {
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "method": "highs-ds",
+    "options": [
+     [
+      "presolve",
+      true
+     ]
+    ]
+   },
+   "lp_summary": {
+    "relaxed_objective": 4.0,
+    "plan_objective": 4.0,
+    "actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "fractional_request_count": 0
+   },
+   "lp_source": "retained and reproduced",
+   "lp_plan_equal": true,
+   "relaxed_vector_equal": true,
+   "relaxed_vector_max_difference": 0.0,
+   "integer": {
+    "status": "optimal",
+    "objective": 4.0,
+    "actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "dual_bound": 4.0,
+    "reported_gap": 0.0,
+    "node_count": 0,
+    "max_integrality_deviation": 0.0
+   },
+   "integer_source": "not retained; new solve of the saved problem (original state and coefficients)",
+   "comparison": {
+    "problem_id": "1",
+    "comparison_tol": 1e-07,
+    "lp_status": "SchedulingSuccess",
+    "integer_status": "optimal",
+    "integer": {
+     "status": "optimal",
+     "objective": 4.0,
+     "actions": {
+      "0": "prefill:5",
+      "1": "preempt"
+     },
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "dual_bound": 4.0,
+     "reported_gap": 0.0,
+     "node_count": 0,
+     "max_integrality_deviation": 0.0
+    },
+    "integer_objective": 4.0,
+    "integer_dual_bound": 4.0,
+    "integer_reported_gap": 0.0,
+    "integer_node_count": 0,
+    "integer_actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "lp_relaxed_objective": 4.0,
+    "lp_plan_objective": 4.0,
+    "lp_actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "fractional_request_count": 0,
+    "relaxation_gap": 0.0,
+    "extraction_loss": 0.0,
+    "same_actions": true,
+    "bounds_consistent": true,
+    "attribution": "identical_actions",
+    "relaxation_gap_present": false
+   },
+   "executed_actions": {
+    "1": "preempt",
+    "0": "prefill:5"
+   },
+   "executed_equals_plan": true,
+   "executed_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 4.0
+   }
+  },
+  {
+   "example": "repeated_prefill",
+   "label": "uniform, two_request, resident limit 1",
+   "case": "two_request",
+   "decision": 2,
+   "mismatches": [],
+   "round_trip_equal": true,
+   "lp_status": "SchedulingSuccess",
+   "relaxed": {
+    "0": {
+     "z": 1.0
+    },
+    "1": {
+     "x": 8.0,
+     "I": 1.0
+    }
+   },
+   "lp_solver": {
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "method": "highs-ds",
+    "options": [
+     [
+      "presolve",
+      true
+     ]
+    ]
+   },
+   "lp_summary": {
+    "relaxed_objective": 7.0,
+    "plan_objective": 7.0,
+    "actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "fractional_request_count": 0
+   },
+   "lp_source": "retained and reproduced",
+   "lp_plan_equal": true,
+   "relaxed_vector_equal": true,
+   "relaxed_vector_max_difference": 0.0,
+   "integer": {
+    "status": "optimal",
+    "objective": 7.0,
+    "actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "dual_bound": 7.0,
+    "reported_gap": 0.0,
+    "node_count": 1,
+    "max_integrality_deviation": 0.0
+   },
+   "integer_source": "not retained; new solve of the saved problem (original state and coefficients)",
+   "comparison": {
+    "problem_id": "2",
+    "comparison_tol": 1e-07,
+    "lp_status": "SchedulingSuccess",
+    "integer_status": "optimal",
+    "integer": {
+     "status": "optimal",
+     "objective": 7.0,
+     "actions": {
+      "0": "preempt",
+      "1": "prefill:8"
+     },
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "dual_bound": 7.0,
+     "reported_gap": 0.0,
+     "node_count": 1,
+     "max_integrality_deviation": 0.0
+    },
+    "integer_objective": 7.0,
+    "integer_dual_bound": 7.0,
+    "integer_reported_gap": 0.0,
+    "integer_node_count": 1,
+    "integer_actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "lp_relaxed_objective": 7.0,
+    "lp_plan_objective": 7.0,
+    "lp_actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "fractional_request_count": 0,
+    "relaxation_gap": 0.0,
+    "extraction_loss": 0.0,
+    "same_actions": true,
+    "bounds_consistent": true,
+    "attribution": "identical_actions",
+    "relaxation_gap_present": false
+   },
+   "executed_actions": {
+    "0": "preempt",
+    "1": "prefill:8"
+   },
+   "executed_equals_plan": true,
+   "executed_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 7.0
+   }
+  },
+  {
+   "example": "repeated_prefill",
+   "label": "uniform, two_request, resident limit 1",
+   "case": "two_request",
+   "decision": 3,
+   "mismatches": [],
+   "round_trip_equal": true,
+   "lp_status": "SchedulingSuccess",
+   "relaxed": {
+    "0": {
+     "x": 5.0,
+     "I": 1.0
+    },
+    "1": {
+     "z": 1.0
+    }
+   },
+   "lp_solver": {
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "method": "highs-ds",
+    "options": [
+     [
+      "presolve",
+      true
+     ]
+    ]
+   },
+   "lp_summary": {
+    "relaxed_objective": 4.0,
+    "plan_objective": 4.0,
+    "actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "fractional_request_count": 0
+   },
+   "lp_source": "retained and reproduced",
+   "lp_plan_equal": true,
+   "relaxed_vector_equal": true,
+   "relaxed_vector_max_difference": 0.0,
+   "integer": {
+    "status": "optimal",
+    "objective": 4.0,
+    "actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "dual_bound": 4.0,
+    "reported_gap": 0.0,
+    "node_count": 0,
+    "max_integrality_deviation": 0.0
+   },
+   "integer_source": "not retained; new solve of the saved problem (original state and coefficients)",
+   "comparison": {
+    "problem_id": "3",
+    "comparison_tol": 1e-07,
+    "lp_status": "SchedulingSuccess",
+    "integer_status": "optimal",
+    "integer": {
+     "status": "optimal",
+     "objective": 4.0,
+     "actions": {
+      "0": "prefill:5",
+      "1": "preempt"
+     },
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "dual_bound": 4.0,
+     "reported_gap": 0.0,
+     "node_count": 0,
+     "max_integrality_deviation": 0.0
+    },
+    "integer_objective": 4.0,
+    "integer_dual_bound": 4.0,
+    "integer_reported_gap": 0.0,
+    "integer_node_count": 0,
+    "integer_actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "lp_relaxed_objective": 4.0,
+    "lp_plan_objective": 4.0,
+    "lp_actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "fractional_request_count": 0,
+    "relaxation_gap": 0.0,
+    "extraction_loss": 0.0,
+    "same_actions": true,
+    "bounds_consistent": true,
+    "attribution": "identical_actions",
+    "relaxation_gap_present": false
+   },
+   "executed_actions": {
+    "1": "preempt",
+    "0": "prefill:5"
+   },
+   "executed_equals_plan": true,
+   "executed_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 4.0
+   }
+  },
+  {
+   "example": "repeated_prefill",
+   "label": "uniform, two_request, resident limit 1",
+   "case": "two_request",
+   "decision": 4,
+   "mismatches": [],
+   "round_trip_equal": true,
+   "lp_status": "SchedulingSuccess",
+   "relaxed": {
+    "0": {
+     "z": 1.0
+    },
+    "1": {
+     "x": 8.0,
+     "I": 1.0
+    }
+   },
+   "lp_solver": {
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "method": "highs-ds",
+    "options": [
+     [
+      "presolve",
+      true
+     ]
+    ]
+   },
+   "lp_summary": {
+    "relaxed_objective": 7.0,
+    "plan_objective": 7.0,
+    "actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "fractional_request_count": 0
+   },
+   "lp_source": "retained and reproduced",
+   "lp_plan_equal": true,
+   "relaxed_vector_equal": true,
+   "relaxed_vector_max_difference": 0.0,
+   "integer": {
+    "status": "optimal",
+    "objective": 7.0,
+    "actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "dual_bound": 7.0,
+    "reported_gap": 0.0,
+    "node_count": 1,
+    "max_integrality_deviation": 0.0
+   },
+   "integer_source": "not retained; new solve of the saved problem (original state and coefficients)",
+   "comparison": {
+    "problem_id": "4",
+    "comparison_tol": 1e-07,
+    "lp_status": "SchedulingSuccess",
+    "integer_status": "optimal",
+    "integer": {
+     "status": "optimal",
+     "objective": 7.0,
+     "actions": {
+      "0": "preempt",
+      "1": "prefill:8"
+     },
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "dual_bound": 7.0,
+     "reported_gap": 0.0,
+     "node_count": 1,
+     "max_integrality_deviation": 0.0
+    },
+    "integer_objective": 7.0,
+    "integer_dual_bound": 7.0,
+    "integer_reported_gap": 0.0,
+    "integer_node_count": 1,
+    "integer_actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "lp_relaxed_objective": 7.0,
+    "lp_plan_objective": 7.0,
+    "lp_actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "fractional_request_count": 0,
+    "relaxation_gap": 0.0,
+    "extraction_loss": 0.0,
+    "same_actions": true,
+    "bounds_consistent": true,
+    "attribution": "identical_actions",
+    "relaxation_gap_present": false
+   },
+   "executed_actions": {
+    "0": "preempt",
+    "1": "prefill:8"
+   },
+   "executed_equals_plan": true,
+   "executed_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 7.0
+   }
+  },
+  {
+   "example": "repeated_prefill",
+   "label": "uniform, two_request, resident limit 1",
+   "case": "two_request",
+   "decision": 5,
+   "mismatches": [],
+   "round_trip_equal": true,
+   "lp_status": "SchedulingSuccess",
+   "relaxed": {
+    "0": {
+     "x": 5.0,
+     "I": 1.0
+    },
+    "1": {
+     "z": 1.0
+    }
+   },
+   "lp_solver": {
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "method": "highs-ds",
+    "options": [
+     [
+      "presolve",
+      true
+     ]
+    ]
+   },
+   "lp_summary": {
+    "relaxed_objective": 4.0,
+    "plan_objective": 4.0,
+    "actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "fractional_request_count": 0
+   },
+   "lp_source": "retained and reproduced",
+   "lp_plan_equal": true,
+   "relaxed_vector_equal": true,
+   "relaxed_vector_max_difference": 0.0,
+   "integer": {
+    "status": "optimal",
+    "objective": 4.0,
+    "actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "dual_bound": 4.0,
+    "reported_gap": 0.0,
+    "node_count": 0,
+    "max_integrality_deviation": 0.0
+   },
+   "integer_source": "not retained; new solve of the saved problem (original state and coefficients)",
+   "comparison": {
+    "problem_id": "5",
+    "comparison_tol": 1e-07,
+    "lp_status": "SchedulingSuccess",
+    "integer_status": "optimal",
+    "integer": {
+     "status": "optimal",
+     "objective": 4.0,
+     "actions": {
+      "0": "prefill:5",
+      "1": "preempt"
+     },
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "dual_bound": 4.0,
+     "reported_gap": 0.0,
+     "node_count": 0,
+     "max_integrality_deviation": 0.0
+    },
+    "integer_objective": 4.0,
+    "integer_dual_bound": 4.0,
+    "integer_reported_gap": 0.0,
+    "integer_node_count": 0,
+    "integer_actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "lp_relaxed_objective": 4.0,
+    "lp_plan_objective": 4.0,
+    "lp_actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "fractional_request_count": 0,
+    "relaxation_gap": 0.0,
+    "extraction_loss": 0.0,
+    "same_actions": true,
+    "bounds_consistent": true,
+    "attribution": "identical_actions",
+    "relaxation_gap_present": false
+   },
+   "executed_actions": {
+    "1": "preempt",
+    "0": "prefill:5"
+   },
+   "executed_equals_plan": true,
+   "executed_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 4.0
+   }
+  },
+  {
+   "example": "repeated_prefill",
+   "label": "uniform, two_request, resident limit 1",
+   "case": "two_request",
+   "decision": 6,
+   "mismatches": [],
+   "round_trip_equal": true,
+   "lp_status": "SchedulingSuccess",
+   "relaxed": {
+    "0": {
+     "z": 1.0
+    },
+    "1": {
+     "x": 8.0,
+     "I": 1.0
+    }
+   },
+   "lp_solver": {
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "method": "highs-ds",
+    "options": [
+     [
+      "presolve",
+      true
+     ]
+    ]
+   },
+   "lp_summary": {
+    "relaxed_objective": 7.0,
+    "plan_objective": 7.0,
+    "actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "fractional_request_count": 0
+   },
+   "lp_source": "retained and reproduced",
+   "lp_plan_equal": true,
+   "relaxed_vector_equal": true,
+   "relaxed_vector_max_difference": 0.0,
+   "integer": {
+    "status": "optimal",
+    "objective": 7.0,
+    "actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "dual_bound": 7.0,
+    "reported_gap": 0.0,
+    "node_count": 1,
+    "max_integrality_deviation": 0.0
+   },
+   "integer_source": "not retained; new solve of the saved problem (original state and coefficients)",
+   "comparison": {
+    "problem_id": "6",
+    "comparison_tol": 1e-07,
+    "lp_status": "SchedulingSuccess",
+    "integer_status": "optimal",
+    "integer": {
+     "status": "optimal",
+     "objective": 7.0,
+     "actions": {
+      "0": "preempt",
+      "1": "prefill:8"
+     },
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "dual_bound": 7.0,
+     "reported_gap": 0.0,
+     "node_count": 1,
+     "max_integrality_deviation": 0.0
+    },
+    "integer_objective": 7.0,
+    "integer_dual_bound": 7.0,
+    "integer_reported_gap": 0.0,
+    "integer_node_count": 1,
+    "integer_actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "lp_relaxed_objective": 7.0,
+    "lp_plan_objective": 7.0,
+    "lp_actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "fractional_request_count": 0,
+    "relaxation_gap": 0.0,
+    "extraction_loss": 0.0,
+    "same_actions": true,
+    "bounds_consistent": true,
+    "attribution": "identical_actions",
+    "relaxation_gap_present": false
+   },
+   "executed_actions": {
+    "0": "preempt",
+    "1": "prefill:8"
+   },
+   "executed_equals_plan": true,
+   "executed_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 7.0
+   }
+  },
+  {
+   "example": "repeated_prefill",
+   "label": "uniform, two_request, resident limit 1",
+   "case": "two_request",
+   "decision": 7,
+   "mismatches": [],
+   "round_trip_equal": true,
+   "lp_status": "SchedulingSuccess",
+   "relaxed": {
+    "0": {
+     "x": 5.0,
+     "I": 1.0
+    },
+    "1": {
+     "z": 1.0
+    }
+   },
+   "lp_solver": {
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "method": "highs-ds",
+    "options": [
+     [
+      "presolve",
+      true
+     ]
+    ]
+   },
+   "lp_summary": {
+    "relaxed_objective": 4.0,
+    "plan_objective": 4.0,
+    "actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "fractional_request_count": 0
+   },
+   "lp_source": "retained and reproduced",
+   "lp_plan_equal": true,
+   "relaxed_vector_equal": true,
+   "relaxed_vector_max_difference": 0.0,
+   "integer": {
+    "status": "optimal",
+    "objective": 4.0,
+    "actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "dual_bound": 4.0,
+    "reported_gap": 0.0,
+    "node_count": 0,
+    "max_integrality_deviation": 0.0
+   },
+   "integer_source": "not retained; new solve of the saved problem (original state and coefficients)",
+   "comparison": {
+    "problem_id": "7",
+    "comparison_tol": 1e-07,
+    "lp_status": "SchedulingSuccess",
+    "integer_status": "optimal",
+    "integer": {
+     "status": "optimal",
+     "objective": 4.0,
+     "actions": {
+      "0": "prefill:5",
+      "1": "preempt"
+     },
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "dual_bound": 4.0,
+     "reported_gap": 0.0,
+     "node_count": 0,
+     "max_integrality_deviation": 0.0
+    },
+    "integer_objective": 4.0,
+    "integer_dual_bound": 4.0,
+    "integer_reported_gap": 0.0,
+    "integer_node_count": 0,
+    "integer_actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "lp_relaxed_objective": 4.0,
+    "lp_plan_objective": 4.0,
+    "lp_actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "fractional_request_count": 0,
+    "relaxation_gap": 0.0,
+    "extraction_loss": 0.0,
+    "same_actions": true,
+    "bounds_consistent": true,
+    "attribution": "identical_actions",
+    "relaxation_gap_present": false
+   },
+   "executed_actions": {
+    "1": "preempt",
+    "0": "prefill:5"
+   },
+   "executed_equals_plan": true,
+   "executed_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 4.0
+   }
+  },
+  {
+   "example": "repeated_prefill",
+   "label": "rank-based, two_request, resident limit 1",
+   "case": "two_request",
+   "decision": 0,
+   "mismatches": [],
+   "round_trip_equal": true,
+   "lp_status": "SchedulingSuccess",
+   "relaxed": {
+    "0": {
+     "x": 5.0,
+     "I": 1.0
+    }
+   },
+   "lp_solver": {
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "method": "highs-ds",
+    "options": [
+     [
+      "presolve",
+      true
+     ]
+    ]
+   },
+   "lp_summary": {
+    "relaxed_objective": 5.0,
+    "plan_objective": 5.0,
+    "actions": {
+     "0": "prefill:5"
+    },
+    "fractional_request_count": 0
+   },
+   "lp_source": "retained and reproduced",
+   "lp_plan_equal": true,
+   "relaxed_vector_equal": true,
+   "relaxed_vector_max_difference": 0.0,
+   "integer": {
+    "status": "optimal",
+    "objective": 5.0,
+    "actions": {
+     "0": "prefill:5"
+    },
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "dual_bound": 5.0,
+    "reported_gap": 0.0,
+    "node_count": 1,
+    "max_integrality_deviation": 0.0
+   },
+   "integer_source": "not retained; new solve of the saved problem (original state and coefficients)",
+   "comparison": {
+    "problem_id": "0",
+    "comparison_tol": 1e-07,
+    "lp_status": "SchedulingSuccess",
+    "integer_status": "optimal",
+    "integer": {
+     "status": "optimal",
+     "objective": 5.0,
+     "actions": {
+      "0": "prefill:5"
+     },
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "dual_bound": 5.0,
+     "reported_gap": 0.0,
+     "node_count": 1,
+     "max_integrality_deviation": 0.0
+    },
+    "integer_objective": 5.0,
+    "integer_dual_bound": 5.0,
+    "integer_reported_gap": 0.0,
+    "integer_node_count": 1,
+    "integer_actions": {
+     "0": "prefill:5"
+    },
+    "lp_relaxed_objective": 5.0,
+    "lp_plan_objective": 5.0,
+    "lp_actions": {
+     "0": "prefill:5"
+    },
+    "fractional_request_count": 0,
+    "relaxation_gap": 0.0,
+    "extraction_loss": 0.0,
+    "same_actions": true,
+    "bounds_consistent": true,
+    "attribution": "identical_actions",
+    "relaxation_gap_present": false
+   },
+   "executed_actions": {
+    "0": "prefill:5"
+   },
+   "executed_equals_plan": true,
+   "executed_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 5.0
+   }
+  },
+  {
+   "example": "repeated_prefill",
+   "label": "rank-based, two_request, resident limit 1",
+   "case": "two_request",
+   "decision": 1,
+   "mismatches": [],
+   "round_trip_equal": true,
+   "lp_status": "SchedulingSuccess",
+   "relaxed": {
+    "0": {
+     "z": 1.0
+    },
+    "1": {
+     "x": 8.0,
+     "I": 1.0
+    }
+   },
+   "lp_solver": {
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "method": "highs-ds",
+    "options": [
+     [
+      "presolve",
+      true
+     ]
+    ]
+   },
+   "lp_summary": {
+    "relaxed_objective": 3.0,
+    "plan_objective": 3.0,
+    "actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "fractional_request_count": 0
+   },
+   "lp_source": "retained and reproduced",
+   "lp_plan_equal": true,
+   "relaxed_vector_equal": true,
+   "relaxed_vector_max_difference": 0.0,
+   "integer": {
+    "status": "optimal",
+    "objective": 3.0,
+    "actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "dual_bound": 3.0,
+    "reported_gap": 0.0,
+    "node_count": 1,
+    "max_integrality_deviation": 0.0
+   },
+   "integer_source": "not retained; new solve of the saved problem (original state and coefficients)",
+   "comparison": {
+    "problem_id": "1",
+    "comparison_tol": 1e-07,
+    "lp_status": "SchedulingSuccess",
+    "integer_status": "optimal",
+    "integer": {
+     "status": "optimal",
+     "objective": 3.0,
+     "actions": {
+      "0": "preempt",
+      "1": "prefill:8"
+     },
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "dual_bound": 3.0,
+     "reported_gap": 0.0,
+     "node_count": 1,
+     "max_integrality_deviation": 0.0
+    },
+    "integer_objective": 3.0,
+    "integer_dual_bound": 3.0,
+    "integer_reported_gap": 0.0,
+    "integer_node_count": 1,
+    "integer_actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "lp_relaxed_objective": 3.0,
+    "lp_plan_objective": 3.0,
+    "lp_actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "fractional_request_count": 0,
+    "relaxation_gap": 0.0,
+    "extraction_loss": 0.0,
+    "same_actions": true,
+    "bounds_consistent": true,
+    "attribution": "identical_actions",
+    "relaxation_gap_present": false
+   },
+   "executed_actions": {
+    "0": "preempt",
+    "1": "prefill:8"
+   },
+   "executed_equals_plan": true,
+   "executed_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 3.0
+   }
+  },
+  {
+   "example": "repeated_prefill",
+   "label": "rank-based, two_request, resident limit 1",
+   "case": "two_request",
+   "decision": 2,
+   "mismatches": [],
+   "round_trip_equal": true,
+   "lp_status": "SchedulingSuccess",
+   "relaxed": {
+    "0": {
+     "x": 5.0,
+     "I": 1.0
+    },
+    "1": {
+     "z": 1.0
+    }
+   },
+   "lp_solver": {
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "method": "highs-ds",
+    "options": [
+     [
+      "presolve",
+      true
+     ]
+    ]
+   },
+   "lp_summary": {
+    "relaxed_objective": 1.5,
+    "plan_objective": 1.5,
+    "actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "fractional_request_count": 0
+   },
+   "lp_source": "retained and reproduced",
+   "lp_plan_equal": true,
+   "relaxed_vector_equal": true,
+   "relaxed_vector_max_difference": 0.0,
+   "integer": {
+    "status": "optimal",
+    "objective": 1.5,
+    "actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "dual_bound": 1.5,
+    "reported_gap": 0.0,
+    "node_count": 0,
+    "max_integrality_deviation": 0.0
+   },
+   "integer_source": "not retained; new solve of the saved problem (original state and coefficients)",
+   "comparison": {
+    "problem_id": "2",
+    "comparison_tol": 1e-07,
+    "lp_status": "SchedulingSuccess",
+    "integer_status": "optimal",
+    "integer": {
+     "status": "optimal",
+     "objective": 1.5,
+     "actions": {
+      "0": "prefill:5",
+      "1": "preempt"
+     },
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "dual_bound": 1.5,
+     "reported_gap": 0.0,
+     "node_count": 0,
+     "max_integrality_deviation": 0.0
+    },
+    "integer_objective": 1.5,
+    "integer_dual_bound": 1.5,
+    "integer_reported_gap": 0.0,
+    "integer_node_count": 0,
+    "integer_actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "lp_relaxed_objective": 1.5,
+    "lp_plan_objective": 1.5,
+    "lp_actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "fractional_request_count": 0,
+    "relaxation_gap": 0.0,
+    "extraction_loss": 0.0,
+    "same_actions": true,
+    "bounds_consistent": true,
+    "attribution": "identical_actions",
+    "relaxation_gap_present": false
+   },
+   "executed_actions": {
+    "1": "preempt",
+    "0": "prefill:5"
+   },
+   "executed_equals_plan": true,
+   "executed_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 1.5
+   }
+  },
+  {
+   "example": "repeated_prefill",
+   "label": "rank-based, two_request, resident limit 1",
+   "case": "two_request",
+   "decision": 3,
+   "mismatches": [],
+   "round_trip_equal": true,
+   "lp_status": "SchedulingSuccess",
+   "relaxed": {
+    "0": {
+     "z": 1.0
+    },
+    "1": {
+     "x": 8.0,
+     "I": 1.0
+    }
+   },
+   "lp_solver": {
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "method": "highs-ds",
+    "options": [
+     [
+      "presolve",
+      true
+     ]
+    ]
+   },
+   "lp_summary": {
+    "relaxed_objective": 3.0,
+    "plan_objective": 3.0,
+    "actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "fractional_request_count": 0
+   },
+   "lp_source": "retained and reproduced",
+   "lp_plan_equal": true,
+   "relaxed_vector_equal": true,
+   "relaxed_vector_max_difference": 0.0,
+   "integer": {
+    "status": "optimal",
+    "objective": 3.0,
+    "actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "dual_bound": 3.0,
+    "reported_gap": 0.0,
+    "node_count": 1,
+    "max_integrality_deviation": 0.0
+   },
+   "integer_source": "not retained; new solve of the saved problem (original state and coefficients)",
+   "comparison": {
+    "problem_id": "3",
+    "comparison_tol": 1e-07,
+    "lp_status": "SchedulingSuccess",
+    "integer_status": "optimal",
+    "integer": {
+     "status": "optimal",
+     "objective": 3.0,
+     "actions": {
+      "0": "preempt",
+      "1": "prefill:8"
+     },
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "dual_bound": 3.0,
+     "reported_gap": 0.0,
+     "node_count": 1,
+     "max_integrality_deviation": 0.0
+    },
+    "integer_objective": 3.0,
+    "integer_dual_bound": 3.0,
+    "integer_reported_gap": 0.0,
+    "integer_node_count": 1,
+    "integer_actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "lp_relaxed_objective": 3.0,
+    "lp_plan_objective": 3.0,
+    "lp_actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "fractional_request_count": 0,
+    "relaxation_gap": 0.0,
+    "extraction_loss": 0.0,
+    "same_actions": true,
+    "bounds_consistent": true,
+    "attribution": "identical_actions",
+    "relaxation_gap_present": false
+   },
+   "executed_actions": {
+    "0": "preempt",
+    "1": "prefill:8"
+   },
+   "executed_equals_plan": true,
+   "executed_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 3.0
+   }
+  },
+  {
+   "example": "repeated_prefill",
+   "label": "rank-based, two_request, resident limit 1",
+   "case": "two_request",
+   "decision": 4,
+   "mismatches": [],
+   "round_trip_equal": true,
+   "lp_status": "SchedulingSuccess",
+   "relaxed": {
+    "0": {
+     "x": 5.0,
+     "I": 1.0
+    },
+    "1": {
+     "z": 1.0
+    }
+   },
+   "lp_solver": {
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "method": "highs-ds",
+    "options": [
+     [
+      "presolve",
+      true
+     ]
+    ]
+   },
+   "lp_summary": {
+    "relaxed_objective": 1.5,
+    "plan_objective": 1.5,
+    "actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "fractional_request_count": 0
+   },
+   "lp_source": "retained and reproduced",
+   "lp_plan_equal": true,
+   "relaxed_vector_equal": true,
+   "relaxed_vector_max_difference": 0.0,
+   "integer": {
+    "status": "optimal",
+    "objective": 1.5,
+    "actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "dual_bound": 1.5,
+    "reported_gap": 0.0,
+    "node_count": 0,
+    "max_integrality_deviation": 0.0
+   },
+   "integer_source": "not retained; new solve of the saved problem (original state and coefficients)",
+   "comparison": {
+    "problem_id": "4",
+    "comparison_tol": 1e-07,
+    "lp_status": "SchedulingSuccess",
+    "integer_status": "optimal",
+    "integer": {
+     "status": "optimal",
+     "objective": 1.5,
+     "actions": {
+      "0": "prefill:5",
+      "1": "preempt"
+     },
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "dual_bound": 1.5,
+     "reported_gap": 0.0,
+     "node_count": 0,
+     "max_integrality_deviation": 0.0
+    },
+    "integer_objective": 1.5,
+    "integer_dual_bound": 1.5,
+    "integer_reported_gap": 0.0,
+    "integer_node_count": 0,
+    "integer_actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "lp_relaxed_objective": 1.5,
+    "lp_plan_objective": 1.5,
+    "lp_actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "fractional_request_count": 0,
+    "relaxation_gap": 0.0,
+    "extraction_loss": 0.0,
+    "same_actions": true,
+    "bounds_consistent": true,
+    "attribution": "identical_actions",
+    "relaxation_gap_present": false
+   },
+   "executed_actions": {
+    "1": "preempt",
+    "0": "prefill:5"
+   },
+   "executed_equals_plan": true,
+   "executed_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 1.5
+   }
+  },
+  {
+   "example": "repeated_prefill",
+   "label": "rank-based, two_request, resident limit 1",
+   "case": "two_request",
+   "decision": 5,
+   "mismatches": [],
+   "round_trip_equal": true,
+   "lp_status": "SchedulingSuccess",
+   "relaxed": {
+    "0": {
+     "z": 1.0
+    },
+    "1": {
+     "x": 8.0,
+     "I": 1.0
+    }
+   },
+   "lp_solver": {
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "method": "highs-ds",
+    "options": [
+     [
+      "presolve",
+      true
+     ]
+    ]
+   },
+   "lp_summary": {
+    "relaxed_objective": 3.0,
+    "plan_objective": 3.0,
+    "actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "fractional_request_count": 0
+   },
+   "lp_source": "retained and reproduced",
+   "lp_plan_equal": true,
+   "relaxed_vector_equal": true,
+   "relaxed_vector_max_difference": 0.0,
+   "integer": {
+    "status": "optimal",
+    "objective": 3.0,
+    "actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "dual_bound": 3.0,
+    "reported_gap": 0.0,
+    "node_count": 1,
+    "max_integrality_deviation": 0.0
+   },
+   "integer_source": "not retained; new solve of the saved problem (original state and coefficients)",
+   "comparison": {
+    "problem_id": "5",
+    "comparison_tol": 1e-07,
+    "lp_status": "SchedulingSuccess",
+    "integer_status": "optimal",
+    "integer": {
+     "status": "optimal",
+     "objective": 3.0,
+     "actions": {
+      "0": "preempt",
+      "1": "prefill:8"
+     },
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "dual_bound": 3.0,
+     "reported_gap": 0.0,
+     "node_count": 1,
+     "max_integrality_deviation": 0.0
+    },
+    "integer_objective": 3.0,
+    "integer_dual_bound": 3.0,
+    "integer_reported_gap": 0.0,
+    "integer_node_count": 1,
+    "integer_actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "lp_relaxed_objective": 3.0,
+    "lp_plan_objective": 3.0,
+    "lp_actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "fractional_request_count": 0,
+    "relaxation_gap": 0.0,
+    "extraction_loss": 0.0,
+    "same_actions": true,
+    "bounds_consistent": true,
+    "attribution": "identical_actions",
+    "relaxation_gap_present": false
+   },
+   "executed_actions": {
+    "0": "preempt",
+    "1": "prefill:8"
+   },
+   "executed_equals_plan": true,
+   "executed_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 3.0
+   }
+  },
+  {
+   "example": "repeated_prefill",
+   "label": "rank-based, two_request, resident limit 1",
+   "case": "two_request",
+   "decision": 6,
+   "mismatches": [],
+   "round_trip_equal": true,
+   "lp_status": "SchedulingSuccess",
+   "relaxed": {
+    "0": {
+     "x": 5.0,
+     "I": 1.0
+    },
+    "1": {
+     "z": 1.0
+    }
+   },
+   "lp_solver": {
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "method": "highs-ds",
+    "options": [
+     [
+      "presolve",
+      true
+     ]
+    ]
+   },
+   "lp_summary": {
+    "relaxed_objective": 1.5,
+    "plan_objective": 1.5,
+    "actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "fractional_request_count": 0
+   },
+   "lp_source": "retained and reproduced",
+   "lp_plan_equal": true,
+   "relaxed_vector_equal": true,
+   "relaxed_vector_max_difference": 0.0,
+   "integer": {
+    "status": "optimal",
+    "objective": 1.5,
+    "actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "dual_bound": 1.5,
+    "reported_gap": 0.0,
+    "node_count": 0,
+    "max_integrality_deviation": 0.0
+   },
+   "integer_source": "not retained; new solve of the saved problem (original state and coefficients)",
+   "comparison": {
+    "problem_id": "6",
+    "comparison_tol": 1e-07,
+    "lp_status": "SchedulingSuccess",
+    "integer_status": "optimal",
+    "integer": {
+     "status": "optimal",
+     "objective": 1.5,
+     "actions": {
+      "0": "prefill:5",
+      "1": "preempt"
+     },
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "dual_bound": 1.5,
+     "reported_gap": 0.0,
+     "node_count": 0,
+     "max_integrality_deviation": 0.0
+    },
+    "integer_objective": 1.5,
+    "integer_dual_bound": 1.5,
+    "integer_reported_gap": 0.0,
+    "integer_node_count": 0,
+    "integer_actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "lp_relaxed_objective": 1.5,
+    "lp_plan_objective": 1.5,
+    "lp_actions": {
+     "0": "prefill:5",
+     "1": "preempt"
+    },
+    "fractional_request_count": 0,
+    "relaxation_gap": 0.0,
+    "extraction_loss": 0.0,
+    "same_actions": true,
+    "bounds_consistent": true,
+    "attribution": "identical_actions",
+    "relaxation_gap_present": false
+   },
+   "executed_actions": {
+    "1": "preempt",
+    "0": "prefill:5"
+   },
+   "executed_equals_plan": true,
+   "executed_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 1.5
+   }
+  },
+  {
+   "example": "repeated_prefill",
+   "label": "rank-based, two_request, resident limit 1",
+   "case": "two_request",
+   "decision": 7,
+   "mismatches": [],
+   "round_trip_equal": true,
+   "lp_status": "SchedulingSuccess",
+   "relaxed": {
+    "0": {
+     "z": 1.0
+    },
+    "1": {
+     "x": 8.0,
+     "I": 1.0
+    }
+   },
+   "lp_solver": {
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "method": "highs-ds",
+    "options": [
+     [
+      "presolve",
+      true
+     ]
+    ]
+   },
+   "lp_summary": {
+    "relaxed_objective": 3.0,
+    "plan_objective": 3.0,
+    "actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "fractional_request_count": 0
+   },
+   "lp_source": "retained and reproduced",
+   "lp_plan_equal": true,
+   "relaxed_vector_equal": true,
+   "relaxed_vector_max_difference": 0.0,
+   "integer": {
+    "status": "optimal",
+    "objective": 3.0,
+    "actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "raw_status": 0,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "dual_bound": 3.0,
+    "reported_gap": 0.0,
+    "node_count": 1,
+    "max_integrality_deviation": 0.0
+   },
+   "integer_source": "not retained; new solve of the saved problem (original state and coefficients)",
+   "comparison": {
+    "problem_id": "7",
+    "comparison_tol": 1e-07,
+    "lp_status": "SchedulingSuccess",
+    "integer_status": "optimal",
+    "integer": {
+     "status": "optimal",
+     "objective": 3.0,
+     "actions": {
+      "0": "preempt",
+      "1": "prefill:8"
+     },
+     "raw_status": 0,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "dual_bound": 3.0,
+     "reported_gap": 0.0,
+     "node_count": 1,
+     "max_integrality_deviation": 0.0
+    },
+    "integer_objective": 3.0,
+    "integer_dual_bound": 3.0,
+    "integer_reported_gap": 0.0,
+    "integer_node_count": 1,
+    "integer_actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "lp_relaxed_objective": 3.0,
+    "lp_plan_objective": 3.0,
+    "lp_actions": {
+     "0": "preempt",
+     "1": "prefill:8"
+    },
+    "fractional_request_count": 0,
+    "relaxation_gap": 0.0,
+    "extraction_loss": 0.0,
+    "same_actions": true,
+    "bounds_consistent": true,
+    "attribution": "identical_actions",
+    "relaxation_gap_present": false
+   },
+   "executed_actions": {
+    "0": "preempt",
+    "1": "prefill:8"
+   },
+   "executed_equals_plan": true,
+   "executed_evaluation": {
+    "feasible": true,
+    "domain_violations": [],
+    "violated_rows": [],
+    "objective": 3.0
+   }
+  }
+ ]
+}

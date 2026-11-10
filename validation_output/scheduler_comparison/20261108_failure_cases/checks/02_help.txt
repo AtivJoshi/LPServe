@@ -1,0 +1,10 @@
+$ python -B -W error scripts/replay_failure_cases.py --help
+usage: replay_failure_cases.py [-h] --out OUT [--fixtures FIXTURES]
+
+Offline replay of the documented whole-action failure cases.
+
+options:
+  -h, --help           show this help message and exit
+  --out OUT
+  --fixtures FIXTURES  replay these fixtures instead of building them
+exit_status=0

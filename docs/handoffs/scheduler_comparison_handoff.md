@@ -1601,3 +1601,74 @@ integer ≥ PH1 held everywhere): `queue48_burst` (1)–(4): 0, 3, 5, 8;
 
 **Not established:** GPU execution, latency, throughput, fairness, other
 workloads or multipliers.
+
+## Addendum 2026-11-08: known failure cases replayed offline (CPU only)
+
+**Scope.** Task 2 of [`tasks_for_stella.md`](tasks_for_stella.md): reproduce
+and explain four documented cases from retained traces. No new
+counterexample, rollout, coefficient, or extraction change. Formulation,
+PH1, executor, and solver settings are unchanged; no OPEN item is affected.
+
+**Evidence:**
+[`20261108_failure_cases/`](../../validation_output/scheduler_comparison/20261108_failure_cases/)
+(`replay/report.txt` per decision, `replay/replay.json`, `replay/fixtures/`).
+`scripts/replay_failure_cases.py` (new) writes one fixture per decision from
+the retained trace (starting state, saved problem and coefficients, saved
+LP or integer result, saved same-state integer result, executed outputs,
+victim causes, resulting state, source sha256). It then replays from the
+fixtures alone. `tests/test_replay_failure_cases.py` (new, 5 tests; needs
+`git add -f`). HEAD `adf4b262980c8e1b4c729b12d71d02b913c83040`, tracked
+diff unchanged from the multiplier addendum (`e2f70b32…`, not used here);
+new-file sha256 `2a837622…` (script), `99a83c24…` (tests). Host `gpu048`,
+Slurm job `66946591`, `CUDA_VISIBLE_DEVICES=""`, Python 3.10.8, numpy
+2.2.6, scipy 1.15.3. Command: `bash <run>/run_batch.sh <run>`. All 11 steps
+exited 0: three unit suites passed (5, 8, 38 tests). 25 of 25 decisions
+reproduced: each saved problem round-tripped, the LP plan and relaxed vector
+were equal, every integer solve was HiGHS-optimal and equal to the retained
+one where retained, and executed actions equalled the rollout's plan. The
+replay from fixtures alone gave an identical report. `RESULT: PASS`.
+
+Integer results not previously retained (`two_request` uniform and
+rank-based) are new solves of the saved problems, with original state and
+coefficients. LP results for the integer-driven rollout (case 3) are
+offline only; that rollout never solved the LP.
+
+### Results
+
+| Case | Source decision | LP proposal | PH1 plan | Integer optimum | Loss from PH1 |
+|---|---|---|---|---|---|
+| 1. Fractional preemption | RS pool 12, dec. 20 | R16 (4 blocks) z = 0.121 | evict R16, admit R27, R36 (1.2149) | evict R31 (1 block) (1.2986) | 0.084 |
+| | RS pool 12, dec. 34 | R34 (4 blocks) z = 0.4 | evict R34, admit R44 (1.2073) | evict R43 (1 block) (1.2986) | 0.091 |
+| | running order pool 12, dec. 2 | R04 (4 blocks) z = 0.25 | evict R04, admit R07, R08 (716.05) | evict R06 (1 block) (724) | 7.95 |
+| 2. Fractional admission | `fractional_admission` (running order) | A 15/16, B 1 | B:1 (0.125) | A:1 (0.5) | 0.375 |
+| | RS `queue48_burst`, dec. 0 | 8th slot split R04 0.107 / R12 0.893 | R12:8, other seven admissions as integer (1.47791) | R04:14 (1.48074) | 0.0028 |
+| 3. Admit then evict | running-order ILP `queue96_burst_pool12`, dec. 16→17 | — | same as integer | admit R30 at 16; evict R30 at 17 | 0 |
+| | dec. 55→56 | — | same choice of victim | admit R73 at 55; evict R73 at 56 | ≤ 1.6e-5 |
+| 4. Repeated prefill | `two_request` limit 1, uniform and rank-based, dec. 0–7 | integral | same as integer | evict and swap at every step | 0 |
+
+- **Cases 1 and 2 are PH1 extraction losses.** The LP takes a small
+  fraction of a large victim or splits an admission slot. PH1 must make
+  that action whole and keeps the wrong request: it evicts the whole 4-block
+  request, then fills the freed blocks with admissions. The integer
+  optimum evicts a 1-block tail or keeps the earlier request.
+- **Cases 3 and 4 are not PH1 failures.** PH1 equals the integer optimum
+  (loss 0; at decision 55 PH1 admits R66 instead of R73, a 1.6e-5
+  waiting-utility difference). Case 3 comes from the inherited LP decode
+  prerequisite (design §8.3): admissions at 16 and 55 use the last free
+  blocks, so the next decision has 0 free and must evict the newest
+  resident (`lp_decode_prerequisite`). Case 4 comes from the uniform and
+  rank-based coefficients: with one resident slot, evicting the resident
+  to prefill the other prompt is worth more than its one decode (uniform:
+  8 − 1 or 5 − 1 against 1; rank-based: 4 − 1 or 2.5 − 1 against 1). After
+  8 decisions: 7
+  evictions, 39 replayed tokens, neither request finished
+  (`bounded_unfinished`). This is bounded noncompletion, not a starvation
+  proof.
+- **Correction to critical-review item 6 above:** only decision 20's victim
+  comes from the decode prerequisite alone; all four residents have demand
+  0. At decision 34, R34 and R43 each need a new block with 0 free
+  (`decode_block_demand`), so the actual-memory row binds as well. The
+  extraction behavior is the same.
+
+**Not established:** GPU execution, other states or workloads, any change
+to extraction or the prerequisite.

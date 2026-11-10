@@ -1,0 +1,1803 @@
+{
+ "example": "admit_then_evict",
+ "label": "running-order integer optimum, queue96_burst_pool12",
+ "kind": "rollout",
+ "source": {
+  "trace": "validation_output/scheduler_comparison/20261026T045354Z_running_order/cpu_comparison/rollouts/queue96_burst_pool12_limit8/ilp_running_order/decision_trace.json.gz",
+  "trace_sha256": "11c7e2f11ff18f136658744d4183302d6deefdb9543886b4ba0fe72f0378d05e",
+  "comparisons": "validation_output/scheduler_comparison/20261026T045354Z_running_order/cpu_comparison/rollouts/queue96_burst_pool12_limit8/ilp_running_order/comparisons.json.gz",
+  "comparisons_sha256": "c6d7903b0628f0aa97b4b4df45b4ca7c84055d82cf39e6e83e26dc1668b39dc8"
+ },
+ "case": "queue96_burst_pool12",
+ "policy": "ilp_running_order",
+ "resident_limit": 8,
+ "decision": 56,
+ "rollout": {
+  "summary": "validation_output/scheduler_comparison/20261026T045354Z_running_order/cpu_comparison/rollouts/queue96_burst_pool12_limit8/ilp_running_order/summary.json",
+  "summary_sha256": "b0b11024b693700b178675bbde21d023b08dfd710fa153fd79b8cbade3f1e300",
+  "workload_outcome": "drained",
+  "decisions": 233,
+  "finished": [
+   "R00",
+   "R01",
+   "R02",
+   "R03",
+   "R04",
+   "R05",
+   "R06",
+   "R07",
+   "R08",
+   "R09",
+   "R10",
+   "R11",
+   "R12",
+   "R13",
+   "R14",
+   "R15",
+   "R16",
+   "R17",
+   "R18",
+   "R19",
+   "R20",
+   "R21",
+   "R22",
+   "R23",
+   "R24",
+   "R25",
+   "R26",
+   "R27",
+   "R28",
+   "R29",
+   "R30",
+   "R31",
+   "R32",
+   "R33",
+   "R34",
+   "R35",
+   "R36",
+   "R37",
+   "R38",
+   "R39",
+   "R40",
+   "R41",
+   "R42",
+   "R43",
+   "R44",
+   "R45",
+   "R46",
+   "R47",
+   "R48",
+   "R49",
+   "R50",
+   "R51",
+   "R52",
+   "R53",
+   "R54",
+   "R55",
+   "R56",
+   "R57",
+   "R58",
+   "R59",
+   "R60",
+   "R61",
+   "R62",
+   "R63",
+   "R64",
+   "R65",
+   "R66",
+   "R67",
+   "R68",
+   "R69",
+   "R70",
+   "R71",
+   "R72",
+   "R73",
+   "R74",
+   "R75",
+   "R76",
+   "R77",
+   "R78",
+   "R79",
+   "R80",
+   "R81",
+   "R82",
+   "R83",
+   "R84",
+   "R85",
+   "R86",
+   "R87",
+   "R88",
+   "R89",
+   "R90",
+   "R91",
+   "R92",
+   "R93",
+   "R94",
+   "R95"
+  ],
+  "unfinished": [],
+  "preemptions": 13,
+  "prefill_tokens_replayed": 281
+ },
+ "before": {
+  "total_blocks": 12,
+  "free_blocks": 0,
+  "watermark_blocks": 0,
+  "running": [
+   "56",
+   "62",
+   "58",
+   "67",
+   "73"
+  ],
+  "waiting": [
+   "69",
+   "5",
+   "11",
+   "17",
+   "23",
+   "29",
+   "35",
+   "41",
+   "47",
+   "53",
+   "59",
+   "64",
+   "65",
+   "66",
+   "68",
+   "70",
+   "71",
+   "72",
+   "74",
+   "75",
+   "76",
+   "77",
+   "78",
+   "79",
+   "80",
+   "81",
+   "82",
+   "83",
+   "84",
+   "85",
+   "86",
+   "87",
+   "88",
+   "89",
+   "90",
+   "91",
+   "92",
+   "93",
+   "94",
+   "95"
+  ],
+  "block_tables": {
+   "56": [
+    5,
+    2
+   ],
+   "62": [
+    3,
+    7
+   ],
+   "58": [
+    10,
+    1,
+    8,
+    6,
+    9
+   ],
+   "67": [
+    4,
+    0
+   ],
+   "73": [
+    11
+   ]
+  },
+  "requests": {
+   "5": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "11": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "17": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "23": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "29": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "35": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "41": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "47": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "53": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "56": {
+    "status": "PAUSED",
+    "prompt_len": 17,
+    "prompt_processed": 17,
+    "outputs": 6
+   },
+   "58": {
+    "status": "PAUSED",
+    "prompt_len": 64,
+    "prompt_processed": 64,
+    "outputs": 3
+   },
+   "59": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "62": {
+    "status": "PAUSED",
+    "prompt_len": 17,
+    "prompt_processed": 17,
+    "outputs": 4
+   },
+   "64": {
+    "status": "WAITING",
+    "prompt_len": 64,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "65": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "66": {
+    "status": "WAITING",
+    "prompt_len": 8,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "67": {
+    "status": "PAUSED",
+    "prompt_len": 16,
+    "prompt_processed": 16,
+    "outputs": 2
+   },
+   "68": {
+    "status": "WAITING",
+    "prompt_len": 17,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "69": {
+    "status": "WAITING",
+    "prompt_len": 33,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "70": {
+    "status": "WAITING",
+    "prompt_len": 64,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "71": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "72": {
+    "status": "WAITING",
+    "prompt_len": 8,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "73": {
+    "status": "PAUSED",
+    "prompt_len": 16,
+    "prompt_processed": 16,
+    "outputs": 0
+   },
+   "74": {
+    "status": "WAITING",
+    "prompt_len": 17,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "75": {
+    "status": "WAITING",
+    "prompt_len": 32,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "76": {
+    "status": "WAITING",
+    "prompt_len": 64,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "77": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "78": {
+    "status": "WAITING",
+    "prompt_len": 8,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "79": {
+    "status": "WAITING",
+    "prompt_len": 16,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "80": {
+    "status": "WAITING",
+    "prompt_len": 17,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "81": {
+    "status": "WAITING",
+    "prompt_len": 32,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "82": {
+    "status": "WAITING",
+    "prompt_len": 64,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "83": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "84": {
+    "status": "WAITING",
+    "prompt_len": 8,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "85": {
+    "status": "WAITING",
+    "prompt_len": 16,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "86": {
+    "status": "WAITING",
+    "prompt_len": 17,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "87": {
+    "status": "WAITING",
+    "prompt_len": 32,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "88": {
+    "status": "WAITING",
+    "prompt_len": 64,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "89": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "90": {
+    "status": "WAITING",
+    "prompt_len": 8,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "91": {
+    "status": "WAITING",
+    "prompt_len": 16,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "92": {
+    "status": "WAITING",
+    "prompt_len": 17,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "93": {
+    "status": "WAITING",
+    "prompt_len": 32,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "94": {
+    "status": "WAITING",
+    "prompt_len": 64,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "95": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   }
+  }
+ },
+ "problem": {
+  "requests": [
+   {
+    "request_id": "5",
+    "order_key": [
+     5
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 128,
+    "prefill_upper_bound": 128,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 8,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 0.001953125,
+    "preemption_penalty": 0.0,
+    "service_rank": 6,
+    "victim_rank": null
+   },
+   {
+    "request_id": "11",
+    "order_key": [
+     11
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 128,
+    "prefill_upper_bound": 128,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 8,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 0.0008680555555555555,
+    "preemption_penalty": 0.0,
+    "service_rank": 7,
+    "victim_rank": null
+   },
+   {
+    "request_id": "17",
+    "order_key": [
+     17
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 128,
+    "prefill_upper_bound": 128,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 8,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 0.00048828125,
+    "preemption_penalty": 0.0,
+    "service_rank": 8,
+    "victim_rank": null
+   },
+   {
+    "request_id": "23",
+    "order_key": [
+     23
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 128,
+    "prefill_upper_bound": 128,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 8,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 0.0003125,
+    "preemption_penalty": 0.0,
+    "service_rank": 9,
+    "victim_rank": null
+   },
+   {
+    "request_id": "29",
+    "order_key": [
+     29
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 128,
+    "prefill_upper_bound": 128,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 8,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 0.00021701388888888888,
+    "preemption_penalty": 0.0,
+    "service_rank": 10,
+    "victim_rank": null
+   },
+   {
+    "request_id": "35",
+    "order_key": [
+     35
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 128,
+    "prefill_upper_bound": 128,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 8,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 0.00015943877551020407,
+    "preemption_penalty": 0.0,
+    "service_rank": 11,
+    "victim_rank": null
+   },
+   {
+    "request_id": "41",
+    "order_key": [
+     41
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 128,
+    "prefill_upper_bound": 128,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 8,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 0.0001220703125,
+    "preemption_penalty": 0.0,
+    "service_rank": 12,
+    "victim_rank": null
+   },
+   {
+    "request_id": "47",
+    "order_key": [
+     47
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 128,
+    "prefill_upper_bound": 128,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 8,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 9.645061728395061e-05,
+    "preemption_penalty": 0.0,
+    "service_rank": 13,
+    "victim_rank": null
+   },
+   {
+    "request_id": "53",
+    "order_key": [
+     53
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 128,
+    "prefill_upper_bound": 128,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 8,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 7.8125e-05,
+    "preemption_penalty": 0.0,
+    "service_rank": 14,
+    "victim_rank": null
+   },
+   {
+    "request_id": "56",
+    "order_key": [
+     56
+    ],
+    "resident": true,
+    "prompt_tokens_remaining": 0,
+    "prefill_upper_bound": 0,
+    "prefill_eligible": false,
+    "decode_eligible": true,
+    "preemption_eligible": true,
+    "prefill_fixed_charge": 0,
+    "decode_demand": 0,
+    "preemption_recovery": 2,
+    "decode_utility": 162.0,
+    "prefill_token_utility": 0.0,
+    "preemption_penalty": 162.0,
+    "service_rank": 0,
+    "victim_rank": 4
+   },
+   {
+    "request_id": "58",
+    "order_key": [
+     58
+    ],
+    "resident": true,
+    "prompt_tokens_remaining": 0,
+    "prefill_upper_bound": 0,
+    "prefill_eligible": false,
+    "decode_eligible": true,
+    "preemption_eligible": true,
+    "prefill_fixed_charge": 0,
+    "decode_demand": 0,
+    "preemption_recovery": 5,
+    "decode_utility": 18.0,
+    "prefill_token_utility": 0.0,
+    "preemption_penalty": 18.0,
+    "service_rank": 2,
+    "victim_rank": 2
+   },
+   {
+    "request_id": "59",
+    "order_key": [
+     59
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 128,
+    "prefill_upper_bound": 128,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 8,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 6.456611570247934e-05,
+    "preemption_penalty": 0.0,
+    "service_rank": 15,
+    "victim_rank": null
+   },
+   {
+    "request_id": "62",
+    "order_key": [
+     62
+    ],
+    "resident": true,
+    "prompt_tokens_remaining": 0,
+    "prefill_upper_bound": 0,
+    "prefill_eligible": false,
+    "decode_eligible": true,
+    "preemption_eligible": true,
+    "prefill_fixed_charge": 0,
+    "decode_demand": 0,
+    "preemption_recovery": 2,
+    "decode_utility": 54.0,
+    "prefill_token_utility": 0.0,
+    "preemption_penalty": 54.0,
+    "service_rank": 1,
+    "victim_rank": 3
+   },
+   {
+    "request_id": "64",
+    "order_key": [
+     64
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 64,
+    "prefill_upper_bound": 64,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 4,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 5.425347222222222e-05,
+    "preemption_penalty": 0.0,
+    "service_rank": 16,
+    "victim_rank": null
+   },
+   {
+    "request_id": "65",
+    "order_key": [
+     65
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 128,
+    "prefill_upper_bound": 128,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 8,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 4.622781065088757e-05,
+    "preemption_penalty": 0.0,
+    "service_rank": 17,
+    "victim_rank": null
+   },
+   {
+    "request_id": "66",
+    "order_key": [
+     66
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 8,
+    "prefill_upper_bound": 8,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 1,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 3.985969387755102e-05,
+    "preemption_penalty": 0.0,
+    "service_rank": 18,
+    "victim_rank": null
+   },
+   {
+    "request_id": "67",
+    "order_key": [
+     67
+    ],
+    "resident": true,
+    "prompt_tokens_remaining": 0,
+    "prefill_upper_bound": 0,
+    "prefill_eligible": false,
+    "decode_eligible": true,
+    "preemption_eligible": true,
+    "prefill_fixed_charge": 0,
+    "decode_demand": 0,
+    "preemption_recovery": 2,
+    "decode_utility": 6.0,
+    "prefill_token_utility": 0.0,
+    "preemption_penalty": 6.0,
+    "service_rank": 3,
+    "victim_rank": 1
+   },
+   {
+    "request_id": "68",
+    "order_key": [
+     68
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 17,
+    "prefill_upper_bound": 17,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 2,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 3.472222222222222e-05,
+    "preemption_penalty": 0.0,
+    "service_rank": 19,
+    "victim_rank": null
+   },
+   {
+    "request_id": "69",
+    "order_key": [
+     69
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 33,
+    "prefill_upper_bound": 33,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 3,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 0.0078125,
+    "preemption_penalty": 0.0,
+    "service_rank": 5,
+    "victim_rank": null
+   },
+   {
+    "request_id": "70",
+    "order_key": [
+     70
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 64,
+    "prefill_upper_bound": 64,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 4,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 3.0517578125e-05,
+    "preemption_penalty": 0.0,
+    "service_rank": 20,
+    "victim_rank": null
+   },
+   {
+    "request_id": "71",
+    "order_key": [
+     71
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 128,
+    "prefill_upper_bound": 128,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 8,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 2.703287197231834e-05,
+    "preemption_penalty": 0.0,
+    "service_rank": 21,
+    "victim_rank": null
+   },
+   {
+    "request_id": "72",
+    "order_key": [
+     72
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 8,
+    "prefill_upper_bound": 8,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 1,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 2.4112654320987653e-05,
+    "preemption_penalty": 0.0,
+    "service_rank": 22,
+    "victim_rank": null
+   },
+   {
+    "request_id": "73",
+    "order_key": [
+     73
+    ],
+    "resident": true,
+    "prompt_tokens_remaining": 0,
+    "prefill_upper_bound": 0,
+    "prefill_eligible": false,
+    "decode_eligible": true,
+    "preemption_eligible": true,
+    "prefill_fixed_charge": 0,
+    "decode_demand": 0,
+    "preemption_recovery": 1,
+    "decode_utility": 2.0,
+    "prefill_token_utility": 0.0,
+    "preemption_penalty": 2.0,
+    "service_rank": 4,
+    "victim_rank": 0
+   },
+   {
+    "request_id": "74",
+    "order_key": [
+     74
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 17,
+    "prefill_upper_bound": 17,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 2,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 2.1641274238227147e-05,
+    "preemption_penalty": 0.0,
+    "service_rank": 23,
+    "victim_rank": null
+   },
+   {
+    "request_id": "75",
+    "order_key": [
+     75
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 32,
+    "prefill_upper_bound": 32,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 2,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 1.953125e-05,
+    "preemption_penalty": 0.0,
+    "service_rank": 24,
+    "victim_rank": null
+   },
+   {
+    "request_id": "76",
+    "order_key": [
+     76
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 64,
+    "prefill_upper_bound": 64,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 4,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 1.7715419501133787e-05,
+    "preemption_penalty": 0.0,
+    "service_rank": 25,
+    "victim_rank": null
+   },
+   {
+    "request_id": "77",
+    "order_key": [
+     77
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 128,
+    "prefill_upper_bound": 128,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 8,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 1.6141528925619835e-05,
+    "preemption_penalty": 0.0,
+    "service_rank": 26,
+    "victim_rank": null
+   },
+   {
+    "request_id": "78",
+    "order_key": [
+     78
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 8,
+    "prefill_upper_bound": 8,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 1,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 1.476843100189036e-05,
+    "preemption_penalty": 0.0,
+    "service_rank": 27,
+    "victim_rank": null
+   },
+   {
+    "request_id": "79",
+    "order_key": [
+     79
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 16,
+    "prefill_upper_bound": 16,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 1,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 1.3563368055555555e-05,
+    "preemption_penalty": 0.0,
+    "service_rank": 28,
+    "victim_rank": null
+   },
+   {
+    "request_id": "80",
+    "order_key": [
+     80
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 17,
+    "prefill_upper_bound": 17,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 2,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 1.25e-05,
+    "preemption_penalty": 0.0,
+    "service_rank": 29,
+    "victim_rank": null
+   },
+   {
+    "request_id": "81",
+    "order_key": [
+     81
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 32,
+    "prefill_upper_bound": 32,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 2,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 1.1556952662721893e-05,
+    "preemption_penalty": 0.0,
+    "service_rank": 30,
+    "victim_rank": null
+   },
+   {
+    "request_id": "82",
+    "order_key": [
+     82
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 64,
+    "prefill_upper_bound": 64,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 4,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 1.071673525377229e-05,
+    "preemption_penalty": 0.0,
+    "service_rank": 31,
+    "victim_rank": null
+   },
+   {
+    "request_id": "83",
+    "order_key": [
+     83
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 128,
+    "prefill_upper_bound": 128,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 8,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 9.964923469387754e-06,
+    "preemption_penalty": 0.0,
+    "service_rank": 32,
+    "victim_rank": null
+   },
+   {
+    "request_id": "84",
+    "order_key": [
+     84
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 8,
+    "prefill_upper_bound": 8,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 1,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 9.289536266349583e-06,
+    "preemption_penalty": 0.0,
+    "service_rank": 33,
+    "victim_rank": null
+   },
+   {
+    "request_id": "85",
+    "order_key": [
+     85
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 16,
+    "prefill_upper_bound": 16,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 1,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 8.680555555555556e-06,
+    "preemption_penalty": 0.0,
+    "service_rank": 34,
+    "victim_rank": null
+   },
+   {
+    "request_id": "86",
+    "order_key": [
+     86
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 17,
+    "prefill_upper_bound": 17,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 2,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 8.12955254942768e-06,
+    "preemption_penalty": 0.0,
+    "service_rank": 35,
+    "victim_rank": null
+   },
+   {
+    "request_id": "87",
+    "order_key": [
+     87
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 32,
+    "prefill_upper_bound": 32,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 2,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 7.62939453125e-06,
+    "preemption_penalty": 0.0,
+    "service_rank": 36,
+    "victim_rank": null
+   },
+   {
+    "request_id": "88",
+    "order_key": [
+     88
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 64,
+    "prefill_upper_bound": 64,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 4,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 7.1740128558310376e-06,
+    "preemption_penalty": 0.0,
+    "service_rank": 37,
+    "victim_rank": null
+   },
+   {
+    "request_id": "89",
+    "order_key": [
+     89
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 128,
+    "prefill_upper_bound": 128,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 8,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 6.758217993079585e-06,
+    "preemption_penalty": 0.0,
+    "service_rank": 38,
+    "victim_rank": null
+   },
+   {
+    "request_id": "90",
+    "order_key": [
+     90
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 8,
+    "prefill_upper_bound": 8,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 1,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 6.3775510204081635e-06,
+    "preemption_penalty": 0.0,
+    "service_rank": 39,
+    "victim_rank": null
+   },
+   {
+    "request_id": "91",
+    "order_key": [
+     91
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 16,
+    "prefill_upper_bound": 16,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 1,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 6.028163580246913e-06,
+    "preemption_penalty": 0.0,
+    "service_rank": 40,
+    "victim_rank": null
+   },
+   {
+    "request_id": "92",
+    "order_key": [
+     92
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 17,
+    "prefill_upper_bound": 17,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 2,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 5.706720233747261e-06,
+    "preemption_penalty": 0.0,
+    "service_rank": 41,
+    "victim_rank": null
+   },
+   {
+    "request_id": "93",
+    "order_key": [
+     93
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 32,
+    "prefill_upper_bound": 32,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 2,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 5.410318559556787e-06,
+    "preemption_penalty": 0.0,
+    "service_rank": 42,
+    "victim_rank": null
+   },
+   {
+    "request_id": "94",
+    "order_key": [
+     94
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 64,
+    "prefill_upper_bound": 64,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 4,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 5.136423405654175e-06,
+    "preemption_penalty": 0.0,
+    "service_rank": 43,
+    "victim_rank": null
+   },
+   {
+    "request_id": "95",
+    "order_key": [
+     95
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 128,
+    "prefill_upper_bound": 128,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 8,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 4.8828125e-06,
+    "preemption_penalty": 0.0,
+    "service_rank": 44,
+    "victim_rank": null
+   }
+  ],
+  "legal_preemption_ids": [
+   "56",
+   "58",
+   "62",
+   "67",
+   "73"
+  ],
+  "b_max": 128,
+  "c_max": 128,
+  "s_max": 8,
+  "resident_limit": 8,
+  "resident_count": 5,
+  "m_free": 0,
+  "admission_watermark": 0,
+  "problem_id": "56",
+  "numerical_policy": {
+   "policy_id": "lp_relaxation_mvp_v1",
+   "feasibility_tol": 1e-07,
+   "integrality_tol": 1e-06,
+   "objective_abs_tol": 1e-09,
+   "objective_rel_tol": 1e-09
+  }
+ },
+ "executed_plan": "integer",
+ "retained_lp": null,
+ "retained_integer": {
+  "status": "optimal",
+  "objective": 238.0,
+  "actions": {
+   "56": "decode",
+   "58": "decode",
+   "62": "decode",
+   "67": "decode",
+   "73": "preempt"
+  },
+  "raw_status": 0,
+  "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+  "dual_bound": 238.0,
+  "reported_gap": 0.0,
+  "node_count": 1,
+  "max_integrality_deviation": 0.0
+ },
+ "retained_integer_source": "rollout's own integer solve",
+ "victim_need": {
+  "free_blocks": 0,
+  "victims": [
+   73
+  ],
+  "recovered_blocks": 1,
+  "selected_admission_charges": 0,
+  "selected_decode_demands": 0,
+  "selected_decodes": 4,
+  "decode_demands": {
+   "56": 0,
+   "62": 0,
+   "58": 0,
+   "67": 0,
+   "73": 0
+  },
+  "victim_blocks_needed_for_decodes": 0,
+  "victim_blocks_needed_physical": 0,
+  "victim_blocks_needed_with_lp_prerequisite": 1,
+  "victims_needed_for_resident_limit": 0,
+  "reasons": [
+   "lp_decode_prerequisite"
+  ],
+  "non_preemptive_actions": [],
+  "preemption_free_alternative": false,
+  "extraction_changed_relaxed": null
+ },
+ "executed": {
+  "id": 56,
+  "scheduled": [
+   [
+    56,
+    0
+   ],
+   [
+    62,
+    0
+   ],
+   [
+    58,
+    0
+   ],
+   [
+    67,
+    0
+   ]
+  ],
+  "ignored_seq_ids": [],
+  "preempted_seq_ids": [
+   73
+  ]
+ },
+ "after": {
+  "total_blocks": 12,
+  "free_blocks": 6,
+  "watermark_blocks": 0,
+  "running": [
+   "56",
+   "62",
+   "67"
+  ],
+  "waiting": [
+   "73",
+   "69",
+   "5",
+   "11",
+   "17",
+   "23",
+   "29",
+   "35",
+   "41",
+   "47",
+   "53",
+   "59",
+   "64",
+   "65",
+   "66",
+   "68",
+   "70",
+   "71",
+   "72",
+   "74",
+   "75",
+   "76",
+   "77",
+   "78",
+   "79",
+   "80",
+   "81",
+   "82",
+   "83",
+   "84",
+   "85",
+   "86",
+   "87",
+   "88",
+   "89",
+   "90",
+   "91",
+   "92",
+   "93",
+   "94",
+   "95"
+  ],
+  "block_tables": {
+   "56": [
+    5,
+    2
+   ],
+   "62": [
+    3,
+    7
+   ],
+   "67": [
+    4,
+    0
+   ]
+  },
+  "requests": {
+   "5": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "11": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "17": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "23": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "29": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "35": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "41": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "47": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "53": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "56": {
+    "status": "PAUSED",
+    "prompt_len": 17,
+    "prompt_processed": 17,
+    "outputs": 7
+   },
+   "59": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "62": {
+    "status": "PAUSED",
+    "prompt_len": 17,
+    "prompt_processed": 17,
+    "outputs": 5
+   },
+   "64": {
+    "status": "WAITING",
+    "prompt_len": 64,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "65": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "66": {
+    "status": "WAITING",
+    "prompt_len": 8,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "67": {
+    "status": "PAUSED",
+    "prompt_len": 16,
+    "prompt_processed": 16,
+    "outputs": 3
+   },
+   "68": {
+    "status": "WAITING",
+    "prompt_len": 17,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "69": {
+    "status": "WAITING",
+    "prompt_len": 33,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "70": {
+    "status": "WAITING",
+    "prompt_len": 64,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "71": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "72": {
+    "status": "WAITING",
+    "prompt_len": 8,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "73": {
+    "status": "WAITING",
+    "prompt_len": 16,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "74": {
+    "status": "WAITING",
+    "prompt_len": 17,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "75": {
+    "status": "WAITING",
+    "prompt_len": 32,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "76": {
+    "status": "WAITING",
+    "prompt_len": 64,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "77": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "78": {
+    "status": "WAITING",
+    "prompt_len": 8,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "79": {
+    "status": "WAITING",
+    "prompt_len": 16,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "80": {
+    "status": "WAITING",
+    "prompt_len": 17,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "81": {
+    "status": "WAITING",
+    "prompt_len": 32,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "82": {
+    "status": "WAITING",
+    "prompt_len": 64,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "83": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "84": {
+    "status": "WAITING",
+    "prompt_len": 8,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "85": {
+    "status": "WAITING",
+    "prompt_len": 16,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "86": {
+    "status": "WAITING",
+    "prompt_len": 17,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "87": {
+    "status": "WAITING",
+    "prompt_len": 32,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "88": {
+    "status": "WAITING",
+    "prompt_len": 64,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "89": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "90": {
+    "status": "WAITING",
+    "prompt_len": 8,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "91": {
+    "status": "WAITING",
+    "prompt_len": 16,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "92": {
+    "status": "WAITING",
+    "prompt_len": 17,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "93": {
+    "status": "WAITING",
+    "prompt_len": 32,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "94": {
+    "status": "WAITING",
+    "prompt_len": 64,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "95": {
+    "status": "WAITING",
+    "prompt_len": 128,
+    "prompt_processed": 0,
+    "outputs": 0
+   }
+  }
+ }
+}

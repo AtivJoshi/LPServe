@@ -1,0 +1,274 @@
+{
+ "example": "fractional_admission",
+ "label": "running order, fractional_admission state",
+ "kind": "diagnostic",
+ "source": {
+  "trace": "validation_output/scheduler_comparison/20261026T045354Z_running_order/cpu_comparison/diagnostics.json#fractional_admission",
+  "trace_sha256": "8344f59d398b4f07c639fc0860f50f3341799c485f9186611da6451ed37b9957"
+ },
+ "case": "fractional_admission",
+ "policy": null,
+ "resident_limit": 2,
+ "decision": null,
+ "rollout": null,
+ "before": {
+  "free_blocks": 16,
+  "spec": {
+   "note": "waiting A then B; free pool 16, watermark 0; admission charges 16 and 1; chunk cap 1; token, action, and resident limits 2. Single-state diagnostic, not a completion workload",
+   "residents": [],
+   "waiting": [
+    256,
+    1
+   ],
+   "pool": 16,
+   "max_model_len": 256,
+   "limit": 2,
+   "b_max": 2,
+   "c_max": 1,
+   "s_max": 2,
+   "budget": 2
+  },
+  "requests": {
+   "0": {
+    "resident": false,
+    "prompt_tokens_remaining": 256,
+    "output_len": 0,
+    "logical_blocks": 16,
+    "physical_blocks": 0,
+    "decode_demand": 0,
+    "prefill_fixed_charge": 16
+   },
+   "1": {
+    "resident": false,
+    "prompt_tokens_remaining": 1,
+    "output_len": 0,
+    "logical_blocks": 1,
+    "physical_blocks": 0,
+    "decode_demand": 0,
+    "prefill_fixed_charge": 1
+   }
+  }
+ },
+ "problem": {
+  "requests": [
+   {
+    "request_id": "0",
+    "order_key": [
+     0
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 256,
+    "prefill_upper_bound": 1,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 16,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 0.5,
+    "preemption_penalty": 0.0,
+    "service_rank": 0,
+    "victim_rank": null
+   },
+   {
+    "request_id": "1",
+    "order_key": [
+     1
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 1,
+    "prefill_upper_bound": 1,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 1,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.0,
+    "prefill_token_utility": 0.125,
+    "preemption_penalty": 0.0,
+    "service_rank": 1,
+    "victim_rank": null
+   }
+  ],
+  "legal_preemption_ids": [],
+  "b_max": 2,
+  "c_max": 1,
+  "s_max": 2,
+  "resident_limit": 2,
+  "resident_count": 0,
+  "m_free": 16,
+  "admission_watermark": 0,
+  "problem_id": "-1",
+  "numerical_policy": {
+   "policy_id": "lp_relaxation_mvp_v1",
+   "feasibility_tol": 1e-07,
+   "integrality_tol": 1e-06,
+   "objective_abs_tol": 1e-09,
+   "objective_rel_tol": 1e-09
+  }
+ },
+ "executed_plan": "lp",
+ "retained_lp": {
+  "result_type": "SchedulingSuccess",
+  "result": {
+   "problem_id": "-1",
+   "plan": {
+    "problem_id": "-1",
+    "decisions": [
+     {
+      "request_id": "0",
+      "order_key": [
+       0
+      ],
+      "prefill_tokens": 0,
+      "decode": 0,
+      "preempt": 0,
+      "prefill_indicator": 0
+     },
+     {
+      "request_id": "1",
+      "order_key": [
+       1
+      ],
+      "prefill_tokens": 1,
+      "decode": 0,
+      "preempt": 0,
+      "prefill_indicator": 1
+     }
+    ],
+    "victim_order": [],
+    "execution_order": [
+     "1"
+    ],
+    "token_use": 1,
+    "action_count": 1,
+    "resident_count_after": 1,
+    "free_blocks_before_decodes": 15,
+    "decode_demand": 0,
+    "numerical_policy": {
+     "policy_id": "lp_relaxation_mvp_v1",
+     "feasibility_tol": 1e-07,
+     "integrality_tol": 1e-06,
+     "objective_abs_tol": 1e-09,
+     "objective_rel_tol": 1e-09
+    },
+    "objective": 0.125,
+    "extraction": {
+     "candidate_order": [
+      "1",
+      "0"
+     ],
+     "victim_candidate_order": [],
+     "accepted_order": [
+      "1"
+     ],
+     "trial_count": 2,
+     "failed_trial_count": 1,
+     "declined_optional_trial_count": 0,
+     "skipped_candidate_count": 0,
+     "fractional_request_count": 1
+    }
+   },
+   "relaxed": {
+    "decisions": [
+     {
+      "request_id": "0",
+      "x": 0.9375,
+      "y": 0.0,
+      "prefill_indicator": 0.9375,
+      "z": 0.0
+     },
+     {
+      "request_id": "1",
+      "x": 1.0,
+      "y": 0.0,
+      "prefill_indicator": 1.0,
+      "z": 0.0
+     }
+    ],
+    "raw_vector": [
+     0.9375,
+     1.0,
+     0.0,
+     0.0,
+     0.9375,
+     1.0,
+     0.0,
+     0.0
+    ],
+    "projection_count": 0,
+    "worst_raw_violation": 0.0,
+    "worst_normalized_violation": 0.0,
+    "normalized_objective": 0.59375
+   },
+   "solver": {
+    "category": "optimal_candidate",
+    "reason": "optimal candidate",
+    "diagnostics": {
+     "solver": "scipy.optimize.linprog",
+     "scipy_version": "1.15.3",
+     "method": "highs-ds",
+     "options": [
+      [
+       "presolve",
+       true
+      ]
+     ],
+     "raw_status": 0,
+     "raw_success": true,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "iterations": 1,
+     "vector_present": true,
+     "vector_length": 8,
+     "expected_vector_length": 8
+    },
+    "raw_vector": [
+     0.9375,
+     1.0,
+     0.0,
+     0.0,
+     0.9375,
+     1.0,
+     0.0,
+     0.0
+    ],
+    "reported_objective_min": -0.59375,
+    "recomputed_objective_min": -0.59375
+   }
+  }
+ },
+ "retained_integer": {
+  "status": "optimal",
+  "objective": 0.5,
+  "actions": {
+   "0": "prefill:1"
+  },
+  "raw_status": 0,
+  "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+  "dual_bound": 0.5,
+  "reported_gap": 0.0,
+  "node_count": 0,
+  "max_integrality_deviation": 0.0
+ },
+ "retained_integer_source": "retained diagnostic integer solve",
+ "victim_need": null,
+ "executed": {
+  "id": -1,
+  "scheduled": [
+   [
+    1,
+    1
+   ]
+  ],
+  "ignored_seq_ids": [],
+  "preempted_seq_ids": []
+ },
+ "after": {
+  "free_blocks": 15,
+  "physical_blocks": {
+   "1": 1
+  }
+ }
+}

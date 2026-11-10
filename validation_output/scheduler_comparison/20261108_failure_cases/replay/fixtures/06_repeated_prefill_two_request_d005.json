@@ -1,0 +1,327 @@
+{
+ "example": "repeated_prefill",
+ "label": "rank-based, two_request, resident limit 1",
+ "kind": "rollout",
+ "source": {
+  "trace": "validation_output/scheduler_comparison/20261024T182347Z/cpu_comparison/rollouts/two_request_limit1/lp_rank_based/decision_trace.json",
+  "trace_sha256": "fc082ce8913d1f822473353ece54a09cf0675140a8b93e04cdfac91a8ecb18fa",
+  "comparisons": null,
+  "comparisons_sha256": null
+ },
+ "case": "two_request",
+ "policy": "lp_rank_based",
+ "resident_limit": 1,
+ "decision": 5,
+ "rollout": {
+  "summary": "validation_output/scheduler_comparison/20261024T182347Z/cpu_comparison/rollouts/two_request_limit1/lp_rank_based/summary.json",
+  "summary_sha256": "ad5a6cdaf23aeac1679e5f77daca2e376d93fde80cccbf200d61a2122cfd5e83",
+  "workload_outcome": "bounded_unfinished",
+  "decisions": 8,
+  "finished": [],
+  "unfinished": [
+   "A",
+   "B"
+  ],
+  "preemptions": 7,
+  "prefill_tokens_replayed": 39
+ },
+ "before": {
+  "total_blocks": 8,
+  "free_blocks": 7,
+  "watermark_blocks": 0,
+  "running": [
+   "0"
+  ],
+  "waiting": [
+   "1"
+  ],
+  "block_tables": {
+   "0": [
+    7
+   ]
+  },
+  "requests": {
+   "0": {
+    "status": "PAUSED",
+    "prompt_len": 5,
+    "prompt_processed": 5,
+    "outputs": 0
+   },
+   "1": {
+    "status": "WAITING",
+    "prompt_len": 8,
+    "prompt_processed": 0,
+    "outputs": 0
+   }
+  }
+ },
+ "problem": {
+  "requests": [
+   {
+    "request_id": "0",
+    "order_key": [
+     0
+    ],
+    "resident": true,
+    "prompt_tokens_remaining": 0,
+    "prefill_upper_bound": 0,
+    "prefill_eligible": false,
+    "decode_eligible": true,
+    "preemption_eligible": true,
+    "prefill_fixed_charge": 0,
+    "decode_demand": 0,
+    "preemption_recovery": 1,
+    "decode_utility": 1.0,
+    "prefill_token_utility": 1.0,
+    "preemption_penalty": 1.0,
+    "service_rank": 0,
+    "victim_rank": 0
+   },
+   {
+    "request_id": "1",
+    "order_key": [
+     1
+    ],
+    "resident": false,
+    "prompt_tokens_remaining": 8,
+    "prefill_upper_bound": 8,
+    "prefill_eligible": true,
+    "decode_eligible": false,
+    "preemption_eligible": false,
+    "prefill_fixed_charge": 1,
+    "decode_demand": 0,
+    "preemption_recovery": 0,
+    "decode_utility": 0.5,
+    "prefill_token_utility": 0.5,
+    "preemption_penalty": 0.0,
+    "service_rank": 1,
+    "victim_rank": null
+   }
+  ],
+  "legal_preemption_ids": [
+   "0"
+  ],
+  "b_max": 8,
+  "c_max": 8,
+  "s_max": 1,
+  "resident_limit": 1,
+  "resident_count": 1,
+  "m_free": 7,
+  "admission_watermark": 0,
+  "problem_id": "5",
+  "numerical_policy": {
+   "policy_id": "lp_relaxation_mvp_v1",
+   "feasibility_tol": 1e-07,
+   "integrality_tol": 1e-06,
+   "objective_abs_tol": 1e-09,
+   "objective_rel_tol": 1e-09
+  }
+ },
+ "executed_plan": "lp",
+ "retained_lp": {
+  "result_type": "SchedulingSuccess",
+  "result": {
+   "problem_id": "5",
+   "plan": {
+    "problem_id": "5",
+    "decisions": [
+     {
+      "request_id": "0",
+      "order_key": [
+       0
+      ],
+      "prefill_tokens": 0,
+      "decode": 0,
+      "preempt": 1,
+      "prefill_indicator": 0
+     },
+     {
+      "request_id": "1",
+      "order_key": [
+       1
+      ],
+      "prefill_tokens": 8,
+      "decode": 0,
+      "preempt": 0,
+      "prefill_indicator": 1
+     }
+    ],
+    "victim_order": [
+     "0"
+    ],
+    "execution_order": [
+     "1"
+    ],
+    "token_use": 8,
+    "action_count": 1,
+    "resident_count_after": 1,
+    "free_blocks_before_decodes": 7,
+    "decode_demand": 0,
+    "numerical_policy": {
+     "policy_id": "lp_relaxation_mvp_v1",
+     "feasibility_tol": 1e-07,
+     "integrality_tol": 1e-06,
+     "objective_abs_tol": 1e-09,
+     "objective_rel_tol": 1e-09
+    },
+    "objective": 3.0,
+    "extraction": {
+     "candidate_order": [
+      "1",
+      "0"
+     ],
+     "victim_candidate_order": [
+      "0"
+     ],
+     "accepted_order": [
+      "1"
+     ],
+     "trial_count": 1,
+     "failed_trial_count": 0,
+     "declined_optional_trial_count": 0,
+     "skipped_candidate_count": 1,
+     "fractional_request_count": 0
+    }
+   },
+   "relaxed": {
+    "decisions": [
+     {
+      "request_id": "0",
+      "x": -0.0,
+      "y": -0.0,
+      "prefill_indicator": 0.0,
+      "z": 1.0
+     },
+     {
+      "request_id": "1",
+      "x": 8.0,
+      "y": 0.0,
+      "prefill_indicator": 1.0,
+      "z": 0.0
+     }
+    ],
+    "raw_vector": [
+     -0.0,
+     8.0,
+     -0.0,
+     0.0,
+     0.0,
+     1.0,
+     1.0,
+     0.0
+    ],
+    "projection_count": 0,
+    "worst_raw_violation": 0.0,
+    "worst_normalized_violation": 0.0,
+    "normalized_objective": 3.0
+   },
+   "solver": {
+    "category": "optimal_candidate",
+    "reason": "optimal candidate",
+    "diagnostics": {
+     "solver": "scipy.optimize.linprog",
+     "scipy_version": "1.15.3",
+     "method": "highs-ds",
+     "options": [
+      [
+       "presolve",
+       true
+      ]
+     ],
+     "raw_status": 0,
+     "raw_success": true,
+     "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+     "iterations": 2,
+     "vector_present": true,
+     "vector_length": 8,
+     "expected_vector_length": 8
+    },
+    "raw_vector": [
+     -0.0,
+     8.0,
+     -0.0,
+     0.0,
+     0.0,
+     1.0,
+     1.0,
+     0.0
+    ],
+    "reported_objective_min": -3.0,
+    "recomputed_objective_min": -3.0
+   }
+  }
+ },
+ "retained_integer": null,
+ "retained_integer_source": null,
+ "victim_need": {
+  "free_blocks": 7,
+  "victims": [
+   0
+  ],
+  "recovered_blocks": 1,
+  "selected_admission_charges": 1,
+  "selected_decode_demands": 0,
+  "selected_decodes": 0,
+  "decode_demands": {
+   "0": 0
+  },
+  "victim_blocks_needed_for_decodes": 0,
+  "victim_blocks_needed_physical": 0,
+  "victim_blocks_needed_with_lp_prerequisite": 0,
+  "victims_needed_for_resident_limit": 1,
+  "reasons": [
+   "resident_capacity"
+  ],
+  "non_preemptive_actions": [
+   [
+    0,
+    "decode"
+   ]
+  ],
+  "preemption_free_alternative": true,
+  "extraction_changed_relaxed": false
+ },
+ "executed": {
+  "id": 5,
+  "scheduled": [
+   [
+    1,
+    8
+   ]
+  ],
+  "ignored_seq_ids": [],
+  "preempted_seq_ids": [
+   0
+  ]
+ },
+ "after": {
+  "total_blocks": 8,
+  "free_blocks": 7,
+  "watermark_blocks": 0,
+  "running": [
+   "1"
+  ],
+  "waiting": [
+   "0"
+  ],
+  "block_tables": {
+   "1": [
+    7
+   ]
+  },
+  "requests": {
+   "0": {
+    "status": "WAITING",
+    "prompt_len": 5,
+    "prompt_processed": 0,
+    "outputs": 0
+   },
+   "1": {
+    "status": "PAUSED",
+    "prompt_len": 8,
+    "prompt_processed": 8,
+    "outputs": 0
+   }
+  }
+ }
+}

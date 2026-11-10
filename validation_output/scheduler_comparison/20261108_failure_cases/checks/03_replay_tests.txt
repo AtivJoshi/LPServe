@@ -1,0 +1,12 @@
+$ python -B -m unittest tests.test_replay_failure_cases -v
+test_fractional_admission_reproduces (tests.test_replay_failure_cases.ReplayTest) ... ok
+test_main_replays_fixture_files (tests.test_replay_failure_cases.ReplayTest) ... ok
+test_mismatches_are_reported (tests.test_replay_failure_cases.ReplayTest) ... ok
+test_output_actions (tests.test_replay_failure_cases.ReplayTest) ... ok
+test_unretained_results_are_labelled (tests.test_replay_failure_cases.ReplayTest) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.208s
+
+OK
+exit_status=0

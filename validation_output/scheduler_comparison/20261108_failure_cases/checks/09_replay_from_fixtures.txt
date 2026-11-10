@@ -1,0 +1,540 @@
+$ python -B scripts/replay_failure_cases.py --out validation_output/scheduler_comparison/20261108_failure_cases/replay_from_fixtures --fixtures validation_output/scheduler_comparison/20261108_failure_cases/replay/fixtures
+Failure-case replay: 25 decisions, 0 with mismatches
+numpy 2.2.6, scipy 1.15.3
+
+
+===== fractional_preemption
+--- reciprocal-square, queue48_burst_pool12: decision 20
+source: validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_comparison/rollouts/queue48_burst_pool12/lp_reciprocal_square/decision_trace.json.gz
+start: free blocks 0, watermark 0, residents 4/8, b_max 128, c_max 128, s_max 8
+  running ['26', '10', '16', '31']; waiting 24 (head ['5', '11', '17', '22', '23', '27'])
+  block tables {'26': [3, 9], '10': [1, 4, 11, 6, 5], '16': [8, 2, 7, 0], '31': [10]}
+  request res left out blocks dem charge decode_u prefill_u/token penalty
+  R05   no   128   0      0   0      8        0       0.0003125 0
+  R10   yes    0   2      5   0      0     0.25               0 0.25
+  R11   no   128   0      0   0      8        0     0.000217014 0
+  R16   yes    0   0      4   0      0 0.111111               0 0.111111
+  R17   no   128   0      0   0      8        0     0.000159439 0
+  R26   yes    0   6      2   0      0        1               0 1
+  R27   no    32   0      0   0      2        0       0.0003125 0
+  R31   yes    0   0      1   0      0   0.0625               0 0.0625
+  R36   no     8   0      0   0      1        0     0.000432526 0
+LP proposal (objective 1.39668): R10 y=1; R16 y=0.878788 z=0.121212; R26 y=1; R31 y=1
+whole-action plan (utility 1.21485; retained and reproduced): R10 decode, R16 preempt, R26 decode, R27 prefill:32, R31 decode, R36 prefill:8
+integer optimum (utility 1.29861; retained offline same-state comparison; reproduced): R10 decode, R16 decode, R26 decode, R31 preempt
+relaxation gap 0.098064, extraction loss 0.083762
+executed (lp plan, utility 1.21485): R10 decode, R16 preempt, R26 decode, R27 prefill:32, R31 decode, R36 prefill:8
+victim causes: ['admission_charges', 'lp_decode_prerequisite']
+after: free blocks 1; running ['26', '10', '31', '27', '36']; waiting 23 (head ['16', '5', '11', '17', '22', '23'])
+  block tables {'26': [3, 9], '10': [1, 4, 11, 6, 5], '31': [10], '27': [7, 8], '36': [0]}
+  progress changed: R10 PAUSED prompt 64/64 outputs 3; R16 WAITING prompt 0/64 outputs 0; R26 PAUSED prompt 17/17 outputs 7; R27 PAUSED prompt 32/32 outputs 0; R31 PAUSED prompt 16/16 outputs 1; R36 PAUSED prompt 8/8 outputs 0
+replay: all checks equal
+
+--- reciprocal-square, queue48_burst_pool12: decision 34
+source: validation_output/scheduler_comparison/20261024T213405Z_queue_growth_context192/cpu_comparison/rollouts/queue48_burst_pool12/lp_reciprocal_square/decision_trace.json.gz
+start: free blocks 0, watermark 0, residents 4/8, b_max 128, c_max 128, s_max 8
+  running ['38', '28', '34', '43']; waiting 12 (head ['5', '11', '17', '23', '29', '35'])
+  block tables {'38': [0, 10], '28': [8, 9, 2, 3, 5], '34': [7, 1, 4, 6], '43': [11]}
+  request res left out blocks dem charge decode_u prefill_u/token penalty
+  R05   no   128   0      0   0      8        0       0.0003125 0
+  R11   no   128   0      0   0      8        0     0.000217014 0
+  R17   no   128   0      0   0      8        0     0.000159439 0
+  R28   yes    0   2      5   0      0     0.25               0 0.25
+  R34   yes    0   1      4   1      0 0.111111               0 0.111111
+  R38   yes    0   7      2   0      0        1               0 1
+  R43   yes    0   1      1   1      0   0.0625               0 0.0625
+  R44   no    17   0      0   0      2        0     0.000348068 0
+LP proposal (objective 1.33472): R28 y=1; R34 y=0.6 z=0.4; R38 y=1; R43 y=1
+whole-action plan (utility 1.20731; retained and reproduced): R28 decode, R34 preempt, R38 decode, R43 decode, R44 prefill:17
+integer optimum (utility 1.29861; retained offline same-state comparison; reproduced): R28 decode, R34 decode, R38 decode, R43 preempt
+relaxation gap 0.0361111, extraction loss 0.0913051
+executed (lp plan, utility 1.20731): R28 decode, R34 preempt, R38 decode, R43 decode, R44 prefill:17
+victim causes: ['decode_block_demand', 'admission_charges']
+after: free blocks 3; running ['28', '43', '44']; waiting 12 (head ['34', '5', '11', '17', '23', '29'])
+  block tables {'28': [8, 9, 2, 3, 5], '43': [11, 4], '44': [7, 1]}
+  progress changed: R28 PAUSED prompt 64/64 outputs 3; R34 WAITING prompt 0/65 outputs 0; R43 PAUSED prompt 16/16 outputs 2; R44 PAUSED prompt 17/17 outputs 0
+replay: all checks equal
+
+--- running order, queue48_burst_pool12: decision 2
+source: validation_output/scheduler_comparison/20261026T045354Z_running_order/cpu_comparison/rollouts/queue48_burst_pool12_limit8/lp_running_order/decision_trace.json.gz
+start: free blocks 1, watermark 0, residents 6/8, b_max 128, c_max 128, s_max 8
+  running ['0', '1', '2', '3', '4', '6']; waiting 42 (head ['5', '7', '8', '9', '10', '11'])
+  block tables {'0': [11], '1': [10], '2': [9, 8], '3': [7, 6], '4': [5, 4, 3, 2], '6': [1]}
+  request res left out blocks dem charge decode_u prefill_u/token penalty
+  R00   yes    0   1      1   0      0      486               0 486
+  R01   yes    0   1      1   1      0      162               0 162
+  R02   yes    0   1      2   0      0       54               0 54
+  R03   yes    0   1      2   1      0       18               0 18
+  R04   yes    0   0      4   0      0        6               0 6
+  R05   no   128   0      0   0      8        0       0.0078125 0
+  R06   yes    0   0      1   0      0        2               0 2
+  R07   no    16   0      0   0      1        0      0.00195312 0
+  R08   no    17   0      0   0      2        0     0.000868056 0
+LP proposal (objective 725): R00 y=1; R01 y=1; R02 y=1; R03 y=1; R04 y=0.75 z=0.25; R06 y=1
+whole-action plan (utility 716.046; retained and reproduced): R00 decode, R01 decode, R02 decode, R03 decode, R04 preempt, R06 decode, R07 prefill:16, R08 prefill:17
+integer optimum (utility 724; retained offline same-state comparison; reproduced): R00 decode, R01 decode, R02 decode, R03 decode, R04 decode, R06 preempt
+relaxation gap 1, extraction loss 7.95399
+executed (lp plan, utility 716.046): R00 decode, R01 decode, R02 decode, R03 decode, R04 preempt, R06 decode, R07 prefill:16, R08 prefill:17
+victim causes: ['decode_block_demand', 'admission_charges']
+after: free blocks 4; running ['1', '2', '6', '7', '8']; waiting 41 (head ['4', '5', '9', '10', '11', '12'])
+  block tables {'1': [10, 4], '2': [9, 8], '6': [1], '7': [5], '8': [3, 2]}
+  progress changed: R01 PAUSED prompt 16/16 outputs 2; R02 PAUSED prompt 17/17 outputs 2; R04 WAITING prompt 0/64 outputs 0; R06 PAUSED prompt 8/8 outputs 1; R07 PAUSED prompt 16/16 outputs 0; R08 PAUSED prompt 17/17 outputs 0
+replay: all checks equal
+
+
+===== fractional_admission
+--- running order, fractional_admission state: diagnostic state
+source: validation_output/scheduler_comparison/20261026T045354Z_running_order/cpu_comparison/diagnostics.json#fractional_admission
+start: free blocks 16, watermark 0, residents 0/2, b_max 2, c_max 1, s_max 2
+  request res left out blocks dem charge decode_u prefill_u/token penalty
+  R00   no   256   0      0   0     16        0             0.5 0
+  R01   no     1   0      0   0      1        0           0.125 0
+LP proposal (objective 0.59375): R00 x=0.9375 I=0.9375; R01 x=1 I=1
+whole-action plan (utility 0.125; retained and reproduced): R01 prefill:1
+integer optimum (utility 0.5; retained diagnostic integer solve; reproduced): R00 prefill:1
+relaxation gap 0.09375, extraction loss 0.375
+executed (lp plan, utility 0.125): R01 prefill:1
+after: free blocks 15; physical blocks {'1': 1}
+replay: all checks equal
+
+--- reciprocal-square, queue48_burst: decision 0
+source: validation_output/scheduler_comparison/20261026T045354Z_running_order/cpu_comparison/rollouts/queue48_burst_limit8/lp_reciprocal_square/decision_trace.json.gz
+start: free blocks 128, watermark 1, residents 0/8, b_max 128, c_max 128, s_max 8
+  running []; waiting 48 (head ['0', '1', '2', '3', '4', '5'])
+  block tables {}
+  request res left out blocks dem charge decode_u prefill_u/token penalty
+  R00   no     8   0      0   0      1        0           0.125 0
+  R01   no    16   0      0   0      1        0        0.015625 0
+  R02   no    17   0      0   0      2        0      0.00653595 0
+  R03   no    32   0      0   0      2        0      0.00195312 0
+  R04   no    64   0      0   0      4        0        0.000625 0
+  R06   no     8   0      0   0      1        0      0.00255102 0
+  R07   no    16   0      0   0      1        0     0.000976562 0
+  R08   no    17   0      0   0      2        0     0.000726216 0
+  R12   no     8   0      0   0      1        0     0.000739645 0
+LP proposal (objective 1.48156): R00 x=8 I=1; R01 x=16 I=1; R02 x=17 I=1; R03 x=32 I=1; R04 x=6.85714 I=0.107143; R06 x=8 I=1; R07 x=16 I=1; R08 x=17 I=1; R12 x=7.14286 I=0.892857
+whole-action plan (utility 1.47791; retained and reproduced): R00 prefill:8, R01 prefill:16, R02 prefill:17, R03 prefill:32, R06 prefill:8, R07 prefill:16, R08 prefill:17, R12 prefill:8
+integer optimum (utility 1.48074; retained offline same-state comparison; reproduced): R00 prefill:8, R01 prefill:16, R02 prefill:17, R03 prefill:32, R04 prefill:14, R06 prefill:8, R07 prefill:16, R08 prefill:17
+relaxation gap 0.000818893, extraction loss 0.00283284
+executed (lp plan, utility 1.47791): R00 prefill:8, R01 prefill:16, R02 prefill:17, R03 prefill:32, R06 prefill:8, R07 prefill:16, R08 prefill:17, R12 prefill:8
+victim causes: []
+after: free blocks 117; running ['0', '1', '2', '3', '6', '7', '8', '12']; waiting 40 (head ['4', '5', '9', '10', '11', '13'])
+  block tables {'0': [127], '1': [126], '2': [125, 124], '3': [123, 122], '6': [121], '7': [120], '8': [119, 118], '12': [117]}
+  progress changed: R00 PAUSED prompt 8/8 outputs 0; R01 PAUSED prompt 16/16 outputs 0; R02 PAUSED prompt 17/17 outputs 0; R03 PAUSED prompt 32/32 outputs 0; R06 PAUSED prompt 8/8 outputs 0; R07 PAUSED prompt 16/16 outputs 0; R08 PAUSED prompt 17/17 outputs 0; R12 PAUSED prompt 8/8 outputs 0
+replay: all checks equal
+
+
+===== admit_then_evict
+--- running-order integer optimum, queue96_burst_pool12: decision 16
+source: validation_output/scheduler_comparison/20261026T045354Z_running_order/cpu_comparison/rollouts/queue96_burst_pool12_limit8/ilp_running_order/decision_trace.json.gz
+start: free blocks 1, watermark 0, residents 5/8, b_max 128, c_max 128, s_max 8
+  running ['14', '25', '16', '31', '21']; waiting 75 (head ['5', '11', '17', '20', '22', '23'])
+  block tables {'14': [1, 4], '25': [10, 0], '16': [8, 5, 3, 9], '31': [7], '21': [6, 2]}
+  request res left out blocks dem charge decode_u prefill_u/token penalty
+  R05   no   128   0      0   0      8        0       0.0078125 0
+  R11   no   128   0      0   0      8        0      0.00195312 0
+  R14   yes    0   4      2   0      0      162               0 162
+  R16   yes    0   1      4   1      0       18               0 18
+  R17   no   128   0      0   0      8        0     0.000868056 0
+  R21   yes    0   0      2   0      0        2               0 2
+  R25   yes    0   2      2   0      0       54               0 54
+  R30   no     8   0      0   0      1        0     6.45661e-05 0
+  R31   yes    0   1      1   1      0        6               0 6
+LP proposal (objective 240): R14 y=1; R16 y=1; R21 y=0.5 z=0.5; R25 y=1; R31 y=1
+whole-action plan (utility 238.001; offline only; the rollout did not solve the LP): R14 decode, R16 decode, R21 preempt, R25 decode, R30 prefill:8, R31 decode
+integer optimum (utility 238.001; rollout's own integer solve; reproduced): R14 decode, R16 decode, R21 preempt, R25 decode, R30 prefill:8, R31 decode
+relaxation gap 1.99948, extraction loss 0
+executed (integer plan, utility 238.001): R14 decode, R16 decode, R21 preempt, R25 decode, R30 prefill:8, R31 decode
+victim causes: ['decode_block_demand', 'admission_charges']
+after: free blocks 0; running ['14', '25', '16', '31', '30']; waiting 75 (head ['21', '5', '11', '17', '20', '22'])
+  block tables {'14': [1, 4], '25': [10, 0], '16': [8, 5, 3, 9, 2], '31': [7, 11], '30': [6]}
+  progress changed: R14 PAUSED prompt 17/17 outputs 5; R16 PAUSED prompt 64/64 outputs 2; R21 WAITING prompt 0/32 outputs 0; R25 PAUSED prompt 16/16 outputs 3; R30 PAUSED prompt 8/8 outputs 0; R31 PAUSED prompt 16/16 outputs 2
+replay: all checks equal
+
+--- running-order integer optimum, queue96_burst_pool12: decision 17
+source: validation_output/scheduler_comparison/20261026T045354Z_running_order/cpu_comparison/rollouts/queue96_burst_pool12_limit8/ilp_running_order/decision_trace.json.gz
+start: free blocks 0, watermark 0, residents 5/8, b_max 128, c_max 128, s_max 8
+  running ['14', '25', '16', '31', '30']; waiting 75 (head ['21', '5', '11', '17', '20', '22'])
+  block tables {'14': [1, 4], '25': [10, 0], '16': [8, 5, 3, 9, 2], '31': [7, 11], '30': [6]}
+  request res left out blocks dem charge decode_u prefill_u/token penalty
+  R05   no   128   0      0   0      8        0      0.00195312 0
+  R11   no   128   0      0   0      8        0     0.000868056 0
+  R14   yes    0   5      2   0      0      162               0 162
+  R16   yes    0   2      5   0      0       18               0 18
+  R21   no    32   0      0   0      2        0       0.0078125 0
+  R25   yes    0   3      2   0      0       54               0 54
+  R30   yes    0   0      1   0      0        2               0 2
+  R31   yes    0   2      2   0      0        6               0 6
+LP proposal (objective 239.778): R14 y=1; R16 y=1; R25 y=1; R30 y=0.444444 z=0.555556; R31 y=1
+whole-action plan (utility 238; offline only; the rollout did not solve the LP): R14 decode, R16 decode, R25 decode, R30 preempt, R31 decode
+integer optimum (utility 238; rollout's own integer solve; reproduced): R14 decode, R16 decode, R25 decode, R30 preempt, R31 decode
+relaxation gap 1.77778, extraction loss 0
+executed (integer plan, utility 238): R14 decode, R16 decode, R25 decode, R30 preempt, R31 decode
+victim causes: ['lp_decode_prerequisite']
+after: free blocks 3; running ['14', '16', '31']; waiting 76 (head ['30', '21', '5', '11', '17', '20'])
+  block tables {'14': [1, 4], '16': [8, 5, 3, 9, 2], '31': [7, 11]}
+  progress changed: R14 PAUSED prompt 17/17 outputs 6; R16 PAUSED prompt 64/64 outputs 3; R30 WAITING prompt 0/8 outputs 0; R31 PAUSED prompt 16/16 outputs 3
+replay: all checks equal
+
+--- running-order integer optimum, queue96_burst_pool12: decision 55
+source: validation_output/scheduler_comparison/20261026T045354Z_running_order/cpu_comparison/rollouts/queue96_burst_pool12_limit8/ilp_running_order/decision_trace.json.gz
+start: free blocks 0, watermark 0, residents 5/8, b_max 128, c_max 128, s_max 8
+  running ['56', '62', '58', '67', '69']; waiting 40 (head ['5', '11', '17', '23', '29', '35'])
+  block tables {'56': [5, 2], '62': [3, 7], '58': [10, 1, 8, 6, 9], '67': [4], '69': [11, 0]}
+  request res left out blocks dem charge decode_u prefill_u/token penalty
+  R05   no   128   0      0   0      8        0       0.0078125 0
+  R11   no   128   0      0   0      8        0      0.00195312 0
+  R17   no   128   0      0   0      8        0     0.000868056 0
+  R56   yes    0   5      2   0      0      162               0 162
+  R58   yes    0   2      5   0      0       18               0 18
+  R62   yes    0   3      2   0      0       54               0 54
+  R66   no     8   0      0   0      1        0     4.62278e-05 0
+  R67   yes    0   1      1   1      0        6               0 6
+  R69   yes    0   1      2   1      0        2               0 2
+  R73   no    16   0      0   0      1        0     2.41127e-05 0
+LP proposal (objective 239.333): R56 y=1; R58 y=1; R62 y=1; R67 y=1; R69 y=0.333333 z=0.666667
+whole-action plan (utility 238; offline only; the rollout did not solve the LP): R56 decode, R58 decode, R62 decode, R66 prefill:8, R67 decode, R69 preempt
+integer optimum (utility 238; rollout's own integer solve; reproduced): R56 decode, R58 decode, R62 decode, R67 decode, R69 preempt, R73 prefill:16
+relaxation gap 1.33295, extraction loss 1.598e-05
+executed (integer plan, utility 238): R56 decode, R58 decode, R62 decode, R67 decode, R69 preempt, R73 prefill:16
+victim causes: ['decode_block_demand', 'admission_charges']
+after: free blocks 0; running ['56', '62', '58', '67', '73']; waiting 40 (head ['69', '5', '11', '17', '23', '29'])
+  block tables {'56': [5, 2], '62': [3, 7], '58': [10, 1, 8, 6, 9], '67': [4, 0], '73': [11]}
+  progress changed: R56 PAUSED prompt 17/17 outputs 6; R58 PAUSED prompt 64/64 outputs 3; R62 PAUSED prompt 17/17 outputs 4; R67 PAUSED prompt 16/16 outputs 2; R69 WAITING prompt 0/33 outputs 0; R73 PAUSED prompt 16/16 outputs 0
+replay: all checks equal
+
+--- running-order integer optimum, queue96_burst_pool12: decision 56
+source: validation_output/scheduler_comparison/20261026T045354Z_running_order/cpu_comparison/rollouts/queue96_burst_pool12_limit8/ilp_running_order/decision_trace.json.gz
+start: free blocks 0, watermark 0, residents 5/8, b_max 128, c_max 128, s_max 8
+  running ['56', '62', '58', '67', '73']; waiting 40 (head ['69', '5', '11', '17', '23', '29'])
+  block tables {'56': [5, 2], '62': [3, 7], '58': [10, 1, 8, 6, 9], '67': [4, 0], '73': [11]}
+  request res left out blocks dem charge decode_u prefill_u/token penalty
+  R05   no   128   0      0   0      8        0      0.00195312 0
+  R11   no   128   0      0   0      8        0     0.000868056 0
+  R56   yes    0   6      2   0      0      162               0 162
+  R58   yes    0   3      5   0      0       18               0 18
+  R62   yes    0   4      2   0      0       54               0 54
+  R67   yes    0   2      2   0      0        6               0 6
+  R69   no    33   0      0   0      3        0       0.0078125 0
+  R73   yes    0   0      1   0      0        2               0 2
+LP proposal (objective 239.778): R56 y=1; R58 y=1; R62 y=1; R67 y=1; R73 y=0.444444 z=0.555556
+whole-action plan (utility 238; offline only; the rollout did not solve the LP): R56 decode, R58 decode, R62 decode, R67 decode, R73 preempt
+integer optimum (utility 238; rollout's own integer solve; reproduced): R56 decode, R58 decode, R62 decode, R67 decode, R73 preempt
+relaxation gap 1.77778, extraction loss 0
+executed (integer plan, utility 238): R56 decode, R58 decode, R62 decode, R67 decode, R73 preempt
+victim causes: ['lp_decode_prerequisite']
+after: free blocks 6; running ['56', '62', '67']; waiting 41 (head ['73', '69', '5', '11', '17', '23'])
+  block tables {'56': [5, 2], '62': [3, 7], '67': [4, 0]}
+  progress changed: R56 PAUSED prompt 17/17 outputs 7; R62 PAUSED prompt 17/17 outputs 5; R67 PAUSED prompt 16/16 outputs 3; R73 WAITING prompt 0/16 outputs 0
+replay: all checks equal
+
+
+===== repeated_prefill
+--- uniform, two_request, resident limit 1: decision 0
+source: validation_output/scheduler_comparison/20261024T182347Z/cpu_comparison/rollouts/two_request_limit1/lp_uniform/decision_trace.json
+start: free blocks 8, watermark 0, residents 0/1, b_max 8, c_max 8, s_max 1
+  running []; waiting 2 (head ['0', '1'])
+  block tables {}
+  request res left out blocks dem charge decode_u prefill_u/token penalty
+  R00   no     5   0      0   0      1        1               1 1
+  R01   no     8   0      0   0      1        1               1 1
+LP proposal (objective 8): R01 x=8 I=1
+whole-action plan (utility 8; retained and reproduced): R01 prefill:8
+integer optimum (utility 8; not retained; new solve of the saved problem (original state and coefficients)): R01 prefill:8
+relaxation gap 0, extraction loss 0
+executed (lp plan, utility 8): R01 prefill:8
+victim causes: []
+after: free blocks 7; running ['1']; waiting 1 (head ['0'])
+  block tables {'1': [7]}
+  progress changed: R01 PAUSED prompt 8/8 outputs 0
+replay: all checks equal
+
+--- uniform, two_request, resident limit 1: decision 1
+source: validation_output/scheduler_comparison/20261024T182347Z/cpu_comparison/rollouts/two_request_limit1/lp_uniform/decision_trace.json
+start: free blocks 7, watermark 0, residents 1/1, b_max 8, c_max 8, s_max 1
+  running ['1']; waiting 1 (head ['0'])
+  block tables {'1': [7]}
+  request res left out blocks dem charge decode_u prefill_u/token penalty
+  R00   no     5   0      0   0      1        1               1 1
+  R01   yes    0   0      1   0      0        1               1 1
+LP proposal (objective 4): R00 x=5 I=1; R01 z=1
+whole-action plan (utility 4; retained and reproduced): R00 prefill:5, R01 preempt
+integer optimum (utility 4; not retained; new solve of the saved problem (original state and coefficients)): R00 prefill:5, R01 preempt
+relaxation gap 0, extraction loss 0
+executed (lp plan, utility 4): R00 prefill:5, R01 preempt
+victim causes: ['resident_capacity']
+after: free blocks 7; running ['0']; waiting 1 (head ['1'])
+  block tables {'0': [7]}
+  progress changed: R00 PAUSED prompt 5/5 outputs 0; R01 WAITING prompt 0/8 outputs 0
+replay: all checks equal
+
+--- uniform, two_request, resident limit 1: decision 2
+source: validation_output/scheduler_comparison/20261024T182347Z/cpu_comparison/rollouts/two_request_limit1/lp_uniform/decision_trace.json
+start: free blocks 7, watermark 0, residents 1/1, b_max 8, c_max 8, s_max 1
+  running ['0']; waiting 1 (head ['1'])
+  block tables {'0': [7]}
+  request res left out blocks dem charge decode_u prefill_u/token penalty
+  R00   yes    0   0      1   0      0        1               1 1
+  R01   no     8   0      0   0      1        1               1 1
+LP proposal (objective 7): R00 z=1; R01 x=8 I=1
+whole-action plan (utility 7; retained and reproduced): R00 preempt, R01 prefill:8
+integer optimum (utility 7; not retained; new solve of the saved problem (original state and coefficients)): R00 preempt, R01 prefill:8
+relaxation gap 0, extraction loss 0
+executed (lp plan, utility 7): R00 preempt, R01 prefill:8
+victim causes: ['resident_capacity']
+after: free blocks 7; running ['1']; waiting 1 (head ['0'])
+  block tables {'1': [7]}
+  progress changed: R00 WAITING prompt 0/5 outputs 0; R01 PAUSED prompt 8/8 outputs 0
+replay: all checks equal
+
+--- uniform, two_request, resident limit 1: decision 3
+source: validation_output/scheduler_comparison/20261024T182347Z/cpu_comparison/rollouts/two_request_limit1/lp_uniform/decision_trace.json
+start: free blocks 7, watermark 0, residents 1/1, b_max 8, c_max 8, s_max 1
+  running ['1']; waiting 1 (head ['0'])
+  block tables {'1': [7]}
+  request res left out blocks dem charge decode_u prefill_u/token penalty
+  R00   no     5   0      0   0      1        1               1 1
+  R01   yes    0   0      1   0      0        1               1 1
+LP proposal (objective 4): R00 x=5 I=1; R01 z=1
+whole-action plan (utility 4; retained and reproduced): R00 prefill:5, R01 preempt
+integer optimum (utility 4; not retained; new solve of the saved problem (original state and coefficients)): R00 prefill:5, R01 preempt
+relaxation gap 0, extraction loss 0
+executed (lp plan, utility 4): R00 prefill:5, R01 preempt
+victim causes: ['resident_capacity']
+after: free blocks 7; running ['0']; waiting 1 (head ['1'])
+  block tables {'0': [7]}
+  progress changed: R00 PAUSED prompt 5/5 outputs 0; R01 WAITING prompt 0/8 outputs 0
+replay: all checks equal
+
+--- uniform, two_request, resident limit 1: decision 4
+source: validation_output/scheduler_comparison/20261024T182347Z/cpu_comparison/rollouts/two_request_limit1/lp_uniform/decision_trace.json
+start: free blocks 7, watermark 0, residents 1/1, b_max 8, c_max 8, s_max 1
+  running ['0']; waiting 1 (head ['1'])
+  block tables {'0': [7]}
+  request res left out blocks dem charge decode_u prefill_u/token penalty
+  R00   yes    0   0      1   0      0        1               1 1
+  R01   no     8   0      0   0      1        1               1 1
+LP proposal (objective 7): R00 z=1; R01 x=8 I=1
+whole-action plan (utility 7; retained and reproduced): R00 preempt, R01 prefill:8
+integer optimum (utility 7; not retained; new solve of the saved problem (original state and coefficients)): R00 preempt, R01 prefill:8
+relaxation gap 0, extraction loss 0
+executed (lp plan, utility 7): R00 preempt, R01 prefill:8
+victim causes: ['resident_capacity']
+after: free blocks 7; running ['1']; waiting 1 (head ['0'])
+  block tables {'1': [7]}
+  progress changed: R00 WAITING prompt 0/5 outputs 0; R01 PAUSED prompt 8/8 outputs 0
+replay: all checks equal
+
+--- uniform, two_request, resident limit 1: decision 5
+source: validation_output/scheduler_comparison/20261024T182347Z/cpu_comparison/rollouts/two_request_limit1/lp_uniform/decision_trace.json
+start: free blocks 7, watermark 0, residents 1/1, b_max 8, c_max 8, s_max 1
+  running ['1']; waiting 1 (head ['0'])
+  block tables {'1': [7]}
+  request res left out blocks dem charge decode_u prefill_u/token penalty
+  R00   no     5   0      0   0      1        1               1 1
+  R01   yes    0   0      1   0      0        1               1 1
+LP proposal (objective 4): R00 x=5 I=1; R01 z=1
+whole-action plan (utility 4; retained and reproduced): R00 prefill:5, R01 preempt
+integer optimum (utility 4; not retained; new solve of the saved problem (original state and coefficients)): R00 prefill:5, R01 preempt
+relaxation gap 0, extraction loss 0
+executed (lp plan, utility 4): R00 prefill:5, R01 preempt
+victim causes: ['resident_capacity']
+after: free blocks 7; running ['0']; waiting 1 (head ['1'])
+  block tables {'0': [7]}
+  progress changed: R00 PAUSED prompt 5/5 outputs 0; R01 WAITING prompt 0/8 outputs 0
+replay: all checks equal
+
+--- uniform, two_request, resident limit 1: decision 6
+source: validation_output/scheduler_comparison/20261024T182347Z/cpu_comparison/rollouts/two_request_limit1/lp_uniform/decision_trace.json
+start: free blocks 7, watermark 0, residents 1/1, b_max 8, c_max 8, s_max 1
+  running ['0']; waiting 1 (head ['1'])
+  block tables {'0': [7]}
+  request res left out blocks dem charge decode_u prefill_u/token penalty
+  R00   yes    0   0      1   0      0        1               1 1
+  R01   no     8   0      0   0      1        1               1 1
+LP proposal (objective 7): R00 z=1; R01 x=8 I=1
+whole-action plan (utility 7; retained and reproduced): R00 preempt, R01 prefill:8
+integer optimum (utility 7; not retained; new solve of the saved problem (original state and coefficients)): R00 preempt, R01 prefill:8
+relaxation gap 0, extraction loss 0
+executed (lp plan, utility 7): R00 preempt, R01 prefill:8
+victim causes: ['resident_capacity']
+after: free blocks 7; running ['1']; waiting 1 (head ['0'])
+  block tables {'1': [7]}
+  progress changed: R00 WAITING prompt 0/5 outputs 0; R01 PAUSED prompt 8/8 outputs 0
+replay: all checks equal
+
+--- uniform, two_request, resident limit 1: decision 7
+source: validation_output/scheduler_comparison/20261024T182347Z/cpu_comparison/rollouts/two_request_limit1/lp_uniform/decision_trace.json
+start: free blocks 7, watermark 0, residents 1/1, b_max 8, c_max 8, s_max 1
+  running ['1']; waiting 1 (head ['0'])
+  block tables {'1': [7]}
+  request res left out blocks dem charge decode_u prefill_u/token penalty
+  R00   no     5   0      0   0      1        1               1 1
+  R01   yes    0   0      1   0      0        1               1 1
+LP proposal (objective 4): R00 x=5 I=1; R01 z=1
+whole-action plan (utility 4; retained and reproduced): R00 prefill:5, R01 preempt
+integer optimum (utility 4; not retained; new solve of the saved problem (original state and coefficients)): R00 prefill:5, R01 preempt
+relaxation gap 0, extraction loss 0
+executed (lp plan, utility 4): R00 prefill:5, R01 preempt
+victim causes: ['resident_capacity']
+after: free blocks 7; running ['0']; waiting 1 (head ['1'])
+  block tables {'0': [7]}
+  progress changed: R00 PAUSED prompt 5/5 outputs 0; R01 WAITING prompt 0/8 outputs 0
+rollout end: bounded_unfinished after 8 decisions; finished [], unfinished ['A', 'B']; preemptions 7; replayed prefill tokens 39
+replay: all checks equal
+
+--- rank-based, two_request, resident limit 1: decision 0
+source: validation_output/scheduler_comparison/20261024T182347Z/cpu_comparison/rollouts/two_request_limit1/lp_rank_based/decision_trace.json
+start: free blocks 8, watermark 0, residents 0/1, b_max 8, c_max 8, s_max 1
+  running []; waiting 2 (head ['0', '1'])
+  block tables {}
+  request res left out blocks dem charge decode_u prefill_u/token penalty
+  R00   no     5   0      0   0      1        1               1 0
+  R01   no     8   0      0   0      1      0.5             0.5 0
+LP proposal (objective 5): R00 x=5 I=1
+whole-action plan (utility 5; retained and reproduced): R00 prefill:5
+integer optimum (utility 5; not retained; new solve of the saved problem (original state and coefficients)): R00 prefill:5
+relaxation gap 0, extraction loss 0
+executed (lp plan, utility 5): R00 prefill:5
+victim causes: []
+after: free blocks 7; running ['0']; waiting 1 (head ['1'])
+  block tables {'0': [7]}
+  progress changed: R00 PAUSED prompt 5/5 outputs 0
+replay: all checks equal
+
+--- rank-based, two_request, resident limit 1: decision 1
+source: validation_output/scheduler_comparison/20261024T182347Z/cpu_comparison/rollouts/two_request_limit1/lp_rank_based/decision_trace.json
+start: free blocks 7, watermark 0, residents 1/1, b_max 8, c_max 8, s_max 1
+  running ['0']; waiting 1 (head ['1'])
+  block tables {'0': [7]}
+  request res left out blocks dem charge decode_u prefill_u/token penalty
+  R00   yes    0   0      1   0      0        1               1 1
+  R01   no     8   0      0   0      1      0.5             0.5 0
+LP proposal (objective 3): R00 z=1; R01 x=8 I=1
+whole-action plan (utility 3; retained and reproduced): R00 preempt, R01 prefill:8
+integer optimum (utility 3; not retained; new solve of the saved problem (original state and coefficients)): R00 preempt, R01 prefill:8
+relaxation gap 0, extraction loss 0
+executed (lp plan, utility 3): R00 preempt, R01 prefill:8
+victim causes: ['resident_capacity']
+after: free blocks 7; running ['1']; waiting 1 (head ['0'])
+  block tables {'1': [7]}
+  progress changed: R00 WAITING prompt 0/5 outputs 0; R01 PAUSED prompt 8/8 outputs 0
+replay: all checks equal
+
+--- rank-based, two_request, resident limit 1: decision 2
+source: validation_output/scheduler_comparison/20261024T182347Z/cpu_comparison/rollouts/two_request_limit1/lp_rank_based/decision_trace.json
+start: free blocks 7, watermark 0, residents 1/1, b_max 8, c_max 8, s_max 1
+  running ['1']; waiting 1 (head ['0'])
+  block tables {'1': [7]}
+  request res left out blocks dem charge decode_u prefill_u/token penalty
+  R00   no     5   0      0   0      1      0.5             0.5 0
+  R01   yes    0   0      1   0      0        1               1 1
+LP proposal (objective 1.5): R00 x=5 I=1; R01 z=1
+whole-action plan (utility 1.5; retained and reproduced): R00 prefill:5, R01 preempt
+integer optimum (utility 1.5; not retained; new solve of the saved problem (original state and coefficients)): R00 prefill:5, R01 preempt
+relaxation gap 0, extraction loss 0
+executed (lp plan, utility 1.5): R00 prefill:5, R01 preempt
+victim causes: ['resident_capacity']
+after: free blocks 7; running ['0']; waiting 1 (head ['1'])
+  block tables {'0': [7]}
+  progress changed: R00 PAUSED prompt 5/5 outputs 0; R01 WAITING prompt 0/8 outputs 0
+replay: all checks equal
+
+--- rank-based, two_request, resident limit 1: decision 3
+source: validation_output/scheduler_comparison/20261024T182347Z/cpu_comparison/rollouts/two_request_limit1/lp_rank_based/decision_trace.json
+start: free blocks 7, watermark 0, residents 1/1, b_max 8, c_max 8, s_max 1
+  running ['0']; waiting 1 (head ['1'])
+  block tables {'0': [7]}
+  request res left out blocks dem charge decode_u prefill_u/token penalty
+  R00   yes    0   0      1   0      0        1               1 1
+  R01   no     8   0      0   0      1      0.5             0.5 0
+LP proposal (objective 3): R00 z=1; R01 x=8 I=1
+whole-action plan (utility 3; retained and reproduced): R00 preempt, R01 prefill:8
+integer optimum (utility 3; not retained; new solve of the saved problem (original state and coefficients)): R00 preempt, R01 prefill:8
+relaxation gap 0, extraction loss 0
+executed (lp plan, utility 3): R00 preempt, R01 prefill:8
+victim causes: ['resident_capacity']
+after: free blocks 7; running ['1']; waiting 1 (head ['0'])
+  block tables {'1': [7]}
+  progress changed: R00 WAITING prompt 0/5 outputs 0; R01 PAUSED prompt 8/8 outputs 0
+replay: all checks equal
+
+--- rank-based, two_request, resident limit 1: decision 4
+source: validation_output/scheduler_comparison/20261024T182347Z/cpu_comparison/rollouts/two_request_limit1/lp_rank_based/decision_trace.json
+start: free blocks 7, watermark 0, residents 1/1, b_max 8, c_max 8, s_max 1
+  running ['1']; waiting 1 (head ['0'])
+  block tables {'1': [7]}
+  request res left out blocks dem charge decode_u prefill_u/token penalty
+  R00   no     5   0      0   0      1      0.5             0.5 0
+  R01   yes    0   0      1   0      0        1               1 1
+LP proposal (objective 1.5): R00 x=5 I=1; R01 z=1
+whole-action plan (utility 1.5; retained and reproduced): R00 prefill:5, R01 preempt
+integer optimum (utility 1.5; not retained; new solve of the saved problem (original state and coefficients)): R00 prefill:5, R01 preempt
+relaxation gap 0, extraction loss 0
+executed (lp plan, utility 1.5): R00 prefill:5, R01 preempt
+victim causes: ['resident_capacity']
+after: free blocks 7; running ['0']; waiting 1 (head ['1'])
+  block tables {'0': [7]}
+  progress changed: R00 PAUSED prompt 5/5 outputs 0; R01 WAITING prompt 0/8 outputs 0
+replay: all checks equal
+
+--- rank-based, two_request, resident limit 1: decision 5
+source: validation_output/scheduler_comparison/20261024T182347Z/cpu_comparison/rollouts/two_request_limit1/lp_rank_based/decision_trace.json
+start: free blocks 7, watermark 0, residents 1/1, b_max 8, c_max 8, s_max 1
+  running ['0']; waiting 1 (head ['1'])
+  block tables {'0': [7]}
+  request res left out blocks dem charge decode_u prefill_u/token penalty
+  R00   yes    0   0      1   0      0        1               1 1
+  R01   no     8   0      0   0      1      0.5             0.5 0
+LP proposal (objective 3): R00 z=1; R01 x=8 I=1
+whole-action plan (utility 3; retained and reproduced): R00 preempt, R01 prefill:8
+integer optimum (utility 3; not retained; new solve of the saved problem (original state and coefficients)): R00 preempt, R01 prefill:8
+relaxation gap 0, extraction loss 0
+executed (lp plan, utility 3): R00 preempt, R01 prefill:8
+victim causes: ['resident_capacity']
+after: free blocks 7; running ['1']; waiting 1 (head ['0'])
+  block tables {'1': [7]}
+  progress changed: R00 WAITING prompt 0/5 outputs 0; R01 PAUSED prompt 8/8 outputs 0
+replay: all checks equal
+
+--- rank-based, two_request, resident limit 1: decision 6
+source: validation_output/scheduler_comparison/20261024T182347Z/cpu_comparison/rollouts/two_request_limit1/lp_rank_based/decision_trace.json
+start: free blocks 7, watermark 0, residents 1/1, b_max 8, c_max 8, s_max 1
+  running ['1']; waiting 1 (head ['0'])
+  block tables {'1': [7]}
+  request res left out blocks dem charge decode_u prefill_u/token penalty
+  R00   no     5   0      0   0      1      0.5             0.5 0
+  R01   yes    0   0      1   0      0        1               1 1
+LP proposal (objective 1.5): R00 x=5 I=1; R01 z=1
+whole-action plan (utility 1.5; retained and reproduced): R00 prefill:5, R01 preempt
+integer optimum (utility 1.5; not retained; new solve of the saved problem (original state and coefficients)): R00 prefill:5, R01 preempt
+relaxation gap 0, extraction loss 0
+executed (lp plan, utility 1.5): R00 prefill:5, R01 preempt
+victim causes: ['resident_capacity']
+after: free blocks 7; running ['0']; waiting 1 (head ['1'])
+  block tables {'0': [7]}
+  progress changed: R00 PAUSED prompt 5/5 outputs 0; R01 WAITING prompt 0/8 outputs 0
+replay: all checks equal
+
+--- rank-based, two_request, resident limit 1: decision 7
+source: validation_output/scheduler_comparison/20261024T182347Z/cpu_comparison/rollouts/two_request_limit1/lp_rank_based/decision_trace.json
+start: free blocks 7, watermark 0, residents 1/1, b_max 8, c_max 8, s_max 1
+  running ['0']; waiting 1 (head ['1'])
+  block tables {'0': [7]}
+  request res left out blocks dem charge decode_u prefill_u/token penalty
+  R00   yes    0   0      1   0      0        1               1 1
+  R01   no     8   0      0   0      1      0.5             0.5 0
+LP proposal (objective 3): R00 z=1; R01 x=8 I=1
+whole-action plan (utility 3; retained and reproduced): R00 preempt, R01 prefill:8
+integer optimum (utility 3; not retained; new solve of the saved problem (original state and coefficients)): R00 preempt, R01 prefill:8
+relaxation gap 0, extraction loss 0
+executed (lp plan, utility 3): R00 preempt, R01 prefill:8
+victim causes: ['resident_capacity']
+after: free blocks 7; running ['1']; waiting 1 (head ['0'])
+  block tables {'1': [7]}
+  progress changed: R00 WAITING prompt 0/5 outputs 0; R01 PAUSED prompt 8/8 outputs 0
+rollout end: bounded_unfinished after 8 decisions; finished [], unfinished ['A', 'B']; preemptions 7; replayed prefill tokens 39
+replay: all checks equal
+
+RESULT: PASS
+exit_status=0
