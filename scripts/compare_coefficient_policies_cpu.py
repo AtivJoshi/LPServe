@@ -62,6 +62,19 @@ single-state diagnostics (``RUNNING_ORDER_DIAGNOSTICS``). Experimental
 outcomes (bounded noncompletion, contract differences, extraction losses)
 are reported; solver failures, missing evidence, invalid plans, harness
 errors, and numerical contradictions make the result FAIL.
+
+``--batch multiplier [--retained-controls <cpu_comparison dir>]`` runs the
+fixed multiplier comparison: ``lp_reciprocal_square``, the three
+``compare_scheduler_gpu.RECIPROCAL_SQUARE_VARIANTS`` (decode reward and/or
+preemption penalty multiplied by four, prefill unchanged), and
+``lp_running_order`` on ``MULTIPLIER_CASES`` at resident limit 8, each
+written to ``rollouts/<case>/<method>/`` as in the running-order batch.
+Every reached decision receives the same-state integer comparison of its own
+mapped problem (``decision_comparisons``). The two control methods are
+rerun; with ``--retained-controls``, each fresh control rollout must
+reproduce the retained one (outcome, emitted decisions, and every mapped
+problem apart from its problem ID), otherwise the result is FAIL. Workload
+outcomes, extraction losses, and service order are reported, not judged.
 """
 
 import argparse
@@ -2047,8 +2060,178 @@ def running_order_main(out):
     return 0 if status["result"] == "PASS" else 1
 
 
+# ---------------------------------------------------------------------------
+# Fixed multiplier comparison
+# ---------------------------------------------------------------------------
+
+MULTIPLIER_CASES = ("queue48_burst", driver.CONSTRAINED_QUEUE_CASE)
+MULTIPLIER_CONTROLS = (driver.RECIPROCAL_SQUARE_POLICY,
+                       driver.RUNNING_ORDER_POLICY)
+MULTIPLIER_METHODS = ((driver.RECIPROCAL_SQUARE_POLICY,)
+                      + tuple(driver.RECIPROCAL_SQUARE_VARIANTS)
+                      + (driver.RUNNING_ORDER_POLICY,))
+MULTIPLIER_PAIRS = tuple((driver.RECIPROCAL_SQUARE_POLICY, m)
+                         for m in MULTIPLIER_METHODS[1:])
+
+
+def mapped_problems(trace):
+    """Each decision's mapped problem record without its problem ID (None
+    where the decision has no mapped problem)."""
+    out = []
+    for d in trace.get("decisions", []):
+        mapped = {e["call"]: e for e in d.get("lp_events", [])}.get(
+            "map_scheduler_state") or {}
+        problem = (mapped.get("result") or {}).get("lp_problem")
+        out.append(None if problem is None else
+                   {k: v for k, v in problem.items() if k != "problem_id"})
+    return out
+
+
+def retained_control_check(summary, trace, retained_dir):
+    """Whether a fresh control rollout reproduces a retained one: the same
+    workload outcome, decisions, emitted outputs, run parameters, and every
+    mapped problem (inputs and coefficients) apart from its problem ID."""
+    record = dict(retained_dir=str(retained_dir),
+                  found=(retained_dir / "summary.json").exists())
+    if not record["found"]:
+        return dict(record, equal=False)
+    old = json.loads((retained_dir / "summary.json").read_text())
+    old_problems = mapped_problems(read_trace(retained_dir))
+    new_problems = mapped_problems(trace)
+    checks = {key: old[key] == summary[key] for key in (
+        "workload_outcome", "decisions", "emitted", "parameters")}
+    checks["mapped_problems"] = old_problems == new_problems
+    differing = [i for i, (a, b) in enumerate(zip(old_problems, new_problems))
+                 if a != b]
+    return dict(record, checks=checks, equal=all(checks.values()),
+                first_problem_difference=differing[0] if differing else None)
+
+
+def multiplier_report(rows, divergences, controls, status):
+    text = queue_report(rows, divergences, title=(
+        "Fixed multiplier comparison (CPU, native central/worker replay; "
+        "resident limit 8). Objectives of different policies are not "
+        "compared."))
+    lines = ["", "Victim reasons (decisions citing each constraint)"]
+    for r in rows:
+        s = r["summary"]
+        lines.append(f"  {s['case']} {s['method']}: "
+                     f"{s['victim_reason_counts']}; decisions with victims "
+                     f"and admissions {s['decisions_with_admission_and_victims']}")
+    lines += ["", "Retained control reproduction"]
+    if not controls:
+        lines.append("  not checked (no --retained-controls)")
+    for key, c in controls.items():
+        lines.append(f"  {key}: equal {c['equal']}; {c.get('checks')}; first "
+                     f"problem difference {c.get('first_problem_difference')}")
+    lines += ["", f"Status: {status}"]
+    return text + "\n".join(lines) + "\n"
+
+
+def multiplier_main(out, retained_controls=None):
+    import test_compare_scheduler_gpu as cpu
+    cpu.setUpModule()
+    record = dict(
+        argv=sys.argv, batch="multiplier", methods=MULTIPLIER_METHODS,
+        cases={case: driver.case_inputs(case) for case in MULTIPLIER_CASES},
+        resident_limit=QUEUE_LIMIT,
+        variants=driver.RECIPROCAL_SQUARE_VARIANTS,
+        reciprocal_square="w = 1 / (1 + r) ** 2; q = min(remaining, c_max, "
+        "b_max); decode w, prefill token w / q, penalty w (control, unchanged)",
+        running_order=driver.RUNNING_ORDER_FORMULA,
+        retained_controls=retained_controls,
+        integer_solver=dict(solver=eip.SOLVER, options=eip.SOLVER_OPTIONS,
+                            conversion_tol=eip.CONVERSION_TOL,
+                            comparison_tol=eip.COMPARISON_TOL),
+        provenance=driver.provenance_record(),
+        environment=driver.environment_record())
+    rows, traces, controls, harness_errors = [], {}, {}, []
+    for case in MULTIPLIER_CASES:
+        for method in MULTIPLIER_METHODS:
+            print(f"rollout {case} {method}", flush=True)
+            run_dir = out / "rollouts" / case / method
+            run_dir.mkdir(parents=True)
+            try:
+                summary, trace = run_queue_rollout(cpu, method, case, run_dir)
+                analysis = analyse_run(trace, method, case)
+                if retained_controls and method in MULTIPLIER_CONTROLS:
+                    controls[f"{case} {method}"] = retained_control_check(
+                        summary, trace, Path(retained_controls) / "rollouts"
+                        / f"{case}_limit{QUEUE_LIMIT}" / method)
+            except Exception as err:  # harness error: kept, others continue
+                harness_errors.append(dict(run=f"{case} {method}",
+                                           type=type(err).__name__,
+                                           message=str(err),
+                                           traceback=traceback.format_exc()))
+                print(f"  -> HARNESS ERROR {err!r}", flush=True)
+                continue
+            (run_dir / "summary.json").write_text(json.dumps(
+                driver.to_jsonable(dict(
+                    summary, coverage=analysis["coverage"],
+                    service=dict(analysis["service"],
+                                 **_victim_patterns(analysis["service"])),
+                    comparisons=analysis["comparisons"],
+                    retained_control=controls.get(f"{case} {method}"))),
+                indent=1))
+            write_json_gz(run_dir / "comparisons.json.gz",
+                          driver.to_jsonable(analysis["records"]))
+            rows.append(dict(summary=summary, **analysis))
+            traces[case, method] = trace
+            print(f"  -> valid {summary['validation_passed']} outcome "
+                  f"{summary['workload_outcome']} decisions "
+                  f"{summary['decisions']} coverage complete "
+                  f"{analysis['coverage']['complete']}", flush=True)
+    by_key = {(r["summary"]["case"], r["summary"]["method"]): r["summary"]
+              for r in rows}
+    divergences = {}
+    for case in MULTIPLIER_CASES:
+        for a, b in MULTIPLIER_PAIRS:
+            if (case, a) in by_key and (case, b) in by_key:
+                divergences[f"{case} {a} vs {b}"] = dict(
+                    emitted=first_divergence(by_key[case, a], by_key[case, b],
+                                             traces[case, a], traces[case, b]),
+                    first_selection_difference=first_selection_divergence(
+                        by_key[case, a], by_key[case, b]))
+    (out / "divergences.json").write_text(json.dumps(
+        driver.to_jsonable(divergences), indent=1))
+    problems = [f"harness error: {e['run']}" for e in harness_errors]
+    for r in rows:
+        tag = f"{r['summary']['case']} {r['summary']['method']}"
+        if not r["summary"]["validation_passed"]:
+            problems.append(f"{tag}: rollout failure "
+                            f"{(r['summary']['failure'] or {}).get('category')}")
+        if not r["coverage"]["complete"]:
+            problems.append(f"{tag}: incomplete comparison coverage")
+        if r["coverage"]["time_limits"] or r["coverage"]["other_failures"]:
+            problems.append(f"{tag}: non-optimal integer solves")
+        if not r["consistent"]:
+            problems.append(f"{tag}: inconsistent same-state comparison")
+    problems += [f"{key}: does not reproduce the retained control"
+                 for key, c in controls.items() if not c["equal"]]
+    expected = len(MULTIPLIER_CASES) * len(MULTIPLIER_METHODS)
+    status = dict(runs_expected=expected, runs_completed=len(rows),
+                  validation_passed=sum(r["summary"]["validation_passed"]
+                                        for r in rows),
+                  outcomes={o: sum(r["summary"]["workload_outcome"] == o
+                                   for r in rows)
+                            for o in (driver.DRAINED, driver.BOUNDED_UNFINISHED,
+                                      driver.FAILURE)},
+                  controls_checked=len(controls), problems=problems)
+    status["result"] = ("PASS" if not problems and len(rows) == expected
+                        else "FAIL")
+    text = multiplier_report(rows, divergences, controls, status)
+    (out / "comparison.txt").write_text(text)
+    print(text, flush=True)
+    record.update(all_checks_passed=status["result"] == "PASS", status=status,
+                  controls=controls, harness_errors=harness_errors)
+    (out / "run_record.json").write_text(json.dumps(
+        driver.to_jsonable(record), indent=1))
+    print("RESULT:", status["result"], flush=True)
+    return 0 if status["result"] == "PASS" else 1
+
+
 BATCHES = ("coordinated_policy", "queue_growth", "retained_runs",
-           "running_order")
+           "running_order", "multiplier")
 
 
 def parse_args(argv=None):
@@ -2059,7 +2242,8 @@ def parse_args(argv=None):
                         "batch; queue_growth: the reciprocal-square "
                         "queue-growth batch; retained_runs: offline "
                         "comparisons of retained runs (--runs); "
-                        "running_order: the running-order batch")
+                        "running_order: the running-order batch; "
+                        "multiplier: the fixed multiplier comparison")
     parser.add_argument("--runs", nargs="+", default=[],
                         help="retained_runs: run directories holding "
                         "summary.json and decision_trace.json[.gz]")
@@ -2067,6 +2251,10 @@ def parse_args(argv=None):
                         choices=driver.QUEUE_GROWTH_CASES,
                         help="queue_growth: run only these cases (default: "
                         "all six)")
+    parser.add_argument("--retained-controls", default=None,
+                        help="multiplier: retained running-order "
+                        "cpu_comparison directory whose control rollouts "
+                        "the fresh controls must reproduce")
     parser.add_argument("--cpu-batch", default=None,
                         help="retained_runs: optional queue_growth output "
                         "directory whose rollouts the runs are checked "
@@ -2085,6 +2273,8 @@ def main(argv=None):
                      "only, which requires --runs")
     if args.cases and args.batch != "queue_growth":
         parser.error("--cases goes with --batch queue_growth only")
+    if args.retained_controls and args.batch != "multiplier":
+        parser.error("--retained-controls goes with --batch multiplier only")
     out.mkdir(parents=True, exist_ok=True)
     if args.batch == "queue_growth":
         return queue_growth_main(
@@ -2094,6 +2284,8 @@ def main(argv=None):
         return retained_runs_main(out, args.runs, args.cpu_batch)
     if args.batch == "running_order":
         return running_order_main(out)
+    if args.batch == "multiplier":
+        return multiplier_main(out, args.retained_controls)
 
     import test_compare_scheduler_gpu as cpu
     cpu.setUpModule()

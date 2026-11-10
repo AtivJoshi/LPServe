@@ -1524,3 +1524,80 @@ This acceptance changes no formulation, extraction, numerical setting,
 admission rule, or runtime contract. It selects no universal utility default,
 does not close general Q11 recovery/overhead questions, and does not authorize
 implementation or experiments for the theoretical extension.
+
+## Addendum 2026-11-08: fixed decode/penalty multiplier comparison (CPU only)
+
+**Scope.** Task 1 of [`tasks_for_stella.md`](tasks_for_stella.md). Five
+coefficient settings on `queue48_burst` and `queue48_burst_pool12` (inputs
+unchanged): (1) `lp_reciprocal_square`; (2) decode reward × 4; (3)
+preemption penalty × 4; (4) both × 4; (5) `lp_running_order`. Prefill
+rewards, eligibility, and zero terms are unchanged in (2)–(4). The
+multiplier was fixed in advance, not tuned. Formulation, PH1, executor,
+numerical and solver settings are unchanged; no OPEN item is affected. No
+policy is ranked, and objectives of different policies are not compared.
+
+**Evidence:**
+[`20261107_multiplier_rerun/`](../../validation_output/scheduler_comparison/20261107_multiplier_rerun/).
+HEAD `adf4b262980c8e1b4c729b12d71d02b913c83040` plus changes to
+`scripts/compare_scheduler_gpu.py` (CPU-only variants and their coefficient
+check), `scripts/compare_coefficient_policies_cpu.py` (`--batch multiplier`),
+and `tests/test_compare_scheduler_gpu.py` (5 tests); `git diff HEAD` sha256
+`e2f70b32…`. Host `gpu051`, Slurm job `66929152`, `CUDA_VISIBLE_DEVICES=""`,
+Python 3.10.8, numpy 2.2.6, scipy 1.15.3, in a new `env/` built per
+[`unity_setup.md`](../unity_setup.md) §3–5 with those versions pinned.
+Command: `bash <run>/run_batch.sh <run>`. All 14 steps exited 0: six unit
+suites passed (61, 24, 8, 38, 16, and 24 tests), and the batch printed
+`RESULT: PASS`.
+
+**Controls.** The code changed after the retained running-order batch, so
+(1) and (5) were rerun. Each matched its retained rollout in decisions,
+emitted outputs, parameters, and every mapped problem.
+
+### Results
+
+All 10 rollouts drained. All 791 decisions received an optimal same-state
+integer solve.
+
+| Case | Setting | Dec. | Preempt | Replayed tokens | Idle residents | Admission / completion inversions |
+|---|---|---|---|---|---|---|
+| queue48_burst | (1)–(4) | 40 | 0 | 0 | 0 | 33 / 110 |
+| queue48_burst | (5) | 42 | 0 | 0 | 0 | 6 / 69 |
+| pool12 | (1), (2), (4) | 118 | 5 | 226 | 0 | 208 / 246 |
+| pool12 | (3) | 118 | 3 | 113 | 3 | 245 / 280 |
+| pool12 | (5) | 117 | 2 | 96 | 0 | 251 / 301 |
+
+- **(1)–(4) are identical in `queue48_burst`.** No victim is ever needed, and
+  every resident is served at every decision, so neither term can change a
+  choice.
+- **(2) and (4) equal (1) at every decision in both cases.** In (4), every
+  decode-versus-victim trade-off keeps its ratio.
+- **(3) is the only variant that changes decisions**, starting at pool-12
+  decision 2. It keeps residents idle instead of evicting them. In pool 12,
+  this halves the replayed tokens and removes the `lp_decode_prerequisite`
+  victims. Short prompts are served earlier (8 tokens: mean first prefill 7
+  against 9.4), but the decisions depart more from arrival order.
+
+**PH1 against the integer optimum** (extraction-loss decision indices; LP ≥
+integer ≥ PH1 held everywhere): `queue48_burst` (1)–(4): 0, 3, 5, 8;
+(5): 25. Pool 12 (1), (2), (4): 0, 8, 13, 20, 24, 34; (3): 0, 16, 21; (5):
+2, 3, 5, 6, 7, 9, 11, 13, 15, 21, 24, 29.
+
+### Representative decisions (pool 12)
+
+1. **Decision 2, (1) against (3), same state.** Eight decode-ready residents
+   and 1 free block; three residents need a block. (1) evicts R08 (penalty
+   0.0204) so the other seven decode (1.4866). Under (3), R08's penalty is
+   0.0816. Evicting it would gain 0.0903 in decodes but cost 0.0816 + 0.0204,
+   so (3) idles R03 and R07 instead (1.4371 against 1.4254). The LP, PH1, and
+   the integer optimum agree in both settings.
+2. **Decision 20, (1) and (2): extraction loss unchanged by the multiplier.**
+   With 0 free blocks, the LP decode prerequisite is met by `z = 0.121` on
+   R16 (4 blocks). PH1 evicts R16 whole and admits R27 and R36. The integer
+   optimum evicts the 1-block tail R31 instead.
+3. **Decision 21, (3): the same limitation on a path only (3) reaches.**
+   `z = 0.25` on R16 (4 blocks) becomes a whole eviction plus an admission of
+   R27 (1.1594). The integer optimum evicts R26 (2 blocks) and decodes R16
+   (1.2636).
+
+**Not established:** GPU execution, latency, throughput, fairness, other
+workloads or multipliers.
